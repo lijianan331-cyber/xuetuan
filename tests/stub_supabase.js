@@ -111,6 +111,14 @@
       window.__sb.url = url; window.__sb.key = key;
       return {
         from: function (table) { return new Query(table); },
+        /* 地点库搜索：名字里包含关键词就算搜到 */
+        rpc: function (name, args) {
+          calls.push(['rpc', name, args]);
+          if (name !== 'search_poi') return Promise.resolve(err('no such function'));
+          var q = String(args.q || '').toLowerCase();
+          var rows = (window.__poi || []).filter(function (r) { return r.name.toLowerCase().indexOf(q) !== -1; });
+          return new Promise(function (resolve) { setTimeout(function () { resolve({ data: rows, error: null }); }, 5); });
+        },
         auth: {
           getSession: function () { return Promise.resolve({ data: { session: session }, error: null }); },
           onAuthStateChange: function (fn) { listeners.push(fn); setTimeout(function () { fn('INITIAL_SESSION', session); }, 0); return { data: { subscription: { unsubscribe: function () {} } } }; },

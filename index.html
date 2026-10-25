@@ -807,8 +807,8 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       addSearchPhFood: '输入店名搜索', addSearchPhTravel: '输入地名搜索', addPin: '地图选点',
       addPinLong: '搜不到？在地图上选点', addHint: '先搜名字。学校附近的小店搜不到的话，点“地图选点”自己标。',
       addNoResult: '地图上没搜到这个名字。',
-      searchLocal: '雪团里的', searchOsm: '地图上搜到的', osmMin: '再多打一个字，就会去地图上搜', osmLoading: '正在搜…',
-      osmFail: '地图搜索暂时用不了，可以自己插针添加', osmCredit: '地点搜索：Photon · 数据 © OpenStreetMap 贡献者', osmAdd: '添加', osmOpen: '已在雪团',
+      searchLocal: '雪团里的', searchOsm: '地图上的地点', osmMin: '再多打一个字，就会去地图上搜', osmLoading: '正在搜…',
+      osmFail: '地图搜索暂时用不了，可以自己插针添加', osmCredit: '地点数据：Overture Maps Foundation · © OpenStreetMap 贡献者（Photon）', osmAdd: '添加', osmOpen: '已在雪团',
       published: '发布了', savedPrivate: '存好了，只在“我的”里能看到',
       locating: '正在定位…', locateFail: '定位失败，检查一下浏览器的定位权限',
       photoFail: '有照片没存上，刷新后会丢', saveFail: '浏览器不让存数据，关掉页面就没了',
@@ -884,8 +884,8 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       addSearchPhFood: 'Search by name', addSearchPhTravel: 'Search a place', addPin: 'Pick on map',
       addPinLong: 'Can’t find it? Pick it on the map', addHint: 'Search by name first. If a small stall doesn’t show up, use “Pick on map”.',
       addNoResult: 'Nothing on the map with that name.',
-      searchLocal: 'On XueTuan', searchOsm: 'From the map', osmMin: 'Type one more character to search the map', osmLoading: 'Searching…',
-      osmFail: 'Map search isn’t available right now. You can still drop a pin.', osmCredit: 'Place search by Photon · data © OpenStreetMap contributors', osmAdd: 'Add', osmOpen: 'On XueTuan',
+      searchLocal: 'On XueTuan', searchOsm: 'Places on the map', osmMin: 'Type one more character to search the map', osmLoading: 'Searching…',
+      osmFail: 'Map search isn’t available right now. You can still drop a pin.', osmCredit: 'Place data: Overture Maps Foundation · © OpenStreetMap contributors (via Photon)', osmAdd: 'Add', osmOpen: 'On XueTuan',
       published: 'Published', savedPrivate: 'Saved. Only you can see it, under “Mine”',
       locating: 'Finding you…', locateFail: 'Couldn’t get your location. Check the browser’s location permission',
       photoFail: 'Some photos weren’t saved and will be lost on refresh', saveFail: 'This browser won’t store data, so it will be lost when you close the page',
@@ -1433,11 +1433,11 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
   }
 
   /* 有 Supabase 配置就用线上版；地址里加 ?local 或者 supabase 库没加载出来时用本地版 */
+  /* 店名搜索查的是 Supabase 里的公共地点库，本地版也能用 */
+  var sbClient = window.supabase && window.supabase.createClient && SUPABASE_URL ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
   var store = (function () {
     var forceLocal = /[?&]local(=|&|$)/.test(location.search) || window.XUETUAN_LOCAL;
-    if (!forceLocal && window.supabase && window.supabase.createClient && SUPABASE_URL) {
-      return remoteStore(window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY));
-    }
+    if (!forceLocal && sbClient) return remoteStore(sbClient);
     return localStore();
   })();
 
@@ -2403,12 +2403,44 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     box.innerHTML = h;
   }
 
-  /* ================= place search (OpenStreetMap via Photon) [建议] =================
-   * Photon 是基于 OSM 的免费地点搜索，支持边打字边搜、不需要 key。
-   * 同一个 OSM 编号算同一个地点，避免大家重复建同一家店。
+  /* ================= place search [建议] =================
+   * 两个来源一起搜：
+   * 1. 雪团自己的地点库（Supabase 里的 poi 表，马来西亚的 Overture 开放数据，店铺最全），按名字和距离排序；
+   * 2. Photon（OpenStreetMap），补上城市、景点和国外的地方。
+   * 同一个外部编号（ovt/… 或 node/…）算同一个地点，避免大家重复建同一家店。
    */
   var PHOTON_URL = 'https://photon.komoot.io/api/';
   var osm = { q: '', status: 'idle', results: [], timer: null, seq: 0 };
+  function searchCenter() {
+    if (state.me) return state.me;
+    var c = map ? map.getCenter() : XMUM;
+    return { lng: c.lng, lat: c.lat };
+  }
+  function poiSearch(q, c) {
+    if (!sbClient || !sbClient.rpc) return Promise.reject(new Error('no poi'));
+    return sbClient.rpc('search_poi', { q: q, near_lat: c.lat, near_lng: c.lng, lim: 15 }).then(function (r) {
+      if (r.error) throw r.error;
+      return (r.data || []).map(function (x) {
+        return { osm: 'ovt/' + x.id, name: x.name, alt: x.alt_name || '', lng: round6(x.lng), lat: round6(x.lat), mode: x.mode, cat: x.cat, precision: 'exact', where: x.locality || '' };
+      });
+    });
+  }
+  function photonSearch(q, c) {
+    var url = PHOTON_URL + '?q=' + encodeURIComponent(q) + '&limit=8&lat=' + c.lat.toFixed(4) + '&lon=' + c.lng.toFixed(4) + (state.lang === 'en' ? '&lang=en' : '');
+    return fetch(url).then(function (res) {
+      if (!res.ok) throw new Error('photon ' + res.status);
+      return res.json();
+    }).then(parsePhoton);
+  }
+  /* 地点库在前；Photon 里名字一样、又在 150 米内的算重复 */
+  function mergeResults(a, b) {
+    var out = a.slice();
+    b.forEach(function (r) {
+      var dup = out.some(function (x) { return x.name.toLowerCase() === r.name.toLowerCase() && haversine(x, r) < 150; });
+      if (!dup) out.push(r);
+    });
+    return out;
+  }
   function queueOsmSearch() {
     var q = state.query.trim(), key = q.toLowerCase();
     clearTimeout(osm.timer);
@@ -2417,22 +2449,15 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     osm.q = key; osm.status = 'loading';
     var seq = ++osm.seq;
     osm.timer = setTimeout(function () {
-      var c = map ? map.getCenter() : XMUM;
-      var url = PHOTON_URL + '?q=' + encodeURIComponent(q) + '&limit=8&lat=' + c.lat.toFixed(4) + '&lon=' + c.lng.toFixed(4) + (state.lang === 'en' ? '&lang=en' : '');
-      fetch(url).then(function (res) {
-        if (!res.ok) throw new Error('photon ' + res.status);
-        return res.json();
-      }).then(function (json) {
+      var c = searchCenter();
+      var fail = function () { return null; };
+      Promise.all([poiSearch(q, c).catch(fail), photonSearch(q, c).catch(fail)]).then(function (rs) {
         if (seq !== osm.seq) return;
-        osm.results = parsePhoton(json);
-        osm.status = 'done';
-        renderSearchResults();
-      }).catch(function () {
-        if (seq !== osm.seq) return;
-        osm.status = 'fail';
+        if (!rs[0] && !rs[1]) osm.status = 'fail';
+        else { osm.results = mergeResults(rs[0] || [], rs[1] || []); osm.status = 'done'; }
         renderSearchResults();
       });
-    }, 350);
+    }, 300);
   }
   function parsePhoton(json) {
     var seen = {};
@@ -2481,10 +2506,10 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     var mode = CATS[r.mode], c = null;
     mode.forEach(function (x) { if (x.id === r.cat) c = x; });
     c = c || mode[mode.length - 1];
-    var sub = [t(r.mode), r.where, fmtDist(haversine(XMUM, r))].filter(Boolean).map(esc).join(' · ');
+    var sub = [t(r.mode), catName(c), r.where, fmtDist(haversine(searchCenter(), r))].filter(Boolean).map(esc).join(' · ');
     var cta = osmExisting(r) ? t('osmOpen') : t('osmAdd');
     return '<li><button type="button" class="near-item" data-action="osm-pick" data-i="' + i + '">' + catIconHTML(c) +
-      '<span class="near-text"><b>' + esc(r.name) + '</b><small>' + sub + '</small></span><span class="near-cta">' + esc(cta) + '</span></button></li>';
+      '<span class="near-text"><b>' + esc(r.name) + (r.alt ? ' <span class="muted">' + esc(r.alt) + '</span>' : '') + '</b><small>' + sub + '</small></span><span class="near-cta">' + esc(cta) + '</span></button></li>';
   }
   /* 从“加地点”进来时，用户已经选了吃还是玩，就不按搜索结果的类型切换 */
   function pickOsm(i) {

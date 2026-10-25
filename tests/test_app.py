@@ -545,6 +545,9 @@ with sync_playwright() as p:
     ctx6 = browser.new_context(viewport={'width': 390, 'height': 844}, device_scale_factor=2, has_touch=True, accept_downloads=True)
     route_all(ctx6, supabase=True)
     ctx6.add_init_script('window.__sbSeed = ' + json.dumps(sb_seed) + ';')
+    poi = [{'id': 'aaa', 'name': 'Kafe Ujian Dekat', 'alt_name': '', 'mode': 'food', 'cat': 'cafe', 'lat': 2.8341, 'lng': 101.704, 'locality': 'Sepang', 'dist_m': 150},
+           {'id': 'bbb', 'name': 'Kafe Ujian', 'alt_name': '', 'mode': 'food', 'cat': 'cafe', 'lat': 2.8502, 'lng': 101.7201, 'locality': 'Sepang', 'dist_m': 2500}]
+    ctx6.add_init_script('window.__poi = ' + json.dumps(poi) + ';')
     # 这台设备上有本地版留下的旧记录
     old_local = {'version': 2, 'seeded': True, 'profile': {'id': 'u-local', 'name': '本地'}, 'areas': [], 'wishlist': [{'placeId': 'p-old', 'createdAt': 1}],
                  'places': [{'id': 'p-old', 'mode': 'travel', 'cat': 'city', 'precision': 'city', 'lat': 5.41, 'lng': 100.33, 'name': '槟城', 'altName': 'Penang', 'link': '', 'osm': '', 'createdBy': 'u-local', 'createdAt': 1, 'sample': False},
@@ -578,6 +581,22 @@ with sync_playwright() as p:
     page6.evaluate('window.__sbLogin("%s", "a@example.com")' % A)
     page6.wait_for_timeout(300)
     check('remote: login returns to feed with toast', page6.locator('.feed').count() == 1 and '登录了' in page6.inner_text('#toast'), page6.inner_text('#toast'))
+
+    # 店名搜索：先查地点库，Photon 的同一家店不重复列出
+    (page6.click('#fab') if page6.locator('#fab').is_visible() else page6.click('.title-add'))
+    page6.fill('#q', 'kafe')
+    page6.wait_for_selector('[data-action="osm-pick"]', timeout=5000)
+    page6.wait_for_timeout(100)
+    rows6 = page6.locator('[data-action="osm-pick"] b').all_inner_texts()
+    check('remote: name search uses the place library first, duplicates merged', rows6 == ['Kafe Ujian Dekat', 'Kafe Ujian', 'George Town'], rows6)
+    rpc6 = page6.evaluate('window.__sb.calls.filter(c => c[0] === "rpc")')
+    check('remote: place library searched near the map', len(rpc6) >= 1 and rpc6[-1][1] == 'search_poi' and rpc6[-1][2]['q'] == 'kafe' and abs(rpc6[-1][2]['near_lat']) > 0, rpc6[-1:])
+    page6.locator('[data-action="osm-pick"]').first.click()
+    page6.wait_for_timeout(300)
+    check('remote: library result prefills name and category', page6.input_value('#f-name') == 'Kafe Ujian Dekat' and page6.get_attribute('[data-action="f-cat"][data-cat="cafe"]', 'aria-pressed') == 'true', page6.input_value('#f-name') if page6.locator('#f-name').count() else 'no form')
+    page6.click('[data-action="form-cancel"]')
+    page6.wait_for_timeout(200)
+    if page6.locator('[data-action="back"]').count(): page6.click('[data-action="back"]')
 
     # 登录后加一家店（带照片）
     page6.evaluate('window.__map.center = {lng: 101.75, lat: 2.95}; window.__map.zoom = 17;')
