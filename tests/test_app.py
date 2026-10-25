@@ -96,7 +96,7 @@ with sync_playwright() as p:
     page.wait_for_timeout(200)
     tf = page.evaluate('window.__map.getSource("places").data.features.length')
     check('travel mode shows 21 samples', tf == 21, tf)
-    check('accent repainted', page.evaluate('window.__map.layers.find(l=>l.id==="cl-circle").paint["circle-color"]').lower() == '#0f8b8d', page.evaluate('window.__map.layers.find(l=>l.id==="cl-circle").paint["circle-color"]'))
+    check('accent repainted', page.evaluate('window.__map.layers.find(l=>l.id==="cl-circle").paint["circle-color"]').lower() == '#12897f', page.evaluate('window.__map.layers.find(l=>l.id==="cl-circle").paint["circle-color"]'))
     check('fab label switches', page.inner_text('#fab-label') == '打卡', page.inner_text('#fab-label'))
     # expand sheet by tapping title
     page.click('.title-row .view-title')
