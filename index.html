@@ -444,6 +444,9 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
 .add-search .add-pin { flex: none; height: 46px; padding: 0 14px; background: var(--accent-soft); color: var(--accent); }
 .add-hint { margin: 8px 0 4px; }
 .add-pin-bottom { margin-top: 14px; }
+.sel-pin { width: 30px; height: 43px; pointer-events: none; filter: drop-shadow(0 2px 3px rgba(0, 0, 0, .35)); }
+.sel-pin svg { display: block; }
+.preview-hint { margin: 14px 0 12px; }
 .osm-credit { padding: 12px 4px 4px; color: var(--muted); font-size: 11.5px; }
 .photo-grid { display: flex; flex-wrap: wrap; gap: 8px; }
 .ph-edit { position: relative; width: 76px; height: 76px; border-radius: 14px; overflow: hidden; background: var(--surface-2); }
@@ -807,6 +810,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       addSearchPhFood: '输入店名搜索', addSearchPhTravel: '输入地名搜索', addPin: '地图选点',
       addPinLong: '搜不到？在地图上选点', addHint: '先搜名字。学校附近的小店搜不到的话，点“地图选点”自己标。',
       addNoResult: '地图上没搜到这个名字。',
+      previewHint: '雪团里还没人写过这里。', previewAddFood: '加到雪团，写点评', previewAddTravel: '加到雪团，打卡',
       searchLocal: '雪团里的', searchOsm: '地图上的地点', osmMin: '再多打一个字，就会去地图上搜', osmLoading: '正在搜…',
       osmFail: '地图搜索暂时用不了，可以自己插针添加', osmCredit: '地点数据：Overture Maps Foundation · © OpenStreetMap 贡献者（Photon）', osmAdd: '添加', osmOpen: '已在雪团',
       published: '发布了', savedPrivate: '存好了，只在“我的”里能看到',
@@ -884,6 +888,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       addSearchPhFood: 'Search by name', addSearchPhTravel: 'Search a place', addPin: 'Pick on map',
       addPinLong: 'Can’t find it? Pick it on the map', addHint: 'Search by name first. If a small stall doesn’t show up, use “Pick on map”.',
       addNoResult: 'Nothing on the map with that name.',
+      previewHint: 'Nobody on XueTuan has written about this place yet.', previewAddFood: 'Add to XueTuan and review', previewAddTravel: 'Add to XueTuan and check in',
       searchLocal: 'On XueTuan', searchOsm: 'Places on the map', osmMin: 'Type one more character to search the map', osmLoading: 'Searching…',
       osmFail: 'Map search isn’t available right now. You can still drop a pin.', osmCredit: 'Place data: Overture Maps Foundation · © OpenStreetMap contributors (via Photon)', osmAdd: 'Add', osmOpen: 'On XueTuan',
       published: 'Published', savedPrivate: 'Saved. Only you can see it, under “Mine”',
@@ -910,7 +915,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
   var state = {
     lang: 'zh', mode: 'food', scope: 'all', cat: 'all', priceMax: 0, minScore: 0, dist: 'any',
     view: 'feed', placeId: null, form: null, nearby: null, query: '',
-    snap: 'peek', feedSnap: 'peek', picking: null, me: null, styleKey: 'light'
+    snap: 'peek', feedSnap: 'peek', picking: null, preview: null, me: null, styleKey: 'light'
   };
   var map = null;
   var lastRenderedView = null;
@@ -1895,6 +1900,27 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     ['cl-circle', 'cl-halo', 'pt-sel'].forEach(function (id) { try { map.setPaintProperty(id, 'circle-color', a); } catch (e) { /* ignore */ } });
     try { map.setPaintProperty('pt-sel', 'circle-stroke-color', a); } catch (e) { /* ignore */ }
   }
+  /* 选中的地点上插一根谷歌地图那样的红针：地点页、搜索结果预览、正在加的新地点 */
+  var selPin = null;
+  function selPinLoc() {
+    var v = state.view, f = state.form;
+    if (v === 'place') return placeById(state.placeId);
+    if (v === 'preview') return state.preview;
+    if ((v === 'form' || v === 'nearby') && f) return f.placeId ? placeById(f.placeId) : f.loc;
+    return null;
+  }
+  function updateSelPin() {
+    if (!map || !window.maplibregl || !maplibregl.Marker) return;
+    var loc = selPinLoc();
+    if (!loc) { if (selPin) selPin.remove(); return; }
+    if (!selPin) {
+      var el = document.createElement('div');
+      el.className = 'sel-pin';
+      el.innerHTML = '<svg viewBox="0 0 30 43" width="30" height="43" aria-hidden="true"><path d="M15 42c-1.4-6-5-9.6-8.6-14A14 14 0 1 1 23.6 28c-3.6 4.4-7.2 8-8.6 14z" fill="#EA4335" stroke="#B31412" stroke-width="1.5"/><circle cx="15" cy="15" r="5" fill="#7A0C0C"/></svg>';
+      selPin = new maplibregl.Marker({ element: el, anchor: 'bottom' });
+    }
+    selPin.setLngLat([loc.lng, loc.lat]).addTo(map);
+  }
   function updateSelection() {
     if (!map || !map.getLayer('pt-sel')) return;
     map.setFilter('pt-sel', ['==', ['get', 'id'], state.view === 'place' && state.placeId ? state.placeId : '__none__']);
@@ -2099,10 +2125,12 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     else if (v === 'nearby') renderNearby();
     else if (v === 'search') renderSearch();
     else if (v === 'add') renderAdd();
+    else if (v === 'preview') renderPreview();
     else if (v === 'profile') renderProfile();
     else if (v === 'login') renderLogin();
     if (lastRenderedView !== v) view.scrollTop = 0;
     lastRenderedView = v;
+    updateSelPin();
     hydratePhotos(view);
   }
 
@@ -2512,6 +2540,8 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       '<span class="near-text"><b>' + esc(r.name) + (r.alt ? ' <span class="muted">' + esc(r.alt) + '</span>' : '') + '</b><small>' + sub + '</small></span><span class="near-cta">' + esc(cta) + '</span></button></li>';
   }
   /* 从“加地点”进来时，用户已经选了吃还是玩，就不按搜索结果的类型切换 */
+  /* 搜索里选中一个还不在雪团的地点：先像谷歌地图那样插一根红针、显示地点卡片，
+     确认要加再进表单。从“加地点”进来的直接进表单 */
   function pickOsm(i) {
     var r = osm.results[i];
     if (!r) return;
@@ -2521,13 +2551,38 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       if (adding && existing.mode === state.mode) startReview(existing.id); else openPlace(existing.id);
       return;
     }
+    if (adding) { addFromResult(r, true); return; }
+    state.preview = r;
+    state.view = 'preview';
+    render();
+    setSnap('half');
+    flyTo([r.lng, r.lat], r.precision === 'city' ? 10 : r.precision === 'area' ? 14 : 16.5);
+  }
+  function addFromResult(r, keepMode) {
     if (!requireLogin()) return;
-    var mode = adding ? state.mode : r.mode;
+    var mode = keepMode ? state.mode : r.mode;
     if (mode !== state.mode) setMode(mode, { noFly: true });
     var precision = mode === 'food' ? 'exact' : r.precision;
     var cat = mode === r.mode ? r.cat : null;
     flyTo([r.lng, r.lat], precision === 'city' ? 10 : precision === 'area' ? 14 : 16.5);
     startNewPlace({ lng: r.lng, lat: r.lat }, precision, NEAR_RADIUS[precision], { name: r.name, cat: cat, osm: r.osm });
+  }
+  function renderPreview() {
+    var r = state.preview;
+    if (!r) { goFeed(); return; }
+    var c = null;
+    CATS[r.mode].forEach(function (x) { if (x.id === r.cat) c = x; });
+    c = c || CATS[r.mode][CATS[r.mode].length - 1];
+    var coords = r.lat.toFixed(6) + ',' + r.lng.toFixed(6);
+    var tags = '<span class="tag">' + catIconHTML(c) + esc(catName(c)) + '</span>' +
+      (r.where ? '<span class="tag">' + esc(r.where) + '</span>' : '') +
+      '<span class="tag">' + esc(t('distFrom', { d: fmtDist(haversine(XMUM, r)) })) + '</span>';
+    view.innerHTML = '<div class="view-top"><button type="button" class="icon-btn flat" data-action="back" aria-label="' + esc(t('back')) + '">' + ICON.back + '</button></div>' +
+      '<div class="place-head"><h2>' + esc(r.name) + '</h2>' + (r.alt ? '<div class="alt">' + esc(r.alt) + '</div>' : '') +
+      '<div class="tags">' + tags + '</div></div>' +
+      '<p class="f-hint preview-hint">' + esc(t('previewHint')) + '</p>' +
+      '<div class="actions"><button type="button" class="btn primary" data-action="preview-add">' + esc(t(r.mode === 'food' ? 'previewAddFood' : 'previewAddTravel')) + '</button>' +
+      '<a class="btn" href="https://www.google.com/maps/dir/?api=1&destination=' + coords + '" target="_blank" rel="noopener">' + ICON.nav + esc(t('navGoogle')) + '</a></div>';
   }
 
   function renderProfile() {
@@ -2650,6 +2705,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     if (opts.drop) setTimeout(function () { dropMarker(p); }, reduceMotion ? 0 : 900);
   }
   function back() {
+    if (state.view === 'preview') { state.preview = null; state.view = 'search'; render(); setSnap('full'); return; }
     if (state.view === 'form') formCancel();
     else if (state.view === 'nearby') { state.form = null; goFeed(); }
     else goFeed();
@@ -3098,6 +3154,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       case 'near-pick': state.form.placeId = d.id; state.view = 'form'; render(); break;
       case 'near-new': state.view = 'form'; render(); break;
       case 'osm-pick': pickOsm(+d.i); break;
+      case 'preview-add': if (state.preview) addFromResult(state.preview, false); break;
       case 'login': openLogin(); break;
       case 'login-google': store.signInWithGoogle().catch(function (err) { toast(t('loginFail', { m: (err && err.message) || '' })); }); break;
       case 'logout': store.signOut().catch(function () {}); break;
