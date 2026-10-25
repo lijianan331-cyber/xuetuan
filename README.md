@@ -16,8 +16,9 @@ pip install playwright pillow
 python tests/test_app.py
 ```
 
-测试用 `tests/stub_maplibre.js` 替换真实地图库，所以不需要联网。
+测试用 `tests/stub_maplibre.js` 替换真实地图库、用假数据替换地点搜索（Photon），所以不需要联网。
 
 ## 地图数据
 
 底图 © [OpenFreeMap](https://openfreemap.org) © OpenMapTiles © [OpenStreetMap](https://www.openstreetmap.org/copyright) contributors。
+地点搜索：[Photon](https://photon.komoot.io)，数据来自 OpenStreetMap。
