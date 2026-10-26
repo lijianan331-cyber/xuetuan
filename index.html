@@ -9,6 +9,10 @@
 <meta name="color-scheme" content="only light">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<!-- 底图瓦片、地点库、地名搜索：提前连上，第一次加载和第一次搜索少等一会儿 -->
+<link rel="preconnect" href="https://tiles.openfreemap.org" crossorigin>
+<link rel="preconnect" href="https://pshxrwfjcbvqlixdxlzs.supabase.co" crossorigin>
+<link rel="preconnect" href="https://photon.komoot.io" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=ZCOOL+QingKe+HuangYou&display=swap">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.css">
 <style>
@@ -632,7 +636,8 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
   var STYLE_ORDER = ['light', 'color', 'dark'];
   var PRICE_STEPS = [0, 15, 30, 50];
   var APP_LAYERS = ['pt-area', 'cl-halo', 'cl-circle', 'cl-count', 'pt-sel', 'pt-pin', 'pt-photo', 'pt-label', 'me-halo', 'me-dot'];
-  var DPR = Math.min(window.devicePixelRatio || 1, 3);
+  /* 地图最多按 2 倍画（提速），图钉图片也画 2 倍就够 */
+  var DPR = Math.min(window.devicePixelRatio || 1, 2);
   /* 每张照片多存一张小图：列表、地图图钉用它，省流量；地点页和看大图用原图 */
   var THUMB_SIDE = 640, THUMB_KEY = '#t';
   var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -827,7 +832,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       addPinLong: '搜不到？在地图上选点', addHint: '先搜名字。学校附近的小店搜不到的话，点“地图选点”自己标。',
       addNoResult: '地图上没搜到这个名字。',
       poiFood: '餐厅', poiPlace: '地点', quickRate: '去过？打个分就记进我的地图', quickRateFood: '吃过？打个分就记进我的地图', quickRateHint: '下一步还能写评论、加照片，都是选填。',
-      searchLocal: '雪团里的', searchOsm: '地图上的地点', osmMin: '再多打一个字，就会去地图上搜', osmLoading: '正在搜…',
+      searchLocal: '雪团里的', searchOsm: '地图上的地点', osmMin: '再多打一个字，就会去地图上搜', osmLoading: '正在搜…', osmMore: '还在找更多…',
       osmFail: '地图搜索暂时用不了，可以自己插针添加', osmCredit: '地点数据：Overture Maps Foundation · © OpenStreetMap 贡献者（Photon）· 维基百科', osmAdd: '添加', osmOpen: '已在雪团',
       addedMine: '已存进我的地图', addedShared: '已存进我的地图，也分享到了大地图',
       locating: '正在定位…', locateFail: '定位失败，检查一下浏览器的定位权限',
@@ -917,7 +922,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       addPinLong: 'Can’t find it? Pick it on the map', addHint: 'Search by name first. If a small stall doesn’t show up, use “Pick on map”.',
       addNoResult: 'Nothing on the map with that name.',
       poiFood: 'Restaurant', poiPlace: 'Place', quickRate: 'Been here? Score it to add it to My map', quickRateFood: 'Eaten here? Score it to add it to My map', quickRateHint: 'Photos and notes are optional on the next step.',
-      searchLocal: 'On XueTuan', searchOsm: 'Places on the map', osmMin: 'Type one more character to search the map', osmLoading: 'Searching…',
+      searchLocal: 'On XueTuan', searchOsm: 'Places on the map', osmMin: 'Type one more character to search the map', osmLoading: 'Searching…', osmMore: 'Looking for more…',
       osmFail: 'Map search isn’t available right now. You can still drop a pin.', osmCredit: 'Place data: Overture Maps Foundation · © OpenStreetMap contributors (via Photon) · Wikipedia', osmAdd: 'Add', osmOpen: 'On XueTuan',
       addedMine: 'Saved to My map', addedShared: 'Saved to My map and shared on the big map',
       locating: 'Finding you…', locateFail: 'Couldn’t get your location. Check the browser’s location permission',
@@ -1854,6 +1859,11 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
         dragRotate: false,
         pitchWithRotate: false,
         touchPitch: false,
+        /* 提速：高分屏手机按 2 倍画（3 倍屏要多画一倍多的像素，肉眼几乎看不出差别）；
+           文字、图标出来时不淡入；多留些瓦片在内存里，放大缩小回来不用重新下载 */
+        pixelRatio: DPR,
+        fadeDuration: 0,
+        maxTileCacheSize: 300,
         localIdeographFontFamily: '"PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", "Noto Sans CJK SC", sans-serif'
       });
       if (map.touchZoomRotate && map.touchZoomRotate.disableRotation) map.touchZoomRotate.disableRotation();
@@ -3255,7 +3265,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     else if (osm.q !== q || osm.status === 'loading') h += '<li class="empty small">' + esc(t('osmLoading')) + '</li>';
     else if (osm.status === 'fail') h += '<li class="empty small">' + esc(t('osmFail')) + '</li>';
     else if (!osm.results.length) h += '<li class="empty small">' + esc(t(adding ? 'addNoResult' : 'noResults')) + '</li>';
-    else h += osm.results.map(osmRowHTML).join('');
+    else h += osm.results.map(osmRowHTML).join('') + (osm.status === 'partial' ? '<li class="empty small">' + esc(t('osmMore')) + '</li>' : '');
     if (adding && q.length >= 2) h += '<li><button type="button" class="btn ghost block add-pin-bottom" data-action="add-pin">' + ICON.pin + esc(t('addPinLong')) + '</button></li>';
     h += '<li class="osm-credit">' + esc(t('osmCredit')) + '</li>';
     box.innerHTML = h;
@@ -3354,29 +3364,50 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     });
   }
   function townsIn(list) { return (list || []).filter(function (r) { return r.town; }); }
+  /* 三个来源（地点库、Photon、维基）谁先回来先显示谁，慢的最多等 4 秒；搜过的词记住结果，删字再打回来不用重搜 */
+  var SEARCH_TIMEOUT = 4000;
+  function withTimeout(p, ms) {
+    return new Promise(function (resolve, reject) {
+      var tm = setTimeout(function () { reject(new Error('timeout')); }, ms);
+      p.then(function (v) { clearTimeout(tm); resolve(v); }, function (e) { clearTimeout(tm); reject(e); });
+    });
+  }
+  var osmCache = {};
   function queueOsmSearch() {
     var q = state.query.trim(), key = q.toLowerCase();
     clearTimeout(osm.timer);
     if (key.length < 2) { osm.q = key; osm.status = 'idle'; osm.results = []; osm.seq++; return; }
-    if (osm.q === key && osm.status === 'done') return;
-    osm.q = key; osm.status = 'loading';
-    var seq = ++osm.seq;
+    /* 知名地方排最前；正在加吃的，店铺排最前 */
+    var foodFirst = state.view === 'add' && state.mode === 'food';
+    var ck = key + '|' + (foodFirst ? 'food' : 'any');
+    if (osm.q === key && osm.ck === ck && (osm.status === 'done' || osm.status === 'partial')) return;
+    osm.q = key; osm.ck = ck;
+    osm.seq++;
+    if (osmCache[ck]) { osm.results = osmCache[ck]; osm.status = 'done'; return; }
+    osm.status = 'loading'; osm.results = [];
+    var seq = osm.seq;
     osm.timer = setTimeout(function () {
-      var c = searchCenter();
-      var fail = function () { return null; };
-      Promise.all([poiSearch(q, c).catch(fail), photonSearch(q, c).catch(fail), wikiSearch(q).catch(fail)]).then(function (rs) {
+      /* 本地版没有地点库，就只问另外两个 */
+      var c = searchCenter(), jobs = { photon: photonSearch(q, c), wiki: wikiSearch(q) };
+      if (sbClient && sbClient.rpc) jobs.poi = poiSearch(q, c);
+      var names = Object.keys(jobs), got = {}, left = names.length;
+      function update() {
         if (seq !== osm.seq) return;
-        var towns = townsIn(rs[1]);
-        var poi = rs[0] || [], photon = snapToTown(rs[1] || [], towns), wiki = snapToTown(rs[2] || [], towns);
-        if (!rs[0] && !rs[1] && !rs[2]) osm.status = 'fail';
+        var towns = townsIn(got.photon);
+        var poi = got.poi || [], photon = snapToTown(got.photon || [], towns), wiki = snapToTown(got.wiki || [], towns);
+        var res = foodFirst ? mergeResults(poi, photon, wiki) : mergeResults(wiki, poi, photon);
+        if (!left && names.every(function (k) { return got[k] === null; })) osm.status = 'fail';
         else {
-          /* 知名地方排最前；正在加吃的，店铺排最前 */
-          osm.results = state.view === 'add' && state.mode === 'food' ? mergeResults(poi, photon, wiki) : mergeResults(wiki, poi, photon);
-          osm.status = 'done';
+          osm.results = res;
+          osm.status = left ? (res.length ? 'partial' : 'loading') : 'done';
+          if (!left && names.every(function (k) { return got[k] !== null; })) osmCache[ck] = res;
         }
         renderSearchResults();
+      }
+      names.forEach(function (k) {
+        withTimeout(jobs[k], SEARCH_TIMEOUT).then(function (r) { got[k] = r || []; }, function () { got[k] = null; }).then(function () { left--; update(); });
       });
-    }, 300);
+    }, 200);
   }
   function parsePhoton(json) {
     var seen = {};
@@ -3607,7 +3638,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       var fail = function () { return null; };
       var url = PHOTON_URL + '?q=' + encodeURIComponent(q) + '&limit=10&layer=city&layer=county&layer=state' + (state.lang === 'en' ? '&lang=en' : '');
       var photon = fetch(url).then(function (res) { if (!res.ok) throw new Error('photon ' + res.status); return res.json(); }).then(parsePhoton);
-      Promise.all([wikiSearch(q).catch(fail), photon.catch(fail)]).then(function (rs) {
+      Promise.all([withTimeout(wikiSearch(q), SEARCH_TIMEOUT).catch(fail), withTimeout(photon, SEARCH_TIMEOUT).catch(fail)]).then(function (rs) {
         if (seq !== homeQ.seq) return;
         if (!rs[0] && !rs[1]) { homeQ.status = 'fail'; renderHomeResults(); return; }
         var towns = townsIn(rs[1]);
@@ -3617,7 +3648,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
         homeQ.status = 'done';
         renderHomeResults();
       });
-    }, 300);
+    }, 200);
   }
   /* 只存到 0.1 度（约 10 公里），数据库里也会再取整一次 */
   function round1(v) { return Math.round(v * 10) / 10; }

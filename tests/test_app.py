@@ -141,6 +141,8 @@ def route_all(ctx, supabase=False):
             return route.fulfill(status=200, body=PHOTON_SG if 'q=Singapura' in url else PHOTON, headers={'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'})
         if 'wikipedia.org/w/api.php' in url:
             wiki_calls.append(url)
+            if 'slowwiki' in url:
+                return  # 维基一直不回：搜索不能卡住
             body = WIKI_BALI if '%E5%B7%B4%E5%8E%98' in url else json.dumps({'batchcomplete': True})
             return route.fulfill(status=200, body=body, headers={'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'})
         if 'world-atlas@' in url:
@@ -680,8 +682,20 @@ with sync_playwright() as p:
     page.locator('[data-action="osm-pick"]').first.click()
     page.wait_for_timeout(300)
     last = page.evaluate('window.__map.calls.filter(c => c[0] === "move").slice(-1)[0][1]')
-    check('country / city result lands on the city centre, not the middle of the map shape', last['center'] == [103.852, 1.2899] and sg_rows == ['Singapura'], (last, sg_rows))
+    # 提速：谁先回来先显示，慢的来源最多等 4 秒；搜过的词不再重搜
     page.click('[data-action="back"]')
+    page.fill('#q', 'slowwiki')
+    page.wait_for_selector('[data-action="osm-pick"]', timeout=1500)
+    check('search: results show before the slowest source answers', '还在找更多' in page.inner_text('#search-results'), page.inner_text('#search-results')[:200])
+    page.wait_for_function('!document.querySelector("#search-results").innerText.includes("还在找更多")', timeout=6000)
+    check('search: a source that never answers is dropped after a few seconds', page.locator('[data-action="osm-pick"]').count() >= 1)
+    n_ph = len(photon_calls)
+    page.fill('#q', 'Singapur'); page.wait_for_timeout(500)
+    page.fill('#q', 'Singapura'); page.wait_for_timeout(500)
+    check('search: a word searched before comes back from memory', len(photon_calls) == n_ph + 1 and page.locator('[data-action="osm-pick"]').count() >= 1, (n_ph, len(photon_calls)))
+    opts = page.evaluate('({pr: window.__map.opts.pixelRatio, fade: window.__map.opts.fadeDuration, cache: window.__map.opts.maxTileCacheSize})')
+    check('map: draws at most 2x on high-res phones, no label fade, bigger tile cache', opts == {'pr': 2, 'fade': 0, 'cache': 300}, opts)
+    check('country / city result lands on the city centre, not the middle of the map shape', last['center'] == [103.852, 1.2899] and sg_rows == ['Singapura'], (last, sg_rows))
     page.fill('#q', '鼓浪')
     page.wait_for_timeout(150)
     page.click('#search-results .near-item')
