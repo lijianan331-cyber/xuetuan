@@ -159,7 +159,8 @@ html.mode-travel .map-ctrls .mode-btn { background: linear-gradient(145deg, #5AA
 }
 .icon-btn svg { width: 22px; height: 22px; }
 .icon-btn.flat { width: 36px; height: 36px; margin-left: -6px; border-radius: 50%; background: none; box-shadow: none; }
-.icon-btn.flat:hover { background: var(--surface-2); }
+/* 手机上点过的东西会一直停在悬停状态，悬停底色只给有鼠标的设备 */
+@media (hover: hover) { .icon-btn.flat:hover { background: var(--surface-2); } }
 
 /* ---------- chips (filter sheet, forms) ---------- */
 .chip {
@@ -167,7 +168,7 @@ html.mode-travel .map-ctrls .mode-btn { background: linear-gradient(145deg, #5AA
   background: none; color: var(--ink); font-size: 13px; font-weight: 600;
   display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;
 }
-.chip:hover { background: var(--surface-2); }
+@media (hover: hover) { .chip:hover { background: var(--surface-2); } }
 .chip[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); }
 .chip svg { width: 16px; height: 16px; }
 .seg { display: inline-flex; gap: 2px; padding: 3px; border-radius: 12px; background: var(--surface-2); }
@@ -313,11 +314,11 @@ body.picking .attrib { bottom: calc(env(safe-area-inset-bottom, 0px) + 122px); }
 .mini-seg button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 3px rgba(40, 90, 140, .16); }
 .feed, .reviews, .near-list, .search-results, .area-list { list-style: none; margin: 0; padding: 0; }
 .feed-item {
-  width: 100%; display: grid; grid-template-columns: 36px minmax(0, 1fr) auto; gap: 12px; align-items: start;
+  width: 100%; display: grid; grid-template-columns: 36px minmax(0, 1fr); gap: 12px; align-items: start;
   padding: 14px 4px; border: 0; border-bottom: 1px solid var(--line); background: none; text-align: left;
 }
 .feed li:last-child .feed-item, .near-list li:last-child .near-item, .search-results li:last-child .near-item { border-bottom: 0; }
-.feed-item:hover { background: var(--surface-2); }
+@media (hover: hover) { .feed-item:hover { background: var(--surface-2); } }
 .avatar {
   flex: none; width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center;
   background: hsl(var(--h, 200) 45% 58%); color: #fff; font-weight: 800; font-size: 15px;
@@ -331,7 +332,20 @@ body.picking .attrib { bottom: calc(env(safe-area-inset-bottom, 0px) + 122px); }
 .fi-meta, .rv-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
 .sep { opacity: .5; }
 .fi-text { font-size: 14px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
-.fi-thumb { width: 58px; height: 58px; border-radius: 12px; object-fit: cover; background: var(--surface-2); }
+/* 列表里的照片：大图在前 */
+.fi-pics { display: grid; gap: 3px; height: 230px; margin: 6px 0 5px; border-radius: 14px; overflow: hidden; }
+@supports (aspect-ratio: 1) { .fi-pics { height: auto; aspect-ratio: 4 / 3; } }
+.fi-pics.n2 { grid-template-columns: 1fr 1fr; }
+.fi-pics.n3 { grid-template-columns: 2fr 1fr; grid-template-rows: 1fr 1fr; }
+.fi-pics.n3 .fi-pic:first-child { grid-row: span 2; }
+.fi-pic { position: relative; min-width: 0; min-height: 0; background: var(--surface-2); }
+.fi-pic img { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; }
+.fi-pic.more::after {
+  content: attr(data-more); position: absolute; top: 0; right: 0; bottom: 0; left: 0; display: grid; place-items: center;
+  background: rgba(10, 20, 30, .45); color: #fff; font-size: 20px; font-weight: 800;
+}
+.row-pic { flex: none; width: 56px; height: 56px; border-radius: 12px; overflow: hidden; background: var(--surface-2); }
+.row-pic img { display: block; width: 100%; height: 100%; object-fit: cover; }
 .badge {
   flex: none; display: inline-flex; align-items: center; height: 18px; padding: 0 6px; border-radius: 999px;
   background: var(--surface-2); color: var(--muted);
@@ -363,7 +377,8 @@ body.picking .attrib { bottom: calc(env(safe-area-inset-bottom, 0px) + 122px); }
 /* 分类、精度、距离这些写成一行字，用点隔开 */
 .tags { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 0; margin-top: 8px; color: var(--muted); font-size: 13.5px; }
 .tag { display: inline-flex; align-items: center; gap: 5px; font-weight: 500; }
-.tag + .tag::before { content: "·"; margin: 0 8px; opacity: .6; }
+/* 点放在每项后面：换行时点留在上一行末尾，不会出现在行首 */
+.tag:not(:last-child)::after { content: "·"; margin: 0 8px; opacity: .6; }
 .tag:first-child { color: var(--ink); font-weight: 600; }
 .stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 18px 0 16px; }
 .stat { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
@@ -373,13 +388,17 @@ body.picking .attrib { bottom: calc(env(safe-area-inset-bottom, 0px) + 122px); }
 /* 导航和复制：一个主按钮，其余是轻量的文字按钮 */
 .actions { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
 .actions .btn { flex: none; height: 38px; padding: 0 12px; border-radius: 999px; background: none; color: var(--accent); font-size: 14px; }
-.actions .btn:hover { background: var(--accent-soft); }
+@media (hover: hover) { .actions .btn:hover { background: var(--accent-soft); } }
 .actions .btn.primary { padding: 0 16px; margin-right: 4px; background: var(--accent); color: var(--accent-ink); }
 .actions > .btn:first-child:not(.primary) { background: var(--accent-soft); }
-.photo-strip { display: flex; gap: 8px; overflow-x: auto; margin: 16px 0 2px; padding-bottom: 4px; }
+/* 地点页的照片：放在名字下面，大图横着滑 */
+.photo-strip { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; margin: 14px -18px 0; padding: 0 18px 4px; }
+.photo-strip::-webkit-scrollbar { display: none; }
 .ph { flex: none; width: 96px; height: 96px; padding: 0; border: 0; border-radius: 14px; overflow: hidden; background: var(--surface-2); }
+.photo-strip .ph { width: 168px; height: 168px; border-radius: 16px; }
+.photo-strip .ph:only-child { width: 100%; height: 220px; }
 .ph img { width: 100%; height: 100%; object-fit: cover; }
-.ph.sm { width: 72px; height: 72px; border-radius: 12px; }
+.ph.sm { width: 88px; height: 88px; border-radius: 12px; }
 .missing img { visibility: hidden; }
 .sec-title { margin: 22px 0 2px; font-size: 13px; font-weight: 800; color: var(--muted); letter-spacing: .04em; }
 .review { display: grid; grid-template-columns: 36px minmax(0, 1fr); gap: 12px; padding: 14px 0; border-bottom: 1px solid var(--line); }
@@ -478,7 +497,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
   width: 100%; display: flex; align-items: center; gap: 12px; padding: 13px 4px;
   border: 0; border-bottom: 1px solid var(--line); background: none; text-align: left;
 }
-.near-item:hover { background: var(--surface-2); }
+@media (hover: hover) { .near-item:hover { background: var(--surface-2); } }
 .near-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .near-text b { overflow-wrap: anywhere; }
 .near-text small { color: var(--muted); font-size: 12.5px; }
@@ -629,6 +648,8 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
   var PRICE_STEPS = [0, 15, 30, 50];
   var APP_LAYERS = ['pt-area', 'cl-halo', 'cl-circle', 'cl-count', 'pt-sel', 'pt-pin', 'pt-label', 'me-halo', 'me-dot'];
   var DPR = Math.min(window.devicePixelRatio || 1, 3);
+  /* 每张照片多存一张小图：列表、地图图钉用它，省流量；地点页和看大图用原图 */
+  var THUMB_SIDE = 640, THUMB_KEY = '#t';
   var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   var mqMobile = window.matchMedia('(max-width: 959px)');
   function isMobile() { return mqMobile.matches; }
@@ -993,16 +1014,30 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     }
     function find(list, id) { for (var i = 0; i < list.length; i++) if (list[i].id === id) return list[i]; return null; }
     function forgetPhoto(id) {
-      photoStore.del(id);
-      var u = photoURLs.get(id);
-      if (u) { URL.revokeObjectURL(u); photoURLs.delete(id); }
+      [id, id + THUMB_KEY].forEach(function (k) {
+        photoStore.del(k);
+        var u = photoURLs.get(k);
+        if (u) { URL.revokeObjectURL(u); photoURLs.delete(k); }
+      });
     }
-    /* photos: [{ id, blob, url }]，返回是否全部存进了 IndexedDB */
+    /* photos: [{ id, blob, thumb, url }]，返回原图是否全部存进了 IndexedDB（小图存不进去就用原图） */
     function putPhotos(photos) {
       return Promise.all(photos.map(function (ph) {
         if (ph.url) photoURLs.set(ph.id, ph.url);
+        if (ph.thumb) photoStore.put(ph.id + THUMB_KEY, ph.thumb);
         return photoStore.put(ph.id, ph.blob);
       })).then(function (oks) { return oks.every(Boolean); });
+    }
+    /* small：要小图；老照片没有小图就给原图 */
+    function localPhotoURL(id, small) {
+      var key = small ? id + THUMB_KEY : id;
+      if (photoURLs.has(key)) return Promise.resolve(photoURLs.get(key));
+      return photoStore.get(key).then(function (blob) {
+        if (!blob) return small ? localPhotoURL(id, false) : null;
+        var u = URL.createObjectURL(blob);
+        photoURLs.set(key, u);
+        return u;
+      });
     }
     function dropPlaceIfEmpty(placeId) {
       if (data.reviews.some(function (r) { return r.placeId === placeId; })) return false;
@@ -1035,15 +1070,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       wishlist: function () { return data.wishlist; },
       isSaved: function (placeId) { return data.wishlist.some(function (w) { return w.placeId === placeId; }); },
       hasSamples: function () { return data.reviews.some(function (r) { return r.sample; }); },
-      photoURL: function (id) {
-        if (photoURLs.has(id)) return Promise.resolve(photoURLs.get(id));
-        return photoStore.get(id).then(function (blob) {
-          if (!blob) return null;
-          var u = URL.createObjectURL(blob);
-          photoURLs.set(id, u);
-          return u;
-        });
-      },
+      photoURL: localPhotoURL,
       hasPhotoURL: function (id) { return photoURLs.has(id); },
 
       /* ---- 写 ---- */
@@ -1203,14 +1230,19 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       };
     }
     function photoPath(id) { return uidNow() + '/' + id + '.jpg'; }
-    /* 传照片，返回传成功的路径和是否全部成功 */
+    /* 小图和原图放在同一个文件夹：xxx.jpg 的小图是 xxx_t.jpg */
+    function thumbPath(path) { return path.replace(/\.jpg$/, '_t.jpg'); }
+    /* 传照片（原图 + 小图），返回传成功的路径和是否全部成功；小图传不上去就算了，显示时会退回原图 */
     function uploadPhotos(photos) {
+      var bucket = client.storage.from('photos');
       return Promise.all(photos.map(function (ph) {
         var path = photoPath(ph.id);
-        return client.storage.from('photos').upload(path, ph.blob, { contentType: 'image/jpeg', upsert: false }).then(function (res) {
+        return bucket.upload(path, ph.blob, { contentType: 'image/jpeg', upsert: false }).then(function (res) {
           if (res.error) return null;
           if (ph.url) photoURLs.set(path, ph.url);
-          return path;
+          if (!ph.thumb) return path;
+          photoURLs.set(path + THUMB_KEY, URL.createObjectURL(ph.thumb));
+          return bucket.upload(thumbPath(path), ph.thumb, { contentType: 'image/jpeg', upsert: false }).then(function () { return path; }, function () { return path; });
         }, function () { return null; });
       })).then(function (paths) {
         var good = paths.filter(Boolean);
@@ -1219,8 +1251,8 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     }
     function removePhotos(paths) {
       if (!paths.length) return Promise.resolve();
-      paths.forEach(function (p) { photoURLs.delete(p); });
-      return client.storage.from('photos').remove(paths).then(function () {}, function () {});
+      paths.forEach(function (p) { photoURLs.delete(p); photoURLs.delete(p + THUMB_KEY); });
+      return client.storage.from('photos').remove(paths.concat(paths.map(thumbPath))).then(function () {}, function () {});
     }
 
     function loadAll() {
@@ -1300,11 +1332,13 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       wishlist: function () { return cache.wishlist; },
       isSaved: function (placeId) { return cache.wishlist.some(function (w) { return w.placeId === placeId; }); },
       hasSamples: function () { return false; },
-      photoURL: function (id) {
-        if (photoURLs.has(id)) return Promise.resolve(photoURLs.get(id));
+      /* small：小图地址。以前传的照片没有小图，图片加载失败时由显示的地方退回原图 */
+      photoURL: function (id, small) {
+        var key = small ? id + THUMB_KEY : id;
+        if (photoURLs.has(key)) return Promise.resolve(photoURLs.get(key));
         if (id.indexOf('/') === -1) return photoStore.get(id).then(function (b) { return b ? URL.createObjectURL(b) : null; });
-        var u = client.storage.from('photos').getPublicUrl(id).data.publicUrl;
-        photoURLs.set(id, u);
+        var u = client.storage.from('photos').getPublicUrl(small ? thumbPath(id) : id).data.publicUrl;
+        photoURLs.set(key, u);
         return Promise.resolve(u);
       },
       hasPhotoURL: function (id) { return photoURLs.has(id); },
@@ -1590,6 +1624,14 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     return reviewsOf(p.id).some(function (r) { return r.visibility === 'public' || isMine(r); });
   }
   function beenThere(p) { return reviewsOf(p.id).some(isMine); }
+  /* 地点的封面：这张地图里看得到的记录中，最新一条带照片的第一张 */
+  function coverPhoto(p, scope) {
+    var best = null;
+    scopedReviews(p.id, scope).forEach(function (r) {
+      if (r.photos && r.photos.length && (!best || r.createdAt > best.createdAt)) best = r;
+    });
+    return best ? best.photos[0] : null;
+  }
   function inScope(p) {
     if (state.scope === 'saved') return store.isSaved(p.id) && visibleToMe(p) && !(state.savedWant && beenThere(p));
     return scopedReviews(p.id).length > 0;
@@ -1746,6 +1788,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       map.on('click', onMapClick);
       map.on('moveend', function () {
         clearTimeout(viewTimer); viewTimer = setTimeout(saveView, 400);
+        ensurePinThumbs();
         var g = globeChipShown();
         if (g !== lastGlobeChip) { lastGlobeChip = g; renderFilters(); }
       });
@@ -1771,7 +1814,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     }
     patchLabels();
     repaintAccent();
-    updateSelection();
+    updateSelection(true);
     if (state.me && map.getSource('me')) map.getSource('me').setData(meFC());
   }
   var hoverBound = false;
@@ -1836,6 +1879,105 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     return id;
   }
 
+  /* 有照片的地点直接用照片当图钉，外框颜色仍然按评分。
+     照片要先读出来画成小方块：只读地图上看得到的，最多同时读 3 张 */
+  var PIN_PHOTO = 52;
+  var pinThumbs = new Map();   // 照片 id → 'loading' | canvas | false（读不了）
+  var thumbQueue = [], thumbBusy = 0, THUMB_PIN_MAX = 300, pinRefreshTimer = null;
+  function photoPinImage(photo, score) {
+    var cv = pinThumbs.get(photo);
+    if (!cv || cv === 'loading' || !map) return null;
+    var bucket = score == null ? null : Math.round(score * 2) / 2;
+    var id = 'ph-' + photo + '-' + (bucket == null ? 'none' : bucket * 10);
+    if (!map.hasImage(id)) {
+      try { map.addImage(id, drawPhotoPin(cv, scoreColor(bucket)), { pixelRatio: DPR }); } catch (e) { return null; }
+    }
+    return id;
+  }
+  function drawPhotoPin(thumb, color) {
+    var S = PIN_PHOTO, W = S + 12, H = S + 22;
+    var cv = document.createElement('canvas');
+    cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR);
+    var g = cv.getContext('2d');
+    g.scale(DPR, DPR);
+    function rounded(x, y, w, h, r) {
+      g.beginPath(); g.moveTo(x + r, y);
+      g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r);
+      g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath();
+    }
+    /* 外框（评分颜色）+ 下面的小尖角，带一点阴影 */
+    g.save();
+    g.shadowColor = 'rgba(0,0,0,.35)'; g.shadowBlur = 5; g.shadowOffsetY = 1.5;
+    g.fillStyle = color;
+    rounded(3, 2, S + 6, S + 6, 14); g.fill();
+    g.beginPath(); g.moveTo(W / 2 - 8, S + 7); g.lineTo(W / 2 + 8, S + 7); g.lineTo(W / 2, S + 16); g.closePath(); g.fill();
+    g.restore();
+    g.save();
+    rounded(6, 5, S, S, 11); g.clip();
+    g.drawImage(thumb, 6, 5, S, S);
+    g.restore();
+    return g.getImageData(0, 0, cv.width, cv.height);
+  }
+  function loadImage(u) {
+    return new Promise(function (resolve, reject) {
+      var img = new Image();
+      if (!/^(blob|data):/.test(u)) img.crossOrigin = 'anonymous';
+      img.onload = function () { resolve(img); };
+      img.onerror = function () { reject(new Error('image')); };
+      img.src = u;
+    });
+  }
+  function loadPinThumb(photo) {
+    return store.photoURL(photo, true).then(function (u) {
+      if (!u) throw new Error('no photo');
+      return loadImage(u).catch(function () {
+        return store.photoURL(photo).then(function (full) { if (!full || full === u) throw new Error('no photo'); return loadImage(full); });
+      });
+    }).then(function (img) {
+      var px = Math.round(PIN_PHOTO * DPR), cv = document.createElement('canvas');
+      cv.width = cv.height = px;
+      var w = img.naturalWidth, h = img.naturalHeight, side = Math.min(w, h), g = cv.getContext('2d');
+      g.drawImage(img, (w - side) / 2, (h - side) / 2, side, side, 0, 0, px, px);
+      g.getImageData(0, 0, 1, 1);   /* 跨域读不了像素的话这里会出错，就当没有照片 */
+      return cv;
+    });
+  }
+  function queueThumb(photo) {
+    if (pinThumbs.has(photo) || pinThumbs.size >= THUMB_PIN_MAX) return;
+    pinThumbs.set(photo, 'loading');
+    thumbQueue.push(photo);
+    pumpThumbs();
+  }
+  function pumpThumbs() {
+    while (thumbBusy < 3 && thumbQueue.length) {
+      var photo = thumbQueue.shift();
+      thumbBusy++;
+      (function (photo) {
+        loadPinThumb(photo).then(function (cv) { pinThumbs.set(photo, cv); }, function () { pinThumbs.set(photo, false); })
+          .then(function () { thumbBusy--; pumpThumbs(); queuePinRefresh(); });
+      })(photo);
+    }
+  }
+  function queuePinRefresh() {
+    clearTimeout(pinRefreshTimer);
+    pinRefreshTimer = setTimeout(function () {
+      var src = map && map.getSource && map.getSource('places');
+      if (src) src.setData(placesGeoJSON());
+      updateSelPin();
+    }, 120);
+  }
+  function viewBounds() {
+    try { return map && map.getBounds ? map.getBounds() : null; } catch (e) { return null; }
+  }
+  /* 地图挪动后，看得到但照片还没读的地点去读照片 */
+  function ensurePinThumbs() {
+    var b = viewBounds();
+    placesInView().forEach(function (p) {
+      var photo = coverPhoto(p);
+      if (photo && !pinThumbs.has(photo) && (!b || b.contains([p.lng, p.lat]))) queueThumb(photo);
+    });
+  }
+
   function radiusAtZoom0(p) {
     var meters = p.precision === 'city' ? 6000 : p.precision === 'area' ? 450 : 0;
     return meters / (78271.517 * Math.cos(p.lat * Math.PI / 180));
@@ -1845,20 +1987,32 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     return store.places().filter(function (p) { return inScope(p) && passesFilters(p); });
   }
   function placesGeoJSON() {
+    var b = viewBounds();
     return {
       type: 'FeatureCollection',
       features: placesInView().map(function (p) {
-        var s = stats(p);
+        var s = stats(p), photo = coverPhoto(p), ph = photo ? photoPinImage(photo, s.score) : null;
+        if (photo && !ph && !pinThumbs.has(photo) && (!b || b.contains([p.lng, p.lat]))) queueThumb(photo);
         return {
           type: 'Feature',
           geometry: { type: 'Point', coordinates: [p.lng, p.lat] },
-          properties: { id: p.id, name: placeTitle(p), icon: pinImage(p, s.score), color: scoreColor(s.score), precision: p.precision, r0: radiusAtZoom0(p) }
+          properties: { id: p.id, name: placeTitle(p), icon: ph || pinImage(p, s.score), photo: !!ph, color: scoreColor(s.score), precision: p.precision, r0: radiusAtZoom0(p) }
         };
       })
     };
   }
   function meFC() {
     return { type: 'FeatureCollection', features: state.me ? [{ type: 'Feature', geometry: { type: 'Point', coordinates: [state.me.lng, state.me.lat] }, properties: {} }] : [] };
+  }
+
+  /* 照片图钉压在普通图钉上面，地图放大时照片也跟着变大；地点页选中的那张照片再大一圈、放到最上面 */
+  function pinSortKey(selId) {
+    return ['case', ['==', ['get', 'id'], selId || '__none__'], 2, ['get', 'photo'], 1, 0];
+  }
+  function pinSize(selId) {
+    var sel = ['==', ['get', 'id'], selId || '__none__'];
+    function at(photo, plain) { return ['case', ['get', 'photo'], ['case', sel, photo * 1.2, photo], plain]; }
+    return ['interpolate', ['linear'], ['zoom'], 2, at(0.62, 0.78), 12, at(0.85, 1), 16, at(1.15, 1)];
   }
 
   function addAppLayers() {
@@ -1899,7 +2053,10 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     });
     map.addLayer({
       id: 'pt-pin', type: 'symbol', source: 'places', filter: ['!', ['has', 'point_count']],
-      layout: { 'icon-image': ['get', 'icon'], 'icon-anchor': 'bottom', 'icon-allow-overlap': true, 'icon-ignore-placement': true, 'icon-size': ['interpolate', ['linear'], ['zoom'], 2, 0.78, 12, 1] }
+      layout: {
+        'icon-image': ['get', 'icon'], 'icon-anchor': 'bottom', 'icon-allow-overlap': true, 'icon-ignore-placement': true,
+        'symbol-sort-key': pinSortKey(null), 'icon-size': pinSize(null)
+      }
     });
     map.addLayer({
       id: 'pt-label', type: 'symbol', source: 'places', filter: ['!', ['has', 'point_count']], minzoom: 13,
@@ -1930,9 +2087,15 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     if ((v === 'form' || v === 'nearby') && f) return f.placeId ? placeById(f.placeId) : f.loc;
     return null;
   }
+  function hasPhotoPin(p) {
+    var ph = coverPhoto(p), cv = ph && pinThumbs.get(ph);
+    return !!cv && cv !== 'loading';
+  }
   function updateSelPin() {
     if (!map || !window.maplibregl || !maplibregl.Marker) return;
     var loc = selPinLoc();
+    /* 地点已经是照片图钉了就不再插红针，免得把照片挡住 */
+    if (loc && state.view === 'place' && hasPhotoPin(loc)) loc = null;
     if (!loc) { if (selPin) selPin.remove(); return; }
     if (!selPin) {
       var el = document.createElement('div');
@@ -1942,9 +2105,16 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     }
     selPin.setLngLat([loc.lng, loc.lat]).addTo(map);
   }
-  function updateSelection() {
+  var selDrawn = null;
+  function updateSelection(force) {
     if (!map || !map.getLayer('pt-sel')) return;
-    map.setFilter('pt-sel', ['==', ['get', 'id'], state.view === 'place' && state.placeId ? state.placeId : '__none__']);
+    var id = state.view === 'place' && state.placeId ? state.placeId : null;
+    if (id === selDrawn && !force) return;
+    selDrawn = id;
+    /* 照片图钉本身够显眼，底下不再垫圆圈（圆圈会从照片下面露出半个） */
+    map.setFilter('pt-sel', ['all', ['==', ['get', 'id'], id || '__none__'], ['!=', ['get', 'photo'], true]]);
+    map.setLayoutProperty('pt-pin', 'symbol-sort-key', pinSortKey(id));
+    map.setLayoutProperty('pt-pin', 'icon-size', pinSize(id));
   }
 
   function mapPadding() {
@@ -2387,8 +2557,8 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
   }
 
   /* ================= bottom sheets: 筛选、去哪儿看 ================= */
-  function openBSheet(kind) { state.bsheet = kind; renderBSheet(); $('#bsheet').hidden = false; }
-  function closeBSheet() { state.bsheet = null; $('#bsheet').hidden = true; $('#bsheet-card').innerHTML = ''; }
+  function openBSheet(kind) { state.bsheet = kind; renderBSheet(); $('#bsheet').hidden = false; syncNavGuard(); }
+  function closeBSheet() { state.bsheet = null; $('#bsheet').hidden = true; $('#bsheet-card').innerHTML = ''; syncNavGuard(); }
   function optHTML(action, v, on, label) {
     return '<button type="button" class="chip" data-action="' + action + '" data-v="' + v + '" aria-pressed="' + on + '">' + esc(label) + '</button>';
   }
@@ -2448,15 +2618,24 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     if (lastRenderedView !== v) view.scrollTop = 0;
     lastRenderedView = v;
     updateSelPin();
+    updateSelection();
     renderTabs();
     hydratePhotos(view);
+    syncNavGuard();
   }
 
+  /* 带 data-small 的用小图，小图打不开（以前传的照片没有小图）就换原图 */
   function hydratePhotos(root) {
     $$('img[data-photo]', root).forEach(function (img) {
-      store.photoURL(img.dataset.photo).then(function (u) {
-        if (u) img.src = u;
-        else if (img.parentElement) img.parentElement.classList.add('missing');
+      var id = img.dataset.photo, small = img.hasAttribute('data-small');
+      function missing() { if (img.parentElement) img.parentElement.classList.add('missing'); }
+      store.photoURL(id, small).then(function (u) {
+        if (!u) { missing(); return; }
+        img.onerror = !small ? missing : function () {
+          img.onerror = missing;
+          store.photoURL(id).then(function (full) { if (full && full !== u) img.src = full; else missing(); });
+        };
+        img.src = u;
       });
     });
   }
@@ -2504,23 +2683,34 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     return parts.join('<span class="sep">·</span>');
   }
 
+  /* 有照片的记录：照片放大放在前面（1 张整幅，2 张并排，3 张一大两小，多的显示 +N），文字在下面 */
+  function picsHTML(ids) {
+    var show = ids.slice(0, 3);
+    return '<span class="fi-pics n' + show.length + '">' + show.map(function (id, i) {
+      var more = i === 2 && ids.length > 3 ? ' more" data-more="+' + (ids.length - 3) : '';
+      return '<span class="fi-pic' + more + '"><img data-photo="' + esc(id) + '" data-small alt=""></span>';
+    }).join('') + '</span>';
+  }
   function feedItemHTML(r) {
     var p = placeById(r.placeId), c = catOf(p);
     var name = authorLabel(r), from = authorFrom(r), meta = metaHTML(r), text = reviewText(r);
-    var thumb = r.photos && r.photos[0] ? '<span class="ph" style="width:58px;height:58px;border-radius:10px"><img class="fi-thumb" data-photo="' + esc(r.photos[0]) + '" alt=""></span>' : '';
+    var pics = r.photos && r.photos.length ? picsHTML(r.photos) : '';
     return '<li><button type="button" class="feed-item" data-action="open-place" data-id="' + esc(p.id) + '">' +
       avatarHTML(name) +
       '<span class="fi-main">' +
       '<span class="fi-who"><b>' + esc(name) + '</b>' + (from ? '<span class="muted">' + esc(t('fromPrefix') + from) + '</span>' : '') + '<span class="fi-time">' + esc(timeAgo(r.createdAt)) + '</span></span>' +
+      pics +
       '<span class="fi-place">' + catIconHTML(c) + '<span>' + esc(placeTitle(p)) + '</span>' + (p.sample ? '<span class="badge">' + esc(t('sample')) + '</span>' : '') + '</span>' +
       (meta ? '<span class="fi-meta">' + meta + '</span>' : '') +
       (text ? '<span class="fi-text">' + esc(text) + '</span>' : '') +
-      '</span>' + thumb + '</button></li>';
+      '</span></button></li>';
   }
 
   /* 地点一行：搜索结果、附近已有、收藏列表都用这个。sub 和 right 是已经转义好的 HTML */
   function placeRowHTML(p, action, sub, right) {
-    return '<li><button type="button" class="near-item" data-action="' + action + '" data-id="' + esc(p.id) + '">' + catIconHTML(catOf(p)) +
+    var photo = coverPhoto(p, 'saved');
+    var lead = photo ? '<span class="row-pic"><img data-photo="' + esc(photo) + '" data-small alt=""></span>' : catIconHTML(catOf(p));
+    return '<li><button type="button" class="near-item" data-action="' + action + '" data-id="' + esc(p.id) + '">' + lead +
       '<span class="near-text"><b>' + esc(placeTitle(p)) + '</b><small>' + sub + '</small></span>' + (right || '') + '</button></li>';
   }
   function savedItemHTML(p) {
@@ -2578,16 +2768,14 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       '<div class="place-head"><h2>' + esc(placeTitle(p)) + '</h2>' +
       (placeSub(p) ? '<div class="alt">' + esc(placeSub(p)) + '</div>' : '') +
       '<div class="tags">' + tags + '</div></div>' +
+      (photos.length ? '<div class="photo-strip">' + photos.map(function (id) {
+        return '<button type="button" class="ph" data-action="photo" data-id="' + esc(id) + '" data-group="place"><img data-photo="' + esc(id) + '" data-small alt=""></button>';
+      }).join('') + '</div>' : '') +
       '<div class="stats">' +
       '<div class="stat"><b>' + (s.score != null ? '<span class="score-big" style="color:' + scoreColor(s.score) + '">' + fmtScore(s.score) + '</span>' : '—') + '</b><small>' + esc(scoreLabel(s)) + '</small></div>' +
       '<div class="stat"><b>' + (s.avgPrice ? 'RM ' + fmtPrice(s.avgPrice) : '—') + '</b><small>' + esc(t(p.mode === 'food' ? 'perPerson' : 'costLabel')) + '</small></div>' +
       '<div class="stat"><b>' + s.count + '</b><small>' + esc(t('reviewsLabel')) + '</small></div></div>' +
       '<div class="actions">' + actions + '</div>';
-    if (photos.length) {
-      h += '<div class="photo-strip">' + photos.map(function (id) {
-        return '<button type="button" class="ph" data-action="photo" data-id="' + esc(id) + '" data-group="place"><img data-photo="' + esc(id) + '" alt=""></button>';
-      }).join('') + '</div>';
-    }
     h += '<h3 class="sec-title">' + esc(t('reviewsTitle')) + '</h3><ul class="reviews">' + reviews.map(reviewHTML).join('') + '</ul>';
     view.innerHTML = h;
   }
@@ -2599,7 +2787,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       (meta ? '<div class="rv-meta">' + meta + '</div>' : '') +
       (text ? '<p class="rv-text">' + esc(text) + '</p>' : '') +
       (r.photos && r.photos.length ? '<div class="rv-photos">' + r.photos.map(function (id) {
-        return '<button type="button" class="ph sm" data-action="photo" data-id="' + esc(id) + '" data-group="rv-' + esc(r.id) + '"><img data-photo="' + esc(id) + '" alt=""></button>';
+        return '<button type="button" class="ph sm" data-action="photo" data-id="' + esc(id) + '" data-group="rv-' + esc(r.id) + '"><img data-photo="' + esc(id) + '" data-small alt=""></button>';
       }).join('') + '</div>' : '') +
       (isMine(r) ? '<div class="rv-actions"><button type="button" class="link-btn" data-action="edit-review" data-id="' + esc(r.id) + '">' + esc(t('edit')) + '</button>' +
         '<button type="button" class="link-btn danger" data-action="del-review" data-id="' + esc(r.id) + '">' + esc(t('del')) + '</button></div>' : '') +
@@ -2757,6 +2945,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     if (adding && q.length >= 2) h += '<li><button type="button" class="btn ghost block add-pin-bottom" data-action="add-pin">' + ICON.pin + esc(t('addPinLong')) + '</button></li>';
     h += '<li class="osm-credit">' + esc(t('osmCredit')) + '</li>';
     box.innerHTML = h;
+    hydratePhotos(box);
   }
 
   /* ================= place search [建议] =================
@@ -3151,6 +3340,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     $('#pick').hidden = false;
     if (isMobile()) setSnap('hidden');
     updatePickUI();
+    syncNavGuard();
     if (state.mode === 'food' && map.getZoom() < 15 && !state.picking.repick) {
       var c = map.getContainer();
       map.easeTo({ zoom: 16, around: map.unproject([c.clientWidth / 2, c.clientHeight / 2]), duration: reduceMotion ? 0 : 700 });
@@ -3168,6 +3358,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     state.picking = null;
     document.body.classList.remove('picking');
     $('#pick').hidden = true;
+    syncNavGuard();
   }
   function cancelPick() {
     var ctx = state.picking;
@@ -3237,15 +3428,21 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     $$('[aria-invalid]').forEach(function (el) { el.removeAttribute('aria-invalid'); });
   }
 
+  /* 返回 { blob: 1280px 原图, thumb: 640px 小图 } */
   function compressImage(file) {
-    var maxSide = 1280;
-    function fromImage(src) {
+    function toBlob(src, maxSide, quality) {
       var w = src.width || src.naturalWidth, h = src.height || src.naturalHeight;
       var scale = Math.min(1, maxSide / Math.max(w, h));
       var cv = document.createElement('canvas');
       cv.width = Math.round(w * scale); cv.height = Math.round(h * scale);
       cv.getContext('2d').drawImage(src, 0, 0, cv.width, cv.height);
-      return new Promise(function (resolve) { cv.toBlob(function (b) { resolve(b); }, 'image/jpeg', 0.82); });
+      return new Promise(function (resolve) { cv.toBlob(function (b) { resolve(b); }, 'image/jpeg', quality); });
+    }
+    function fromImage(src) {
+      return Promise.all([toBlob(src, 1280, 0.82), toBlob(src, THUMB_SIDE, 0.8)]).then(function (b) {
+        if (src.close) src.close();
+        return { blob: b[0], thumb: b[1] };
+      });
     }
     function viaImg() {
       return new Promise(function (resolve, reject) {
@@ -3265,9 +3462,9 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     var list = Array.prototype.slice.call(files || []).filter(function (x) { return /^image\//.test(x.type); }).slice(0, MAX_PHOTOS - f.photos.length);
     list.reduce(function (chain, file) {
       return chain.then(function () {
-        return compressImage(file).then(function (blob) {
-          if (!blob || state.form !== f) return;
-          f.photos.push({ id: uid('ph'), blob: blob, url: URL.createObjectURL(blob) });
+        return compressImage(file).then(function (out) {
+          if (!out.blob || state.form !== f) return;
+          f.photos.push({ id: uid('ph'), blob: out.blob, thumb: out.thumb, url: URL.createObjectURL(out.blob) });
           renderFormPhotos();
         }).catch(function () { toast(t('photoReadFail')); });
       });
@@ -3336,9 +3533,10 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
   }
 
   var modalResolve = null;
-  function openModal(html) { var m = $('#modal'); m.innerHTML = html; m.hidden = false; }
+  function openModal(html) { var m = $('#modal'); m.innerHTML = html; m.hidden = false; syncNavGuard(); }
   function closeModal(result) {
     var m = $('#modal'); m.hidden = true; m.innerHTML = '';
+    syncNavGuard();
     if (modalResolve) { var r = modalResolve; modalResolve = null; r(!!result); }
   }
   function confirmBox(msg, okLabel) {
@@ -3459,6 +3657,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     lb = { ids: ids.length ? ids : [id], i: Math.max(0, ids.indexOf(id)) };
     $('#lightbox').hidden = false;
     showLightbox();
+    syncNavGuard();
   }
   function showLightbox() {
     var multi = lb.ids.length > 1;
@@ -3466,7 +3665,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     $('#lb-count').textContent = multi ? (lb.i + 1) + ' / ' + lb.ids.length : '';
     store.photoURL(lb.ids[lb.i]).then(function (u) { $('#lb-img').src = u || ''; });
   }
-  function closeLightbox() { $('#lightbox').hidden = true; $('#lb-img').removeAttribute('src'); }
+  function closeLightbox() { $('#lightbox').hidden = true; $('#lb-img').removeAttribute('src'); syncNavGuard(); }
 
   /* ================= events ================= */
   function refilter() {
@@ -3577,12 +3776,37 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     if (e.target.id === 'f-file') { addFormPhotos(e.target.files); e.target.value = ''; }
     else if (e.target.id === 'import-file') { importData(e.target.files[0]); e.target.value = ''; }
   });
-  document.addEventListener('keydown', function (e) {
-    if (e.key !== 'Escape') return;
+  /* 关掉最上面那一层：大图 → 弹窗 → 底部弹层 → 选点 → 子页面 */
+  function stepBack() {
     if (!$('#lightbox').hidden) closeLightbox();
     else if (!$('#modal').hidden) closeModal(false);
+    else if (state.bsheet) closeBSheet();
     else if (state.picking) cancelPick();
     else if (state.view !== 'feed') back();
+  }
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') stepBack();
+  });
+  /* 手机的返回键 / 侧边返回手势：不在首页时，在浏览器历史里垫一条，
+     按返回先关掉卡片、弹层，回到首页后再按才离开网站 */
+  var navGuard = false, swallowPops = 0, navTimer = null;
+  function atRoot() {
+    return state.view === 'feed' && !state.bsheet && !state.picking && $('#lightbox').hidden && $('#modal').hidden;
+  }
+  function syncNavGuard() {
+    clearTimeout(navTimer);
+    navTimer = setTimeout(function () {
+      if (!window.history || !history.pushState) return;
+      var root = atRoot();
+      if (!root && !navGuard) { history.pushState({ xuetuan: 1 }, ''); navGuard = true; }
+      else if (root && navGuard) { navGuard = false; swallowPops++; history.back(); }
+    }, 30);
+  }
+  window.addEventListener('popstate', function () {
+    if (swallowPops) { swallowPops--; return; }
+    navGuard = false;
+    if (!atRoot()) stepBack();
+    syncNavGuard();
   });
   var onBreakpoint = function () { applySnap(); if (map) setTimeout(function () { map.resize(); }, 60); };
   if (mqMobile.addEventListener) mqMobile.addEventListener('change', onBreakpoint); else mqMobile.addListener(onBreakpoint);
