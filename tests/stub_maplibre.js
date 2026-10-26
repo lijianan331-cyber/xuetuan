@@ -41,7 +41,8 @@
   Map.prototype.setStyle = function (s, o) { var self = this; this.calls.push(['setStyle', o]); this.sources = {}; this.layers = []; this.images = {}; this.style = baseStyle(); setTimeout(function () { self.fire('style.load'); }, 30); };
   Map.prototype.addSource = function (id, s) {
     if (this.sources[id]) throw new Error('source exists ' + id);
-    this.sources[id] = { spec: s, data: s.data, setData: function (d) { this.data = d; }, getClusterExpansionZoom: function () { return Promise.resolve(12); } };
+    this.sources[id] = { spec: s, data: s.data, setData: function (d) { this.data = d; }, getClusterExpansionZoom: function () { return Promise.resolve(12); },
+      getClusterLeaves: function () { return Promise.resolve(((this.data && this.data.features) || []).slice()); } };
   };
   Map.prototype.getSource = function (id) { return this.sources[id]; };
   Map.prototype._find = function (id) { return this.style.layers.concat(this.layers).filter(function (l) { return l.id === id; })[0]; };

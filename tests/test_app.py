@@ -25,6 +25,9 @@ PHOTON = json.dumps({"type": "FeatureCollection", "features": [
      "properties": {"name": "Kafe Ujian", "osm_type": "N", "osm_id": 111, "osm_key": "amenity", "osm_value": "cafe", "type": "house"}}
 ]})
 photon_calls = []
+PHOTON_REV = json.dumps({"type": "FeatureCollection", "features": [
+    {"type": "Feature", "geometry": {"type": "Point", "coordinates": [101.7021, 2.8317]},
+     "properties": {"name": "Jalan Kampus", "osm_type": "W", "osm_id": 333, "osm_key": "highway", "osm_value": "residential", "type": "street", "city": "Sepang", "state": "Selangor", "country": "Malaysia"}}]})
 world_calls = []
 wiki_calls = []
 WIKI_BALI = json.dumps({'batchcomplete': True, 'query': {
@@ -124,6 +127,9 @@ def route_all(ctx, supabase=False):
             if url.endswith('/dark'):
                 return route.fulfill(status=404, body='nope', headers={'Access-Control-Allow-Origin': '*'})
             return route.fulfill(status=200, body=STYLE, headers={'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'})
+        if 'photon.komoot.io/reverse' in url:
+            photon_calls.append(url)
+            return route.fulfill(status=200, body=PHOTON_REV, headers={'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'})
         if 'photon.komoot.io/api/' in url:
             photon_calls.append(url)
             return route.fulfill(status=200, body=PHOTON, headers={'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'})
@@ -161,7 +167,7 @@ with sync_playwright() as p:
         countFont: m.layers.find(l => l.id === 'cl-count').layout['text-font'],
         labelFont: m.layers.find(l => l.id === 'pt-label').layout['text-font'],
         intro: m.calls.filter(c => c[0] === 'move').length } }''')
-    check('app layers added', st['layers'] == ['pt-area', 'cl-halo', 'cl-circle', 'cl-count', 'pt-sel', 'pt-pin', 'pt-photo', 'pt-label', 'me-halo', 'me-dot'], st['layers'])
+    check('app layers added', st['layers'] == ['pt-area', 'cl-halo', 'cl-circle', 'cl-count', 'home-pin', 'pt-sel', 'pt-pin', 'pt-photo', 'pt-label', 'me-halo', 'me-dot'], st['layers'])
     check('parsed sample rows', len(SAMPLE_ROWS) >= 60 and len(FOOD_S) >= 30, len(SAMPLE_ROWS))
     want_imgs = len({(x['cat'], 'none' if x['rating'] is None else x['rating'] * 10) for x in FOOD_S})
     check('pin images drawn on demand (one per category + score bucket)', st['images'] == want_imgs, (st['images'], want_imgs))
@@ -671,6 +677,65 @@ with sync_playwright() as p:
     # profile: the four "where you're from" boxes are gone
     page.click('[data-action="profile"]')
     check('no hometown text boxes in Me', page.locator('[data-pf="city"], [data-pf="country"], [data-pf="region"], [data-pf="district"]').count() == 0)
+
+    # 我的家：在地图上点 → 认出城市，只存到 0.1 度；默认不公开
+    check('home: Me has a "my home" field with a set button', page.locator('#home-field [data-action="home-set"]').count() == 1 and '我的家' in page.inner_text('#home-field'))
+    page.click('#home-field [data-action="home-set"]')
+    page.wait_for_timeout(150)
+    check('home: set page has city search + pick on map', page.locator('#home-q').count() == 1 and page.locator('[data-action="home-pick"]').count() == 1 and '10 公里' in page.inner_text('#view'))
+    page.evaluate('window.__map.center = {lng: 101.7123, lat: 2.8456}; window.__map.zoom = 14;')
+    page.click('[data-action="home-pick"]')
+    page.wait_for_timeout(150)
+    check('home: pick mode asks for the home city, no precision line', page.locator('#pick').is_visible() and '城市' in page.inner_text('#pick-hint') and not page.locator('#pick-prec').is_visible(), page.inner_text('#pick-hint'))
+    zoomed = page.evaluate('window.__map.calls.filter(c => c[0] === "move").slice(-1)[0][1].zoom')
+    check('home: picking zooms out to city level', zoomed == 9, zoomed)
+    page.click('[data-action="pick-confirm"]')
+    page.wait_for_function('document.querySelector("#home-field .home-row")', timeout=4000)
+    page.wait_for_timeout(100)
+    home_ls = page.evaluate('JSON.parse(localStorage.getItem("xmum-chiwan-map:data:v1")).home')
+    check('home: reverse lookup names the city, position rounded to 0.1°', home_ls == {'city': 'Sepang', 'lat': 2.8, 'lng': 101.7, 'public': False}, home_ls)
+    check('home: reverse lookup asked Photon for that spot', any('/reverse?lat=2.8456&lon=101.7123' in u for u in photon_calls), photon_calls[-1:])
+    check('home: toast + back in Me with the city and switch off', '设好了：Sepang' in page.inner_text('#toast') and 'Sepang' in page.inner_text('#home-field .home-row') and page.get_attribute('[data-action="home-public"]', 'aria-checked') == 'false')
+    check('home: saving switches to the travel map', page.evaluate('document.documentElement.classList.contains("mode-travel")'))
+    page.click('[data-action="back"]')
+    page.click('#tabbar [data-scope="mine"]')
+    page.wait_for_timeout(150)
+    hf = page.evaluate('window.__map.getSource("homes").data.features.map(f => f.properties.mine)')
+    check('home: my private home shows on my travel map', hf == [True], hf)
+    page.click('#tabbar [data-scope="all"]')
+    page.wait_for_timeout(150)
+    hf = page.evaluate('window.__map.getSource("homes").data.features.length')
+    check('home: private home not on the big map', hf == 0, hf)
+    page.click('[data-action="profile"]')
+    page.click('[data-action="home-public"]')
+    page.wait_for_timeout(150)
+    hfs = page.evaluate('window.__map.getSource("homes").data.features.map(f => f.properties)')
+    check('home: public home drawn as my house on the big travel map', len(hfs) == 1 and hfs[0]['mine'] is True and hfs[0]['icon'] == 'home-me', hfs)
+    check('home: switch on explains who sees it', page.get_attribute('[data-action="home-public"]', 'aria-checked') == 'true' and '来自 Sepang' in page.inner_text('#home-field'))
+    hb = page.evaluate('(() => { const b = document.querySelector("#map-ctrls [data-action=homes-toggle]"); return b && [b.getAttribute("aria-pressed"), b.textContent]; })()')
+    check('home: house button on the travel big map, with how many homes are public', hb == ['true', '1'], hb)
+    img = page.evaluate('window.__map.images["home-me"]')
+    check('home: house image drawn at 44px', img == {'w': 88, 'h': 88, 'pr': 2}, img)
+    page.click('[data-action="back"]')
+    page.wait_for_timeout(150)
+    page.click('[data-action="homes-toggle"]')
+    page.wait_for_timeout(100)
+    check('home: house button hides the houses', page.evaluate('window.__map.getSource("homes").data.features.length') == 0 and page.get_attribute('[data-action="homes-toggle"]', 'aria-pressed') == 'false')
+    page.click('[data-action="homes-toggle"]')
+    page.wait_for_timeout(100)
+    # 点小房子（合在一起的也行）：列出谁的家
+    page.evaluate('window.__qrf = [{layer: {id: "home-pin"}, properties: {cluster: true, cluster_id: 3, point_count: 1}, geometry: {type: "Point", coordinates: [101.7, 2.8]}}]')
+    page.evaluate('window.__map.fire("click", {point: {x: 200, y: 300}, lngLat: {lng: 101.7, lat: 2.8}})')
+    page.wait_for_timeout(200)
+    page.evaluate('window.__qrf = []')
+    check('home: tapping a house lists whose home it is', page.locator('.homes-list').count() == 1 and '我的家' in page.inner_text('#view') and 'Sepang' in page.inner_text('.homes-list'), page.inner_text('#view')[:120])
+    check('home: house card offers to change my home', page.locator('#view [data-action="home-set"]').count() == 1)
+    page.click('[data-action="back"]')
+    page.wait_for_timeout(100)
+    check('home: no house button on the food map', (set_mode(page, 'food') or True) and page.locator('[data-action="homes-toggle"]').count() == 0)
+    set_mode(page, 'travel')
+    page.click('[data-action="profile"]')
+    page.wait_for_timeout(200)
     page.wait_for_timeout(300)
     page.screenshot(path=os.path.join(SHOTS, '07-mobile-profile.png'))
     page.click('[data-action="set-style"][data-style="dark"]')
@@ -679,9 +744,9 @@ with sync_playwright() as p:
     page.click('[data-action="set-style"][data-style="color"]')
     page.wait_for_timeout(300)
     st2 = page.evaluate('({setStyle: window.__map.calls.filter(c=>c[0]==="setStyle").length, layers: window.__map.layers.map(l=>l.id).length, images: Object.keys(window.__map.images).length, proj: window.__map.projection})')
-    st2['icons'] = page.evaluate('[...new Set(window.__map.getSource("places").data.features.flatMap(f => [f.properties.icon, f.properties.pic]).filter(Boolean))].sort()')
+    st2['icons'] = page.evaluate('[...new Set(window.__map.getSource("places").data.features.concat(window.__map.getSource("homes").data.features).flatMap(f => [f.properties.icon, f.properties.pic]).filter(Boolean))].sort()')
     st2['imageIds'] = page.evaluate('Object.keys(window.__map.images).sort()')
-    check('base map switch re-adds layers + images', st2['setStyle'] == 1 and st2['layers'] == 10 and st2['icons'] == st2['imageIds'] and st2['proj'] == {'type': 'globe'}, st2)
+    check('base map switch re-adds layers + images', st2['setStyle'] == 1 and st2['layers'] == 11 and st2['icons'] == st2['imageIds'] and st2['proj'] == {'type': 'globe'}, st2)
     page.click('[data-action="back"]')
     set_mode(page, 'food')
 
@@ -1022,8 +1087,10 @@ with sync_playwright() as p:
 
     # ---------- 线上版（假的 Supabase） ----------
     A, B = 'aaaaaaaa-0000-4000-8000-00000000000a', 'bbbbbbbb-0000-4000-8000-00000000000b'
+    C = 'cccccccc-0000-4000-8000-00000000000c'
     sb_seed = {
-        'profiles': [{'id': B, 'name': '小B', 'country': '马来西亚', 'region': '', 'city': 'Klang', 'district': ''}],
+        'profiles': [{'id': B, 'name': '小B', 'country': '', 'region': '', 'city': '', 'district': ''}, {'id': C, 'name': '小C'}],
+        'homes': [{'user_id': B, 'city': 'Klang', 'lat': 3.0, 'lng': 101.4, 'is_public': True}, {'user_id': C, 'city': '秘密城', 'lat': 1.3, 'lng': 103.8, 'is_public': False}],
         'places': [
             {'id': 'p-b-pub', 'mode': 'food', 'cat': 'cn', 'precision': 'exact', 'lat': 2.8335, 'lng': 101.7035, 'name': 'B 的公开店', 'alt_name': '', 'link': '', 'osm': '', 'created_by': B, 'created_at': '2026-10-01T00:00:00Z'},
             {'id': 'p-b-priv', 'mode': 'food', 'cat': 'cn', 'precision': 'exact', 'lat': 2.8400, 'lng': 101.7100, 'name': 'B 的私密店', 'alt_name': '', 'link': '', 'osm': '', 'created_by': B, 'created_at': '2026-10-01T00:00:00Z'}],
@@ -1150,6 +1217,26 @@ with sync_playwright() as p:
     page6.click('[data-action="profile"]')
     page6.wait_for_timeout(200)
     check('remote: profile shows account', 'a@example.com' in page6.inner_text('.account-row'))
+    # 我的家：搜城市（只要城市），写进 homes 表，默认不公开
+    page6.click('#home-field [data-action="home-set"]')
+    page6.fill('#home-q', 'george')
+    page6.wait_for_selector('[data-action="home-result"]', timeout=5000)
+    rows_h = page6.locator('[data-action="home-result"] b').all_inner_texts()
+    check('remote home: city search lists only cities', rows_h == ['George Town'], rows_h)
+    check('remote home: Photon asked for city layers only', any('q=george' in u and 'layer=city' in u for u in photon_calls), photon_calls[-1:])
+    page6.click('[data-action="home-result"]')
+    page6.wait_for_function('document.querySelector("#home-field .home-row")', timeout=4000)
+    hrow = [h for h in page6.evaluate('window.__sb.db.homes') if h['user_id'] == A]
+    check('remote home: row written, private by default, rounded', len(hrow) == 1 and hrow[0]['city'] == 'George Town' and hrow[0]['is_public'] is False and hrow[0]['lat'] == 5.4 and hrow[0]['lng'] == 100.3, hrow)
+    page6.click('[data-action="home-public"]')
+    page6.wait_for_timeout(200)
+    hrow = [h for h in page6.evaluate('window.__sb.db.homes') if h['user_id'] == A]
+    check('remote home: making it public updates the same row', len(hrow) == 1 and hrow[0]['is_public'] is True, hrow)
+    uids = sorted(page6.evaluate('window.__map.getSource("homes").data.features.map(f => f.properties.uid)'))
+    check('remote home: big map shows public homes only (not 小C’s private one)', uids == sorted([A, B]), uids)
+    page6.click('[data-action="home-del"]')
+    page6.wait_for_timeout(200)
+    check('remote home: remove deletes my row', not any(h['user_id'] == A for h in page6.evaluate('window.__sb.db.homes')) and page6.locator('#home-field .home-set-btn').count() == 1)
     page6.click('[data-action="upload-local"]')
     page6.click('[data-modal="yes"]')
     page6.wait_for_timeout(800)

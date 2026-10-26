@@ -118,15 +118,15 @@ body[data-snap="full"] .map-ctrls { opacity: 0; pointer-events: none; }
 .map-ctrls .icon-btn { position: relative; width: 36px; height: 36px; border-radius: 50%; }
 .map-ctrls .icon-btn svg { width: 18px; height: 18px; }
 /* 全是蓝白：白底蓝图标；吃/玩切换用要切去的那张地图的蓝色（吃的地图上是深一点的蓝色飞机） */
-.map-ctrls .search-btn, .map-ctrls .filter-btn, .map-ctrls .globe-btn { color: var(--accent); }
+.map-ctrls .search-btn, .map-ctrls .filter-btn, .map-ctrls .globe-btn, .map-ctrls .home-btn { color: var(--accent); }
 .map-ctrls .mode-btn { color: #fff; background: linear-gradient(145deg, #7D8EF2, #4A5BD0); box-shadow: 0 5px 14px rgba(79, 99, 216, .35); }
 html.mode-travel .map-ctrls .mode-btn { background: linear-gradient(145deg, #5AA5EC, #2569B3); box-shadow: 0 5px 14px rgba(46, 125, 203, .35); }
-.map-ctrls .filter-btn[aria-pressed="true"], .map-ctrls .globe-btn[aria-pressed="true"] { color: #fff; background: var(--accent); }
+.map-ctrls .filter-btn[aria-pressed="true"], .map-ctrls .globe-btn[aria-pressed="true"], .map-ctrls .home-btn[aria-pressed="true"] { color: #fff; background: var(--accent); }
 .map-ctrls .icon-btn b {
   position: absolute; top: -4px; right: -4px; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 8px;
   background: var(--accent); color: var(--accent-ink); font-size: 10px; line-height: 16px; text-align: center;
 }
-.map-ctrls .filter-btn[aria-pressed="true"] b, .map-ctrls .globe-btn b { background: #fff; color: var(--accent); box-shadow: 0 1px 3px rgba(0, 0, 0, .2); }
+.map-ctrls .filter-btn[aria-pressed="true"] b, .map-ctrls .globe-btn b, .map-ctrls .home-btn b { background: #fff; color: var(--accent); box-shadow: 0 1px 3px rgba(0, 0, 0, .2); }
 .icon-btn {
   flex: none; width: 38px; height: 38px; padding: 0; border: 0; border-radius: 12px;
   background: var(--surface); color: var(--ink); box-shadow: var(--shadow);
@@ -452,6 +452,14 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
 .or-line { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 12.5px; }
 .or-line::before, .or-line::after { content: ""; flex: 1; height: 1px; background: var(--line); }
 .account-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 14px; overflow-wrap: anywhere; }
+.home-row { display: flex; align-items: center; gap: 8px; font-size: 15px; min-width: 0; }
+.home-row b { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.home-ic { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); }
+.home-ic svg { width: 17px; height: 17px; }
+.near-item > .home-ic { width: 30px; font-size: 0; }
+.home-set-btn, .homes-list + .actions .btn { align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; }
+.home-set-btn svg, .homes-list + .actions .btn svg { width: 17px; height: 17px; }
+.homes-list .near-item { cursor: default; }
 .add-search { display: flex; gap: 8px; }
 .add-search .input { flex: 1; min-width: 0; }
 .add-search .add-pin { flex: none; height: 42px; padding: 0 14px; background: var(--accent-soft); color: var(--accent); }
@@ -778,6 +786,12 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       unnamedFood: '没起名的店', unnamedTravel: '没起名的地方',
       link: '相关链接', linkPh: '官网、订位、门票页面…',
       nickname: '昵称', nicknamePh: '大家看到的名字',
+      myHome: '我的家', homeNone: '设了以后旅行地图上会有一个小房子，只到城市一级。', homeSet: '设置我的家', homeChange: '改', homeRemove: '不设了',
+      homePublic: '公开到大地图', homePublicOn: '同学在旅行大地图上能看到，列表里显示“来自 {c}”', homePublicOff: '现在只有你自己看得到（我的地图 · 旅行）',
+      homeTitle: '设置我的家', homeSearchPh: '搜城市，比如 吉隆坡、深圳', homePick: '在地图上点', homeNote: '只存城市名和大概位置（约 10 公里），不存地址。',
+      homeNoResult: '没找到这个城市，换个写法，或者在地图上点', homeSaved: '设好了：{c}', homeRemoved: '不设家了', homeLookup: '正在认是哪个城市…',
+      homePickHint: '拖动地图，把十字对准你家所在的城市', homePickFail: '认不出这是哪个城市，换个位置，或者直接搜城市名',
+      homesBtn: '同学的家', homeOf: '{n}的家', homesN: '{n} 位同学的家', homeOnlyYou: '只有你自己看得到', homeEdit: '改我的家', homeSetCta: '你也放一个小房子',
       publish: '发布',
       location: '位置', repick: '重新选',
       noRating: '暂无评分', myScore: '我的评分', avgOf: '{n} 人打分的平均', perPerson: '人均', costLabel: '花费', reviewsLabel: '条点评', reviewsTitle: '点评',
@@ -860,6 +874,12 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       unnamedFood: 'Unnamed spot', unnamedTravel: 'Unnamed place',
       link: 'Link', linkPh: 'Website, booking or ticket page',
       nickname: 'Nickname', nicknamePh: 'The name others see',
+      myHome: 'My home', homeNone: 'Puts a little house on the travel map. City level only.', homeSet: 'Set my home', homeChange: 'Change', homeRemove: 'Remove',
+      homePublic: 'Show on the big map', homePublicOn: 'Classmates see it on the travel map, and lists say “from {c}”', homePublicOff: 'Only you can see it now (My map · Travel)',
+      homeTitle: 'Set my home', homeSearchPh: 'Search a city, e.g. Kuala Lumpur', homePick: 'Pick on the map', homeNote: 'Only the city name and a rough spot (about 10 km) are saved, never an address.',
+      homeNoResult: 'No city found. Try another spelling or pick on the map', homeSaved: 'Home set: {c}', homeRemoved: 'Home removed', homeLookup: 'Finding the city…',
+      homePickHint: 'Drag the map until the crosshair is on your home city', homePickFail: 'Couldn’t tell which city this is. Move a bit, or search the city name',
+      homesBtn: 'Classmates’ homes', homeOf: '{n}’s home', homesN: '{n} classmates’ homes', homeOnlyYou: 'Only you can see this', homeEdit: 'Change my home', homeSetCta: 'Add your own house',
       publish: 'Publish',
       location: 'Location', repick: 'Change',
       noRating: 'No score yet', myScore: 'My score', avgOf: 'Average of {n}', perPerson: 'per person', costLabel: 'cost', reviewsLabel: 'reviews', reviewsTitle: 'Reviews',
@@ -918,6 +938,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     camera: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M4 8.5h3l1.6-2.5h6.8L17 8.5h3v10H4z"/><circle cx="12" cy="13.2" r="3.4"/></svg>',
     star: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="m12 3.5 2.6 5.4 5.9.8-4.3 4.1 1 5.9-5.2-2.8-5.2 2.8 1-5.9-4.3-4.1 5.9-.8z"/></svg>',
     starOn: '<svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="m12 3.5 2.6 5.4 5.9.8-4.3 4.1 1 5.9-5.2-2.8-5.2 2.8 1-5.9-4.3-4.1 5.9-.8z"/></svg>',
+    home: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M3.5 11 12 4l8.5 7"/><path d="M6 9.5V20h12V9.5"/><path d="M10 20v-5.5h4V20"/></svg>',
     pen: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="m13.5 6.5 4 4"/></svg>'
   };
 
@@ -926,7 +947,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     lang: 'zh', mode: 'food', scope: 'all', cat: 'all', priceMax: 0, minScore: 0, dist: 'any',
     view: 'feed', placeId: null, form: null, nearby: null, query: '',
     snap: 'peek', feedSnap: 'peek', picking: null, preview: null, bsheet: null, me: null, styleKey: 'light',
-    mineBoth: false, countries: false, savedWant: false, mineSub: 'mine'
+    mineBoth: false, countries: false, savedWant: false, mineSub: 'mine', homesOn: true, homes: null, homeBack: null
   };
   var map = null;
   var lastRenderedView = null;
@@ -942,7 +963,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     var canPersist = true;
     var photoURLs = new Map();
 
-    function emptyData() { return { version: DATA_VERSION, places: [], reviews: [], wishlist: [], profile: null, areas: [], seeded: false }; }
+    function emptyData() { return { version: DATA_VERSION, places: [], reviews: [], wishlist: [], profile: null, home: null, areas: [], seeded: false }; }
 
     /* v1 把“没打分”存成 0；v2 里 0 是合法分数，没打分改成 null */
     function migrate(d) {
@@ -989,7 +1010,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
           return;
         }
         if (!find(data.places, s[0])) data.places.push({ id: s[0], mode: s[1], cat: s[2], precision: s[3], lat: s[4], lng: s[5], name: s[6], altName: s[7], link: '', osm: '', createdBy: 'sample', createdAt: ts, sample: true });
-        data.reviews.push({ id: 'r-' + s[0], placeId: s[0], authorId: 'sample', authorName: '', authorFrom: '', rating: rating, price: price, text: s[8], textEn: s[9], photos: [], visibility: 'public', createdAt: ts, sample: true });
+        data.reviews.push({ id: 'r-' + s[0], placeId: s[0], authorId: 'sample', authorName: '', rating: rating, price: price, text: s[8], textEn: s[9], photos: [], visibility: 'public', createdAt: ts, sample: true });
       });
     }
     function find(list, id) { for (var i = 0; i < list.length; i++) if (list[i].id === id) return list[i]; return null; }
@@ -1049,6 +1070,9 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       areas: function () { return data.areas; },
       wishlist: function () { return data.wishlist; },
       isSaved: function (placeId) { return data.wishlist.some(function (w) { return w.placeId === placeId; }); },
+      /* 我的家：本地版只有我自己一个人 */
+      myHome: function () { return data.home ? Object.assign({ userId: data.profile.id, name: data.profile.name }, data.home) : null; },
+      homes: function () { var h = this.myHome(); return h ? [h] : []; },
       hasSamples: function () { return data.reviews.some(function (r) { return r.sample; }); },
       photoURL: localPhotoURL,
       hasPhotoURL: function (id) { return photoURLs.has(id); },
@@ -1074,7 +1098,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       addReview: function (f, newPhotos) {
         var me = data.profile;
         var r = {
-          id: uid('r'), placeId: f.placeId, authorId: me.id, authorName: me.name || '', authorFrom: shortFrom(me),
+          id: uid('r'), placeId: f.placeId, authorId: me.id, authorName: me.name || '',
           rating: f.rating, price: f.price, text: f.text, photos: newPhotos.map(function (ph) { return ph.id; }),
           visibility: f.visibility, createdAt: Date.now(), sample: false
         };
@@ -1093,7 +1117,6 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
           ['rating', 'price', 'text', 'visibility'].forEach(function (k) { if (patch[k] !== undefined) r[k] = patch[k]; });
           r.photos = keepPhotos.concat(newPhotos.map(function (ph) { return ph.id; }));
           r.authorName = data.profile.name || '';
-          r.authorFrom = shortFrom(data.profile);
           r.updatedAt = Date.now();
           persist();
           return { review: r, photosOk: photosOk };
@@ -1111,6 +1134,11 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
         data.wishlist = data.wishlist.filter(function (w) { return w.placeId !== placeId; });
         if (saved) data.wishlist.push({ placeId: placeId, createdAt: Date.now() });
         return done(saved);
+      },
+      /* h: { city, lat, lng, public }，null 是不设了 */
+      setHome: function (h) {
+        data.home = h ? { city: h.city, lat: h.lat, lng: h.lng, public: !!h.public } : null;
+        return done(this.myHome());
       },
       updateProfile: function (patch) {
         Object.keys(patch).forEach(function (k) { data.profile[k] = patch[k]; });
@@ -1145,7 +1173,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
         }, Promise.resolve()).then(function () {
           return {
             app: BACKUP_APP, version: DATA_VERSION, exportedAt: new Date().toISOString(),
-            profile: data.profile, places: data.places, reviews: data.reviews, wishlist: data.wishlist, areas: data.areas, photos: photos
+            profile: data.profile, home: data.home, places: data.places, reviews: data.reviews, wishlist: data.wishlist, areas: data.areas, photos: photos
           };
         });
       },
@@ -1163,6 +1191,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
         (obj.wishlist || []).forEach(function (w) { if (w && w.placeId && !data.wishlist.some(function (x) { return x.placeId === w.placeId; })) data.wishlist.push(w); });
         var me = data.profile;
         if (obj.profile && obj.profile.id && !me.name && !data.reviews.some(function (r) { return r.authorId === me.id; })) data.profile = obj.profile;
+        if (!data.home && obj.home && obj.home.city && isFinite(obj.home.lat) && isFinite(obj.home.lng)) data.home = obj.home;
         var jobs = Object.keys(obj.photos || {}).map(function (id) {
           return dataURLToBlob(obj.photos[id]).then(function (b) { return photoStore.put(id, b); }).catch(function () { return false; });
         });
@@ -1178,7 +1207,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
    */
   function remoteStore(client) {
     var ANON = { id: null, name: '', country: '', region: '', city: '', district: '' };
-    var cache = { places: [], reviews: [], wishlist: [], profile: ANON };
+    var cache = { places: [], reviews: [], wishlist: [], homes: [], profile: ANON };
     var session = null, email = '';
     var photoURLs = new Map();
     var listeners = [];
@@ -1204,10 +1233,14 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     function reviewFromRow(r, author) {
       author = author || r.author || {};
       return {
-        id: r.id, placeId: r.place_id, authorId: r.user_id, authorName: author.name || '', authorFrom: shortFrom(author),
+        id: r.id, placeId: r.place_id, authorId: r.user_id, authorName: author.name || '',
         rating: r.rating, price: r.price == null ? null : +r.price, text: r.text, photos: r.photos || [],
         visibility: r.visibility, createdAt: Date.parse(r.created_at), sample: false
       };
+    }
+    /* 看得见的家：公开的 + 我自己的（RLS 已经过滤好） */
+    function homeFromRow(r) {
+      return { userId: r.user_id, name: (r.owner && r.owner.name) || '', city: r.city, lat: r.lat, lng: r.lng, public: !!r.is_public };
     }
     function photoPath(id) { return uidNow() + '/' + id + '.jpg'; }
     /* 小图和原图放在同一个文件夹：xxx.jpg 的小图是 xxx_t.jpg */
@@ -1239,11 +1272,14 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       var uid = uidNow();
       return Promise.all([
         client.from('places').select('*').limit(10000),
-        client.from('visits').select('*, author:profiles(name, country, region, city, district)').order('created_at', { ascending: false }).limit(10000),
+        client.from('visits').select('*, author:profiles(name)').order('created_at', { ascending: false }).limit(10000),
         uid ? client.from('profiles').select('*').eq('id', uid).maybeSingle() : Promise.resolve({ data: null }),
-        uid ? client.from('wishlist').select('*') : Promise.resolve({ data: [] })
+        uid ? client.from('wishlist').select('*') : Promise.resolve({ data: [] }),
+        /* 家这张表是后加的，读不到也别让整个应用打不开 */
+        client.from('homes').select('user_id, city, lat, lng, is_public, owner:profiles(name)').limit(10000).then(function (r) { return r.error ? { data: [] } : r; }, function () { return { data: [] }; })
       ]).then(function (res) {
         var places = ok(res[0]), visits = ok(res[1]), profile = ok(res[2]), wish = ok(res[3]);
+        cache.homes = (res[4].data || []).map(homeFromRow);
         cache.places = places.map(placeFromRow);
         cache.reviews = visits.map(function (v) { return reviewFromRow(v); });
         cache.profile = uid ? Object.assign({}, ANON, profile || {}, { id: uid }) : ANON;
@@ -1311,6 +1347,8 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       areas: function () { return areaCache; },
       wishlist: function () { return cache.wishlist; },
       isSaved: function (placeId) { return cache.wishlist.some(function (w) { return w.placeId === placeId; }); },
+      myHome: function () { var id = uidNow(); return id ? cache.homes.filter(function (h) { return h.userId === id; })[0] || null : null; },
+      homes: function () { return cache.homes; },
       hasSamples: function () { return false; },
       /* small：小图地址。以前传的照片没有小图，图片加载失败时由显示的地方退回原图 */
       photoURL: function (id, small) {
@@ -1390,11 +1428,26 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
           return saved;
         });
       },
+      setHome: function (h) {
+        var id = uidNow();
+        if (!id) return Promise.reject(new Error('login required'));
+        var q = h
+          ? client.from('homes').upsert({ user_id: id, city: h.city, lat: h.lat, lng: h.lng, is_public: !!h.public }).select('user_id, city, lat, lng, is_public').single()
+          : client.from('homes').delete().eq('user_id', id);
+        return q.then(ok).then(function (row) {
+          cache.homes = cache.homes.filter(function (x) { return x.userId !== id; });
+          if (!h) return null;
+          var home = homeFromRow(row);
+          home.name = cache.profile.name || '';
+          cache.homes.push(home);
+          return home;
+        });
+      },
       updateProfile: function (patch) {
         if (!uidNow()) return Promise.reject(new Error('login required'));
         Object.keys(patch).forEach(function (k) { cache.profile[k] = patch[k]; profilePatch[k] = patch[k]; });
         cache.reviews.forEach(function (r) {
-          if (r.authorId === uidNow()) { r.authorName = cache.profile.name || ''; r.authorFrom = shortFrom(cache.profile); }
+          if (r.authorId === uidNow()) r.authorName = cache.profile.name || '';
         });
         clearTimeout(profileTimer);
         profileTimer = setTimeout(flushProfile, 400);
@@ -1482,7 +1535,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
         v.zoom = Math.round(map.getZoom() * 100) / 100;
       }
       v.mode = state.mode; v.lang = state.lang; v.styleKey = state.styleKey;
-      v.mineBoth = state.mineBoth; v.countries = state.countries;
+      v.mineBoth = state.mineBoth; v.countries = state.countries; v.homesOn = state.homesOn;
       localStorage.setItem(LS_VIEW, JSON.stringify(v));
     } catch (e) { /* storage blocked: keep going */ }
   }
@@ -1686,17 +1739,19 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     var main = placeTitle(p), other = state.lang === 'en' ? p.name : p.altName;
     return other && other !== main ? other : '';
   }
-  function shortFrom(pf) {
-    if (!pf) return '';
-    var a = [pf.city, pf.district].filter(Boolean).join('·');
-    return a || pf.region || pf.country || '';
-  }
   function authorLabel(r) {
     if (r.authorId === me().id) return me().name || t('you');
     if (r.sample) return t('sampleAuthor');
     return r.authorName || t('anon');
   }
-  function authorFrom(r) { return r.authorId === me().id ? shortFrom(me()) : (r.authorFrom || ''); }
+  /* “来自 X”：作者公开了的家（自己的也只在公开后显示，和别人看到的一样） */
+  function homeOf(userId) {
+    var list = store.homes();
+    for (var i = 0; i < list.length; i++) if (list[i].userId === userId) return list[i];
+    return null;
+  }
+  function authorFrom(r) { var h = r.authorId && homeOf(r.authorId); return h && h.public ? h.city : ''; }
+  function homeName(h) { return h.userId === me().id ? (me().name || t('you')) : (h.name || t('anon')); }
   function reviewText(r) { return state.lang === 'en' && r.textEn ? r.textEn : (r.text || ''); }
   function avatarHTML(name) {
     var str = String(name || '?').trim();
@@ -1766,6 +1821,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
         }, 700);
       });
       map.on('click', onMapClick);
+      map.on('styleimagemissing', onImageMissing);
       map.on('moveend', function () {
         clearTimeout(viewTimer); viewTimer = setTimeout(saveView, 400);
         ensurePinThumbs();
@@ -2030,6 +2086,70 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       })
     };
   }
+  /* ================= 我的家 =================
+   * 旅行大地图：大家公开的家画成小房子（右上角小房子按钮开关），离得近的合成一个带数字的；
+   * 我的地图 · 旅行：只画我自己的家，公不公开都画 */
+  var HOME_COLOR = '#4F63D8';
+  /* 小房子：白底蓝房子；我自己的是蓝底白房子。合在一起的右上角加个数字 */
+  function drawHome(mine, count) {
+    var s = 44, cx = 22, cy = 22, cv = document.createElement('canvas');
+    cv.width = Math.round(s * DPR); cv.height = Math.round(s * DPR);
+    var g = cv.getContext('2d');
+    g.scale(DPR, DPR);
+    g.save();
+    g.shadowColor = 'rgba(0,0,0,.3)'; g.shadowBlur = 4; g.shadowOffsetY = 1.5;
+    g.beginPath(); g.arc(cx, cy, 13.5, 0, Math.PI * 2);
+    g.fillStyle = mine ? HOME_COLOR : '#ffffff'; g.fill();
+    g.restore();
+    g.lineWidth = 2; g.strokeStyle = mine ? '#ffffff' : HOME_COLOR; g.stroke();
+    var c = mine ? '#ffffff' : HOME_COLOR;
+    g.fillStyle = c; g.strokeStyle = c; g.lineWidth = 2; g.lineJoin = 'round'; g.lineCap = 'round';
+    g.beginPath(); g.moveTo(cx - 7, cy - 0.5); g.lineTo(cx, cy - 6.5); g.lineTo(cx + 7, cy - 0.5); g.stroke();
+    g.beginPath(); g.moveTo(cx - 4.7, cy - 1.5); g.lineTo(cx - 4.7, cy + 6.5); g.lineTo(cx + 4.7, cy + 6.5); g.lineTo(cx + 4.7, cy - 1.5); g.lineTo(cx, cy - 5.4); g.closePath(); g.fill();
+    g.fillStyle = mine ? HOME_COLOR : '#ffffff';
+    g.fillRect(cx - 1.4, cy + 1.6, 2.8, 4.9);
+    if (count) {
+      g.font = '700 10px ' + getComputedStyle(document.body).fontFamily;
+      var w = Math.max(15, g.measureText(count).width + 8), bx = Math.min(s - w / 2 - 1, cx + 12), by = 9;
+      g.beginPath();
+      g.moveTo(bx - w / 2 + 7.5, by - 7.5); g.arcTo(bx + w / 2, by - 7.5, bx + w / 2, by + 7.5, 7.5); g.arcTo(bx + w / 2, by + 7.5, bx - w / 2, by + 7.5, 7.5);
+      g.arcTo(bx - w / 2, by + 7.5, bx - w / 2, by - 7.5, 7.5); g.arcTo(bx - w / 2, by - 7.5, bx + w / 2, by - 7.5, 7.5); g.closePath();
+      g.fillStyle = HOME_COLOR; g.fill(); g.lineWidth = 1.5; g.strokeStyle = '#ffffff'; g.stroke();
+      g.fillStyle = '#ffffff'; g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.fillText(count, bx, by + 0.5);
+    }
+    return g.getImageData(0, 0, cv.width, cv.height);
+  }
+  function homeImage(mine) {
+    var id = mine ? 'home-me' : 'home';
+    if (map && !map.hasImage(id)) map.addImage(id, drawHome(mine), { pixelRatio: DPR });
+    return id;
+  }
+  /* 合在一起的小房子按数字要图片，地图要的时候再画 */
+  function onImageMissing(e) {
+    var m = /^home-n-(.+)$/.exec(e.id || '');
+    if (m && !map.hasImage(e.id)) map.addImage(e.id, drawHome(false, m[1]), { pixelRatio: DPR });
+  }
+  function homesShown() {
+    if (state.scope === 'all') return state.mode === 'travel' && state.homesOn;
+    return state.scope === 'mine' && (state.mode === 'travel' || state.mineBoth);
+  }
+  function homesOnMap() {
+    if (!homesShown()) return [];
+    if (state.scope !== 'all') { var mine = store.myHome(); return mine ? [mine] : []; }
+    return store.homes().filter(function (h) { return h.public; });
+  }
+  function homesFC() {
+    return {
+      type: 'FeatureCollection',
+      features: homesOnMap().map(function (h) {
+        var mine = h.userId === me().id;
+        return { type: 'Feature', geometry: { type: 'Point', coordinates: [h.lng, h.lat] }, properties: { uid: h.userId, mine: mine, icon: homeImage(mine) } };
+      })
+    };
+  }
+  function publicHomeCount() { return store.homes().filter(function (h) { return h.public; }).length; }
+
   function meFC() {
     return { type: 'FeatureCollection', features: state.me ? [{ type: 'Feature', geometry: { type: 'Point', coordinates: [state.me.lng, state.me.lat] }, properties: {} }] : [] };
   }
@@ -2044,6 +2164,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     var accent = accentColor();
     map.addSource('places', { type: 'geojson', data: placesGeoJSON(), cluster: true, clusterMaxZoom: 15, clusterRadius: 46 });
     map.addSource('me', { type: 'geojson', data: meFC() });
+    map.addSource('homes', { type: 'geojson', data: homesFC(), cluster: true, clusterMaxZoom: 11, clusterRadius: 36 });
     var isCity = ['==', ['get', 'precision'], 'city'];
     map.addLayer({
       id: 'pt-area', type: 'circle', source: 'places',
@@ -2070,6 +2191,14 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       id: 'cl-count', type: 'symbol', source: 'places', filter: ['has', 'point_count'],
       layout: { 'text-field': ['get', 'point_count_abbreviated'], 'text-font': fonts.bold, 'text-size': 12.5, 'text-allow-overlap': true, 'text-ignore-placement': true },
       paint: { 'text-color': '#ffffff' }
+    });
+    /* 小房子盖在地点的数字圈上面（缩小看全国时两者常常叠在一起），但在单个地点图钉下面 */
+    map.addLayer({
+      id: 'home-pin', type: 'symbol', source: 'homes',
+      layout: {
+        'icon-image': ['case', ['has', 'point_count'], ['concat', 'home-n-', ['get', 'point_count_abbreviated']], ['get', 'icon']],
+        'icon-allow-overlap': true, 'icon-ignore-placement': true, 'icon-size': ['interpolate', ['linear'], ['zoom'], 2, 0.8, 10, 1]
+      }
     });
     map.addLayer({
       id: 'pt-sel', type: 'circle', source: 'places', filter: ['==', ['get', 'id'], '__none__'],
@@ -2103,6 +2232,8 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
   function refreshMap() {
     var src = map && map.getSource && map.getSource('places');
     if (src) src.setData(placesGeoJSON());
+    var hs = map && map.getSource && map.getSource('homes');
+    if (hs) hs.setData(homesFC());
     syncCountries();
   }
   function repaintAccent() {
@@ -2181,7 +2312,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
   function onMapClick(e) {
     if (state.picking) {
       /* 加一家时点到地图上已有的地点、或底图上的店名：直接打开它的卡片，在卡片上打分添加，不用再搜 */
-      if (!state.picking.repick) {
+      if (!state.picking.repick && !state.picking.home) {
         var pid = placeIdAt(e.point), poi0 = !pid && basePoiAt(e.point);
         if (pid || poi0) {
           cancelPick();
@@ -2208,6 +2339,8 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       }
       return;
     }
+    var homes = map.getLayer('home-pin') ? map.queryRenderedFeatures([[e.point.x - 14, e.point.y - 14], [e.point.x + 14, e.point.y + 14]], { layers: ['home-pin'] }) : [];
+    if (homes.length) { openHomesAt(homes); return; }
     var area = map.getLayer('pt-area') ? map.queryRenderedFeatures(e.point, { layers: ['pt-area'] }) : [];
     if (area.length && area[0].properties && area[0].properties.id) { openPlace(area[0].properties.id, { fly: false }); return; }
     /* 底图上自带的店名、景点名也能点：还不在雪团的先预览，打个分就能记进我的地图 */
@@ -2217,6 +2350,32 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     if (isMobile() && state.snap !== 'peek' && (state.view === 'feed' || state.view === 'place')) {
       if (state.view === 'place') goFeed('peek'); else setSnap('peek');
     }
+  }
+
+  /* 点小房子：合在一起的列出里面所有人；同一个城市叠在一起的也都列出来 */
+  function clusterLeaves(src, id) {
+    return new Promise(function (resolve) {
+      try {
+        var r = src.getClusterLeaves(id, 200, 0, function (err, fs) { resolve(err ? [] : fs); });
+        if (r && typeof r.then === 'function') r.then(resolve, function () { resolve([]); });
+      } catch (e) { resolve([]); }
+    });
+  }
+  function openHomesAt(hits) {
+    var src = map.getSource('homes');
+    Promise.all(hits.map(function (f) {
+      return f.properties && f.properties.cluster ? clusterLeaves(src, f.properties.cluster_id) : Promise.resolve([f]);
+    })).then(function (lists) {
+      var ids = [];
+      lists.forEach(function (l) { l.forEach(function (f) { var u = f.properties && f.properties.uid; if (u && ids.indexOf(u) === -1) ids.push(u); }); });
+      var list = ids.map(homeOf).filter(Boolean);
+      if (!list.length) return;
+      if (state.view === 'feed') state.feedSnap = state.snap;
+      state.homes = ids;
+      state.view = 'homes';
+      render();
+      setSnap('half');
+    });
   }
 
   /* 底图（OpenMapTiles）的 poi 层：不同底图的图层名不一样，按 source-layer 找；换底图时重新找 */
@@ -2496,7 +2655,8 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     plane: '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/></svg>',
     food: '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z"/></svg>',
     filter: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h10M4 12h4M12 12h8M4 18h12"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg>',
-    globe: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg>'
+    globe: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg>',
+    home: ICON.home
   };
   /* 地图右上角的按钮：吃/玩切换、筛选；我的地图缩小到国家级别再多一个“点亮国家” */
   function renderFilters() {
@@ -2509,6 +2669,10 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     if (globeChipShown()) {
       var lit = state.countries && world.fc;
       h += '<button type="button" class="icon-btn globe-btn" data-action="countries" aria-pressed="' + state.countries + '" aria-label="' + esc(t('litCountries')) + '" title="' + esc(t('litCountries')) + '">' + CTRL_ICON.globe + (lit ? '<b>' + world.litCount + '</b>' : '') + '</button>';
+    }
+    if (state.scope === 'all' && state.mode === 'travel') {
+      var nh = publicHomeCount();
+      h += '<button type="button" class="icon-btn home-btn" data-action="homes-toggle" aria-pressed="' + state.homesOn + '" aria-label="' + esc(t('homesBtn')) + '" title="' + esc(t('homesBtn')) + '">' + CTRL_ICON.home + (state.homesOn && nh ? '<b>' + nh + '</b>' : '') + '</button>';
     }
     $('#map-ctrls').innerHTML = h;
   }
@@ -2725,6 +2889,8 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     else if (v === 'preview') renderPreview();
     else if (v === 'profile') renderProfile();
     else if (v === 'login') renderLogin();
+    else if (v === 'homes') renderHomes();
+    else if (v === 'home') renderHomeSet();
     if (lastRenderedView !== v) view.scrollTop = 0;
     lastRenderedView = v;
     updateSelPin();
@@ -3273,7 +3439,8 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       : '<p class="f-hint">' + esc(t('loginWhy')) + '</p><button type="button" class="btn primary" data-action="login">' + esc(t('login')) + '</button>') + '</div>';
     /* 以前这里有“来自哪”四个输入框，没什么用，去掉了（以后改成在旅行地图上设“我的家”） */
     var personal = !signedIn ? '' :
-      '<div class="field"><label class="f-label" for="pf-name">' + esc(t('nickname')) + '</label><input id="pf-name" class="input" data-pf="name" maxlength="20" value="' + esc(pf.name) + '" placeholder="' + esc(t('nicknamePh')) + '"></div>';
+      '<div class="field"><label class="f-label" for="pf-name">' + esc(t('nickname')) + '</label><input id="pf-name" class="input" data-pf="name" maxlength="20" value="' + esc(pf.name) + '" placeholder="' + esc(t('nicknamePh')) + '"></div>' +
+      homeFieldHTML();
     var dataButtons = remote
       ? (signedIn ? '<button type="button" class="btn small" data-action="export">' + esc(t('exportData')) + '</button>' +
           '<button type="button" class="btn small" data-action="import">' + esc(t('importData')) + '</button>' +
@@ -3296,6 +3463,123 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       (dataButtons ? '<div class="btn-row">' + dataButtons + '</div>' : '') + '</div>' +
       '<p class="about">' + esc(t('about')) + '</p></div>';
     view.innerHTML = h;
+  }
+
+  /* “我”里的“我的家”：一行城市 + 改 / 不设了，下面一个公开开关（默认关） */
+  function homeFieldHTML() {
+    var h = store.myHome();
+    var body = !h
+      ? '<p class="f-hint">' + esc(t('homeNone')) + '</p><button type="button" class="btn small home-set-btn" data-action="home-set">' + ICON.home + esc(t('homeSet')) + '</button>'
+      : '<div class="home-row"><span class="home-ic" aria-hidden="true">' + ICON.home + '</span><b>' + esc(h.city) + '</b>' +
+        '<button type="button" class="btn small" data-action="home-set">' + esc(t('homeChange')) + '</button>' +
+        '<button type="button" class="link-btn danger" data-action="home-del">' + esc(t('homeRemove')) + '</button></div>' +
+        '<button type="button" class="switch-row" role="switch" data-action="home-public" aria-checked="' + h.public + '">' +
+        '<span class="sw-text"><b>' + esc(t('homePublic')) + '</b><small>' + esc(h.public ? t('homePublicOn', { c: h.city }) : t('homePublicOff')) + '</small></span><span class="switch" aria-hidden="true"></span></button>';
+    return '<div class="field" id="home-field"><span class="f-label">' + esc(t('myHome')) + '</span>' + body + '</div>';
+  }
+  /* 点了地图上的小房子：谁的家、在哪 */
+  function renderHomes() {
+    var list = (state.homes || []).map(homeOf).filter(Boolean);
+    if (!list.length) { goFeed(); return; }
+    var cities = [];
+    list.forEach(function (h) { if (cities.indexOf(h.city) === -1) cities.push(h.city); });
+    var title = list.length === 1 ? t('homeOf', { n: homeName(list[0]) }) : cities.length === 1 ? cities[0] : t('homesN', { n: list.length });
+    var mine = list.some(function (h) { return h.userId === me().id; });
+    var h = '<div class="view-top"><button type="button" class="icon-btn flat" data-action="back" aria-label="' + esc(t('back')) + '">' + ICON.back + '</button>' +
+      '<h2 class="view-title">' + esc(title) + '</h2></div><ul class="near-list homes-list">' +
+      list.map(function (x) {
+        var you = x.userId === me().id;
+        var sub = esc(x.city) + (you && !x.public ? ' · ' + esc(t('homeOnlyYou')) : '');
+        return '<li><div class="near-item">' + avatarHTML(homeName(x)) + '<span class="near-text"><b>' + esc(t('homeOf', { n: homeName(x) })) + '</b><small>' + sub + '</small></span></div></li>';
+      }).join('') + '</ul>' +
+      '<div class="actions"><button type="button" class="btn" data-action="home-set">' + ICON.home + esc(t(mine ? 'homeEdit' : store.myHome() ? 'homeEdit' : 'homeSetCta')) + '</button></div>';
+    view.innerHTML = h;
+  }
+  /* 设置我的家：只搜城市（Photon 的城市 / 州 + 维基的城市词条），或者在地图上点 */
+  var homeQ = { q: '', status: 'idle', results: [], timer: null, seq: 0 };
+  function renderHomeSet() {
+    view.innerHTML = '<div class="view-top"><button type="button" class="icon-btn flat" data-action="back" aria-label="' + esc(t('back')) + '">' + ICON.back + '</button><h2 class="view-title">' + esc(t('homeTitle')) + '</h2></div>' +
+      '<div class="add-search"><input id="home-q" class="input" type="search" autocomplete="off" placeholder="' + esc(t('homeSearchPh')) + '" aria-label="' + esc(t('homeSearchPh')) + '" value="' + esc(homeQ.q) + '">' +
+      '<button type="button" class="btn add-pin" data-action="home-pick">' + ICON.pin + esc(t('homePick')) + '</button></div>' +
+      '<p class="f-hint add-hint">' + esc(t('homeNote')) + '</p>' +
+      '<ul class="search-results" id="home-results"></ul>';
+    renderHomeResults();
+    setTimeout(function () { var q = $('#home-q'); if (q) q.focus(); }, 60);
+  }
+  function renderHomeResults() {
+    var box = $('#home-results');
+    if (!box) return;
+    var q = homeQ.q.trim(), h = '';
+    if (q.length < 2) h = '';
+    else if (homeQ.status === 'loading') h = '<li class="empty small">' + esc(t('osmLoading')) + '</li>';
+    else if (homeQ.status === 'fail') h = '<li class="empty small">' + esc(t('osmFail')) + '</li>';
+    else if (!homeQ.results.length) h = '<li class="empty small">' + esc(t('homeNoResult')) + '</li>';
+    else h = homeQ.results.map(function (r, i) {
+      return '<li><button type="button" class="near-item" data-action="home-result" data-i="' + i + '"><span class="cat-ic home-ic" aria-hidden="true">' + ICON.home + '</span>' +
+        '<span class="near-text"><b>' + esc(r.name) + '</b><small>' + esc(r.where || '') + '</small></span><span class="near-cta">' + esc(t('homeSet')) + '</span></button></li>';
+    }).join('');
+    box.innerHTML = h;
+  }
+  function queueHomeSearch() {
+    var q = homeQ.q.trim();
+    clearTimeout(homeQ.timer);
+    var seq = ++homeQ.seq;
+    if (q.length < 2) { homeQ.status = 'idle'; homeQ.results = []; return; }
+    homeQ.status = 'loading';
+    homeQ.timer = setTimeout(function () {
+      var fail = function () { return null; };
+      var url = PHOTON_URL + '?q=' + encodeURIComponent(q) + '&limit=10&layer=city&layer=county&layer=state' + (state.lang === 'en' ? '&lang=en' : '');
+      var photon = fetch(url).then(function (res) { if (!res.ok) throw new Error('photon ' + res.status); return res.json(); }).then(parsePhoton);
+      Promise.all([wikiSearch(q).catch(fail), photon.catch(fail)]).then(function (rs) {
+        if (seq !== homeQ.seq) return;
+        if (!rs[0] && !rs[1]) { homeQ.status = 'fail'; renderHomeResults(); return; }
+        var wiki = (rs[0] || []).filter(function (r) { return r.cat === 'city' && (r.zoom || 10) >= 7; });
+        var cities = (rs[1] || []).filter(function (r) { return r.precision === 'city'; });
+        homeQ.results = mergeResults(wiki, cities).slice(0, 8);
+        homeQ.status = 'done';
+        renderHomeResults();
+      });
+    }, 300);
+  }
+  /* 只存到 0.1 度（约 10 公里），数据库里也会再取整一次 */
+  function round1(v) { return Math.round(v * 10) / 10; }
+  function saveHome(city, loc) {
+    var old = store.myHome();
+    return store.setHome({ city: String(city).slice(0, 60), lat: round1(loc.lat), lng: round1(loc.lng), public: old ? old.public : false }).then(function (h) {
+      toast(t('homeSaved', { c: h.city }));
+      homeQ.q = ''; homeQ.results = []; homeQ.status = 'idle';
+      afterHomeChange();
+      if (state.mode !== 'travel') setMode('travel', { noFly: true });
+      leaveHomeSet();
+      /* 现在面板是展开的；按收起时的位置飞过去，回到地图时小房子正好在中间 */
+      if (map) map.flyTo({ center: [h.lng, h.lat], zoom: 8, essential: true, duration: reduceMotion ? 0 : 1200, padding: { top: 24, bottom: isMobile() ? snapVisible('peek') + tabbarH() + 12 : 40, left: 20, right: isMobile() ? 64 : 70 } });
+    }, function () { toast(t('saveFail')); });
+  }
+  function afterHomeChange() { refreshMap(); renderFilters(); }
+  function openHomeSet() {
+    if (!requireLogin()) return;
+    if (state.view === 'feed') state.feedSnap = state.snap;
+    state.homeBack = state.view === 'profile' ? 'profile' : state.view === 'homes' ? 'homes' : null;
+    state.view = 'home';
+    render();
+    setSnap('full');
+  }
+  function leaveHomeSet() {
+    var to = state.homeBack;
+    state.homeBack = null;
+    if (to === 'profile') { state.view = 'profile'; render(); setSnap('full'); }
+    else if (to === 'homes' && state.homes) { state.view = 'homes'; render(); setSnap('half'); }
+    else goFeed();
+  }
+  /* 地图上点的：问 Photon 这是哪个城市，只要城市名 */
+  function reverseCity(loc) {
+    var url = PHOTON_URL.replace(/api\/$/, 'reverse') + '?lat=' + loc.lat.toFixed(4) + '&lon=' + loc.lng.toFixed(4) + '&radius=20' + (state.lang === 'en' ? '&lang=en' : '');
+    return fetch(url).then(function (res) { if (!res.ok) throw new Error('photon ' + res.status); return res.json(); }).then(function (json) {
+      var f = json && json.features && json.features[0], pr = (f && f.properties) || {};
+      var name = pr.city || pr.county || pr.state || (['city', 'county', 'state'].indexOf(pr.type) !== -1 ? pr.name : '');
+      if (!name) throw new Error('no city');
+      return name;
+    });
   }
 
   function renderLogin() {
@@ -3389,6 +3673,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     }
     if (state.view === 'form') formCancel();
     else if (state.view === 'nearby') { state.form = null; goFeed(); }
+    else if (state.view === 'home') leaveHomeSet();
     else goFeed();
   }
   function formCancel() {
@@ -3449,15 +3734,18 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     if (isMobile()) setSnap('hidden');
     updatePickUI();
     syncNavGuard();
-    if (state.mode === 'food' && map.getZoom() < 15 && !state.picking.repick) {
+    if (state.picking.home) {
+      if (map.getZoom() > 10) map.easeTo({ zoom: 9, duration: reduceMotion ? 0 : 600 });
+    } else if (state.mode === 'food' && map.getZoom() < 15 && !state.picking.repick) {
       var c = map.getContainer();
       map.easeTo({ zoom: 16, around: map.unproject([c.clientWidth / 2, c.clientHeight / 2]), duration: reduceMotion ? 0 : 700 });
     }
   }
   function updatePickUI() {
-    $('#pick-hint').textContent = t(state.mode === 'food' ? 'pickHintFood' : 'pickHintTravel');
+    var home = state.picking && state.picking.home;
+    $('#pick-hint').textContent = t(home ? 'homePickHint' : state.mode === 'food' ? 'pickHintFood' : 'pickHintTravel');
     var prec = $('#pick-prec');
-    if (state.mode === 'travel' && map) {
+    if (state.mode === 'travel' && map && !home) {
       prec.innerHTML = esc(t('pickPrecision', { p: '§' })).replace('§', '<b>' + esc(precLabel(defaultPrecision(map.getZoom()))) + '</b>');
       prec.hidden = false;
     } else prec.hidden = true;
@@ -3472,11 +3760,20 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     var ctx = state.picking;
     endPick();
     if (ctx && ctx.repick && state.form) { state.view = 'form'; render(); setSnap('full'); return; }
+    if (ctx && ctx.home) { state.view = 'home'; render(); setSnap('full'); return; }
     setSnap(state.view === 'feed' ? (state.feedSnap || 'peek') : state.view === 'place' ? 'half' : 'full');
   }
   function confirmPick() {
     var loc = pickLngLat(), z = map.getZoom(), ctx = state.picking || {};
     endPick();
+    if (ctx.home) {
+      toast(t('homeLookup'));
+      reverseCity(loc).then(function (city) { return saveHome(city, loc); }, function () {
+        toast(t('homePickFail'));
+        state.view = 'home'; render(); setSnap('full');
+      });
+      return;
+    }
     if (ctx.repick && state.form) {
       state.form.loc = loc;
       state.view = 'form'; render(); setSnap('full');
@@ -3807,6 +4104,17 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       case 'cat': state.cat = d.cat; refilter(); break;
       case 'saved-want': state.savedWant = d.v === 'want'; refilter(); break;
       case 'mine-mode': if (state.view !== 'feed') goFeed(); setMineView(d.v); if (state.bsheet) renderBSheet(); break;
+      case 'homes-toggle': state.homesOn = !state.homesOn; refreshMap(); renderFilters(); saveView(); break;
+      case 'home-set': openHomeSet(); break;
+      case 'home-pick': if (requireLogin()) startPick({ home: true }); break;
+      case 'home-result': var hr = homeQ.results[+d.i]; if (hr) saveHome(hr.name, hr); break;
+      case 'home-del':
+        store.setHome(null).then(function () { toast(t('homeRemoved')); afterHomeChange(); render(); }, function () { toast(t('saveFail')); });
+        break;
+      case 'home-public':
+        var mh = store.myHome();
+        if (mh) store.setHome({ city: mh.city, lat: mh.lat, lng: mh.lng, public: !mh.public }).then(function () { afterHomeChange(); render(); }, function () { toast(t('saveFail')); });
+        break;
       case 'countries': state.countries = !state.countries; syncCountries(); renderFilters(); saveView(); break;
       case 'filters': openBSheet('filters'); break;
       case 'sheet-close': closeBSheet(); break;
@@ -3881,6 +4189,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
   document.addEventListener('input', function (e) {
     var el = e.target;
     if (el.id === 'q') { state.query = el.value; queueOsmSearch(); renderSearchResults(); }
+    else if (el.id === 'home-q') { homeQ.q = el.value; queueHomeSearch(); renderHomeResults(); }
     else if (el.dataset && el.dataset.pf) { var patch = {}; patch[el.dataset.pf] = el.value.trim(); store.updateProfile(patch); }
   });
   document.addEventListener('change', function (e) {
@@ -3946,7 +4255,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       if (savedView.lang === 'en' || savedView.lang === 'zh') state.lang = savedView.lang;
       if (savedView.mode === 'travel' || savedView.mode === 'food') state.mode = savedView.mode;
       if (STYLE_URLS[savedView.styleKey]) state.styleKey = savedView.styleKey;
-      state.mineBoth = savedView.mineBoth === true; state.countries = savedView.countries === true;
+      state.mineBoth = savedView.mineBoth === true; state.countries = savedView.countries === true; state.homesOn = savedView.homesOn !== false;
     }
     applyStaticI18n();
     renderChrome();
