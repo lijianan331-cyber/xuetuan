@@ -5,18 +5,18 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>雪团 XueTuan</title>
 <meta name="description" content="雪团：厦马同学自己的吃喝玩乐地图。记录去过的地方、打分、拍照，收藏想去的地方。">
-<meta name="theme-color" content="#F4F8FC" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#0B121A" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#FFFFFF">
+<meta name="color-scheme" content="only light">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=ZCOOL+QingKe+HuangYou&display=swap">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.css">
 <style>
 /* Layout: full-bleed map with floating controls; one panel that is a bottom sheet on phones and a left column on desktop.
-   Look: snow white with ice blue. Floating controls are grouped into a few frosted bars instead of many separate boxes. */
+   Look: snow white with blue (雪团). Always light, even when the phone is in dark mode. Food is ice blue, travel a deeper blue. */
 :root {
   --food: #2E7DCB;          /* ice blue */
-  --travel: #12897F;        /* glacier teal */
+  --travel: #4F63D8;        /* deep snow blue */
   --accent: var(--food);
   --accent-ink: #FFFFFF;
   --accent-soft: color-mix(in srgb, var(--accent) 12%, var(--surface));
@@ -35,17 +35,9 @@
   --sheet-peek: 138px;
   color-scheme: light;
 }
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --food: #6DB1F2; --travel: #4CC7B9; --accent-ink: #0B1520;
-    --bg: #0B121A; --surface: #121B25; --surface-2: #1A2531; --frost: rgba(18, 27, 37, .86);
-    --ink: #E6EEF6; --muted: #93A4B5; --line: #25313E;
-    --shadow: 0 8px 26px rgba(0, 0, 0, .5), 0 1px 3px rgba(0, 0, 0, .45);
-    color-scheme: dark;
-  }
-}
+/* 深色只在明确要的时候用（现在没有入口）；手机开了深色模式也保持蓝白 */
 :root[data-theme="dark"] {
-  --food: #6DB1F2; --travel: #4CC7B9; --accent-ink: #0B1520;
+  --food: #6DB1F2; --travel: #8C9BF2; --accent-ink: #0B1520;
   --bg: #0B121A; --surface: #121B25; --surface-2: #1A2531; --frost: rgba(18, 27, 37, .86);
   --ink: #E6EEF6; --muted: #93A4B5; --line: #25313E;
   --shadow: 0 8px 26px rgba(0, 0, 0, .5), 0 1px 3px rgba(0, 0, 0, .45);
@@ -55,14 +47,14 @@ html.mode-travel { --accent: var(--travel); }
 /* 老一点的手机浏览器没有 color-mix：给浅色主题一个固定的浅底色 */
 @supports not (color: color-mix(in srgb, red 50%, blue)) {
   :root { --accent-soft: #E6F0FA; }
-  html.mode-travel { --accent-soft: #E1F2F0; }
+  html.mode-travel { --accent-soft: #E8EBFB; }
 }
 
 *, *::before, *::after { box-sizing: border-box; }
 html, body { height: 100%; margin: 0; overflow: hidden; overscroll-behavior: none; }
 body {
   background: var(--bg); color: var(--ink);
-  font: 15px/1.5 var(--font-ui);
+  font: 14px/1.5 var(--font-ui);
   -webkit-font-smoothing: antialiased; overflow: hidden;
   -webkit-tap-highlight-color: transparent;
 }
@@ -86,7 +78,7 @@ html.kb-open .panel { height: calc(var(--app-h, 100vh) - env(safe-area-inset-top
 /* 面板拉满时，地图右上角的按钮会从面板顶上露出一截，干脆藏起来 */
 body[data-snap="full"] .map-ctrls { opacity: 0; pointer-events: none; }
 .stage { position: absolute; top: 0; right: 0; bottom: 0; left: 0; --sheet-visible: 0px; }
-/* 地球缩小时露出来的背景：浅色是飘雪的天空，深色是星空 */
+/* 地球缩小时露出来的背景：飘雪的天空 */
 #map {
   position: absolute; top: 0; right: 0; bottom: 0; left: 0;
   background-color: #E4EEF8;
@@ -103,19 +95,6 @@ body[data-snap="full"] .map-ctrls { opacity: 0; pointer-events: none; }
     radial-gradient(2px 2px at 85% 87%, rgba(255,255,255,.9) 50%, transparent 60%),
     radial-gradient(1.4px 1.4px at 60% 38%, rgba(255,255,255,.8) 50%, transparent 60%),
     radial-gradient(ellipse 80% 70% at 50% 42%, #FBFDFF 0%, #E3EEF9 55%, #C9DDF1 100%);
-}
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) #map {
-    background-color: #06101a;
-    background-image:
-      radial-gradient(1.3px 1.3px at 8% 14%, rgba(255,255,255,.85) 50%, transparent 55%),
-      radial-gradient(1px 1px at 23% 72%, rgba(255,255,255,.7) 50%, transparent 55%),
-      radial-gradient(1.4px 1.4px at 37% 26%, rgba(255,255,255,.8) 50%, transparent 55%),
-      radial-gradient(1.2px 1.2px at 66% 10%, rgba(255,255,255,.75) 50%, transparent 55%),
-      radial-gradient(1px 1px at 79% 64%, rgba(255,255,255,.7) 50%, transparent 55%),
-      radial-gradient(1.5px 1.5px at 92% 33%, rgba(255,255,255,.85) 50%, transparent 55%),
-      radial-gradient(ellipse 75% 65% at 50% 45%, #14344d 0%, #0a1b2b 55%, #050b13 100%);
-  }
 }
 .map-error {
   position: absolute; top: 0; right: 0; bottom: 0; left: 0; z-index: 4; display: grid; place-items: center;
@@ -134,82 +113,78 @@ body[data-snap="full"] .map-ctrls { opacity: 0; pointer-events: none; }
 .map-ctrls {
   position: absolute; z-index: 9; right: max(12px, env(safe-area-inset-right, 0px));
   top: calc(env(safe-area-inset-top, 0px) + 12px);
-  display: flex; flex-direction: column; gap: 10px;
+  display: flex; flex-direction: column; gap: 8px;
 }
-.map-ctrls .icon-btn { position: relative; width: 44px; height: 44px; border-radius: 50%; }
-.map-ctrls .icon-btn svg { width: 22px; height: 22px; }
-/* 上色：搜索、筛选用彩色图标；吃/玩切换用要切去的那张地图的颜色（吃的地图上是青绿色飞机） */
-.map-ctrls .search-btn { color: var(--accent); }
-.map-ctrls .mode-btn { color: #fff; background: linear-gradient(145deg, #2BB3A6, #0E7A70); box-shadow: 0 6px 16px rgba(18, 137, 127, .35); }
-html.mode-travel .map-ctrls .mode-btn { background: linear-gradient(145deg, #5AA5EC, #2569B3); box-shadow: 0 6px 16px rgba(46, 125, 203, .35); }
-.map-ctrls .filter-btn { color: #E8590C; }
-.map-ctrls .filter-btn[aria-pressed="true"] { color: #fff; background: linear-gradient(145deg, #FF8A3D, #E8590C); }
-.map-ctrls .filter-btn[aria-pressed="true"] b { background: #fff; color: #E8590C; box-shadow: 0 1px 3px rgba(0, 0, 0, .2); }
-.map-ctrls .globe-btn { color: #D99100; }
+.map-ctrls .icon-btn { position: relative; width: 36px; height: 36px; border-radius: 50%; }
+.map-ctrls .icon-btn svg { width: 18px; height: 18px; }
+/* 全是蓝白：白底蓝图标；吃/玩切换用要切去的那张地图的蓝色（吃的地图上是深一点的蓝色飞机） */
+.map-ctrls .search-btn, .map-ctrls .filter-btn, .map-ctrls .globe-btn { color: var(--accent); }
+.map-ctrls .mode-btn { color: #fff; background: linear-gradient(145deg, #7D8EF2, #4A5BD0); box-shadow: 0 5px 14px rgba(79, 99, 216, .35); }
+html.mode-travel .map-ctrls .mode-btn { background: linear-gradient(145deg, #5AA5EC, #2569B3); box-shadow: 0 5px 14px rgba(46, 125, 203, .35); }
+.map-ctrls .filter-btn[aria-pressed="true"], .map-ctrls .globe-btn[aria-pressed="true"] { color: #fff; background: var(--accent); }
 .map-ctrls .icon-btn b {
-  position: absolute; top: -4px; right: -4px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px;
-  background: var(--accent); color: var(--accent-ink); font-size: 11px; line-height: 18px; text-align: center;
+  position: absolute; top: -4px; right: -4px; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 8px;
+  background: var(--accent); color: var(--accent-ink); font-size: 10px; line-height: 16px; text-align: center;
 }
-.map-ctrls .globe-btn[aria-pressed="true"] { color: #5a3a00; background: linear-gradient(145deg, #FFD966, #F5B21B); }
-.map-ctrls .globe-btn b { background: #fff; color: #8a5a00; box-shadow: 0 1px 3px rgba(0, 0, 0, .2); }
+.map-ctrls .filter-btn[aria-pressed="true"] b, .map-ctrls .globe-btn b { background: #fff; color: var(--accent); box-shadow: 0 1px 3px rgba(0, 0, 0, .2); }
 .icon-btn {
-  flex: none; width: 44px; height: 44px; padding: 0; border: 0; border-radius: 14px;
+  flex: none; width: 38px; height: 38px; padding: 0; border: 0; border-radius: 12px;
   background: var(--surface); color: var(--ink); box-shadow: var(--shadow);
   display: grid; place-items: center;
 }
-.icon-btn svg { width: 22px; height: 22px; }
-.icon-btn.flat { width: 36px; height: 36px; margin-left: -6px; border-radius: 50%; background: none; box-shadow: none; }
+.icon-btn svg { width: 19px; height: 19px; }
+.icon-btn.flat { width: 32px; height: 32px; margin-left: -6px; border-radius: 50%; background: none; box-shadow: none; }
 /* 手机上点过的东西会一直停在悬停状态，悬停底色只给有鼠标的设备 */
 @media (hover: hover) { .icon-btn.flat:hover { background: var(--surface-2); } }
 
 /* ---------- chips (filter sheet, forms) ---------- */
 .chip {
-  height: 32px; padding: 0 12px; border-radius: 999px; border: 0;
-  background: none; color: var(--ink); font-size: 13px; font-weight: 600;
+  height: 30px; padding: 0 11px; border-radius: 999px; border: 0;
+  background: none; color: var(--ink); font-size: 12.5px; font-weight: 600;
   display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;
 }
 @media (hover: hover) { .chip:hover { background: var(--surface-2); } }
 .chip[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); }
-.chip svg { width: 16px; height: 16px; }
+.chip svg { width: 15px; height: 15px; }
 .seg { display: inline-flex; gap: 2px; padding: 3px; border-radius: 12px; background: var(--surface-2); }
-.seg button { height: 36px; padding: 0 14px; border: 0; border-radius: 9px; background: none; color: var(--muted); font-size: 14px; font-weight: 600; white-space: nowrap; }
+.seg button { height: 32px; padding: 0 12px; border: 0; border-radius: 9px; background: none; color: var(--muted); font-size: 13px; font-weight: 600; white-space: nowrap; }
 .seg button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 3px rgba(40, 90, 140, .16); }
 .form .seg { display: flex; }
 .form .seg button { flex: 1; min-width: 0; padding: 0 8px; }
 
 /* ---------- locate button + bottom tab bar ---------- */
-:root { --tabbar: calc(58px + env(safe-area-inset-bottom, 0px)); }
+:root { --tabbar: calc(50px + env(safe-area-inset-bottom, 0px)); }
 .locate-btn {
   position: absolute; z-index: 9;
   right: max(12px, env(safe-area-inset-right, 0px));
   bottom: calc(var(--sheet-visible) + var(--tabbar) + 12px);
-  width: 42px; height: 42px; border-radius: 50%;
+  width: 36px; height: 36px; border-radius: 50%;
   transition: bottom .34s cubic-bezier(.2, .8, .2, 1);
 }
-.locate-btn svg { width: 21px; height: 21px; }
+.locate-btn svg { width: 18px; height: 18px; }
 .tabbar {
   position: absolute; z-index: 30; left: 0; right: 0; bottom: 0;
   height: var(--tabbar); padding: 0 max(4px, env(safe-area-inset-right, 0px)) env(safe-area-inset-bottom, 0px) max(4px, env(safe-area-inset-left, 0px));
-  display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); align-items: stretch;
+  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); align-items: stretch;
   background: var(--surface); box-shadow: 0 -1px 0 var(--line), 0 -6px 20px rgba(40, 90, 140, .06);
 }
 .tab {
-  min-width: 0; border: 0; background: none; padding: 6px 2px 4px;
-  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
-  color: var(--muted); font-size: 11px; font-weight: 600; line-height: 1.1;
+  min-width: 0; border: 0; background: none; padding: 5px 2px 3px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  color: var(--muted); font-size: 10px; font-weight: 600; line-height: 1.1;
 }
-.tab svg { width: 23px; height: 23px; }
+.tab svg { width: 20px; height: 20px; }
 .tab span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tab[aria-current="page"] { color: var(--accent); }
 .tab-add { color: var(--ink); }
 .tab-add-ic {
-  width: 46px; height: 32px; border-radius: 12px; display: grid; place-items: center;
+  width: 40px; height: 27px; border-radius: 10px; display: grid; place-items: center;
   background: var(--accent); color: var(--accent-ink);
   box-shadow: 0 4px 12px color-mix(in srgb, var(--accent) 35%, transparent);
   transition: background-color .3s, transform .15s;
 }
 .tab-add:active .tab-add-ic { transform: scale(.94); }
-.tab-add-ic svg { width: 22px; height: 22px; }
+.tab-add-ic svg { width: 19px; height: 19px; }
 .attrib {
   position: absolute; z-index: 8;
   left: max(8px, env(safe-area-inset-left, 0px));
@@ -218,7 +193,6 @@ html.mode-travel .map-ctrls .mode-btn { background: linear-gradient(145deg, #5AA
   background: rgba(255, 255, 255, .6); color: #5A6B7C; font-size: 10px; line-height: 1.45;
   transition: bottom .34s cubic-bezier(.2, .8, .2, 1);
 }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .attrib { background: rgba(18, 27, 37, .6); color: #93A4B5; } }
 .attrib a { color: inherit; text-decoration: none; }
 .attrib a:hover { text-decoration: underline; }
 body.picking .tabbar, body.picking .map-ctrls, body.picking .locate-btn { display: none; }
@@ -234,15 +208,15 @@ body.picking .attrib { bottom: calc(env(safe-area-inset-bottom, 0px) + 122px); }
 }
 @keyframes sheet-up { from { transform: translateY(40px); opacity: .4; } to { transform: none; opacity: 1; } }
 .bsheet-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 6px 0 4px; }
-.bsheet-head h3 { margin: 0; font-size: 18px; font-weight: 800; }
+.bsheet-head h3 { margin: 0; font-size: 16px; font-weight: 800; }
 .bsheet .field { margin-top: 14px; }
 .bsheet-foot { position: sticky; bottom: -16px; display: grid; grid-template-columns: 1fr 2fr; gap: 8px; margin-top: 20px; padding: 10px 0 0; background: var(--surface); }
 .bsheet-foot.single { grid-template-columns: 1fr; }
 .area-opt {
-  width: 100%; display: flex; align-items: center; gap: 12px; padding: 13px 4px; border: 0; border-bottom: 1px solid var(--line);
-  background: none; text-align: left; font-size: 15px; font-weight: 600; color: var(--ink);
+  width: 100%; display: flex; align-items: center; gap: 10px; padding: 11px 4px; border: 0; border-bottom: 1px solid var(--line);
+  background: none; text-align: left; font-size: 14px; font-weight: 600; color: var(--ink);
 }
-.area-opt svg { flex: none; width: 20px; height: 20px; color: var(--accent); }
+.area-opt svg { flex: none; width: 18px; height: 18px; color: var(--accent); }
 .area-opt.muted { color: var(--muted); font-weight: 500; }
 .area-opt:last-child { border-bottom: 0; }
 
@@ -277,15 +251,15 @@ body.picking .attrib { bottom: calc(env(safe-area-inset-bottom, 0px) + 122px); }
   height: calc(100vh - var(--tabbar) - 64px);
   height: calc(var(--app-h, 100vh) - var(--tabbar) - env(safe-area-inset-top, 0px) - 64px);
   display: flex; flex-direction: column;
-  background: var(--surface); border-radius: 24px 24px 0 0;
+  background: var(--surface); border-radius: 20px 20px 0 0;
   box-shadow: 0 -8px 30px rgba(40, 90, 140, .16);
-  transform: translateY(calc(100% - var(--visible, 138px)));
+  transform: translateY(calc(100% - var(--visible, 96px)));
   transition: transform .34s cubic-bezier(.2, .8, .2, 1);
 }
 .panel.dragging { transition: none; }
 .panel::after { content: ""; flex: none; height: var(--hidden, 0px); }
-.grip { flex: none; height: 24px; display: grid; place-items: center; touch-action: none; cursor: grab; }
-.grip span { width: 38px; height: 4px; border-radius: 2px; background: var(--line); }
+.grip { flex: none; height: 20px; display: grid; place-items: center; touch-action: none; cursor: grab; }
+.grip span { width: 34px; height: 4px; border-radius: 2px; background: var(--line); }
 .panel-brand { display: none; align-items: center; gap: 12px; padding: 20px 20px 14px; }
 .brand-name { font-weight: 800; font-size: 17px; letter-spacing: -.01em; line-height: 1.2; }
 .brand-name span { font-family: var(--font-display); font-weight: 400; font-size: 22px; margin-right: 2px; color: var(--accent); }
@@ -297,66 +271,68 @@ body.picking .attrib { bottom: calc(env(safe-area-inset-bottom, 0px) + 122px); }
 
 /* ---------- views ---------- */
 .title-row { display: flex; align-items: center; gap: 8px; margin: 0 0 8px; }
-.view-title { margin: 0; font-size: 19px; font-weight: 800; line-height: 1.25; letter-spacing: -.01em; text-wrap: balance; }
+.view-title { margin: 0; font-size: 16.5px; font-weight: 800; line-height: 1.25; letter-spacing: -.01em; text-wrap: balance; }
 .title-row .view-title { cursor: pointer; }
-.count { font-size: 13px; font-weight: 700; color: var(--muted); font-variant-numeric: tabular-nums; }
+.count { font-size: 12px; font-weight: 700; color: var(--muted); font-variant-numeric: tabular-nums; }
 .sample-note {
   display: flex; align-items: center; justify-content: space-between; gap: 10px;
-  margin: 0; padding: 2px 0 6px; font-size: 12.5px; color: var(--muted);
+  margin: 0; padding: 2px 0 6px; font-size: 12px; color: var(--muted);
 }
-.link-btn { border: 0; background: none; padding: 0; color: var(--accent); font-size: 13px; font-weight: 700; }
+.link-btn { border: 0; background: none; padding: 0; color: var(--accent); font-size: 12.5px; font-weight: 700; }
 .link-btn:hover { text-decoration: underline; text-underline-offset: 3px; }
 .link-btn.danger { color: var(--danger); }
 .sample-note .link-btn { flex: none; white-space: nowrap; }
 .top-cta { margin-left: auto; }
 .mini-seg { display: inline-flex; padding: 2px; border-radius: 999px; background: var(--surface-2); }
-.mini-seg button { height: 26px; padding: 0 10px; border: 0; border-radius: 999px; background: none; color: var(--muted); font-size: 12.5px; font-weight: 600; }
-.mini-seg button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 3px rgba(40, 90, 140, .16); }
+.mini-seg button { display: inline-flex; align-items: center; gap: 3px; }
+.mini-seg button svg { width: 13px; height: 13px; }
+.mini-seg button { height: 26px; padding: 0 12px; border: 0; border-radius: 999px; background: none; color: var(--muted); font-size: 12.5px; font-weight: 700; }
+.mini-seg button[aria-pressed="true"] { background: var(--surface); color: var(--accent); box-shadow: 0 1px 3px rgba(40, 90, 140, .16); }
 .feed, .reviews, .near-list, .search-results, .area-list { list-style: none; margin: 0; padding: 0; }
 .feed-item {
-  width: 100%; display: grid; grid-template-columns: 36px minmax(0, 1fr); gap: 12px; align-items: start;
-  padding: 14px 4px; border: 0; border-bottom: 1px solid var(--line); background: none; text-align: left;
+  width: 100%; display: grid; grid-template-columns: 30px minmax(0, 1fr); gap: 10px; align-items: start;
+  padding: 11px 2px; border: 0; border-bottom: 1px solid var(--line); background: none; text-align: left;
 }
 .feed li:last-child .feed-item, .near-list li:last-child .near-item, .search-results li:last-child .near-item { border-bottom: 0; }
 @media (hover: hover) { .feed-item:hover { background: var(--surface-2); } }
 .avatar {
-  flex: none; width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center;
-  background: hsl(var(--h, 200) 45% 58%); color: #fff; font-weight: 800; font-size: 15px;
+  flex: none; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center;
+  background: hsl(var(--h, 200) 45% 58%); color: #fff; font-weight: 800; font-size: 13px;
 }
-.fi-main { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
-.fi-who, .rv-who { min-width: 0; display: flex; align-items: baseline; gap: 6px; font-size: 13px; }
+.fi-main { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.fi-who, .rv-who { min-width: 0; display: flex; align-items: baseline; gap: 6px; font-size: 12px; }
 .fi-who b, .rv-who b { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .fi-who .muted, .rv-who .muted { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.fi-time { margin-left: auto; padding-left: 6px; color: var(--muted); font-size: 12px; white-space: nowrap; }
-.fi-place { display: flex; align-items: center; gap: 7px; font-size: 15.5px; font-weight: 700; line-height: 1.35; }
-.fi-meta, .rv-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
+.fi-time { margin-left: auto; padding-left: 6px; color: var(--muted); font-size: 11px; white-space: nowrap; }
+.fi-place { display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 700; line-height: 1.35; }
+.fi-meta, .rv-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
 .sep { opacity: .5; }
-.fi-text { font-size: 14px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+.fi-text { font-size: 13px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
 /* 列表里有照片的一条：照片放在左边代替头像（像美团的列表），多张时角上标张数 */
-.feed-item.with-pic { grid-template-columns: 104px minmax(0, 1fr); }
-.fi-pic { position: relative; width: 104px; height: 104px; border-radius: 12px; overflow: hidden; background: var(--surface-2); }
+.feed-item.with-pic { grid-template-columns: 84px minmax(0, 1fr); }
+.fi-pic { position: relative; width: 84px; height: 84px; border-radius: 10px; overflow: hidden; background: var(--surface-2); }
 .fi-pic img { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; }
 .fi-count {
-  position: absolute; right: 5px; bottom: 5px; display: inline-flex; align-items: center; gap: 3px; height: 20px; padding: 0 6px;
-  border-radius: 999px; background: rgba(10, 20, 30, .55); color: #fff; font-size: 11.5px; font-weight: 700; font-variant-numeric: tabular-nums;
+  position: absolute; right: 4px; bottom: 4px; display: inline-flex; align-items: center; gap: 2px; height: 17px; padding: 0 5px;
+  border-radius: 999px; background: rgba(10, 20, 30, .55); color: #fff; font-size: 10.5px; font-weight: 700; font-variant-numeric: tabular-nums;
 }
-.fi-count svg { width: 13px; height: 13px; }
-@media (max-width: 370px) { .feed-item.with-pic { grid-template-columns: 92px minmax(0, 1fr); } .fi-pic { width: 92px; height: 92px; } }
-.row-pic { flex: none; width: 56px; height: 56px; border-radius: 12px; overflow: hidden; background: var(--surface-2); }
+.fi-count svg { width: 11px; height: 11px; }
+@media (max-width: 370px) { .feed-item.with-pic { grid-template-columns: 76px minmax(0, 1fr); } .fi-pic { width: 76px; height: 76px; } }
+.row-pic { flex: none; width: 46px; height: 46px; border-radius: 10px; overflow: hidden; background: var(--surface-2); }
 .row-pic img { display: block; width: 100%; height: 100%; object-fit: cover; }
 .badge {
   flex: none; display: inline-flex; align-items: center; height: 18px; padding: 0 6px; border-radius: 999px;
   background: var(--surface-2); color: var(--muted);
   font-size: 11px; font-weight: 600; letter-spacing: .02em;
 }
-.pill { display: inline-flex; align-items: center; height: 20px; padding: 0 8px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-size: 11.5px; font-weight: 700; }
+.pill { display: inline-flex; align-items: center; height: 18px; padding: 0 7px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-size: 11px; font-weight: 700; }
 .score {
-  flex: none; display: inline-flex; align-items: center; justify-content: center; min-width: 30px; height: 20px; padding: 0 6px;
-  border-radius: 999px; background: var(--c); color: #fff; font-size: 12px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums;
+  flex: none; display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 18px; padding: 0 5px;
+  border-radius: 999px; background: var(--c); color: #fff; font-size: 11px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums;
 }
-.score-big { font-size: 28px; }
-.cat-ic { flex: none; font-style: normal; font-size: 15px; line-height: 1; }
-.near-item > .cat-ic { width: 22px; text-align: center; font-size: 18px; }
+.score-big { font-size: 24px; }
+.cat-ic { flex: none; font-style: normal; font-size: 14px; line-height: 1; }
+.near-item > .cat-ic { width: 20px; text-align: center; font-size: 16px; }
 .f-label .legend { margin-left: 8px; }
 .legend {
   display: inline-flex; align-items: center; gap: 5px; height: 28px; padding: 0 8px 0 10px;
@@ -368,87 +344,93 @@ body.picking .attrib { bottom: calc(env(safe-area-inset-bottom, 0px) + 122px); }
 .empty p { margin: 0; color: var(--muted); font-size: 13.5px; }
 .empty.small { padding: 16px 4px; color: var(--muted); font-size: 14px; }
 
-.view-top { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: 8px; padding: 2px 0 12px; background: var(--surface); }
+.view-top { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: 8px; padding: 2px 0 10px; background: var(--surface); }
 .view-top .view-title { flex: 1; min-width: 0; }
-.place-head h2 { margin: 0; font-size: 25px; font-weight: 800; line-height: 1.2; letter-spacing: -.015em; text-wrap: balance; overflow-wrap: anywhere; }
-.alt { margin-top: 3px; color: var(--muted); font-size: 14px; }
+.place-head h2 { margin: 0; font-size: 21px; font-weight: 800; line-height: 1.2; letter-spacing: -.015em; text-wrap: balance; overflow-wrap: anywhere; }
+.alt { margin-top: 2px; color: var(--muted); font-size: 13px; }
 /* 分类、精度、距离这些写成一行字，用点隔开 */
-.tags { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 0; margin-top: 8px; color: var(--muted); font-size: 13.5px; }
+.tags { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 0; margin-top: 6px; color: var(--muted); font-size: 12.5px; }
 .tag { display: inline-flex; align-items: center; gap: 5px; font-weight: 500; }
 /* 点放在每项后面：换行时点留在上一行末尾，不会出现在行首 */
 .tag:not(:last-child)::after { content: "·"; margin: 0 8px; opacity: .6; }
 .tag:first-child { color: var(--ink); font-weight: 600; }
-.stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 18px 0 16px; }
+.stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 14px 0 12px; }
 .stat { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
-.stat + .stat { padding-left: 14px; border-left: 1px solid var(--line); }
-.stat b { font-size: 21px; font-weight: 800; line-height: 1.1; letter-spacing: -.01em; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.stat small { color: var(--muted); font-size: 12px; }
+.stat + .stat { padding-left: 12px; border-left: 1px solid var(--line); }
+.stat b { font-size: 18px; font-weight: 800; line-height: 1.1; letter-spacing: -.01em; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.stat small { color: var(--muted); font-size: 11px; }
 /* 导航和复制：一个主按钮，其余是轻量的文字按钮 */
 .actions { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
-.actions .btn { flex: none; height: 38px; padding: 0 12px; border-radius: 999px; background: none; color: var(--accent); font-size: 14px; }
+.actions .btn { flex: none; height: 34px; padding: 0 12px; border-radius: 999px; background: none; color: var(--accent); font-size: 13px; }
 @media (hover: hover) { .actions .btn:hover { background: var(--accent-soft); } }
 .actions .btn.primary { padding: 0 16px; margin-right: 4px; background: var(--accent); color: var(--accent-ink); }
 .actions > .btn:first-child:not(.primary) { background: var(--accent-soft); }
+/* 地点卡片名字下面那一排：一行横着滑，都是浅蓝底的胶囊按钮，收藏了变实心 */
+.place-actions { flex-wrap: nowrap; gap: 6px; overflow-x: auto; scrollbar-width: none; margin: 12px -18px 0; padding: 0 18px 2px; }
+.place-actions::-webkit-scrollbar { display: none; }
+.place-actions .btn { background: var(--accent-soft); font-weight: 700; }
+.place-actions .btn.primary { margin-right: 0; background: var(--accent); }
+.place-actions .save-btn[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
 /* 地点页的照片：放在名字下面，大图横着滑 */
-.photo-strip { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; margin: 14px -18px 0; padding: 0 18px 4px; }
+.photo-strip { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; margin: 12px -18px 0; padding: 0 18px 4px; }
 .photo-strip::-webkit-scrollbar { display: none; }
-.ph { flex: none; width: 96px; height: 96px; padding: 0; border: 0; border-radius: 14px; overflow: hidden; background: var(--surface-2); }
-.photo-strip .ph { width: 168px; height: 168px; border-radius: 16px; }
-.photo-strip .ph:only-child { width: 100%; height: 220px; }
+.ph { flex: none; width: 80px; height: 80px; padding: 0; border: 0; border-radius: 12px; overflow: hidden; background: var(--surface-2); }
+.photo-strip .ph { width: 136px; height: 136px; border-radius: 14px; }
+.photo-strip .ph:only-child { width: 100%; height: 180px; }
 .ph img { width: 100%; height: 100%; object-fit: cover; }
-.ph.sm { width: 88px; height: 88px; border-radius: 12px; }
+.ph.sm { width: 72px; height: 72px; border-radius: 10px; }
 .missing img { visibility: hidden; }
-.sec-title { margin: 22px 0 2px; font-size: 13px; font-weight: 800; color: var(--muted); letter-spacing: .04em; }
-.review { display: grid; grid-template-columns: 36px minmax(0, 1fr); gap: 12px; padding: 14px 0; border-bottom: 1px solid var(--line); }
+.sec-title { margin: 18px 0 2px; font-size: 12px; font-weight: 800; color: var(--muted); letter-spacing: .04em; }
+.review { display: grid; grid-template-columns: 30px minmax(0, 1fr); gap: 10px; padding: 11px 0; border-bottom: 1px solid var(--line); }
 .reviews .review:last-child { border-bottom: 0; }
 .rv-main { min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
 .rv-who { width: 100%; }
-.rv-text { margin: 2px 0 0; font-size: 14.5px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.rv-text { margin: 2px 0 0; font-size: 13.5px; white-space: pre-wrap; overflow-wrap: anywhere; }
 .rv-photos { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
 .view-top #f-submit { flex: none; min-width: 64px; }
 .switch-row {
-  width: 100%; display: flex; align-items: center; gap: 12px; padding: 12px 14px; border: 0; border-radius: 14px;
+  width: 100%; display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: 0; border-radius: 12px;
   background: var(--surface-2); color: var(--ink); text-align: left; font: inherit;
 }
 .sw-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-.sw-text b { font-size: 15px; }
-.sw-text small { color: var(--muted); font-size: 12.5px; }
+.sw-text b { font-size: 14px; }
+.sw-text small { color: var(--muted); font-size: 12px; }
 .switch { flex: none; position: relative; width: 46px; height: 28px; border-radius: 14px; background: var(--line); transition: background .2s; }
 .switch::after { content: ""; position: absolute; top: 3px; left: 3px; width: 22px; height: 22px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, .25); transition: transform .2s; }
 .switch-row[aria-checked="true"] .switch { background: var(--accent); }
 .switch-row[aria-checked="true"] .switch::after { transform: translateX(18px); }
-.more summary { padding: 4px 0; color: var(--accent); font-size: 13.5px; font-weight: 700; cursor: pointer; }
+.more summary { padding: 4px 0; color: var(--accent); font-size: 13px; font-weight: 700; cursor: pointer; }
 .more-body { display: flex; flex-direction: column; gap: 18px; padding-top: 12px; }
 /* 最后一项和底部之间多留一点，键盘弹起时也能滑到 */
 .form { padding-bottom: 48px; }
 
 .btn {
-  height: 44px; padding: 0 18px; border: 1px solid transparent; border-radius: 999px;
-  background: var(--surface-2); color: var(--ink); font-size: 14.5px; font-weight: 700;
+  height: 40px; padding: 0 16px; border: 1px solid transparent; border-radius: 999px;
+  background: var(--surface-2); color: var(--ink); font-size: 13.5px; font-weight: 700;
   display: inline-flex; align-items: center; justify-content: center; gap: 7px; white-space: nowrap; text-decoration: none;
 }
-.btn svg { width: 18px; height: 18px; flex: none; }
+.btn svg { width: 16px; height: 16px; flex: none; }
 .btn.primary { background: var(--accent); color: var(--accent-ink); box-shadow: 0 4px 12px color-mix(in srgb, var(--accent) 25%, transparent); }
 .btn.ghost { background: none; border-color: var(--line); }
 .btn.danger { background: var(--danger); color: #fff; }
-.btn.small { height: 36px; padding: 0 14px; font-size: 13.5px; }
+.btn.small { height: 32px; padding: 0 12px; font-size: 12.5px; }
 .btn.block { width: 100%; }
 .btn-row { display: flex; flex-wrap: wrap; gap: 8px; }
 .btn-row.end { justify-content: flex-end; }
 
-.form { display: flex; flex-direction: column; gap: 18px; padding-top: 2px; }
-.field { min-width: 0; display: flex; flex-direction: column; gap: 7px; }
-.f-label { font-size: 13px; font-weight: 700; color: var(--muted); }
+.form { display: flex; flex-direction: column; gap: 16px; padding-top: 2px; }
+.field { min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.f-label { font-size: 12px; font-weight: 700; color: var(--muted); }
 .f-label small { font-weight: 600; }
 .input {
-  width: 100%; min-height: 46px; padding: 11px 14px; border: 1.5px solid transparent; border-radius: 14px;
+  width: 100%; min-height: 42px; padding: 9px 12px; border: 1.5px solid transparent; border-radius: 12px;
   background: var(--surface-2); color: var(--ink); font: inherit; font-size: 16px;
 }
 .input::placeholder { color: color-mix(in srgb, var(--muted) 80%, transparent); }
 textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
 .input:focus { outline: none; background: var(--surface); border-color: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft); }
 .input[aria-invalid="true"] { border-color: var(--danger); }
-.f-hint { margin: 0; color: var(--muted); font-size: 12.5px; }
+.f-hint { margin: 0; color: var(--muted); font-size: 12px; }
 .f-err { color: var(--danger); font-size: 12.5px; font-weight: 700; }
 .chips-wrap { display: flex; flex-wrap: wrap; gap: 6px; }
 .chips-wrap .chip { background: var(--surface-2); }
@@ -457,15 +439,13 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
 .chips-wrap.one-line .chip { flex: none; }
 .chips-wrap .chip[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
 .f-loc { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
-.form-place { display: flex; align-items: center; gap: 8px; font-size: 16px; }
+.form-place { display: flex; align-items: center; gap: 8px; font-size: 15px; }
 .score-input { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; }
 .score-input .sc {
-  height: 46px; padding: 0; border: 0; border-radius: 14px; background: var(--surface-2);
-  color: var(--ink); font-size: 18px; font-weight: 800; font-variant-numeric: tabular-nums;
+  height: 40px; padding: 0; border: 0; border-radius: 12px; background: var(--surface-2);
+  color: var(--ink); font-size: 16px; font-weight: 800; font-variant-numeric: tabular-nums;
 }
 .score-input .sc[aria-pressed="true"] { background: var(--c); color: #fff; }
-.save-btn { border: 0 !important; color: var(--muted); }
-.save-btn[aria-pressed="true"] { color: var(--accent); background: var(--accent-soft); }
 .rv-actions { display: flex; gap: 16px; }
 .search-results .sec-title { margin: 16px 0 2px; }
 .search-results .sec-title:first-child { margin-top: 4px; }
@@ -474,32 +454,32 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
 .account-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 14px; overflow-wrap: anywhere; }
 .add-search { display: flex; gap: 8px; }
 .add-search .input { flex: 1; min-width: 0; }
-.add-search .add-pin { flex: none; height: 46px; padding: 0 14px; background: var(--accent-soft); color: var(--accent); }
+.add-search .add-pin { flex: none; height: 42px; padding: 0 14px; background: var(--accent-soft); color: var(--accent); }
 .add-hint { margin: 8px 0 4px; }
 .add-pin-bottom { margin-top: 14px; }
-.sel-pin { width: 30px; height: 43px; pointer-events: none; filter: drop-shadow(0 2px 3px rgba(0, 0, 0, .35)); }
+.sel-pin { width: 26px; height: 37px; pointer-events: none; filter: drop-shadow(0 2px 3px rgba(0, 0, 0, .35)); }
 .sel-pin svg { display: block; }
-.quick-rate { margin: 16px 0 14px; }
+.quick-rate { margin: 12px 0 10px; }
 .osm-credit { padding: 12px 4px 4px; color: var(--muted); font-size: 11.5px; }
 .photo-grid { display: flex; flex-wrap: wrap; gap: 8px; }
-.ph-edit { position: relative; width: 76px; height: 76px; border-radius: 14px; overflow: hidden; background: var(--surface-2); }
+.ph-edit { position: relative; width: 68px; height: 68px; border-radius: 14px; overflow: hidden; background: var(--surface-2); }
 .ph-edit img { width: 100%; height: 100%; object-fit: cover; }
 .ph-del { position: absolute; top: 4px; right: 4px; width: 24px; height: 24px; padding: 0; border: 0; border-radius: 50%; background: rgba(10, 25, 40, .6); color: #fff; font-size: 16px; line-height: 1; display: grid; place-items: center; }
 .ph-add {
-  width: 76px; height: 76px; border: 1.5px dashed var(--line); border: 1.5px dashed color-mix(in srgb, var(--accent) 35%, var(--line)); border-radius: 14px; background: none; color: var(--accent);
+  width: 68px; height: 68px; border: 1.5px dashed var(--line); border: 1.5px dashed color-mix(in srgb, var(--accent) 35%, var(--line)); border-radius: 14px; background: none; color: var(--accent);
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; font-size: 12px; font-weight: 600;
 }
 .ph-add svg { width: 22px; height: 22px; }
 .grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 .near-item {
-  width: 100%; display: flex; align-items: center; gap: 12px; padding: 13px 4px;
+  width: 100%; display: flex; align-items: center; gap: 10px; padding: 10px 2px;
   border: 0; border-bottom: 1px solid var(--line); background: none; text-align: left;
 }
 @media (hover: hover) { .near-item:hover { background: var(--surface-2); } }
 .near-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .near-text b { overflow-wrap: anywhere; }
-.near-text small { color: var(--muted); font-size: 12.5px; }
-.near-cta { flex: none; color: var(--accent); font-size: 13px; font-weight: 700; }
+.near-text small { color: var(--muted); font-size: 11.5px; }
+.near-cta { flex: none; color: var(--accent); font-size: 12px; font-weight: 700; }
 .search-box { flex: 1; min-width: 0; }
 .area-list li { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
 .note { margin: 0; color: var(--muted); font-size: 13px; }
@@ -509,7 +489,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
 .toast {
   position: fixed; z-index: 60; left: 50%; top: calc(env(safe-area-inset-top, 0px) + 16px); transform: translateX(-50%);
   width: max-content; max-width: calc(100% - 128px); padding: 10px 16px; border-radius: 999px; text-align: center;
-  background: var(--ink); color: var(--surface); font-size: 14px; font-weight: 600; box-shadow: var(--shadow);
+  background: var(--ink); color: var(--surface); font-size: 13px; font-weight: 600; box-shadow: var(--shadow);
 }
 .modal { position: fixed; top: 0; right: 0; bottom: 0; left: 0; z-index: 70; display: grid; place-items: center; padding: 20px; background: rgba(20, 40, 60, .38); -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px); }
 .modal-card { width: min(420px, 100%); display: flex; flex-direction: column; gap: 12px; padding: 22px; border-radius: 22px; background: var(--surface); color: var(--ink); box-shadow: var(--shadow); }
@@ -594,9 +574,8 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
 
   <nav class="tabbar" id="tabbar" data-i18n-aria="tabsAria">
     <button type="button" class="tab" data-action="scope" data-scope="all"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m15.5 8.5-2 5-5 2 2-5z"/></svg><span data-i18n="tabExplore">探索</span></button>
-    <button type="button" class="tab" data-action="scope" data-scope="saved"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" aria-hidden="true"><path d="m12 3.5 2.6 5.4 5.9.8-4.3 4.1 1 5.9-5.2-2.8-5.2 2.8 1-5.9-4.3-4.1 5.9-.8z"/></svg><span data-i18n="tabSaved">收藏</span></button>
-    <button type="button" class="tab tab-add" id="fab" data-action="add"><span class="tab-add-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></span><span id="fab-label">加一家</span></button>
     <button type="button" class="tab" data-action="scope" data-scope="mine"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" aria-hidden="true"><path d="m3.5 6.5 5.5-2.5 6 2.5 5.5-2.5v13.5l-5.5 2.5-6-2.5-5.5 2.5z"/><path d="M9 4v13.5M15 6.5V20"/></svg><span data-i18n="tabMine">我的地图</span></button>
+    <button type="button" class="tab tab-add" id="fab" data-action="add"><span class="tab-add-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></span><span id="fab-label">加一家</span></button>
     <button type="button" class="tab" data-action="profile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="8.5" r="3.8"/><path d="M4.5 20c1.4-3.6 4.2-5.4 7.5-5.4s6.1 1.8 7.5 5.4"/></svg><span data-i18n="tabMe">我</span></button>
   </nav>
 </div>
@@ -772,11 +751,11 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       dist_walk: '步行 · 1.5km 内', dist_short: '短途打车 · 1.5–10km', dist_mid: '中距离 · 10–40km', dist_far: '更远 · 40km 以上',
       tier_walk: '步行可达', tier_short: '短途打车', tier_mid: '中距离', tier_far: '吉隆坡及更远',
       feedFoodAll: '大家最近在吃', feedTravelAll: '大家最近去了', feedFoodMine: '我吃过的', feedTravelMine: '我去过的', feedBothMine: '我的足迹',
-      mine_food: '美食', mine_travel: '旅行', mine_both: '合并', savedAll: '全部', savedWant: '想去的', mineShow: '显示', filterCat: '分类',
+      mine_food: '美食', mine_travel: '旅行', mine_both: '合并', savedAll: '全部', savedWant: '还没去过', mineShow: '显示', subBeen: '去过', subSaved: '收藏', savedShow: '收藏里', filterCat: '分类',
       modeToTravel: '切换到旅行地图', modeToFood: '切换到美食地图', litCountries: '点亮国家', litN: '已去 {n} 国', worldFail: '国家边界没加载出来，等下再试',
       feedSavedFood: '想去吃的', feedSavedTravel: '想去的地方',
       emptySaved: '还没收藏过，地点页点“收藏”就会出现在这里。', emptyWant: '收藏的地方都去过了。', goExplore: '去探索',
-      wish: '收藏', wished: '已收藏', wishAdded: '收藏了，在“收藏”地图里能找到', wishRemoved: '取消收藏了',
+      wish: '收藏', wished: '已收藏', wishAdded: '收藏了，在“我的地图 · 收藏”里能找到', wishRemoved: '取消收藏了',
       emptyFoodAll: '这片还没人写过。',
       emptyTravelAll: '还没人分享去处。',
       emptyMine: '还没记录过地方。', emptyFiltered: '没有符合筛选的地方。', clearFilters: '清除筛选',
@@ -840,7 +819,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       mapFail: '地图没加载出来。检查网络后刷新页面。',
       justNow: '刚刚', minAgo: '{n} 分钟前', hourAgo: '{n} 小时前', dayAgo: '{n} 天前',
       locate: '我的位置',
-      tabsAria: '主菜单', tabExplore: '探索', tabSaved: '收藏', tabMine: '我的地图', tabMe: '我',
+      tabsAria: '主菜单', tabExplore: '探索', tabMine: '我的地图', tabMe: '我',
       filterBtn: '筛选', filtersTitle: '筛选', filterScore: '评分', filterDist: '离学校多远', filterPrice: '人均价位', anyOpt: '不限',
       scoreOpt: '{n} 分以上', priceOpt: 'RM{n} 以内', filterReset: '重置', filterShow: '看 {n} 个地方',
       areasTitle: '去哪儿看', locWorld: '全球', locHere: '这附近', saveHere: '记住现在这片'
@@ -854,11 +833,11 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       dist_walk: 'Walk · under 1.5 km', dist_short: 'Short ride · 1.5–10 km', dist_mid: 'Mid trip · 10–40 km', dist_far: 'Further · 40 km+',
       tier_walk: 'Walkable', tier_short: 'Short ride', tier_mid: 'Mid-distance', tier_far: 'KL & beyond',
       feedFoodAll: 'What people are eating', feedTravelAll: 'Where people went', feedFoodMine: 'Places I’ve eaten', feedTravelMine: 'Places I’ve been', feedBothMine: 'My footprints',
-      mine_food: 'Food', mine_travel: 'Travel', mine_both: 'Both', savedAll: 'All', savedWant: 'Not been yet', mineShow: 'Show', filterCat: 'Category',
+      mine_food: 'Food', mine_travel: 'Travel', mine_both: 'Both', savedAll: 'All', savedWant: 'Not been yet', mineShow: 'Show', subBeen: 'Been', subSaved: 'Saved', savedShow: 'Saved places', filterCat: 'Category',
       modeToTravel: 'Switch to the travel map', modeToFood: 'Switch to the food map', litCountries: 'Countries', litN: '{n} visited', worldFail: 'Couldn’t load country borders. Try again later.',
       feedSavedFood: 'Food spots I saved', feedSavedTravel: 'Places I saved',
       emptySaved: 'Nothing saved yet. Tap “Save” on a place to keep it here.', emptyWant: 'You’ve been to every place you saved.', goExplore: 'Explore',
-      wish: 'Save', wished: 'Saved', wishAdded: 'Saved. Find it on the Saved map', wishRemoved: 'Removed from saved',
+      wish: 'Save', wished: 'Saved', wishAdded: 'Saved. Find it under My map · Saved', wishRemoved: 'Removed from saved',
       emptyFoodAll: 'Nobody has written about this area yet.',
       emptyTravelAll: 'No trips shared yet.',
       emptyMine: 'You haven’t recorded any places yet.', emptyFiltered: 'Nothing matches these filters.', clearFilters: 'Clear filters',
@@ -922,7 +901,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       mapFail: 'The map didn’t load. Check your connection and refresh.',
       justNow: 'just now', minAgo: '{n} min ago', hourAgo: '{n} h ago', dayAgo: '{n} d ago',
       locate: 'My location',
-      tabsAria: 'Main menu', tabExplore: 'Explore', tabSaved: 'Saved', tabMine: 'My map', tabMe: 'Me',
+      tabsAria: 'Main menu', tabExplore: 'Explore', tabMine: 'My map', tabMe: 'Me',
       filterBtn: 'Filters', filtersTitle: 'Filters', filterScore: 'Score', filterDist: 'Distance from campus', filterPrice: 'Price per person', anyOpt: 'Any',
       scoreOpt: '{n}+', priceOpt: 'Up to RM{n}', filterReset: 'Reset', filterShow: 'Show {n} places',
       areasTitle: 'Go to', locWorld: 'The world', locHere: 'Around here', saveHere: 'Save this area'
@@ -936,7 +915,10 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     link: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M10 14a4.5 4.5 0 0 0 6.4 0l3-3a4.5 4.5 0 0 0-6.4-6.4l-1 1"/><path d="M14 10a4.5 4.5 0 0 0-6.4 0l-3 3a4.5 4.5 0 0 0 6.4 6.4l1-1"/></svg>',
     google: '<svg viewBox="0 0 24 24" width="18" height="18"><path fill="#fff" d="M21.6 12.2c0-.7-.1-1.4-.2-2H12v3.8h5.4a4.6 4.6 0 0 1-2 3v2.5h3.2c1.9-1.7 3-4.3 3-7.3z"/><path fill="#fff" opacity=".85" d="M12 22c2.7 0 5-.9 6.6-2.4l-3.2-2.5c-.9.6-2 1-3.4 1-2.6 0-4.8-1.8-5.6-4.1H3.1v2.6A10 10 0 0 0 12 22z"/><path fill="#fff" opacity=".7" d="M6.4 14c-.2-.6-.3-1.3-.3-2s.1-1.4.3-2V7.4H3.1a10 10 0 0 0 0 9.2L6.4 14z"/><path fill="#fff" opacity=".85" d="M12 5.9c1.5 0 2.8.5 3.8 1.5l2.9-2.9A10 10 0 0 0 3.1 7.4L6.4 10C7.2 7.7 9.4 5.9 12 5.9z"/></svg>',
     pin: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 21.5c-3-4-7-7.6-7-12a7 7 0 0 1 14 0c0 4.4-4 8-7 12z"/><circle cx="12" cy="9.5" r="2.5"/></svg>',
-    camera: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M4 8.5h3l1.6-2.5h6.8L17 8.5h3v10H4z"/><circle cx="12" cy="13.2" r="3.4"/></svg>'
+    camera: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M4 8.5h3l1.6-2.5h6.8L17 8.5h3v10H4z"/><circle cx="12" cy="13.2" r="3.4"/></svg>',
+    star: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="m12 3.5 2.6 5.4 5.9.8-4.3 4.1 1 5.9-5.2-2.8-5.2 2.8 1-5.9-4.3-4.1 5.9-.8z"/></svg>',
+    starOn: '<svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="m12 3.5 2.6 5.4 5.9.8-4.3 4.1 1 5.9-5.2-2.8-5.2 2.8 1-5.9-4.3-4.1 5.9-.8z"/></svg>',
+    pen: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="m13.5 6.5 4 4"/></svg>'
   };
 
   /* ================= state ================= */
@@ -944,7 +926,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     lang: 'zh', mode: 'food', scope: 'all', cat: 'all', priceMax: 0, minScore: 0, dist: 'any',
     view: 'feed', placeId: null, form: null, nearby: null, query: '',
     snap: 'peek', feedSnap: 'peek', picking: null, preview: null, bsheet: null, me: null, styleKey: 'light',
-    mineBoth: false, countries: false, savedWant: false
+    mineBoth: false, countries: false, savedWant: false, mineSub: 'mine'
   };
   var map = null;
   var lastRenderedView = null;
@@ -1691,7 +1673,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     if (state.mode === 'food' && state.dist !== 'any' && distTier(p) !== state.dist) return false;
     return true;
   }
-  function filtersActive() { return state.scope !== 'mine' && (state.cat !== 'all' || !!state.priceMax || !!state.minScore || state.dist !== 'any'); }
+  function filtersActive() { return state.scope !== 'mine' && ((state.scope === 'saved' && state.savedWant) || state.cat !== 'all' || !!state.priceMax || !!state.minScore || state.dist !== 'any'); }
   function catOf(p) {
     var list = CATS[p.mode] || CATS.food;
     for (var i = 0; i < list.length; i++) if (list[i].id === p.cat) return list[i];
@@ -1847,7 +1829,21 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     });
   }
 
-  function drawPin(color, emoji) {
+  /* 收藏过的地点：图钉右上角一个蓝底白星的小圆章（像谷歌地图上收藏的地方带个图标） */
+  function drawStarBadge(g, cx, cy, r) {
+    g.save();
+    g.shadowColor = 'rgba(0,0,0,.28)'; g.shadowBlur = 2; g.shadowOffsetY = 0.5;
+    g.beginPath(); g.arc(cx, cy, r, 0, Math.PI * 2); g.fillStyle = '#2E7DCB'; g.fill();
+    g.restore();
+    g.lineWidth = 1.5; g.strokeStyle = '#ffffff'; g.stroke();
+    g.beginPath();
+    for (var i = 0; i < 10; i++) {
+      var a = -Math.PI / 2 + i * Math.PI / 5, rr = i % 2 ? r * 0.3 : r * 0.68;
+      g.lineTo(cx + rr * Math.cos(a), cy + rr * Math.sin(a));
+    }
+    g.closePath(); g.fillStyle = '#ffffff'; g.fill();
+  }
+  function drawPin(color, emoji, saved) {
     var w = 40, h = 52;
     var cv = document.createElement('canvas');
     cv.width = Math.round(w * DPR); cv.height = Math.round(h * DPR);
@@ -1868,19 +1864,20 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     g.font = '13px "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif';
     g.textAlign = 'center'; g.textBaseline = 'middle';
     g.fillText(emoji, 20, 19);
+    if (saved) drawStarBadge(g, 32, 8, 7);
     return g.getImageData(0, 0, cv.width, cv.height);
   }
   /* 图钉颜色按 0.5 分一档，图钉图片用到哪个画哪个 */
-  function pinImage(p, score) {
+  function pinImage(p, score, saved) {
     var bucket = score == null ? null : Math.round(score * 2) / 2;
-    var id = 'pin-' + p.mode + '-' + catOf(p).id + '-' + (bucket == null ? 'none' : bucket * 10);
-    if (map && !map.hasImage(id)) map.addImage(id, drawPin(scoreColor(bucket), catOf(p).emoji), { pixelRatio: DPR });
+    var id = 'pin-' + p.mode + '-' + catOf(p).id + '-' + (bucket == null ? 'none' : bucket * 10) + (saved ? '-s' : '');
+    if (map && !map.hasImage(id)) map.addImage(id, drawPin(scoreColor(bucket), catOf(p).emoji, saved), { pixelRatio: DPR });
     return id;
   }
 
   /* 有照片的地点放大地图后显示成照片图钉，外框颜色仍然按评分。
      照片要先读出来画成小方块：只读地图上看得到、快放大到位的，最多同时读 3 张 */
-  var PIN_PHOTO = 52;
+  var PIN_PHOTO = 44;
   /* 放大到多少级照片才出来：具体地点 15 级、片区 12 级、城市 8 级。
      到了这一级照片从图钉大小长出来，再放大一级长到正常大小；缩小时照片慢慢缩回图钉大小，再换回普通图钉。
      都用整数级：地图只在整数级上计算这类样式，用半级会在 15 级那里突然变大变小 */
@@ -1913,17 +1910,17 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
   }
   var pinThumbs = new Map();   // 照片 id → 'loading' | canvas | false（读不了）
   var thumbQueue = [], thumbBusy = 0, THUMB_PIN_MAX = 300, pinRefreshTimer = null;
-  function photoPinImage(photo, score) {
+  function photoPinImage(photo, score, saved) {
     var cv = pinThumbs.get(photo);
     if (!cv || cv === 'loading' || !map) return null;
     var bucket = score == null ? null : Math.round(score * 2) / 2;
-    var id = 'ph-' + photo + '-' + (bucket == null ? 'none' : bucket * 10);
+    var id = 'ph-' + photo + '-' + (bucket == null ? 'none' : bucket * 10) + (saved ? '-s' : '');
     if (!map.hasImage(id)) {
-      try { map.addImage(id, drawPhotoPin(cv, scoreColor(bucket)), { pixelRatio: DPR }); } catch (e) { return null; }
+      try { map.addImage(id, drawPhotoPin(cv, scoreColor(bucket), saved), { pixelRatio: DPR }); } catch (e) { return null; }
     }
     return id;
   }
-  function drawPhotoPin(thumb, color) {
+  function drawPhotoPin(thumb, color, saved) {
     var S = PIN_PHOTO, W = S + 12, H = S + 22;
     var cv = document.createElement('canvas');
     cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR);
@@ -1938,13 +1935,14 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     g.save();
     g.shadowColor = 'rgba(0,0,0,.35)'; g.shadowBlur = 5; g.shadowOffsetY = 1.5;
     g.fillStyle = color;
-    rounded(3, 2, S + 6, S + 6, 14); g.fill();
+    rounded(3, 2, S + 6, S + 6, 12); g.fill();
     g.beginPath(); g.moveTo(W / 2 - 8, S + 7); g.lineTo(W / 2 + 8, S + 7); g.lineTo(W / 2, S + 16); g.closePath(); g.fill();
     g.restore();
     g.save();
-    rounded(6, 5, S, S, 11); g.clip();
+    rounded(6, 5, S, S, 9); g.clip();
     g.drawImage(thumb, 6, 5, S, S);
     g.restore();
+    if (saved) drawStarBadge(g, W - 8, 8, 7);
     return g.getImageData(0, 0, cv.width, cv.height);
   }
   function loadImage(u) {
@@ -2020,12 +2018,14 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     return {
       type: 'FeatureCollection',
       features: placesInView().map(function (p) {
-        var s = stats(p), photo = coverPhoto(p), ph = photo ? photoPinImage(photo, s.score) : null;
+        /* 收藏地图上每个都是收藏的，就不再加星 */
+        var saved = state.scope !== 'saved' && store.isSaved(p.id);
+        var s = stats(p), photo = coverPhoto(p), ph = photo ? photoPinImage(photo, s.score, saved) : null;
         if (photo && !ph && !pinThumbs.has(photo) && photoWanted(p) && (!b || b.contains([p.lng, p.lat]))) queueThumb(photo);
         return {
           type: 'Feature',
           geometry: { type: 'Point', coordinates: [p.lng, p.lat] },
-          properties: { id: p.id, name: placeTitle(p), icon: pinImage(p, s.score), pic: ph || '', photo: !!ph, color: scoreColor(s.score), precision: p.precision, r0: radiusAtZoom0(p) }
+          properties: { id: p.id, name: placeTitle(p), icon: pinImage(p, s.score, saved), pic: ph || '', photo: !!ph, saved: saved, color: scoreColor(s.score), precision: p.precision, r0: radiusAtZoom0(p) }
         };
       })
     };
@@ -2060,26 +2060,26 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     });
     map.addLayer({
       id: 'cl-halo', type: 'circle', source: 'places', filter: ['has', 'point_count'],
-      paint: { 'circle-radius': ['step', ['get', 'point_count'], 26, 10, 31, 50, 37, 200, 44], 'circle-color': accent, 'circle-opacity': 0.2 }
+      paint: { 'circle-radius': ['step', ['get', 'point_count'], 22, 10, 26, 50, 31, 200, 37], 'circle-color': accent, 'circle-opacity': 0.2 }
     });
     map.addLayer({
       id: 'cl-circle', type: 'circle', source: 'places', filter: ['has', 'point_count'],
-      paint: { 'circle-radius': ['step', ['get', 'point_count'], 18, 10, 22, 50, 27, 200, 32], 'circle-color': accent, 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 2.5 }
+      paint: { 'circle-radius': ['step', ['get', 'point_count'], 15, 10, 19, 50, 23, 200, 27], 'circle-color': accent, 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 2 }
     });
     map.addLayer({
       id: 'cl-count', type: 'symbol', source: 'places', filter: ['has', 'point_count'],
-      layout: { 'text-field': ['get', 'point_count_abbreviated'], 'text-font': fonts.bold, 'text-size': 14, 'text-allow-overlap': true, 'text-ignore-placement': true },
+      layout: { 'text-field': ['get', 'point_count_abbreviated'], 'text-font': fonts.bold, 'text-size': 12.5, 'text-allow-overlap': true, 'text-ignore-placement': true },
       paint: { 'text-color': '#ffffff' }
     });
     map.addLayer({
       id: 'pt-sel', type: 'circle', source: 'places', filter: ['==', ['get', 'id'], '__none__'],
-      paint: { 'circle-radius': 15, 'circle-color': accent, 'circle-opacity': whenPhoto(0, 0.25), 'circle-stroke-color': accent, 'circle-stroke-width': 2, 'circle-stroke-opacity': whenPhoto(0, 1), 'circle-pitch-alignment': 'map' }
+      paint: { 'circle-radius': 13, 'circle-color': accent, 'circle-opacity': whenPhoto(0, 0.25), 'circle-stroke-color': accent, 'circle-stroke-width': 2, 'circle-stroke-opacity': whenPhoto(0, 1), 'circle-pitch-alignment': 'map' }
     });
     map.addLayer({
       id: 'pt-pin', type: 'symbol', source: 'places', filter: ['!', ['has', 'point_count']],
       layout: {
         'icon-image': ['get', 'icon'], 'icon-anchor': 'bottom', 'icon-allow-overlap': true, 'icon-ignore-placement': true,
-        'symbol-sort-key': pinSortKey(null), 'icon-size': ['interpolate', ['linear'], ['zoom'], 2, 0.78, 12, 1]
+        'symbol-sort-key': pinSortKey(null), 'icon-size': ['interpolate', ['linear'], ['zoom'], 2, 0.66, 12, 0.85]
       },
       paint: { 'icon-opacity': whenPhoto(0, 1) }
     });
@@ -2093,7 +2093,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     });
     map.addLayer({
       id: 'pt-label', type: 'symbol', source: 'places', filter: ['!', ['has', 'point_count']], minzoom: 13,
-      layout: { 'text-field': ['get', 'name'], 'text-font': fonts.regular, 'text-size': 12.5, 'text-anchor': 'top', 'text-offset': [0, 0.35], 'text-max-width': 9, 'text-optional': true },
+      layout: { 'text-field': ['get', 'name'], 'text-font': fonts.regular, 'text-size': 11.5, 'text-anchor': 'top', 'text-offset': [0, 0.35], 'text-max-width': 9, 'text-optional': true },
       paint: { 'text-color': '#18211C', 'text-halo-color': 'rgba(255,255,255,0.95)', 'text-halo-width': 1.6 }
     });
     map.addLayer({ id: 'me-halo', type: 'circle', source: 'me', paint: { 'circle-radius': 17, 'circle-color': '#2F7BF6', 'circle-opacity': 0.18 } });
@@ -2308,6 +2308,9 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
   }
   /* 键盘弹起时浏览器可能把可见区域往下挪，界面要跟着挪，不然顶部被切掉、底部滑不到 */
   var appTop = 0, fullH = 0, kbOpen = false;
+  /* 网址后面加 ?debug：左上角显示量到的高度，真机上出问题时截图给我们看 */
+  var debugBox = /[?&]debug\b/.test(location.search) ? document.body.appendChild(document.createElement('div')) : null;
+  if (debugBox) debugBox.style.cssText = 'position:fixed;z-index:99;left:4px;top:4px;padding:2px 6px;border-radius:6px;background:rgba(0,0,0,.65);color:#fff;font:11px/1.4 monospace;pointer-events:none';
   function measureAppTop() {
     var vv = window.visualViewport;
     return vv && vv.scale && Math.abs(vv.scale - 1) < 0.01 ? Math.max(0, Math.round(vv.offsetTop)) : 0;
@@ -2328,13 +2331,25 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
   var appEl = document.getElementById('app');
   function unscrollApp() { if (appEl.scrollTop || appEl.scrollLeft) { appEl.scrollTop = 0; appEl.scrollLeft = 0; } }
   appEl.addEventListener('scroll', unscrollApp);
+  /* 键盘弹起来了吗：新的 Chrome 键盘只缩小可见区域（innerHeight 不变）；老的会把整页变矮，就跟没打字时的高度比。
+     浏览器自己的地址栏、工具栏出现也会让页面变矮一截，所以要矮到四分之三以下才算键盘，不然标签栏会被错收起来 */
+  function keyboardUp(h) {
+    var vv = window.visualViewport;
+    if (vv && vv.scale && Math.abs(vv.scale - 1) < 0.01 && window.innerHeight - vv.height > 150) return true;
+    return fullH > 0 && h < fullH * 0.75;
+  }
+  /* 拖面板、碰地图时收起键盘：输入框一直留着焦点的话，有的浏览器收了键盘还算在打字 */
+  function blurTyping() { if (typingNow()) document.activeElement.blur(); }
   function syncViewport() {
     var h = measureAppH(), top = measureAppTop(), typing = typingNow();
     if (window.scrollY || window.scrollX) window.scrollTo(0, 0);
     unscrollApp();
     if (!typing) fullH = h;
+    else if (h > fullH) fullH = h;
     /* 正在打字、可见高度又明显变矮，就当是键盘弹起来了：先把标签栏收起来，给表单腾地方 */
-    var kb = typing && isMobile() && fullH > 0 && h < fullH - 120;
+    var kb = typing && isMobile() && keyboardUp(h);
+    if (debugBox) debugBox.textContent = 'inner ' + window.innerHeight + ' vv ' + (window.visualViewport ? Math.round(window.visualViewport.height) + '@' + Math.round(window.visualViewport.offsetTop) : '-') +
+      ' app ' + h + ' full ' + fullH + (typing ? ' typing' : '') + (kb ? ' KB' : '') + ' snap ' + state.snap + ' tab ' + Math.round($('#tabbar').getBoundingClientRect().bottom);
     if (h === appH && top === appTop && kb === kbOpen) return;
     appH = h; appTop = top; kbOpen = kb;
     var root = document.documentElement;
@@ -2350,12 +2365,20 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     if (!isMobile()) return 0;
     var H = appH || window.innerHeight;
     if (snap === 'hidden') return 0;
-    if (snap === 'peek') return 112;
+    if (snap === 'peek') return peekH();
     if (snap === 'half') return Math.round((H - tabbarH()) * 0.5);
     return panel.offsetHeight || H;
   }
+  /* 收到最低时只露出标题这一截（像谷歌地图收起来的样子），不露半截列表：量到标题（和示例提示）的底边为止 */
+  function peekH() {
+    var heads = view.querySelectorAll('.view-head, .sample-note, .place-head'), last = heads[heads.length - 1];
+    if (!last) return 96;
+    return clamp(Math.round(last.offsetTop + last.offsetHeight + 10), 64, 150);
+  }
   function tabbarH() { var tb = $('#tabbar'); return tb && isMobile() ? tb.offsetHeight : 0; }
   function setSnap(snap) {
+    /* 收到最低时回到最上面，露出标题，不露半截列表 */
+    if (snap === 'peek' && isMobile()) view.scrollTop = 0;
     state.snap = snap;
     panel.dataset.snap = snap;
     if (state.view === 'feed' && snap !== 'hidden') state.feedSnap = snap;
@@ -2371,23 +2394,24 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     stage.style.setProperty('--sheet-visible', (isMobile() ? Math.min(v, Math.round((appH || window.innerHeight) * 0.5)) : 0) + 'px');
   }
 
+  /* 拖面板：拖上面的小横条，或者像谷歌地图那样直接拖内容——
+     内容已经在最上面时往下拖是收面板，面板没拉满时往上拖是拉面板，其余照常滚列表。
+     手势自己接住（preventDefault），不然有的手机浏览器会把往下划当成自己的（弹出工具栏、下拉刷新），把标签栏盖住 */
   (function setupDrag() {
-    var grip = $('#grip'), drag = null;
+    var grip = $('#grip'), drag = null, touch = null;
     function snaps() { return ['peek', 'half', 'full'].map(function (s) { return { s: s, v: snapVisible(s) }; }); }
-    grip.addEventListener('pointerdown', function (e) {
-      if (!isMobile()) return;
-      drag = { y0: e.clientY, t0: performance.now(), start: snapVisible(state.snap), vis: snapVisible(state.snap), moved: false };
+    function begin(y) {
+      blurTyping();
+      drag = { y0: y, t0: performance.now(), start: snapVisible(state.snap), vis: snapVisible(state.snap), moved: false };
       panel.classList.add('dragging');
-      try { grip.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
-    });
-    grip.addEventListener('pointermove', function (e) {
-      if (!drag) return;
-      var dy = e.clientY - drag.y0;
+    }
+    function move(y) {
+      var dy = y - drag.y0;
       if (Math.abs(dy) > 4) drag.moved = true;
       drag.vis = clamp(drag.start - dy, 60, panel.offsetHeight);
       panel.style.setProperty('--visible', drag.vis + 'px');
-    });
-    function end(e) {
+    }
+    function end() {
       if (!drag) return;
       panel.classList.remove('dragging');
       var d = drag; drag = null;
@@ -2401,8 +2425,39 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       var best = snaps().reduce(function (a, b) { return Math.abs(b.v - target) < Math.abs(a.v - target) ? b : a; });
       setSnap(best.s);
     }
+    grip.addEventListener('pointerdown', function (e) {
+      if (!isMobile() || drag) return;
+      begin(e.clientY);
+      try { grip.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+    });
+    grip.addEventListener('pointermove', function (e) { if (drag && !touch) move(e.clientY); });
     grip.addEventListener('pointerup', end);
     grip.addEventListener('pointercancel', end);
+    grip.addEventListener('lostpointercapture', end);
+
+    panel.addEventListener('touchstart', function (e) {
+      touch = null;
+      if (!isMobile() || drag || e.touches.length !== 1 || e.target.closest('#grip, input, textarea, select')) return;
+      touch = { x: e.touches[0].clientX, y: e.touches[0].clientY, sheet: null };
+    }, { passive: true });
+    panel.addEventListener('touchmove', function (e) {
+      if (!touch) return;
+      var p = e.touches[0], dx = p.clientX - touch.x, dy = p.clientY - touch.y;
+      if (touch.sheet === null) {
+        if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return;
+        var down = dy > 0 && view.scrollTop <= 0, up = dy < 0 && state.snap !== 'full';
+        touch.sheet = Math.abs(dy) > Math.abs(dx) && (down || up);
+        if (!touch.sheet) { touch = null; return; }
+        begin(touch.y);
+      }
+      if (e.cancelable) e.preventDefault();
+      move(p.clientY);
+    }, { passive: false });
+    function touchEnd() { if (touch && touch.sheet) end(); touch = null; }
+    panel.addEventListener('touchend', touchEnd);
+    panel.addEventListener('touchcancel', touchEnd);
+    /* 碰地图就收起键盘 */
+    $('#map').addEventListener('pointerdown', blurTyping);
   })();
 
   /* ================= chrome ================= */
@@ -2420,10 +2475,12 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     if (state.picking) updatePickUI();
     if (state.bsheet) renderBSheet();
   }
-  /* 底部标签栏：探索 / 收藏 / 我的地图 对应三张地图，“我”是资料页 */
+  /* 底部标签栏：探索 / 我的地图 / ＋ / 我。收藏收进了我的地图（标题旁边一键切换“去过 / 收藏”） */
+  function tabScope(scope) { return scope === 'saved' ? 'mine' : scope; }
   function renderTabs() {
+    if (state.scope !== 'all') state.mineSub = state.scope;
     $$('#tabbar [data-scope]').forEach(function (b) {
-      if (state.view !== 'profile' && b.dataset.scope === state.scope) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
+      if (state.view !== 'profile' && b.dataset.scope === tabScope(state.scope)) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
     });
     var meTab = $('#tabbar [data-action="profile"]');
     if (state.view === 'profile') meTab.setAttribute('aria-current', 'page'); else meTab.removeAttribute('aria-current');
@@ -2432,7 +2489,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
   var DIST_STEPS = ['any'].concat(DIST_TIERS.map(function (x) { return x.id; }));
   function activeFilterCount() {
     if (state.scope === 'mine') return 0;
-    return (state.cat !== 'all' ? 1 : 0) + (state.minScore ? 1 : 0) + (state.dist !== 'any' ? 1 : 0) + (state.priceMax ? 1 : 0);
+    return (state.scope === 'saved' && state.savedWant ? 1 : 0) + (state.cat !== 'all' ? 1 : 0) + (state.minScore ? 1 : 0) + (state.dist !== 'any' ? 1 : 0) + (state.priceMax ? 1 : 0);
   }
   var CTRL_ICON = {
     search: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg>',
@@ -2621,6 +2678,10 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
         h += '<div class="field"><span class="f-label">' + esc(t('mineShow')) + '</span><div class="chips-wrap">' +
           ['food', 'travel', 'both'].map(function (v) { return '<button type="button" class="chip" data-action="mine-mode" data-v="' + v + '" aria-pressed="' + (mineView() === v) + '">' + esc(t('mine_' + v)) + '</button>'; }).join('') + '</div></div>';
       } else {
+        if (state.scope === 'saved') {
+          h += '<div class="field"><span class="f-label">' + esc(t('savedShow')) + '</span><div class="chips-wrap">' +
+            ['all', 'want'].map(function (v) { return optHTML('saved-want', v, (v === 'want') === state.savedWant, t(v === 'want' ? 'savedWant' : 'savedAll')); }).join('') + '</div></div>';
+        }
         h += '<div class="field"><span class="f-label">' + esc(t('filterCat')) + '</span><div class="chips-wrap">' +
           '<button type="button" class="chip" data-action="cat" data-cat="all" aria-pressed="' + (state.cat === 'all') + '">' + esc(t('catAll')) + '</button>' +
           CATS[state.mode].map(function (c) {
@@ -2670,6 +2731,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     updateSelection();
     renderTabs();
     hydratePhotos(view);
+    if (state.snap === 'peek') applySnap();
     syncNavGuard();
   }
 
@@ -2712,8 +2774,8 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     }[state.mode][state.scope];
     if (state.scope === 'mine' && state.mineBoth) key = 'feedBothMine';
     var h = '<div class="view-head"><div class="title-row"><h2 class="view-title" data-action="expand">' + esc(t(key)) + '</h2><span class="count">' + items.length + '</span>' +
-      (saved ? '<span class="mini-seg top-cta">' + ['all', 'want'].map(function (v) {
-        return '<button type="button" data-action="saved-want" data-v="' + v + '" aria-pressed="' + ((v === 'want') === state.savedWant) + '">' + esc(t(v === 'want' ? 'savedWant' : 'savedAll')) + '</button>';
+      (state.scope !== 'all' ? '<span class="mini-seg top-cta" role="group">' + ['mine', 'saved'].map(function (v) {
+        return '<button type="button" data-action="mine-sub" data-v="' + v + '" aria-pressed="' + (state.scope === v) + '">' + (v === 'saved' ? ICON.star : '') + esc(t(v === 'saved' ? 'subSaved' : 'subBeen')) + '</button>';
       }).join('') + '</span>' : '') + '</div></div>';
     if (store.hasSamples() && state.scope === 'all') {
       h += '<div class="sample-note"><span>' + esc(t('samplesShown')) + '</span><button type="button" class="link-btn" data-action="clear-samples">' + esc(t('clearSamples')) + '</button></div>';
@@ -2790,10 +2852,13 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     var coords = p.lat.toFixed(6) + ',' + p.lng.toFixed(6);
     var far = dist > 300000;
     var saved = store.isSaved(p.id);
-    var actions = far
+    /* 像谷歌地图的地点卡片：名字下面一排按钮，导航是实心的，收藏、打分紧跟着，其余往右滑 */
+    var actions = (far
       ? '<a class="btn" href="https://www.google.com/maps/search/?api=1&query=' + coords + '" target="_blank" rel="noopener">' + ICON.nav + esc(t('viewGoogle')) + '</a>'
-      : '<a class="btn primary" href="https://www.google.com/maps/dir/?api=1&destination=' + coords + '" target="_blank" rel="noopener">' + ICON.nav + esc(t('navGoogle')) + '</a>' +
-        '<a class="btn" href="https://waze.com/ul?ll=' + coords + '&navigate=yes" target="_blank" rel="noopener">' + ICON.nav + esc(t('navWaze')) + '</a>';
+      : '<a class="btn primary" href="https://www.google.com/maps/dir/?api=1&destination=' + coords + '" target="_blank" rel="noopener">' + ICON.nav + esc(t('navGoogle')) + '</a>') +
+      '<button type="button" class="btn save-btn" data-action="toggle-save" aria-pressed="' + saved + '">' + (saved ? ICON.starOn + esc(t('wished')) : ICON.star + esc(t('wish'))) + '</button>' +
+      '<button type="button" class="btn" data-action="write-review">' + ICON.pen + esc(t(p.mode === 'food' ? 'writeReview' : 'beenHere')) + '</button>' +
+      (far ? '' : '<a class="btn" href="https://waze.com/ul?ll=' + coords + '&navigate=yes" target="_blank" rel="noopener">' + ICON.nav + esc(t('navWaze')) + '</a>');
     actions += '<button type="button" class="btn" data-action="copy-coords" data-c="' + coords + '">' + ICON.copy + esc(t('copyCoords')) + '</button>';
     if (link) actions += '<a class="btn" href="' + esc(link) + '" target="_blank" rel="noopener nofollow">' + ICON.link + esc(t('openLink')) + '</a>';
     var photos = [];
@@ -2805,12 +2870,11 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       '<span class="tag">' + esc(t('distFrom', { d: fmtDist(dist) })) + '</span>';
 
     var h = '<div class="view-top"><button type="button" class="icon-btn flat" data-action="back" aria-label="' + esc(t('back')) + '">' + ICON.back + '</button>' +
-      (p.sample ? '<span class="badge">' + esc(t('sample')) + '</span>' : '') +
-      '<button type="button" class="btn small ghost save-btn top-cta" data-action="toggle-save" aria-pressed="' + saved + '">' + (saved ? '★ ' + esc(t('wished')) : '☆ ' + esc(t('wish'))) + '</button>' +
-      '<button type="button" class="btn small primary" data-action="write-review">' + esc(t(p.mode === 'food' ? 'writeReview' : 'beenHere')) + '</button></div>' +
+      (p.sample ? '<span class="badge">' + esc(t('sample')) + '</span>' : '') + '</div>' +
       '<div class="place-head"><h2>' + esc(placeTitle(p)) + '</h2>' +
       (placeSub(p) ? '<div class="alt">' + esc(placeSub(p)) + '</div>' : '') +
       '<div class="tags">' + tags + '</div></div>' +
+      '<div class="actions place-actions">' + actions + '</div>' +
       /* 别人记过、我还没记的地方：直接在这里打分添加，不用再去搜 */
       (beenThere(p) ? '' : quickRateHTML('place-score', p.mode, false)) +
       (photos.length ? '<div class="photo-strip">' + photos.map(function (id) {
@@ -2819,8 +2883,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       '<div class="stats">' +
       '<div class="stat"><b>' + (s.score != null ? '<span class="score-big" style="color:' + scoreColor(s.score) + '">' + fmtScore(s.score) + '</span>' : '—') + '</b><small>' + esc(scoreLabel(s)) + '</small></div>' +
       '<div class="stat"><b>' + (s.avgPrice ? 'RM ' + fmtPrice(s.avgPrice) : '—') + '</b><small>' + esc(t(p.mode === 'food' ? 'perPerson' : 'costLabel')) + '</small></div>' +
-      '<div class="stat"><b>' + s.count + '</b><small>' + esc(t('reviewsLabel')) + '</small></div></div>' +
-      '<div class="actions">' + actions + '</div>';
+      '<div class="stat"><b>' + s.count + '</b><small>' + esc(t('reviewsLabel')) + '</small></div></div>';
     h += '<h3 class="sec-title">' + esc(t('reviewsTitle')) + '</h3><ul class="reviews">' + reviews.map(reviewHTML).join('') + '</ul>';
     view.innerHTML = h;
   }
@@ -3204,17 +3267,13 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
 
   function renderProfile() {
     var pf = me();
-    function inp(field, ph, label) {
-      return '<input class="input" data-pf="' + field + '" maxlength="30" value="' + esc(pf[field]) + '" placeholder="' + esc(t(ph)) + '" aria-label="' + esc(t(label)) + '">';
-    }
     var areas = store.areas(), remote = store.mode === 'remote', signedIn = store.signedIn();
     var account = !remote ? '' : '<div class="field"><span class="f-label">' + esc(t('account')) + '</span>' + (signedIn
       ? '<div class="account-row"><span>' + esc(t('signedInAs', { e: store.email() })) + '</span><button type="button" class="btn small ghost" data-action="logout">' + esc(t('logout')) + '</button></div>'
       : '<p class="f-hint">' + esc(t('loginWhy')) + '</p><button type="button" class="btn primary" data-action="login">' + esc(t('login')) + '</button>') + '</div>';
+    /* 以前这里有“来自哪”四个输入框，没什么用，去掉了（以后改成在旅行地图上设“我的家”） */
     var personal = !signedIn ? '' :
-      '<div class="field"><label class="f-label" for="pf-name">' + esc(t('nickname')) + '</label><input id="pf-name" class="input" data-pf="name" maxlength="20" value="' + esc(pf.name) + '" placeholder="' + esc(t('nicknamePh')) + '"></div>' +
-      '<div class="field"><span class="f-label">' + esc(t('hometown')) + '</span><div class="grid-2">' +
-      inp('country', 'countryPh', 'country') + inp('region', 'regionPh', 'region') + inp('city', 'cityPh', 'city') + inp('district', 'districtPh', 'district') + '</div></div>';
+      '<div class="field"><label class="f-label" for="pf-name">' + esc(t('nickname')) + '</label><input id="pf-name" class="input" data-pf="name" maxlength="20" value="' + esc(pf.name) + '" placeholder="' + esc(t('nicknamePh')) + '"></div>';
     var dataButtons = remote
       ? (signedIn ? '<button type="button" class="btn small" data-action="export">' + esc(t('exportData')) + '</button>' +
           '<button type="button" class="btn small" data-action="import">' + esc(t('importData')) + '</button>' +
@@ -3738,8 +3797,9 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
         state.mineBoth = false;
         setMode(state.mode === 'food' ? 'travel' : 'food');
         break;
+      case 'mine-sub':
       case 'scope':
-        state.scope = d.scope; renderFilters(); refreshMap();
+        state.scope = a === 'mine-sub' ? d.v : d.scope === 'mine' ? state.mineSub : d.scope; renderFilters(); refreshMap();
         if (state.view === 'place' && scopedReviews(state.placeId).length) render();
         else if (state.view === 'feed') render();
         else goFeed(state.snap === 'peek' ? 'half' : null);
@@ -3753,7 +3813,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       case 'set-price': state.priceMax = +d.v; refilter(); break;
       case 'set-score': state.minScore = +d.v; refilter(); break;
       case 'set-dist': state.dist = d.v; refilter(); break;
-      case 'clear-filters': state.cat = 'all'; state.priceMax = 0; state.minScore = 0; state.dist = 'any'; renderFilters(); refreshMap(); render(); if (state.bsheet) renderBSheet(); break;
+      case 'clear-filters': state.savedWant = false; state.cat = 'all'; state.priceMax = 0; state.minScore = 0; state.dist = 'any'; renderFilters(); refreshMap(); render(); if (state.bsheet) renderBSheet(); break;
       case 'search': if (state.view === 'feed') state.feedSnap = state.snap; state.view = 'search'; render(); setSnap('full'); break;
       case 'profile': if (state.view === 'feed') state.feedSnap = state.snap; closeBSheet(); state.view = 'profile'; render(); setSnap('full'); break;
       case 'set-lang': setLang(d.lang); break;
@@ -3872,8 +3932,6 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
   /* 有的浏览器收起/展开工具栏时不发 resize，隔一会儿量一次（没变就什么都不做） */
   setInterval(syncViewport, 800);
   syncViewport();
-  var mqDark = window.matchMedia('(prefers-color-scheme: dark)');
-  if (mqDark.addEventListener) mqDark.addEventListener('change', repaintAccent);
 
   /* ================= boot ================= */
   store.onAuthChange(function () {
