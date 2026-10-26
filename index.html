@@ -462,7 +462,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
 .add-pin-bottom { margin-top: 14px; }
 .sel-pin { width: 30px; height: 43px; pointer-events: none; filter: drop-shadow(0 2px 3px rgba(0, 0, 0, .35)); }
 .sel-pin svg { display: block; }
-.preview-hint { margin: 14px 0 12px; }
+.quick-rate { margin: 16px 0 14px; }
 .osm-credit { padding: 12px 4px 4px; color: var(--muted); font-size: 11.5px; }
 .photo-grid { display: flex; flex-wrap: wrap; gap: 8px; }
 .ph-edit { position: relative; width: 76px; height: 76px; border-radius: 14px; overflow: hidden; background: var(--surface-2); }
@@ -812,7 +812,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       addSearchPhFood: '输入店名搜索', addSearchPhTravel: '输入地名搜索', addPin: '地图选点',
       addPinLong: '搜不到？在地图上选点', addHint: '先搜名字。学校附近的小店搜不到的话，点“地图选点”自己标。',
       addNoResult: '地图上没搜到这个名字。',
-      previewHint: '雪团里还没人写过这里。', previewAddFood: '加到雪团，写点评', previewAddTravel: '加到雪团，打卡',
+      poiFood: '餐厅', poiPlace: '地点', quickRate: '去过？打个分就记进我的地图', quickRateHint: '下一步还能加照片、说两句，都是选填。',
       searchLocal: '雪团里的', searchOsm: '地图上的地点', osmMin: '再多打一个字，就会去地图上搜', osmLoading: '正在搜…',
       osmFail: '地图搜索暂时用不了，可以自己插针添加', osmCredit: '地点数据：Overture Maps Foundation · © OpenStreetMap 贡献者（Photon）· 维基百科', osmAdd: '添加', osmOpen: '已在雪团',
       addedMine: '已存进我的地图', addedShared: '已存进我的地图，也分享到了大地图',
@@ -894,7 +894,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       addSearchPhFood: 'Search by name', addSearchPhTravel: 'Search a place', addPin: 'Pick on map',
       addPinLong: 'Can’t find it? Pick it on the map', addHint: 'Search by name first. If a small stall doesn’t show up, use “Pick on map”.',
       addNoResult: 'Nothing on the map with that name.',
-      previewHint: 'Nobody on XueTuan has written about this place yet.', previewAddFood: 'Add to XueTuan and review', previewAddTravel: 'Add to XueTuan and check in',
+      poiFood: 'Restaurant', poiPlace: 'Place', quickRate: 'Been here? Score it to add it to My map', quickRateHint: 'Photos and notes are optional on the next step.',
       searchLocal: 'On XueTuan', searchOsm: 'Places on the map', osmMin: 'Type one more character to search the map', osmLoading: 'Searching…',
       osmFail: 'Map search isn’t available right now. You can still drop a pin.', osmCredit: 'Place data: Overture Maps Foundation · © OpenStreetMap contributors (via Photon) · Wikipedia', osmAdd: 'Add', osmOpen: 'On XueTuan',
       addedMine: 'Saved to My map', addedShared: 'Saved to My map and shared on the big map',
@@ -1756,14 +1756,17 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
   var viewTimer = null, lastGlobeChip = false;
 
   function onStyleLoad() {
+    poiLayerIds = null;
     try { map.setProjection({ type: 'globe' }); } catch (e) { /* older renderer: stay flat */ }
     try { if (map.setSky) map.setSky({ 'atmosphere-blend': ['interpolate', ['linear'], ['zoom'], 0, 1, 5, 1, 7, 0] }); } catch (e) { /* optional */ }
     if (!map.getSource('places')) { addAppLayers(); world.litKey = null; syncCountries(); }
     if (!hoverBound) {
       hoverBound = true;
-      ['pt-pin', 'cl-circle', 'pt-area'].forEach(function (id) {
-        map.on('mouseenter', id, function () { map.getCanvas().style.cursor = 'pointer'; });
-        map.on('mouseleave', id, function () { map.getCanvas().style.cursor = ''; });
+      map.on('mousemove', function (e) {
+        if (isMobile() || state.picking) return;
+        var ours = ['pt-pin', 'cl-circle', 'pt-area'].filter(function (id) { return map.getLayer(id); });
+        var hit = (ours.length && map.queryRenderedFeatures(e.point, { layers: ours }).length) || basePoiAt(e.point);
+        map.getCanvas().style.cursor = hit ? 'pointer' : '';
       });
     }
     patchLabels();
@@ -1988,9 +1991,61 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     }
     var area = map.getLayer('pt-area') ? map.queryRenderedFeatures(e.point, { layers: ['pt-area'] }) : [];
     if (area.length && area[0].properties && area[0].properties.id) { openPlace(area[0].properties.id, { fly: false }); return; }
+    /* 底图上自带的店名、景点名也能点：还不在雪团的先预览，打个分就能记进我的地图 */
+    var poi = (state.view === 'feed' || state.view === 'place' || state.view === 'preview') && basePoiAt(e.point);
+    if (poi) { openBasePoi(poi); return; }
+    if (state.view === 'preview' && state.preview && state.preview.fromMap) { state.preview = null; goFeed('peek'); return; }
     if (isMobile() && state.snap !== 'peek' && (state.view === 'feed' || state.view === 'place')) {
       if (state.view === 'place') goFeed('peek'); else setSnap('peek');
     }
+  }
+
+  /* 底图（OpenMapTiles）的 poi 层：不同底图的图层名不一样，按 source-layer 找；换底图时重新找 */
+  var poiLayerIds = null;
+  function basePoiLayers() {
+    if (poiLayerIds) return poiLayerIds;
+    var st = map && map.getStyle();
+    poiLayerIds = st && st.layers ? st.layers.filter(function (l) { return l.type === 'symbol' && l['source-layer'] === 'poi'; }).map(function (l) { return l.id; }) : [];
+    return poiLayerIds;
+  }
+  function basePoiAt(pt) {
+    var layers = basePoiLayers();
+    if (!layers.length) return null;
+    var hits = map.queryRenderedFeatures([[pt.x - 10, pt.y - 10], [pt.x + 10, pt.y + 10]], { layers: layers });
+    for (var i = 0; i < hits.length; i++) { var r = poiFromFeature(hits[i]); if (r) return r; }
+    return null;
+  }
+  var POI_FOOD_CLASS = ['restaurant', 'fast_food', 'cafe', 'bar', 'beer', 'ice_cream', 'bakery'];
+  var POI_HISTORIC = ['castle', 'monument', 'memorial', 'ruins', 'archaeological_site', 'fort'];
+  function poiFromFeature(f) {
+    var pr = f.properties || {}, co = f.geometry && f.geometry.type === 'Point' && f.geometry.coordinates;
+    var local = pr.name || pr['name:latin'] || pr.name_en || '';
+    var own = pr['name:' + state.lang] || (state.lang === 'en' ? pr.name_en || pr['name:latin'] : '') || '';
+    var name = (own || local).trim();
+    if (!name || !co) return null;
+    var cls = pr.class || '', v = pr.subclass || cls;
+    var food = OSM_FOOD.amenity.indexOf(v) !== -1 || OSM_FOOD.shop.indexOf(v) !== -1 || POI_FOOD_CLASS.indexOf(cls) !== -1;
+    var k = food ? (OSM_FOOD.shop.indexOf(v) !== -1 ? 'shop' : 'amenity')
+      : cls === 'lodging' ? 'tourism' : POI_HISTORIC.indexOf(v) !== -1 ? 'historic' : cls === 'shop' ? 'shop' : 'leisure';
+    if (food && OSM_FOOD[k].indexOf(v) === -1) v = 'restaurant';
+    var g = guessFromOsm({ osm_key: k, osm_value: v });
+    return {
+      osm: '', fromMap: true, name: name, alt: local && local !== name ? local : '',
+      lng: round6(co[0]), lat: round6(co[1]), mode: g.mode, cat: g.cat, precision: 'exact', where: ''
+    };
+  }
+  function sameName(a, b) { return !!a && !!b && a.trim().toLowerCase() === b.trim().toLowerCase(); }
+  function openBasePoi(r) {
+    /* 雪团里已经有了（同名、离得很近）就直接打开那一页 */
+    var hit = store.places().filter(function (p) {
+      return visibleToMe(p) && haversine(p, r) < 120 && (sameName(p.name, r.name) || sameName(p.name, r.alt) || sameName(p.altName, r.name));
+    })[0];
+    if (hit) { openPlace(hit.id, { fly: false }); return; }
+    state.preview = r;
+    state.view = 'preview';
+    render();
+    setSnap('half');
+    if (map) map.easeTo({ center: [r.lng, r.lat], padding: mapPadding(), duration: reduceMotion ? 0 : 450 });
   }
 
   function dropMarker(p) {
@@ -2042,9 +2097,22 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     var a = document.activeElement;
     return !!a && (a.tagName === 'TEXTAREA' || (a.tagName === 'INPUT' && !/^(button|checkbox|radio|file|submit)$/.test(a.type)));
   }
+  /* 只滚面板里的列表，不用 scrollIntoView：它会把 overflow:hidden 的外层也滚动，整个界面往上错位 */
+  function centerInPanel(el, smooth) {
+    var body = el.closest && el.closest('.panel-body');
+    if (!body) return;
+    var r = el.getBoundingClientRect(), b = body.getBoundingClientRect();
+    var top = body.scrollTop + (r.top + r.height / 2) - (b.top + b.height / 2);
+    if (smooth && body.scrollTo) body.scrollTo({ top: top, behavior: 'smooth' }); else body.scrollTop = top;
+  }
+  /* 浏览器给输入框让位时会偷偷滚动外层容器（哪怕是 overflow:hidden），发现了就滚回去 */
+  var appEl = document.getElementById('app');
+  function unscrollApp() { if (appEl.scrollTop || appEl.scrollLeft) { appEl.scrollTop = 0; appEl.scrollLeft = 0; } }
+  appEl.addEventListener('scroll', unscrollApp);
   function syncViewport() {
     var h = measureAppH(), top = measureAppTop(), typing = typingNow();
     if (window.scrollY || window.scrollX) window.scrollTo(0, 0);
+    unscrollApp();
     if (!typing) fullH = h;
     /* 正在打字、可见高度又明显变矮，就当是键盘弹起来了：先把标签栏收起来，给表单腾地方 */
     var kb = typing && isMobile() && fullH > 0 && h < fullH - 120;
@@ -2057,10 +2125,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     applySnap();
     if (map) map.resize();
     /* 键盘刚弹起：把正在填的那一栏滑到中间 */
-    if (kb) setTimeout(function () {
-      var a = document.activeElement;
-      if (a && typingNow() && a.scrollIntoView) a.scrollIntoView({ block: 'center' });
-    }, 60);
+    if (kb) setTimeout(function () { var a = document.activeElement; if (a && typingNow()) centerInPanel(a); }, 60);
   }
   function snapVisible(snap) {
     if (!isMobile()) return 0;
@@ -2585,7 +2650,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     if (!me().name) h += '<div class="field" id="nick-field"' + (share ? '' : ' hidden') + '><label class="f-label" for="f-nick">' + esc(t('nickname')) + '</label><input id="f-nick" class="input" maxlength="20" autocomplete="nickname" placeholder="' + esc(t('nicknamePh')) + '"></div>';
     if (placeFields) {
       var d0 = f.draft || {};
-      h += '<details class="more"' + (d0.alt || d0.link ? ' open' : '') + '><summary>' + esc(t('formMore')) + '</summary><div class="more-body">' +
+      h += '<details class="more"' + (f.editId && (d0.alt || d0.link) ? ' open' : '') + '><summary>' + esc(t('formMore')) + '</summary><div class="more-body">' +
         '<div class="field"><span class="f-label" id="lbl-prec">' + esc(t('precision')) + '</span><div class="seg" role="group" aria-labelledby="lbl-prec">' +
         ['exact', 'area', 'city'].map(function (k) {
           return '<button type="button" data-action="f-prec" data-prec="' + k + '" aria-pressed="' + (f.precision === k) + '">' + esc(precLabel(k)) + '</button>';
@@ -2869,31 +2934,34 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     setSnap('half');
     flyTo([r.lng, r.lat], r.zoom || (r.precision === 'city' ? 10 : r.precision === 'area' ? 14 : 16.5));
   }
-  function addFromResult(r, keepMode) {
+  function addFromResult(r, keepMode, rating) {
     if (!requireLogin()) return;
     var mode = keepMode ? state.mode : r.mode;
     if (mode !== state.mode) setMode(mode, { noFly: true });
     var precision = mode === 'food' ? 'exact' : r.precision;
     var cat = mode === r.mode ? r.cat : null;
     flyTo([r.lng, r.lat], (mode === r.mode && r.zoom) || (precision === 'city' ? 10 : precision === 'area' ? 14 : 16.5));
-    startNewPlace({ lng: r.lng, lat: r.lat }, precision, NEAR_RADIUS[precision], { name: r.name, cat: cat, osm: r.osm });
+    startNewPlace({ lng: r.lng, lat: r.lat }, precision, NEAR_RADIUS[precision], { name: r.name, alt: r.alt, cat: cat, osm: r.osm, rating: rating });
   }
   function renderPreview() {
     var r = state.preview;
     if (!r) { goFeed(); return; }
     var c = null;
     CATS[r.mode].forEach(function (x) { if (x.id === r.cat) c = x; });
+    var generic = !c;
     c = c || CATS[r.mode][CATS[r.mode].length - 1];
     var coords = r.lat.toFixed(6) + ',' + r.lng.toFixed(6);
-    var tags = '<span class="tag">' + catIconHTML(c) + esc(catName(c)) + '</span>' +
+    var tags = '<span class="tag">' + catIconHTML(c) + esc(generic ? t(r.mode === 'food' ? 'poiFood' : 'poiPlace') : catName(c)) + '</span>' +
       (r.where ? '<span class="tag">' + esc(r.where) + '</span>' : '') +
       '<span class="tag">' + esc(t('distFrom', { d: fmtDist(haversine(XMUM, r)) })) + '</span>';
     view.innerHTML = '<div class="view-top"><button type="button" class="icon-btn flat" data-action="back" aria-label="' + esc(t('back')) + '">' + ICON.back + '</button></div>' +
       '<div class="place-head"><h2>' + esc(r.name) + '</h2>' + (r.alt ? '<div class="alt">' + esc(r.alt) + '</div>' : '') +
       '<div class="tags">' + tags + '</div></div>' +
-      '<p class="f-hint preview-hint">' + esc(t('previewHint')) + '</p>' +
-      '<div class="actions"><button type="button" class="btn primary" data-action="preview-add">' + esc(t(r.mode === 'food' ? 'previewAddFood' : 'previewAddTravel')) + '</button>' +
-      '<a class="btn" href="https://www.google.com/maps/dir/?api=1&destination=' + coords + '" target="_blank" rel="noopener">' + ICON.nav + esc(t('navGoogle')) + '</a></div>';
+      '<div class="field quick-rate"><span class="f-label" id="lbl-qr">' + esc(t('quickRate')) + '</span><div class="score-input" role="group" aria-labelledby="lbl-qr">' +
+      [0, 1, 2, 3, 4, 5].map(function (n) {
+        return '<button type="button" class="sc" data-action="preview-score" data-n="' + n + '" style="--c:' + scoreColor(n) + '" aria-label="' + esc(t('scoreAria', { n: n })) + '">' + n + '</button>';
+      }).join('') + '</div><p class="f-hint">' + esc(t('quickRateHint')) + '</p></div>' +
+      '<div class="actions"><a class="btn" href="https://www.google.com/maps/dir/?api=1&destination=' + coords + '" target="_blank" rel="noopener">' + ICON.nav + esc(t('navGoogle')) + '</a></div>';
   }
 
   function renderProfile() {
@@ -3016,7 +3084,12 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     if (opts.drop) setTimeout(function () { dropMarker(p); }, reduceMotion ? 0 : 900);
   }
   function back() {
-    if (state.view === 'preview') { state.preview = null; state.view = 'search'; render(); setSnap('full'); return; }
+    if (state.view === 'preview') {
+      var fromMap = state.preview && state.preview.fromMap;
+      state.preview = null;
+      if (fromMap) { goFeed(); return; }
+      state.view = 'search'; render(); setSnap('full'); return;
+    }
     if (state.view === 'form') formCancel();
     else if (state.view === 'nearby') { state.form = null; goFeed(); }
     else goFeed();
@@ -3123,7 +3196,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       .filter(function (x) { return x.d <= radius; })
       .sort(function (a, b) { return a.d - b.d; })
       .slice(0, 4);
-    state.form = newForm({ loc: loc, cat: prefill.cat || null, precision: precision, osm: prefill.osm || '', draft: prefill.name ? { name: prefill.name } : null });
+    state.form = newForm({ loc: loc, cat: prefill.cat || null, precision: precision, osm: prefill.osm || '', rating: prefill.rating == null ? null : prefill.rating, draft: prefill.name ? { name: prefill.name, alt: prefill.alt || '' } : null });
     if (near.length) { state.nearby = near; state.view = 'nearby'; } else state.view = 'form';
     render();
     setSnap('full');
@@ -3212,7 +3285,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     var placeFields = formHasPlaceFields(f, p0);
     var bad = null;
     if (f.rating == null) { showErr('rating', t('errRating')); bad = bad || $('.score-input .sc'); }
-    if (bad) { bad.focus(); bad.scrollIntoView({ block: 'center', behavior: reduceMotion ? 'auto' : 'smooth' }); return; }
+    if (bad) { bad.focus({ preventScroll: true }); centerInPanel(bad, !reduceMotion); return; }
 
     var btn = $('#f-submit');
     if (btn) btn.disabled = true;
@@ -3477,7 +3550,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       case 'near-pick': state.form.placeId = d.id; state.view = 'form'; render(); break;
       case 'near-new': state.view = 'form'; render(); break;
       case 'osm-pick': pickOsm(+d.i); break;
-      case 'preview-add': if (state.preview) addFromResult(state.preview, false); break;
+      case 'preview-score': if (state.preview) addFromResult(state.preview, false, +d.n); break;
       case 'login': openLogin(); break;
       case 'login-google': store.signInWithGoogle().catch(function (err) { toast(t('loginFail', { m: (err && err.message) || '' })); }); break;
       case 'logout': store.signOut().catch(function () {}); break;

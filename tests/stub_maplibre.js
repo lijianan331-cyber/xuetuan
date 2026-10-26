@@ -14,7 +14,8 @@
     return { layers: [
       { id: 'background', type: 'background' },
       { id: 'place-city', type: 'symbol', layout: { 'text-field': ['coalesce', ['get', 'name:en'], ['get', 'name']], 'text-font': ['Noto Sans Regular'] } },
-      { id: 'road-shield', type: 'symbol', layout: { 'text-field': '{ref}', 'text-font': ['Noto Sans Bold'] } }
+      { id: 'road-shield', type: 'symbol', layout: { 'text-field': '{ref}', 'text-font': ['Noto Sans Bold'] } },
+      { id: 'poi_r1', type: 'symbol', source: 'openmaptiles', 'source-layer': 'poi', layout: { 'text-field': '{name}', 'text-font': ['Noto Sans Regular'] } }
     ] };
   }
   function Map(opts) {
@@ -75,7 +76,11 @@
   Map.prototype.getContainer = function () { return this.container; };
   Map.prototype.getCanvas = function () { return this.canvas; };
   Map.prototype.unproject = function () { return this._ll(); };
-  Map.prototype.queryRenderedFeatures = function () { return window.__qrf || []; };
+  /* window.__qrf 里的要素带 layer.id 时，只在查询那一层时返回 */
+  Map.prototype.queryRenderedFeatures = function (pt, o) {
+    var want = o && o.layers;
+    return (window.__qrf || []).filter(function (f) { return !want || !f.layer || want.indexOf(f.layer.id) !== -1; });
+  };
   Map.prototype.resize = function () {};
   function Marker(o) { this.el = (o && o.element) || document.createElement('div'); }
   Marker.prototype.setLngLat = function (ll) { this.ll = ll; return this; };
