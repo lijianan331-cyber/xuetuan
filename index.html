@@ -786,6 +786,8 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       unnamedFood: '没起名的店', unnamedTravel: '没起名的地方',
       link: '相关链接', linkPh: '官网、订位、门票页面…',
       nickname: '昵称', nicknamePh: '大家看到的名字',
+      testAccounts: '测试账号（仅供测试）', testAccountsHint: '同一台手机上换着当不同的人：每个号的记录、收藏、家都分开，私密的只有自己看得到。',
+      acctAdd: '＋ 再加一个', acctSwitched: '现在是：{n}', acctUnnamed: '没起名的号', acctDefault: '测试号 {c}',
       myHome: '我的家', homeNone: '设了以后旅行地图上会有一个小房子，只到城市一级。', homeSet: '设置我的家', homeChange: '改', homeRemove: '不设了',
       homePublic: '公开到大地图', homePublicOn: '同学在旅行大地图上能看到，列表里显示“来自 {c}”', homePublicOff: '现在只有你自己看得到（我的地图 · 旅行）',
       homeTitle: '设置我的家', homeSearchPh: '搜城市，比如 吉隆坡、深圳', homePick: '在地图上点', homeNote: '只存城市名和大概位置（约 10 公里），不存地址。',
@@ -874,6 +876,8 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       unnamedFood: 'Unnamed spot', unnamedTravel: 'Unnamed place',
       link: 'Link', linkPh: 'Website, booking or ticket page',
       nickname: 'Nickname', nicknamePh: 'The name others see',
+      testAccounts: 'Test accounts (testing only)', testAccountsHint: 'Take turns being different people on one phone. Each account has its own records, saves and home; private ones stay private.',
+      acctAdd: '+ Add one', acctSwitched: 'Now using: {n}', acctUnnamed: 'Unnamed account', acctDefault: 'Tester {c}',
       myHome: 'My home', homeNone: 'Puts a little house on the travel map. City level only.', homeSet: 'Set my home', homeChange: 'Change', homeRemove: 'Remove',
       homePublic: 'Show on the big map', homePublicOn: 'Classmates see it on the travel map, and lists say “from {c}”', homePublicOff: 'Only you can see it now (My map · Travel)',
       homeTitle: 'Set my home', homeSearchPh: 'Search a city, e.g. Kuala Lumpur', homePick: 'Pick on the map', homeNote: 'Only the city name and a rough spot (about 10 km) are saved, never an address.',
@@ -963,7 +967,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     var canPersist = true;
     var photoURLs = new Map();
 
-    function emptyData() { return { version: DATA_VERSION, places: [], reviews: [], wishlist: [], profile: null, home: null, areas: [], seeded: false }; }
+    function emptyData() { return { version: DATA_VERSION, places: [], reviews: [], wishlist: [], profile: null, others: [], homes: {}, areas: [], seeded: false }; }
 
     /* v1 把“没打分”存成 0；v2 里 0 是合法分数，没打分改成 null */
     function migrate(d) {
@@ -1014,6 +1018,11 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       });
     }
     function find(list, id) { for (var i = 0; i < list.length; i++) if (list[i].id === id) return list[i]; return null; }
+    function mineW(w) { return w.userId === data.profile.id; }
+    function homeOf(pf) {
+      var h = pf && data.homes[pf.id];
+      return h ? { userId: pf.id, name: pf.name || '', city: h.city, lat: h.lat, lng: h.lng, public: !!h.public } : null;
+    }
     function forgetPhoto(id) {
       [id, id + THUMB_KEY].forEach(function (k) {
         photoStore.del(k);
@@ -1055,6 +1064,16 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       init: function () {
         load();
         if (!data.profile || !data.profile.id) data.profile = { id: uid('u'), name: '', country: '', region: '', city: '', district: '' };
+        /* 以前只有一个人：收藏和家都算这个人的 */
+        if (!Array.isArray(data.others)) data.others = [];
+        if (!data.homes || typeof data.homes !== 'object') data.homes = {};
+        if (data.home) { if (!data.homes[data.profile.id]) data.homes[data.profile.id] = data.home; delete data.home; }
+        data.wishlist.forEach(function (w) { if (!w.userId) w.userId = data.profile.id; });
+        /* 测试用：一开始就备好另外两个号 */
+        if (!data.others.length) ['B', 'C'].forEach(function (c) { data.others.push({ id: uid('u'), name: t('acctDefault', { c: c }), country: '', region: '', city: '', district: '' }); });
+        /* 按建号的先后排，切换来切换去顺序不变 */
+        if (data.profile.seq == null) data.profile.seq = 0;
+        data.others.forEach(function (o, i) { if (o.seq == null) o.seq = i + 1; });
         if (data.seeded !== SAMPLE_SET) seedSamples();
         persist();
         return Promise.resolve();
@@ -1068,11 +1087,13 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       review: function (id) { return find(data.reviews, id); },
       reviewsOf: function (placeId) { return data.reviews.filter(function (r) { return r.placeId === placeId; }); },
       areas: function () { return data.areas; },
-      wishlist: function () { return data.wishlist; },
-      isSaved: function (placeId) { return data.wishlist.some(function (w) { return w.placeId === placeId; }); },
-      /* 我的家：本地版只有我自己一个人 */
-      myHome: function () { return data.home ? Object.assign({ userId: data.profile.id, name: data.profile.name }, data.home) : null; },
-      homes: function () { var h = this.myHome(); return h ? [h] : []; },
+      wishlist: function () { return data.wishlist.filter(mineW); },
+      isSaved: function (placeId) { return data.wishlist.some(function (w) { return mineW(w) && w.placeId === placeId; }); },
+      /* 家：每个测试号一个；和线上一样，看得到公开的和自己的 */
+      myHome: function () { return homeOf(data.profile); },
+      homes: function () {
+        return [data.profile].concat(data.others).map(homeOf).filter(function (h) { return h && (h.public || h.userId === data.profile.id); });
+      },
       hasSamples: function () { return data.reviews.some(function (r) { return r.sample; }); },
       photoURL: localPhotoURL,
       hasPhotoURL: function (id) { return photoURLs.has(id); },
@@ -1131,19 +1152,35 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
         return done({ placeRemoved: dropPlaceIfEmpty(r.placeId) });
       },
       setSaved: function (placeId, saved) {
-        data.wishlist = data.wishlist.filter(function (w) { return w.placeId !== placeId; });
-        if (saved) data.wishlist.push({ placeId: placeId, createdAt: Date.now() });
+        data.wishlist = data.wishlist.filter(function (w) { return !(mineW(w) && w.placeId === placeId); });
+        if (saved) data.wishlist.push({ userId: data.profile.id, placeId: placeId, createdAt: Date.now() });
         return done(saved);
       },
       /* h: { city, lat, lng, public }，null 是不设了 */
       setHome: function (h) {
-        data.home = h ? { city: h.city, lat: h.lat, lng: h.lng, public: !!h.public } : null;
+        if (h) data.homes[data.profile.id] = { city: h.city, lat: h.lat, lng: h.lng, public: !!h.public };
+        else delete data.homes[data.profile.id];
         return done(this.myHome());
       },
       updateProfile: function (patch) {
         Object.keys(patch).forEach(function (k) { data.profile[k] = patch[k]; });
+        data.reviews.forEach(function (r) { if (r.authorId === data.profile.id) r.authorName = data.profile.name || ''; });
         persistSoon();
         return Promise.resolve(data.profile);
+      },
+      /* ---- 测试账号：同一个浏览器里换着当不同的人，看别人眼里是什么样 ---- */
+      accounts: function () { return [data.profile].concat(data.others).sort(function (a, b) { return (a.seq || 0) - (b.seq || 0); }); },
+      addAccount: function (name) {
+        var pf = { id: uid('u'), name: name, country: '', region: '', city: '', district: '', seq: data.others.length + 1 };
+        data.others.push(pf);
+        return done(pf);
+      },
+      switchAccount: function (id) {
+        var all = [data.profile].concat(data.others), next = find(all, id);
+        if (!next) return Promise.reject(new Error('no account'));
+        data.profile = next;
+        data.others = all.filter(function (x) { return x !== next; });
+        return done(next);
       },
       addArea: function (a) {
         var area = { id: uid('a'), name: a.name, lng: a.lng, lat: a.lat, zoom: a.zoom };
@@ -1173,7 +1210,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
         }, Promise.resolve()).then(function () {
           return {
             app: BACKUP_APP, version: DATA_VERSION, exportedAt: new Date().toISOString(),
-            profile: data.profile, home: data.home, places: data.places, reviews: data.reviews, wishlist: data.wishlist, areas: data.areas, photos: photos
+            profile: data.profile, home: data.homes[data.profile.id] || null, places: data.places, reviews: data.reviews, wishlist: data.wishlist, areas: data.areas, photos: photos
           };
         });
       },
@@ -1188,10 +1225,18 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
         obj.places.forEach(function (p) { if (p && p.id && !placeIds[p.id] && isFinite(p.lat) && isFinite(p.lng) && CATS[p.mode]) { data.places.push(p); added++; } });
         obj.reviews.forEach(function (r) { if (r && r.id && !reviewIds[r.id] && r.placeId) data.reviews.push(r); });
         (obj.areas || []).forEach(function (a) { if (a && a.id && !areaIds[a.id]) data.areas.push(a); });
-        (obj.wishlist || []).forEach(function (w) { if (w && w.placeId && !data.wishlist.some(function (x) { return x.placeId === w.placeId; })) data.wishlist.push(w); });
+        /* 这个号还什么都没写过：直接变成备份里的那个人（收藏、家跟过去） */
         var me = data.profile;
-        if (obj.profile && obj.profile.id && !me.name && !data.reviews.some(function (r) { return r.authorId === me.id; })) data.profile = obj.profile;
-        if (!data.home && obj.home && obj.home.city && isFinite(obj.home.lat) && isFinite(obj.home.lng)) data.home = obj.home;
+        if (obj.profile && obj.profile.id && !me.name && !data.reviews.some(function (r) { return r.authorId === me.id; })) {
+          data.profile = obj.profile;
+          data.wishlist.forEach(function (w) { if (w.userId === me.id) w.userId = obj.profile.id; });
+          if (data.homes[me.id] && !data.homes[obj.profile.id]) data.homes[obj.profile.id] = data.homes[me.id];
+          delete data.homes[me.id];
+        }
+        (obj.wishlist || []).forEach(function (w) {
+          if (w && w.placeId && !data.wishlist.some(function (x) { return mineW(x) && x.placeId === w.placeId; })) data.wishlist.push({ userId: data.profile.id, placeId: w.placeId, createdAt: w.createdAt || Date.now() });
+        });
+        if (!data.homes[data.profile.id] && obj.home && obj.home.city && isFinite(obj.home.lat) && isFinite(obj.home.lng)) data.homes[data.profile.id] = obj.home;
         var jobs = Object.keys(obj.photos || {}).map(function (id) {
           return dataURLToBlob(obj.photos[id]).then(function (b) { return photoStore.put(id, b); }).catch(function () { return false; });
         });
@@ -3457,7 +3502,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
         '<button type="button" class="btn small" data-action="import">' + esc(t('importData')) + '</button>' +
         (store.hasSamples() ? '<button type="button" class="btn small ghost" data-action="clear-samples">' + esc(t('clearSamples')) + '</button>' : '');
     var h = '<div class="view-top"><button type="button" class="icon-btn flat" data-action="back" aria-label="' + esc(t('back')) + '">' + ICON.back + '</button><h2 class="view-title">' + esc(t('profile')) + '</h2></div>' +
-      '<div class="form">' + account + personal +
+      '<div class="form">' + account + testAccountsHTML() + personal +
       '<div class="field"><span class="f-label">' + esc(t('language')) + '</span><div class="seg">' +
       '<button type="button" data-action="set-lang" data-lang="zh" aria-pressed="' + (state.lang === 'zh') + '">中文</button>' +
       '<button type="button" data-action="set-lang" data-lang="en" aria-pressed="' + (state.lang === 'en') + '">English</button></div></div>' +
@@ -3473,6 +3518,30 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     view.innerHTML = h;
   }
 
+  /* 本地版的测试账号：点一下就换成另一个人 */
+  function testAccountsHTML() {
+    if (!store.accounts) return '';
+    var cur = me().id;
+    return '<div class="field" id="test-accounts"><span class="f-label">' + esc(t('testAccounts')) + '</span><div class="chips-wrap">' +
+      store.accounts().map(function (a) {
+        return '<button type="button" class="chip" data-action="acct" data-id="' + esc(a.id) + '" aria-pressed="' + (a.id === cur) + '">' + esc(a.name || t('acctUnnamed')) + '</button>';
+      }).join('') +
+      (store.accounts().length < 8 ? '<button type="button" class="chip" data-action="acct-add">' + esc(t('acctAdd')) + '</button>' : '') +
+      '</div><p class="f-hint">' + esc(t('testAccountsHint')) + '</p></div>';
+  }
+  function switchAccount(id) {
+    if (id === me().id) return;
+    store.switchAccount(id).then(function (pf) {
+      state.form = null; state.placeId = null; state.homes = null; state.preview = null;
+      afterHomeChange();
+      render();
+      toast(t('acctSwitched', { n: pf.name || t('acctUnnamed') }));
+    });
+  }
+  function addAccount() {
+    var n = store.accounts().length;
+    store.addAccount(t('acctDefault', { c: String.fromCharCode(65 + n) })).then(function (pf) { switchAccount(pf.id); });
+  }
   /* “我”里的“我的家”：一行城市 + 改 / 不设了，下面一个公开开关（默认关） */
   function homeFieldHTML() {
     var h = store.myHome();
@@ -4115,6 +4184,8 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       case 'mine-mode': if (state.view !== 'feed') goFeed(); setMineView(d.v); if (state.bsheet) renderBSheet(); break;
       case 'homes-toggle': state.homesOn = !state.homesOn; refreshMap(); renderFilters(); saveView(); break;
       case 'home-set': openHomeSet(); break;
+      case 'acct': switchAccount(d.id); break;
+      case 'acct-add': addAccount(); break;
       case 'home-pick': if (requireLogin()) startPick({ home: true }); break;
       case 'home-result': var hr = homeQ.results[+d.i]; if (hr) saveHome(hr.name, hr); break;
       case 'home-del':
