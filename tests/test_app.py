@@ -25,6 +25,9 @@ PHOTON = json.dumps({"type": "FeatureCollection", "features": [
      "properties": {"name": "Kafe Ujian", "osm_type": "N", "osm_id": 111, "osm_key": "amenity", "osm_value": "cafe", "type": "house"}}
 ]})
 photon_calls = []
+world_calls = []
+WORLD = open(os.path.join(SCR, 'fixtures', 'countries-110m.json'), encoding='utf-8').read()
+TOPOJSON = open(os.path.join(SCR, 'fixtures', 'topojson-client.min.js'), encoding='utf-8').read()
 results = []
 
 # 示例数据直接从 index.html 里读，加减示例时测试不用跟着改数字
@@ -62,6 +65,11 @@ def route_all(ctx, supabase=False):
         if 'photon.komoot.io/api/' in url:
             photon_calls.append(url)
             return route.fulfill(status=200, body=PHOTON, headers={'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'})
+        if 'world-atlas@' in url:
+            world_calls.append(url)
+            return route.fulfill(status=200, body=WORLD, headers={'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'})
+        if 'topojson-client@' in url:
+            return route.fulfill(status=200, body=TOPOJSON, headers={'Content-Type': 'application/javascript', 'Access-Control-Allow-Origin': '*'})
         if url.startswith('file://') or url.startswith('blob:') or url.startswith('data:'):
             return route.continue_()
         return route.abort()
@@ -569,6 +577,73 @@ with sync_playwright() as p:
     check('mode switch has room on 360px phone', tb[0] >= 120 and tb[1] and tb[2], tb)
     page4.screenshot(path=os.path.join(SHOTS, '12-mobile-360.png'))
     ctx4.close()
+
+    # ---------- 我的地图：美食 / 旅行 / 合并 + 点亮去过的国家 ----------
+    def mk_place(id_, mode, cat, lat, lng, name, by):
+        return {'id': id_, 'mode': mode, 'cat': cat, 'precision': 'exact', 'lat': lat, 'lng': lng, 'name': name, 'altName': '', 'link': '', 'osm': '', 'createdBy': by, 'createdAt': 1, 'sample': False}
+    def mk_review(id_, pid, by):
+        return {'id': id_, 'placeId': pid, 'authorId': by, 'rating': 4, 'price': None, 'text': '', 'photos': [], 'visibility': 'public', 'createdAt': 1}
+    mine_seed = {'version': 2, 'seeded': 2, 'profile': {'id': 'u-me', 'name': '我'}, 'areas': [], 'wishlist': [],
+                 'places': [mk_place('m-food', 'food', 'malay', 2.83, 101.70, '校门口饭', 'u-me'),
+                            mk_place('m-bkk', 'travel', 'city', 13.75, 100.50, '曼谷', 'u-me'),
+                            mk_place('o-tyo', 'travel', 'city', 35.68, 139.76, '东京', 'u-other')],
+                 'reviews': [mk_review('r1', 'm-food', 'u-me'), mk_review('r2', 'm-bkk', 'u-me'), mk_review('r3', 'o-tyo', 'u-other')]}
+    ctx5 = browser.new_context(viewport={'width': 390, 'height': 844}, device_scale_factor=2, has_touch=True)
+    route_all(ctx5)
+    ctx5.add_init_script('if (!sessionStorage.getItem("seeded")) { sessionStorage.setItem("seeded", "1"); localStorage.setItem("xmum-chiwan-map:data:v1", ' + json.dumps(json.dumps(mine_seed)) + '); localStorage.setItem("xmum-chiwan-map:view:v1", ' + json.dumps(json.dumps({'center': [105, 8], 'zoom': 3, 'mode': 'travel'})) + '); }')
+    page5 = ctx5.new_page()
+    errors5 = []
+    page5.on('pageerror', lambda e: errors5.append('pageerror: ' + str(e)))
+    page5.goto(APP)
+    page5.wait_for_function('window.__map && window.__map.getSource("places")', timeout=8000)
+    page5.wait_for_timeout(400)
+    page5.click('[data-action="scope"][data-scope="mine"]')
+    page5.wait_for_timeout(200)
+    chips = page5.eval_on_selector_all('#filters [data-action="mine-mode"]', 'els => els.map(e => e.textContent.trim())')
+    check('my map row: food / travel / both', chips == ['美食', '旅行', '合并'] and page5.locator('#filters [data-action="cat"]').count() == 0 and page5.locator('[data-action="filters"]').count() == 0, chips)
+    check('my map hides top food/travel switch', not page5.locator('.mode-switch').is_visible())
+    page5.click('[data-action="mine-mode"][data-v="food"]')
+    page5.wait_for_timeout(200)
+    names5 = lambda: sorted(page5.evaluate('window.__map.getSource("places").data.features.map(f => f.properties.name)'))
+    check('my food map shows only my food', names5() == ['校门口饭'] and page5.inner_text('.view-title') == '我吃过的', names5())
+    page5.click('[data-action="mine-mode"][data-v="both"]')
+    page5.wait_for_timeout(200)
+    check('merged map shows my food and travel', names5() == ['曼谷', '校门口饭'] and page5.inner_text('.view-title') == '我的足迹', (names5(), page5.inner_text('.view-title')))
+    check('merged feed lists both', page5.locator('.feed-item').count() == 2)
+    check('no country switch when zoomed in', page5.locator('[data-action="countries"]').count() == 0)
+    check('country data not downloaded yet', world_calls == [])
+    page5.evaluate('window.__map.jumpTo({zoom: 3})')
+    page5.wait_for_timeout(200)
+    check('country switch shows at country zoom', page5.locator('[data-action="countries"]').is_visible())
+    page5.click('[data-action="countries"]')
+    page5.wait_for_function('window.__map.getSource("countries")', timeout=5000)
+    page5.wait_for_timeout(200)
+    lit = page5.evaluate('window.__map.getSource("countries").data.features.filter(f => f.properties.v === 1).map(f => f.properties.name).sort()')
+    check('visited countries light up (mine only)', lit == ['Malaysia', 'Thailand'], lit)
+    vis = page5.evaluate('["ct-dim", "ct-lit", "ct-line"].map(id => window.__map.getLayer(id).layout.visibility)')
+    check('country layers visible', vis == ['visible'] * 3, vis)
+    check('switch shows visited count', '已去 2 国' in page5.inner_text('[data-action="countries"]') and page5.get_attribute('[data-action="countries"]', 'aria-pressed') == 'true', page5.inner_text('[data-action="countries"]'))
+    page5.screenshot(path=os.path.join(SHOTS, '14-my-map-countries.png'))
+    page5.click('[data-action="mine-mode"][data-v="food"]')
+    page5.wait_for_timeout(300)
+    vis = page5.evaluate('["ct-dim", "ct-lit", "ct-line"].map(id => window.__map.getLayer(id).layout.visibility)')
+    check('food map hides countries', vis == ['none'] * 3, vis)
+    page5.click('[data-action="mine-mode"][data-v="travel"]')
+    page5.wait_for_timeout(300)
+    vis = page5.evaluate('["ct-dim", "ct-lit", "ct-line"].map(id => window.__map.getLayer(id).layout.visibility)')
+    check('travel map shows countries again', vis == ['visible'] * 3 and names5() == ['曼谷'], (vis, names5()))
+    page5.click('[data-action="scope"][data-scope="all"]')
+    page5.wait_for_timeout(200)
+    vis = page5.evaluate('["ct-dim", "ct-lit", "ct-line"].map(id => window.__map.getLayer(id).layout.visibility)')
+    check('explore map: countries off, normal row back', vis == ['none'] * 3 and page5.locator('.mode-switch').is_visible() and page5.locator('[data-action="filters"]').count() == 1, vis)
+    page5.reload()
+    page5.wait_for_function('window.__map && window.__map.getSource("places")', timeout=8000)
+    page5.click('[data-action="scope"][data-scope="mine"]')
+    page5.wait_for_function('window.__map.getSource("countries")', timeout=5000)
+    page5.wait_for_timeout(200)
+    check('country switch remembered after reload', page5.get_attribute('[data-action="countries"]', 'aria-pressed') == 'true')
+    check('my map: no page errors', not errors5, errors5)
+    ctx5.close()
 
     # ---------- 线上版（假的 Supabase） ----------
     A, B = 'aaaaaaaa-0000-4000-8000-00000000000a', 'bbbbbbbb-0000-4000-8000-00000000000b'

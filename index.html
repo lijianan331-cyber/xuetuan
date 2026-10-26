@@ -181,6 +181,11 @@ html.mode-travel .mode-switch::before { transform: translateX(100%); }
 .chip:hover { background: var(--surface-2); }
 .chip[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); }
 .chip svg { width: 16px; height: 16px; }
+/* 我的地图：顶部吃/玩藏起来，改用下面一行的 美食 / 旅行 / 合并 */
+html.scope-mine .mode-switch { display: none; }
+.chip.globe-chip { gap: 6px; }
+.chip.globe-chip[aria-pressed="true"] { background: rgba(245, 178, 27, .2); color: #8a5a00; }
+.chip.globe-chip b { padding: 1px 7px; border-radius: 999px; background: #F5B21B; color: #2b1c00; font-size: 12px; }
 .filter-btn { margin-right: 4px; background: var(--surface-2); }
 .filter-btn b { min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--accent); color: var(--accent-ink); font-size: 11px; line-height: 18px; text-align: center; }
 .seg { display: inline-flex; gap: 2px; padding: 3px; border-radius: 12px; background: var(--surface-2); }
@@ -765,7 +770,8 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       scoreAria: '{n} 分', legend: '评分',
       dist_walk: '步行 · 1.5km 内', dist_short: '短途打车 · 1.5–10km', dist_mid: '中距离 · 10–40km', dist_far: '更远 · 40km 以上',
       tier_walk: '步行可达', tier_short: '短途打车', tier_mid: '中距离', tier_far: '吉隆坡及更远',
-      feedFoodAll: '大家最近在吃', feedTravelAll: '大家最近去了', feedFoodMine: '我吃过的', feedTravelMine: '我去过的',
+      feedFoodAll: '大家最近在吃', feedTravelAll: '大家最近去了', feedFoodMine: '我吃过的', feedTravelMine: '我去过的', feedBothMine: '我的足迹',
+      mine_food: '美食', mine_travel: '旅行', mine_both: '合并', litCountries: '点亮国家', litN: '已去 {n} 国', worldFail: '国家边界没加载出来，等下再试',
       feedSavedFood: '想去吃的', feedSavedTravel: '想去的地方',
       emptySaved: '还没收藏过。在探索地图里看到想去的，点地点页上的“收藏”。', goExplore: '去探索',
       wish: '收藏', wished: '已收藏', wishAdded: '收藏了，在“收藏”地图里能找到', wishRemoved: '取消收藏了',
@@ -845,7 +851,8 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       scoreAria: 'Score {n}', legend: 'Score',
       dist_walk: 'Walk · under 1.5 km', dist_short: 'Short ride · 1.5–10 km', dist_mid: 'Mid trip · 10–40 km', dist_far: 'Further · 40 km+',
       tier_walk: 'Walkable', tier_short: 'Short ride', tier_mid: 'Mid-distance', tier_far: 'KL & beyond',
-      feedFoodAll: 'What people are eating', feedTravelAll: 'Where people went', feedFoodMine: 'Places I’ve eaten', feedTravelMine: 'Places I’ve been',
+      feedFoodAll: 'What people are eating', feedTravelAll: 'Where people went', feedFoodMine: 'Places I’ve eaten', feedTravelMine: 'Places I’ve been', feedBothMine: 'My footprints',
+      mine_food: 'Food', mine_travel: 'Travel', mine_both: 'Both', litCountries: 'Countries', litN: '{n} visited', worldFail: 'Couldn’t load country borders. Try again later.',
       feedSavedFood: 'Food spots I saved', feedSavedTravel: 'Places I saved',
       emptySaved: 'Nothing saved yet. When you spot somewhere on the Explore map, tap “Save” on its page.', goExplore: 'Explore',
       wish: 'Save', wished: 'Saved', wishAdded: 'Saved. Find it on the Saved map', wishRemoved: 'Removed from saved',
@@ -933,7 +940,8 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
   var state = {
     lang: 'zh', mode: 'food', scope: 'all', cat: 'all', priceMax: 0, minScore: 0, dist: 'any',
     view: 'feed', placeId: null, form: null, nearby: null, query: '',
-    snap: 'peek', feedSnap: 'peek', picking: null, preview: null, bsheet: null, me: null, styleKey: 'light'
+    snap: 'peek', feedSnap: 'peek', picking: null, preview: null, bsheet: null, me: null, styleKey: 'light',
+    mineBoth: false, countries: false
   };
   var map = null;
   var lastRenderedView = null;
@@ -1476,6 +1484,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
         v.zoom = Math.round(map.getZoom() * 100) / 100;
       }
       v.mode = state.mode; v.lang = state.lang; v.styleKey = state.styleKey;
+      v.mineBoth = state.mineBoth; v.countries = state.countries;
       localStorage.setItem(LS_VIEW, JSON.stringify(v));
     } catch (e) { /* storage blocked: keep going */ }
   }
@@ -1645,8 +1654,11 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     for (var i = 0; i < DIST_TIERS.length; i++) if (d <= DIST_TIERS[i].max) return DIST_TIERS[i].id;
     return 'far';
   }
+  /* 我的地图选“合并”时吃和玩一起显示 */
+  function modeOk(p) { return p.mode === state.mode || (state.scope === 'mine' && state.mineBoth); }
   function passesFilters(p, s) {
-    if (p.mode !== state.mode) return false;
+    if (!modeOk(p)) return false;
+    if (state.scope === 'mine') return true; /* 我的地图只分美食 / 旅行，不用分类和筛选 */
     if (state.cat !== 'all' && p.cat !== state.cat) return false;
     s = s || stats(p);
     if (state.priceMax && !(s.avgPrice && s.avgPrice <= state.priceMax)) return false;
@@ -1654,7 +1666,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     if (state.mode === 'food' && state.dist !== 'any' && distTier(p) !== state.dist) return false;
     return true;
   }
-  function filtersActive() { return state.cat !== 'all' || !!state.priceMax || !!state.minScore || state.dist !== 'any'; }
+  function filtersActive() { return state.scope !== 'mine' && (state.cat !== 'all' || !!state.priceMax || !!state.minScore || state.dist !== 'any'); }
   function catOf(p) {
     var list = CATS[p.mode] || CATS.food;
     for (var i = 0; i < list.length; i++) if (list[i].id === p.cat) return list[i];
@@ -1747,17 +1759,21 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
         }, 700);
       });
       map.on('click', onMapClick);
-      map.on('moveend', function () { clearTimeout(viewTimer); viewTimer = setTimeout(saveView, 400); updateLocName(); });
+      map.on('moveend', function () {
+        clearTimeout(viewTimer); viewTimer = setTimeout(saveView, 400); updateLocName();
+        var g = globeChipShown();
+        if (g !== lastGlobeChip) { lastGlobeChip = g; renderFilters(); }
+      });
       map.on('zoom', function () { if (state.picking) updatePickUI(); });
       map.on('error', function (e) { if (window.console) console.warn('map:', e && e.error ? e.error.message : e); });
     }).catch(function () { showMapError(); });
   }
-  var viewTimer = null;
+  var viewTimer = null, lastGlobeChip = false;
 
   function onStyleLoad() {
     try { map.setProjection({ type: 'globe' }); } catch (e) { /* older renderer: stay flat */ }
     try { if (map.setSky) map.setSky({ 'atmosphere-blend': ['interpolate', ['linear'], ['zoom'], 0, 1, 5, 1, 7, 0] }); } catch (e) { /* optional */ }
-    if (!map.getSource('places')) addAppLayers();
+    if (!map.getSource('places')) { addAppLayers(); world.litKey = null; syncCountries(); }
     if (!hoverBound) {
       hoverBound = true;
       ['pt-pin', 'cl-circle', 'pt-area'].forEach(function (id) {
@@ -1839,7 +1855,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
   }
 
   function placesInView() {
-    return store.places().filter(function (p) { return p.mode === state.mode && inScope(p) && passesFilters(p); });
+    return store.places().filter(function (p) { return inScope(p) && passesFilters(p); });
   }
   function placesGeoJSON() {
     return {
@@ -1910,6 +1926,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
   function refreshMap() {
     var src = map && map.getSource && map.getSource('places');
     if (src) src.setData(placesGeoJSON());
+    syncCountries();
     updateFabHint();
   }
   function repaintAccent() {
@@ -2115,6 +2132,8 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
   }
   /* 顶部一行：筛选按钮（评分、距离、价位都在里面）+ 分类 */
   function renderFilters() {
+    document.documentElement.classList.toggle('scope-mine', state.scope === 'mine');
+    if (state.scope === 'mine') { renderMineFilters(); return; }
     var n = activeFilterCount();
     var html = '<button type="button" class="chip filter-btn" data-action="filters" aria-pressed="' + (n > 0) + '">' +
       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h10M4 12h4M12 12h8M4 18h12"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg>' +
@@ -2125,6 +2144,169 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     });
     html += '<span class="legend" aria-hidden="true">' + esc(t('legend')) + ' <b>0</b><i></i><b>5</b></span>';
     $('#filters').innerHTML = html;
+  }
+
+  /* 我的地图那一行：美食 / 旅行 / 合并；缩小到国家级别再加一个“点亮国家” */
+  var COUNTRY_ZOOM = 5;
+  function mineView() { return state.mineBoth ? 'both' : state.mode; }
+  function globeChipShown() { return state.scope === 'mine' && (state.mode === 'travel' || state.mineBoth) && !!map && map.getZoom() <= COUNTRY_ZOOM; }
+  function renderMineFilters() {
+    var cur = mineView();
+    var html = ['food', 'travel', 'both'].map(function (v) {
+      return '<button type="button" class="chip" data-action="mine-mode" data-v="' + v + '" aria-pressed="' + (cur === v) + '">' + esc(t('mine_' + v)) + '</button>';
+    }).join('');
+    if (globeChipShown()) {
+      var lit = state.countries && world.fc;
+      html += '<button type="button" class="chip globe-chip" data-action="countries" aria-pressed="' + state.countries + '">🌏 ' +
+        esc(t('litCountries')) + (lit ? '<b>' + esc(t('litN', { n: world.litCount })) + '</b>' : '') + '</button>';
+    }
+    html += '<span class="legend" aria-hidden="true">' + esc(t('legend')) + ' <b>0</b><i></i><b>5</b></span>';
+    $('#filters').innerHTML = html;
+  }
+  function setMineView(v) {
+    if (v === 'both') {
+      state.mineBoth = true;
+      renderChrome(); refreshMap();
+      if (state.view === 'feed') render();
+    } else {
+      var same = v === state.mode;
+      state.mineBoth = false;
+      if (same) { renderChrome(); refreshMap(); if (state.view === 'feed') render(); }
+      else setMode(v);
+    }
+    saveView();
+  }
+
+  /* ================= 点亮去过的国家 =================
+   * 国家边界：world-atlas（Natural Earth 1:50m，公有领域），打开开关时才下载。
+   * 去过 = 我自己记录过的地点（吃和玩都算）落在哪个国家里。 */
+  var WORLD_URL = 'https://cdn.jsdelivr.net/npm/world-atlas@2.0.2/countries-50m.json';
+  var TOPOJSON_URL = 'https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/dist/topojson-client.min.js';
+  var world = { fc: null, loading: null, litKey: null, litCount: 0 };
+  function loadScript(src) {
+    return new Promise(function (resolve, reject) {
+      var el = document.createElement('script');
+      el.src = src; el.async = true;
+      el.onload = resolve; el.onerror = function () { reject(new Error('script ' + src)); };
+      document.head.appendChild(el);
+    });
+  }
+  function loadWorld() {
+    if (world.loading) return world.loading;
+    world.loading = Promise.all([
+      window.topojson ? null : loadScript(TOPOJSON_URL),
+      fetch(WORLD_URL).then(function (res) { if (!res.ok) throw new Error('world ' + res.status); return res.json(); })
+    ]).then(function (res) {
+      var topo = res[1];
+      var fc = window.topojson.feature(topo, topo.objects.countries);
+      /* 南极整圈绕着极点，球面上画不好，不要了；跨 180° 经线的（俄罗斯东端、斐济）把西经那半挪到 180° 以东，免得绕地球一圈 */
+      fc.features = fc.features.filter(function (f) { return f.id !== '010'; });
+      fc.features.forEach(function (f) {
+        f.polys = polysOf(f.geometry);
+        f.polys.forEach(unwrapPoly);
+        f.box = boxOf(f.polys);
+      });
+      world.fc = fc;
+      return fc;
+    });
+    world.loading.catch(function () { world.loading = null; });
+    return world.loading;
+  }
+  function polysOf(g) { return !g ? [] : g.type === 'Polygon' ? [g.coordinates] : g.type === 'MultiPolygon' ? g.coordinates : []; }
+  function unwrapPoly(poly) {
+    var lo = false, hi = false;
+    poly[0].forEach(function (c) { if (c[0] < -170) lo = true; if (c[0] > 170) hi = true; });
+    if (lo && hi) poly.forEach(function (ring) { ring.forEach(function (c) { if (c[0] < 0) c[0] += 360; }); });
+  }
+  function boxOf(polys) {
+    var b = [Infinity, 90, -Infinity, -90];
+    polys.forEach(function (poly) { poly[0].forEach(function (c) {
+      if (c[0] < b[0]) b[0] = c[0]; if (c[1] < b[1]) b[1] = c[1]; if (c[0] > b[2]) b[2] = c[0]; if (c[1] > b[3]) b[3] = c[1];
+    }); });
+    return b;
+  }
+  function inRing(x, y, ring) {
+    var c = false;
+    for (var i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+      var xi = ring[i][0], yi = ring[i][1], xj = ring[j][0], yj = ring[j][1];
+      if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) c = !c;
+    }
+    return c;
+  }
+  function inPoly(x, y, poly) {
+    if (!inRing(x, y, poly[0])) return false;
+    for (var k = 1; k < poly.length; k++) if (inRing(x, y, poly[k])) return false;
+    return true;
+  }
+  /* 落在哪个国家；海边、小岛不在 1:50m 轮廓里的，就算离得最近的国家（0.5 度以内） */
+  var NEAR_DEG = 0.5;
+  function countryAt(lng, lat) {
+    var i = countryNear(lng, lat);
+    return i < 0 && lng < -150 ? countryNear(lng + 360, lat) : i;
+  }
+  function countryNear(lng, lat) {
+    var feats = world.fc.features, near = -1, nearD = NEAR_DEG * NEAR_DEG;
+    for (var i = 0; i < feats.length; i++) {
+      var b = feats[i].box;
+      if (lng < b[0] - NEAR_DEG || lng > b[2] + NEAR_DEG || lat < b[1] - NEAR_DEG || lat > b[3] + NEAR_DEG) continue;
+      var polys = feats[i].polys;
+      for (var k = 0; k < polys.length; k++) {
+        if (inPoly(lng, lat, polys[k])) return i;
+        polys[k][0].forEach(function (c) {
+          var dx = c[0] - lng, dy = c[1] - lat, d = dx * dx + dy * dy;
+          if (d < nearD) { nearD = d; near = i; }
+        });
+      }
+    }
+    return near;
+  }
+  function visitedCountries() {
+    var lit = {};
+    store.places().forEach(function (p) {
+      if (!reviewsOf(p.id).some(isMine)) return;
+      var i = countryAt(p.lng, p.lat);
+      if (i >= 0) lit[i] = true;
+    });
+    return lit;
+  }
+  function countriesOn() { return state.countries && state.scope === 'mine' && (state.mode === 'travel' || state.mineBoth); }
+  var COUNTRY_LAYERS = ['ct-dim', 'ct-lit', 'ct-line'];
+  function syncCountries() {
+    if (!map || !map.getSource('places')) return;
+    var on = countriesOn();
+    if (on && !world.fc) {
+      loadWorld().then(function () { syncCountries(); renderFilters(); }, function () {
+        state.countries = false; renderFilters(); toast(t('worldFail'));
+      });
+      return;
+    }
+    if (!on) {
+      COUNTRY_LAYERS.forEach(function (id) { if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', 'none'); });
+      return;
+    }
+    var lit = visitedCountries(), key = Object.keys(lit).sort().join(',');
+    var n = Object.keys(lit).length;
+    if (n !== world.litCount) { world.litCount = n; renderFilters(); }
+    var src = map.getSource('countries');
+    if (!src || key !== world.litKey) {
+      var data = { type: 'FeatureCollection', features: world.fc.features.map(function (f, i) {
+        return { type: 'Feature', geometry: f.geometry, properties: { v: lit[i] ? 1 : 0, name: (f.properties && f.properties.name) || '' } };
+      }) };
+      if (src) src.setData(data);
+      else addCountryLayers(data);
+      world.litKey = key;
+    }
+    COUNTRY_LAYERS.forEach(function (id) { map.setLayoutProperty(id, 'visibility', 'visible'); });
+  }
+  function addCountryLayers(data) {
+    map.addSource('countries', { type: 'geojson', data: data });
+    var fade = function (a) { return ['interpolate', ['linear'], ['zoom'], 3, a, 5.5, a * 0.8, 7, 0]; };
+    map.addLayer({ id: 'ct-dim', type: 'fill', source: 'countries', maxzoom: 8, filter: ['==', ['get', 'v'], 0],
+      paint: { 'fill-color': '#0B1626', 'fill-opacity': fade(0.5) } }, 'pt-area');
+    map.addLayer({ id: 'ct-lit', type: 'fill', source: 'countries', maxzoom: 8, filter: ['==', ['get', 'v'], 1],
+      paint: { 'fill-color': '#FFC23D', 'fill-opacity': fade(0.55) } }, 'pt-area');
+    map.addLayer({ id: 'ct-line', type: 'line', source: 'countries', maxzoom: 8, filter: ['==', ['get', 'v'], 1],
+      paint: { 'line-color': '#F29D00', 'line-width': 1.4, 'line-opacity': fade(0.9) } }, 'pt-area');
   }
 
   /* ================= bottom sheets: 筛选、去哪儿看 ================= */
@@ -2237,7 +2419,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
   function feedReviews() {
     return store.reviews().filter(function (r) {
       var p = placeById(r.placeId);
-      if (!p || p.mode !== state.mode) return false;
+      if (!p || !modeOk(p)) return false;
       if (state.scope === 'mine' ? !isMine(r) : r.visibility !== 'public') return false;
       return passesFilters(p);
     }).sort(function (a, b) { return b.createdAt - a.createdAt; }).slice(0, 80);
@@ -2255,6 +2437,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       food: { all: 'feedFoodAll', mine: 'feedFoodMine', saved: 'feedSavedFood' },
       travel: { all: 'feedTravelAll', mine: 'feedTravelMine', saved: 'feedSavedTravel' }
     }[state.mode][state.scope];
+    if (state.scope === 'mine' && state.mineBoth) key = 'feedBothMine';
     var h = '<div class="view-head"><div class="title-row"><h2 class="view-title" data-action="expand">' + esc(t(key)) + '</h2><span class="count">' + items.length + '</span></div></div>';
     if (store.hasSamples()) {
       h += '<div class="sample-note"><span>' + esc(t('samplesShown')) + '</span><button type="button" class="link-btn" data-action="clear-samples">' + esc(t('clearSamples')) + '</button></div>';
@@ -3192,6 +3375,8 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
         else goFeed(state.snap === 'peek' ? 'half' : null);
         break;
       case 'cat': state.cat = d.cat; refilter(); break;
+      case 'mine-mode': if (state.view !== 'feed') goFeed(); setMineView(d.v); break;
+      case 'countries': state.countries = !state.countries; syncCountries(); renderFilters(); saveView(); break;
       case 'filters': openBSheet('filters'); break;
       case 'areas': openBSheet('areas'); break;
       case 'sheet-close': closeBSheet(); break;
@@ -3295,6 +3480,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       if (savedView.lang === 'en' || savedView.lang === 'zh') state.lang = savedView.lang;
       if (savedView.mode === 'travel' || savedView.mode === 'food') state.mode = savedView.mode;
       if (STYLE_URLS[savedView.styleKey]) state.styleKey = savedView.styleKey;
+      state.mineBoth = savedView.mineBoth === true; state.countries = savedView.countries === true;
     }
     applyStaticI18n();
     renderChrome();
