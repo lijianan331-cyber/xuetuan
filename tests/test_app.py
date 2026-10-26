@@ -122,10 +122,21 @@ with sync_playwright() as p:
     check('bottom tab bar: explore / saved / add / my map / me', [x.strip() for x in tabs] == ['探索', '收藏', '加一家', '我的地图', '我'], tabs)
     check('explore tab is current', page.get_attribute('#tabbar [data-scope="all"]', 'aria-current') == 'page')
     check('no right-side tool column, locate button kept', page.locator('.tools, [data-action="zoom-in"], [data-action="to-globe"], [data-action="basemap"]').count() == 0 and page.locator('.locate-btn').is_visible())
-    check('header is just the search bar', page.locator('.search-bar').is_visible() and page.locator('#loc-name, .mode-switch, #filters, [data-action="cat"]').count() == 0)
+    acts = page.eval_on_selector_all('#map-ctrls button', 'els => els.map(e => e.dataset.action)')
+    check('no header: top right has search, food/travel switch, filter', acts == ['search', 'toggle-mode', 'filters'] and page.locator('.topbar, .search-bar, #loc-name, .mode-switch, #filters').count() == 0, acts)
     check('map top-right: plane to switch to travel, filter icon', page.locator('#map-ctrls [data-action="toggle-mode"]').is_visible() and page.get_attribute('[data-action="toggle-mode"]', 'aria-label') == '切换到旅行地图' and page.locator('#map-ctrls [data-action="filters"]').is_visible())
-    ctl = page.evaluate('(() => { const c = document.querySelector("#map-ctrls").getBoundingClientRect(), b = document.querySelector(".search-bar").getBoundingClientRect(); return [c.top >= b.bottom, c.right <= innerWidth]; })()')
-    check('map buttons sit under the search bar on the right', ctl == [True, True], ctl)
+    ctl = page.evaluate('(() => { const c = document.querySelector("#map-ctrls").getBoundingClientRect(); return [c.top < 40, c.right <= innerWidth]; })()')
+    check('map buttons sit in the top right corner', ctl == [True, True], ctl)
+    check('switch button is coloured, not plain white', page.evaluate('getComputedStyle(document.querySelector(".mode-btn")).backgroundImage').startswith('linear-gradient'))
+    # 面板和底部栏：不管面板拉到哪，面板都接着底部栏，底部栏贴着屏幕底边；视口变高变矮也一样
+    GEO = '(() => { const p = document.querySelector("#panel").getBoundingClientRect(), t = document.querySelector("#tabbar").getBoundingClientRect(); return [Math.round(p.bottom) >= Math.round(t.top), Math.round(t.bottom) === innerHeight, document.documentElement.scrollHeight <= innerHeight]; })()'
+    geo = page.evaluate(GEO)
+    check('peek: sheet sits on the tab bar, tab bar on the screen edge', geo == [True, True, True], geo)
+    for hh in (700, 900, 844):
+        page.set_viewport_size({'width': 390, 'height': hh})
+        page.wait_for_timeout(250)
+        geo = page.evaluate(GEO)
+        check('viewport %d tall: no gap under the sheet, tab bar at the bottom' % hh, geo == [True, True, True], geo)
     check('globe projection', st['proj'] == {'type': 'globe'}, st['proj'])
     check('labels patched to Chinese', 'name:zh' in json.dumps(st['label']), st['label'])
     check('shield labels untouched', st['shield'] == '{ref}', st['shield'])
@@ -135,7 +146,7 @@ with sync_playwright() as p:
     feed_n = page.locator('.feed-item').count()
     check('feed lists the food samples', feed_n == min(80, len(FOOD_S)), feed_n)
     check('sample reviews carry scores', page.locator('.feed-item .score').count() == len([x for x in FOOD_S if x['rating'] is not None]))
-    check('fab hint hidden (samples already near campus)', not page.locator('#fab-hint').is_visible())
+    check('no add hint bubble any more', page.locator('#fab-hint, .fab-hint').count() == 0)
     ov = page.evaluate('document.documentElement.scrollWidth <= document.documentElement.clientWidth')
     check('no horizontal overflow (mobile)', ov)
     page.screenshot(path=os.path.join(SHOTS, '01-mobile-peek.png'))
@@ -184,15 +195,44 @@ with sync_playwright() as p:
     page.click('[data-action="pick-confirm"]')
     page.wait_for_timeout(250)
     check('new spot goes straight to form', page.locator('#place-form').count() == 1)
-    # validation
+    sub = page.locator('#f-submit').bounding_box()
+    check('publish button sits in the form header, no scrolling needed', page.locator('.view-top #f-submit').count() == 1 and sub['y'] < 120, sub)
+    check('share switch is off by default, no nickname asked', page.get_attribute('[data-action="f-share"]', 'aria-checked') == 'false' and not page.locator('#f-nick').is_visible())
+    rows = page.evaluate("new Set([...document.querySelectorAll('#place-form .chips-wrap .chip')].map(c => Math.round(c.getBoundingClientRect().top))).size")
+    check('form categories take one scrollable row', rows == 1, rows)
+    check('map corner buttons hidden while the sheet is full', page.evaluate('getComputedStyle(document.getElementById("map-ctrls")).opacity') == '0')
+    check('no "who can see it" segment any more', page.locator('[data-action="f-vis"]').count() == 0)
+    check('extras folded under "more"', not page.locator('#f-alt').is_visible() and not page.locator('#f-link').is_visible() and page.locator('details.more').count() == 1)
+    # validation: only the score is required
     page.click('#f-submit')
     page.wait_for_timeout(100)
-    check('name required error', page.locator('#err-f-name').is_visible())
-    check('category required error', page.locator('#err-cat').is_visible())
     check('score required error', page.locator('#err-rating').is_visible())
+    check('name and category are optional', not page.locator('#err-f-name').is_visible() and page.locator('#err-cat').count() == 0 and page.locator('#f-name[aria-invalid]').count() == 0)
     check('score input offers 0 to 5', page.locator('.score-input .sc').all_inner_texts() == ['0', '1', '2', '3', '4', '5'])
+    # the form scrolls all the way down above the tab bar
+    GAP = '''(() => { const b = document.querySelector('.panel-body'); b.scrollTop = b.scrollHeight;
+      const last = document.querySelector('#place-form').lastElementChild.getBoundingClientRect();
+      return [Math.round(last.bottom), Math.round(document.getElementById('tabbar').getBoundingClientRect().top), Math.round(b.getBoundingClientRect().bottom)]; })()'''
+    gap = page.evaluate(GAP)
+    check('last form row can scroll above the tab bar', gap[0] <= gap[1] and gap[2] <= gap[1] + 1, gap)
+    page.evaluate("document.querySelector('.panel-body').scrollTop = 0")
+    # keyboard: typing + a much shorter visible height hides the tab bar and lets the form use the room
+    page.focus('#f-text')
+    page.set_viewport_size({'width': 390, 'height': 480})
+    page.wait_for_function('document.documentElement.classList.contains("kb-open")', timeout=3000)
+    page.wait_for_timeout(450)
+    kb = page.evaluate('''(() => { const p = document.getElementById('panel').getBoundingClientRect(), f = document.activeElement.getBoundingClientRect();
+      return [getComputedStyle(document.getElementById('tabbar')).display, Math.round(p.bottom), innerHeight, document.activeElement.id, Math.round(f.top) >= 0 && f.bottom <= innerHeight]; })()''')
+    check('keyboard open: tab bar tucked away, sheet down to the bottom', kb[0] == 'none' and abs(kb[1] - kb[2]) <= 1 and kb[3] == 'f-text', kb)
+    page.evaluate('document.activeElement.blur()')
+    page.set_viewport_size({'width': 390, 'height': 844})
+    page.wait_for_function('!document.documentElement.classList.contains("kb-open")', timeout=3000)
+    check('keyboard closed: tab bar back', page.locator('#tabbar').is_visible())
+    page.click('[data-action="f-share"]')
+    check('sharing asks for a nickname', page.get_attribute('[data-action="f-share"]', 'aria-checked') == 'true' and page.locator('#f-nick').is_visible())
     page.fill('#f-nick', '小测')
     page.fill('#f-name', '测试椰浆饭')
+    page.click('details.more summary')
     page.fill('#f-alt', 'Nasi Lemak Test')
     page.click('[data-action="f-cat"][data-cat="malay"]')
     page.click('.score-input .sc[data-n="4"]')
@@ -204,6 +244,7 @@ with sync_playwright() as p:
     page.click('#f-submit')
     page.wait_for_timeout(600)
     check('after publish: place view', page.locator('.place-head h2').count() == 1 and page.inner_text('.place-head h2') == '测试椰浆饭')
+    check('new record lands on my map', page.get_attribute('[data-action="scope"][data-scope="mine"]', 'aria-current') == 'page' and '也分享到了大地图' in page.inner_text('#toast'), page.inner_text('#toast'))
     check('stats show score and price', page.inner_text('.score-big') == '4' and 'RM 9.5' in page.inner_text('.stats'), page.inner_text('.stats'))
     mine_pin = page.evaluate('window.__map.getSource("places").data.features.find(f => f.properties.name === "测试椰浆饭").properties')
     check('pin colour follows score (4 -> orange-red)', mine_pin['icon'] == 'pin-food-malay-40' and mine_pin['color'] == '#e14f12', mine_pin)
@@ -221,7 +262,6 @@ with sync_playwright() as p:
     rv = [r for r in stored['reviews'] if not r.get('sample')]
     check('review persisted', len(rv) == 1 and rv[0]['rating'] == 4 and rv[0]['price'] == 9.5 and len(rv[0]['photos']) == 1 and rv[0]['visibility'] == 'public', rv)
     check('nickname saved', stored['profile']['name'] == '小测', stored['profile'])
-    check('fab hint hidden now', not page.locator('#fab-hint').is_visible())
     page.screenshot(path=os.path.join(SHOTS, '06-mobile-after-publish.png'))
 
     # private second review on same place
@@ -230,10 +270,11 @@ with sync_playwright() as p:
     check('review form has no name field', page.locator('#f-name').count() == 0 and page.locator('#f-nick').count() == 0)
     page.click('.score-input .sc[data-n="2"]')
     page.fill('#f-text', '今天的饭有点冷。')
-    page.click('[data-action="f-vis"][data-vis="private"]')
+    check('share choice remembered', page.get_attribute('[data-action="f-share"]', 'aria-checked') == 'true')
+    page.click('[data-action="f-share"]')
     page.click('#f-submit')
     page.wait_for_timeout(400)
-    check('scope switches to mine for private', page.get_attribute('[data-action="scope"][data-scope="mine"]', 'aria-current') == 'page')
+    check('private record stays on my map', page.get_attribute('[data-action="scope"][data-scope="mine"]', 'aria-current') == 'page' and page.inner_text('#toast') == '已存进我的地图', page.inner_text('#toast'))
     check('mine shows 2 reviews', page.locator('.review').count() == 2, page.locator('.review').count())
     check('my map uses my own average score (4+2)/2', page.inner_text('.score-big') == '3' and '我的评分' in page.inner_text('.stats'), page.inner_text('.stats'))
 
@@ -250,7 +291,7 @@ with sync_playwright() as p:
     check('edit saved toast', '改好了' in page.inner_text('#toast'), page.inner_text('#toast'))
     page.locator('[data-action="edit-review"]').first.click()
     page.wait_for_timeout(200)
-    check('edit keeps private visibility', page.get_attribute('[data-action="f-vis"][data-vis="private"]', 'aria-pressed') == 'true')
+    check('edit keeps private visibility', page.get_attribute('[data-action="f-share"]', 'aria-checked') == 'false')
     page.click('.score-input .sc[data-n="0"]')
     page.fill('#f-text', '其实还行。')
     page.click('#f-submit')
@@ -293,7 +334,19 @@ with sync_playwright() as p:
     page.wait_for_timeout(200)
     check('repick keeps typed name', page.input_value('#f-name') == '草稿测试', page.input_value('#f-name') if page.locator('#f-name').count() else 'no field')
     check('repick updates location', '2.91000, 101.76000' in page.inner_text('.f-loc'), page.inner_text('.f-loc'))
-    page.click('[data-action="form-cancel"]')
+    # score only: no name, no category still saves
+    page.fill('#f-name', '')
+    page.click('.score-input .sc[data-n="1"]')
+    page.click('#f-submit')
+    page.wait_for_timeout(500)
+    stored = page.evaluate('JSON.parse(localStorage.getItem("xmum-chiwan-map:data:v1"))')
+    bare = [p_ for p_ in stored['places'] if abs(p_['lat'] - 2.91) < 1e-6]
+    check('score-only record saves with a placeholder name', len(bare) == 1 and bare[0]['name'] == '没起名的店' and bare[0]['cat'] == 'other' and page.inner_text('.place-head h2') == '没起名的店', bare)
+    page.click('[data-action="del-review"]')
+    page.click('[data-modal="yes"]')
+    page.wait_for_timeout(400)
+    page.click('[data-action="scope"][data-scope="all"]')
+    page.wait_for_timeout(200)
 
     # wishlist
     page.locator('.feed-item', has_text='亚罗街').click()
@@ -386,6 +439,7 @@ with sync_playwright() as p:
     check('pin stays on the new place while filling the form', page.locator('#map .sel-pin').count() == 1)
     check('osm pick opens prefilled form', page.input_value('#f-name') == 'Kafe Ujian' and page.get_attribute('[data-action="f-cat"][data-cat="cafe"]', 'aria-pressed') == 'true', page.input_value('#f-name') if page.locator('#f-name').count() else 'no form')
     page.click('.score-input .sc[data-n="3"]')
+    page.click('[data-action="f-share"]')
     page.click('#f-submit')
     page.wait_for_timeout(500)
     stored = page.evaluate('JSON.parse(localStorage.getItem("xmum-chiwan-map:data:v1"))')
@@ -607,8 +661,8 @@ with sync_playwright() as p:
     page4.goto(APP)
     page4.wait_for_function('window.__map && window.__map.getSource("places")', timeout=8000)
     page4.wait_for_timeout(400)
-    tb = page4.evaluate('(() => { const b = document.querySelector(".search-bar").getBoundingClientRect(), c = document.querySelector("#map-ctrls").getBoundingClientRect(); return [b.width >= 300, c.right <= innerWidth, document.documentElement.scrollWidth <= document.documentElement.clientWidth]; })()')
-    check('search bar and map buttons fit a 360px phone', tb == [True, True, True], tb)
+    tb = page4.evaluate('(() => { const c = document.querySelector("#map-ctrls").getBoundingClientRect(), l = document.querySelector(".locate-btn").getBoundingClientRect(); return [c.right <= innerWidth, c.bottom < l.top, document.documentElement.scrollWidth <= document.documentElement.clientWidth]; })()')
+    check('map buttons fit a 360px phone', tb == [True, True, True], tb)
     page4.screenshot(path=os.path.join(SHOTS, '12-mobile-360.png'))
     ctx4.close()
 
@@ -617,7 +671,7 @@ with sync_playwright() as p:
         return {'id': id_, 'mode': mode, 'cat': cat, 'precision': 'exact', 'lat': lat, 'lng': lng, 'name': name, 'altName': '', 'link': '', 'osm': '', 'createdBy': by, 'createdAt': 1, 'sample': False}
     def mk_review(id_, pid, by):
         return {'id': id_, 'placeId': pid, 'authorId': by, 'rating': 4, 'price': None, 'text': '', 'photos': [], 'visibility': 'public', 'createdAt': 1}
-    mine_seed = {'version': 2, 'seeded': 2, 'profile': {'id': 'u-me', 'name': '我'}, 'areas': [], 'wishlist': [],
+    mine_seed = {'version': 2, 'seeded': 2, 'profile': {'id': 'u-me', 'name': '我'}, 'areas': [], 'wishlist': [{'placeId': 'm-bkk', 'createdAt': 1}, {'placeId': 'o-tyo', 'createdAt': 2}],
                  'places': [mk_place('m-food', 'food', 'malay', 3.15, 101.71, '校门口饭', 'u-me'),
                             mk_place('m-bkk', 'travel', 'city', 13.75, 100.50, '曼谷', 'u-me'),
                             mk_place('o-tyo', 'travel', 'city', 35.68, 139.76, '东京', 'u-other')],
@@ -631,29 +685,35 @@ with sync_playwright() as p:
     page5.goto(APP)
     page5.wait_for_function('window.__map && window.__map.getSource("places")', timeout=8000)
     page5.wait_for_timeout(400)
-    # “加一家”提示：只在探索页出现，点一下关掉，以后不再出现
+    # 空的收藏（吃）：一行小字 + 文字按钮，没有大块提示
     set_mode(page5, 'food')
-    page5.wait_for_timeout(100)
-    check('add hint shows on explore when campus is empty', page5.locator('#fab-hint').is_visible())
-    page5.click('[data-action="search"]')
+    page5.click('[data-action="scope"][data-scope="saved"]')
     page5.wait_for_timeout(200)
-    check('add hint hidden while searching', not page5.locator('#fab-hint').is_visible())
-    page5.click('[data-action="back"]')
+    emp = page5.evaluate('(() => { const e = document.querySelector("#view .empty"); return e ? [Math.round(e.getBoundingClientRect().height), e.querySelectorAll(".btn").length, e.querySelectorAll(".link-btn").length] : null; })()')
+    check('empty list is one small line', emp is not None and emp[0] <= 48 and emp[1] == 0 and emp[2] == 1, emp)
+    # 收藏 → 想去的 = 收藏里减去我去过的
+    set_mode(page5, 'travel')
     page5.wait_for_timeout(200)
-    page5.click('#fab-hint')
+    sv_all = sorted(page5.locator('#view .near-item b').all_inner_texts())
+    check('saved shows everything I saved', sv_all == ['东京', '曼谷'], sv_all)
+    page5.click('[data-action="saved-want"][data-v="want"]')
     page5.wait_for_timeout(200)
-    check('tapping the hint closes it', not page5.locator('#fab-hint').is_visible())
-    page5.wait_for_timeout(800)  # 让 localStorage 写完再刷新
-    page5.reload()
-    page5.wait_for_function('window.__map && window.__map.getSource("places")', timeout=8000)
-    page5.wait_for_timeout(400)
-    check('closed hint stays closed after reload', not page5.locator('#fab-hint').is_visible())
+    sv_want = page5.locator('#view .near-item b').all_inner_texts()
+    pins_want = page5.evaluate('window.__map.getSource("places").data.features.map(f => f.properties.name)')
+    check('“not been yet” drops places on my map (list + pins)', sv_want == ['东京'] and pins_want == ['东京'], (sv_want, pins_want))
+    page5.screenshot(path=os.path.join(SHOTS, '15-saved-want.png'))
+    page5.click('[data-action="saved-want"][data-v="all"]')
+    page5.click('[data-action="scope"][data-scope="all"]')
+    page5.wait_for_timeout(200)
     page5.click('[data-action="scope"][data-scope="mine"]')
     page5.wait_for_timeout(200)
     page5.click('#map-ctrls [data-action="filters"]')
     page5.wait_for_timeout(100)
     chips = page5.eval_on_selector_all('#bsheet [data-action="mine-mode"]', 'els => els.map(e => e.textContent.trim())')
     check('my map filter: just food / travel / both', chips == ['美食', '旅行', '合并'] and page5.locator('#bsheet [data-action="cat"], #bsheet [data-action="set-score"]').count() == 0, chips)
+    fw = page5.evaluate("[document.querySelector('.bsheet-foot').getBoundingClientRect().width, document.querySelector('.bsheet-foot .btn').getBoundingClientRect().width]")
+    check('my map filter: the only button spans the sheet', abs(fw[0] - fw[1]) < 2, fw)
+    check('no sample note on my map', page5.locator('#view .sample-note').count() == 0)
     page5.click('[data-action="mine-mode"][data-v="food"]')
     page5.wait_for_timeout(200)
     names5 = lambda: sorted(page5.evaluate('window.__map.getSource("places").data.features.map(f => f.properties.name)'))
@@ -662,6 +722,7 @@ with sync_playwright() as p:
     page5.wait_for_timeout(200)
     check('merged map shows my food and travel', names5() == ['曼谷', '校门口饭'] and page5.inner_text('.view-title') == '我的足迹', (names5(), page5.inner_text('.view-title')))
     check('merged feed lists both', page5.locator('.feed-item').count() == 2)
+    geo5 = page5.evaluate('(() => { const p = document.querySelector("#panel").getBoundingClientRect(), t = document.querySelector("#tabbar").getBoundingClientRect(); return Math.round(p.bottom) >= Math.round(t.top); })()')
     check('sheet stays open and shows the choice', page5.get_attribute('#bsheet [data-action="mine-mode"][data-v="both"]', 'aria-pressed') == 'true')
     page5.click('#bsheet [data-action="sheet-close"]')
     page5.wait_for_timeout(100)
@@ -771,6 +832,7 @@ with sync_playwright() as p:
     page6.click('[data-action="add-pin"]')
     page6.click('[data-action="pick-confirm"]')
     page6.wait_for_timeout(200)
+    page6.click('[data-action="f-share"]')
     page6.fill('#f-nick', '小A')
     page6.fill('#f-name', '线上测试店')
     page6.click('[data-action="f-cat"][data-cat="cafe"]')
@@ -792,6 +854,8 @@ with sync_playwright() as p:
 
     # 收藏别人的店
     page6.click('[data-action="back"]')
+    page6.click('[data-action="scope"][data-scope="all"]')
+    page6.wait_for_timeout(200)
     page6.locator('.feed-item', has_text='B 的公开店').click()
     page6.wait_for_timeout(200)
     page6.click('[data-action="toggle-save"]')

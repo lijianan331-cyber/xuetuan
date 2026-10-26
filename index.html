@@ -52,9 +52,14 @@
   color-scheme: dark;
 }
 html.mode-travel { --accent: var(--travel); }
+/* 老一点的手机浏览器没有 color-mix：给浅色主题一个固定的浅底色 */
+@supports not (color: color-mix(in srgb, red 50%, blue)) {
+  :root { --accent-soft: #E6F0FA; }
+  html.mode-travel { --accent-soft: #E1F2F0; }
+}
 
 *, *::before, *::after { box-sizing: border-box; }
-html, body { height: 100%; margin: 0; }
+html, body { height: 100%; margin: 0; overflow: hidden; overscroll-behavior: none; }
 body {
   background: var(--bg); color: var(--ink);
   font: 15px/1.5 var(--font-ui);
@@ -72,11 +77,18 @@ img { max-width: 100%; display: block; }
 .frost { background: var(--frost); -webkit-backdrop-filter: blur(16px) saturate(1.4); backdrop-filter: blur(16px) saturate(1.4); box-shadow: var(--shadow); }
 
 /* ---------- shell ---------- */
-.app { position: fixed; inset: 0; }
-.stage { position: absolute; inset: 0; --sheet-visible: 0px; }
+/* 高度用 JS 量出来的真实可见高度（--app-h），不用 100vh / dvh：有些手机浏览器的地址栏、工具栏会让这两个值不准 */
+.app { position: fixed; top: 0; top: var(--app-top, 0px); left: 0; right: 0; height: 100%; height: var(--app-h, 100%); overflow: hidden; }
+/* 键盘弹起时收起标签栏，面板占满 */
+html.kb-open { --tabbar: 0px; }
+html.kb-open .tabbar { display: none; }
+html.kb-open .panel { height: calc(var(--app-h, 100vh) - env(safe-area-inset-top, 0px) - 8px); }
+/* 面板拉满时，地图右上角的按钮会从面板顶上露出一截，干脆藏起来 */
+body[data-snap="full"] .map-ctrls { opacity: 0; pointer-events: none; }
+.stage { position: absolute; top: 0; right: 0; bottom: 0; left: 0; --sheet-visible: 0px; }
 /* 地球缩小时露出来的背景：浅色是飘雪的天空，深色是星空 */
 #map {
-  position: absolute; inset: 0;
+  position: absolute; top: 0; right: 0; bottom: 0; left: 0;
   background-color: #E4EEF8;
   background-image:
     radial-gradient(2px 2px at 8% 14%, rgba(255,255,255,.95) 50%, transparent 60%),
@@ -106,22 +118,11 @@ img { max-width: 100%; display: block; }
   }
 }
 .map-error {
-  position: absolute; inset: 0; z-index: 4; display: grid; place-items: center;
+  position: absolute; top: 0; right: 0; bottom: 0; left: 0; z-index: 4; display: grid; place-items: center;
   padding: 24px; text-align: center; color: var(--ink); font-weight: 600; font-size: 15px;
 }
 
-/* ---------- header: just a floating search bar (like Google Maps) ---------- */
-.topbar {
-  position: absolute; z-index: 10; top: 0; left: 0; right: 0;
-  padding: calc(env(safe-area-inset-top, 0px) + 10px) max(12px, env(safe-area-inset-right, 0px)) 0 max(12px, env(safe-area-inset-left, 0px));
-  pointer-events: none;
-}
-.search-bar {
-  pointer-events: auto; width: 100%; height: 48px; padding: 0 18px; border: 0; border-radius: 999px;
-  background: var(--surface); box-shadow: var(--shadow);
-  display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 15.5px; text-align: left;
-}
-.search-bar svg { flex: none; width: 20px; height: 20px; color: var(--ink); }
+/* ---------- map buttons (top right) ---------- */
 .brand-badge {
   flex: none; width: 40px; height: 40px; border-radius: 50%;
   background: radial-gradient(circle at 34% 28%, #FFFFFF 0%, #EAF4FE 45%, #BCD9F5 100%);
@@ -129,21 +130,28 @@ img { max-width: 100%; display: block; }
   color: #2E7DCB; display: grid; place-items: center;
   font-family: var(--font-display); font-size: 14px; line-height: 1; letter-spacing: .02em;
 }
-/* 地图右上角：吃/玩切换（显示要切去的那个：吃的地图上是飞机）、筛选、点亮国家 */
+/* 地图右上角：搜索、吃/玩切换（显示要切去的那个：吃的地图上是飞机）、筛选、点亮国家 */
 .map-ctrls {
   position: absolute; z-index: 9; right: max(12px, env(safe-area-inset-right, 0px));
-  top: calc(env(safe-area-inset-top, 0px) + 70px);
+  top: calc(env(safe-area-inset-top, 0px) + 12px);
   display: flex; flex-direction: column; gap: 10px;
 }
 .map-ctrls .icon-btn { position: relative; width: 44px; height: 44px; border-radius: 50%; }
 .map-ctrls .icon-btn svg { width: 22px; height: 22px; }
-.map-ctrls .icon-btn[aria-pressed="true"] { color: var(--accent); }
+/* 上色：搜索、筛选用彩色图标；吃/玩切换用要切去的那张地图的颜色（吃的地图上是青绿色飞机） */
+.map-ctrls .search-btn { color: var(--accent); }
+.map-ctrls .mode-btn { color: #fff; background: linear-gradient(145deg, #2BB3A6, #0E7A70); box-shadow: 0 6px 16px rgba(18, 137, 127, .35); }
+html.mode-travel .map-ctrls .mode-btn { background: linear-gradient(145deg, #5AA5EC, #2569B3); box-shadow: 0 6px 16px rgba(46, 125, 203, .35); }
+.map-ctrls .filter-btn { color: #E8590C; }
+.map-ctrls .filter-btn[aria-pressed="true"] { color: #fff; background: linear-gradient(145deg, #FF8A3D, #E8590C); }
+.map-ctrls .filter-btn[aria-pressed="true"] b { background: #fff; color: #E8590C; box-shadow: 0 1px 3px rgba(0, 0, 0, .2); }
+.map-ctrls .globe-btn { color: #D99100; }
 .map-ctrls .icon-btn b {
   position: absolute; top: -4px; right: -4px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px;
   background: var(--accent); color: var(--accent-ink); font-size: 11px; line-height: 18px; text-align: center;
 }
-.map-ctrls .globe-btn[aria-pressed="true"] { background: #FFF4D6; color: #9a6400; }
-.map-ctrls .globe-btn b { background: #F5B21B; color: #2b1c00; }
+.map-ctrls .globe-btn[aria-pressed="true"] { color: #5a3a00; background: linear-gradient(145deg, #FFD966, #F5B21B); }
+.map-ctrls .globe-btn b { background: #fff; color: #8a5a00; box-shadow: 0 1px 3px rgba(0, 0, 0, .2); }
 .icon-btn {
   flex: none; width: 44px; height: 44px; padding: 0; border: 0; border-radius: 14px;
   background: var(--surface); color: var(--ink); box-shadow: var(--shadow);
@@ -179,7 +187,7 @@ img { max-width: 100%; display: block; }
 }
 .locate-btn svg { width: 21px; height: 21px; }
 .tabbar {
-  position: fixed; z-index: 30; left: 0; right: 0; bottom: 0;
+  position: absolute; z-index: 30; left: 0; right: 0; bottom: 0;
   height: var(--tabbar); padding: 0 max(4px, env(safe-area-inset-right, 0px)) env(safe-area-inset-bottom, 0px) max(4px, env(safe-area-inset-left, 0px));
   display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); align-items: stretch;
   background: var(--surface); box-shadow: 0 -1px 0 var(--line), 0 -6px 20px rgba(40, 90, 140, .06);
@@ -201,15 +209,6 @@ img { max-width: 100%; display: block; }
 }
 .tab-add:active .tab-add-ic { transform: scale(.94); }
 .tab-add-ic svg { width: 22px; height: 22px; }
-.fab-hint {
-  position: fixed; z-index: 31; left: 50%; transform: translateX(-50%);
-  bottom: calc(var(--tabbar) + 8px);
-  width: max-content; max-width: 240px; padding: 7px 11px; border-radius: 12px;
-  background: var(--ink); color: var(--surface); font-size: 12.5px; font-weight: 600; line-height: 1.35;
-  box-shadow: var(--shadow); cursor: pointer;
-}
-.fab-hint .x { margin-left: 8px; opacity: .7; font-weight: 700; }
-.fab-hint::after { content: ""; position: absolute; left: calc(50% - 5px); bottom: -5px; width: 10px; height: 10px; background: inherit; transform: rotate(45deg); }
 .attrib {
   position: absolute; z-index: 8;
   left: max(8px, env(safe-area-inset-left, 0px));
@@ -221,11 +220,11 @@ img { max-width: 100%; display: block; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .attrib { background: rgba(18, 27, 37, .6); color: #93A4B5; } }
 .attrib a { color: inherit; text-decoration: none; }
 .attrib a:hover { text-decoration: underline; }
-body.picking .tabbar, body.picking .fab-hint, body.picking .topbar, body.picking .map-ctrls, body.picking .locate-btn { display: none; }
+body.picking .tabbar, body.picking .map-ctrls, body.picking .locate-btn { display: none; }
 body.picking .attrib { bottom: calc(env(safe-area-inset-bottom, 0px) + 122px); }
 
 /* ---------- bottom sheets (filters, places) ---------- */
-.bsheet { position: fixed; inset: 0; z-index: 65; display: flex; align-items: flex-end; justify-content: center; background: rgba(20, 40, 60, .32); }
+.bsheet { position: fixed; top: 0; right: 0; left: 0; bottom: auto; height: 100%; height: var(--app-h, 100%); z-index: 65; display: flex; align-items: flex-end; justify-content: center; background: rgba(20, 40, 60, .32); }
 .bsheet-card {
   width: min(560px, 100%); max-height: 82vh; overflow-y: auto; overscroll-behavior: contain;
   padding: 10px max(18px, env(safe-area-inset-right, 0px)) calc(16px + env(safe-area-inset-bottom, 0px)) max(18px, env(safe-area-inset-left, 0px));
@@ -237,6 +236,7 @@ body.picking .attrib { bottom: calc(env(safe-area-inset-bottom, 0px) + 122px); }
 .bsheet-head h3 { margin: 0; font-size: 18px; font-weight: 800; }
 .bsheet .field { margin-top: 14px; }
 .bsheet-foot { position: sticky; bottom: -16px; display: grid; grid-template-columns: 1fr 2fr; gap: 8px; margin-top: 20px; padding: 10px 0 0; background: var(--surface); }
+.bsheet-foot.single { grid-template-columns: 1fr; }
 .area-opt {
   width: 100%; display: flex; align-items: center; gap: 12px; padding: 13px 4px; border: 0; border-bottom: 1px solid var(--line);
   background: none; text-align: left; font-size: 15px; font-weight: 600; color: var(--ink);
@@ -246,7 +246,7 @@ body.picking .attrib { bottom: calc(env(safe-area-inset-bottom, 0px) + 122px); }
 .area-opt:last-child { border-bottom: 0; }
 
 /* ---------- pick mode ---------- */
-.pick { position: absolute; inset: 0; z-index: 12; pointer-events: none; }
+.pick { position: absolute; top: 0; right: 0; bottom: 0; left: 0; z-index: 12; pointer-events: none; }
 .pick-hint {
   position: absolute; left: 50%; top: calc(env(safe-area-inset-top, 0px) + 70px); transform: translateX(-50%);
   width: max-content; max-width: calc(100% - 32px); padding: 8px 14px; border-radius: 12px;
@@ -272,9 +272,9 @@ body.picking .attrib { bottom: calc(env(safe-area-inset-bottom, 0px) + 122px); }
 
 /* ---------- panel (sheet on phones) ---------- */
 .panel {
-  position: fixed; z-index: 20; left: 0; right: 0; bottom: var(--tabbar);
-  height: calc(100vh - var(--tabbar) - 112px);
-  height: calc(100dvh - var(--tabbar) - env(safe-area-inset-top, 0px) - 112px);
+  position: absolute; z-index: 20; left: 0; right: 0; bottom: var(--tabbar);
+  height: calc(100vh - var(--tabbar) - 64px);
+  height: calc(var(--app-h, 100vh) - var(--tabbar) - env(safe-area-inset-top, 0px) - 64px);
   display: flex; flex-direction: column;
   background: var(--surface); border-radius: 24px 24px 0 0;
   box-shadow: 0 -8px 30px rgba(40, 90, 140, .16);
@@ -308,6 +308,9 @@ body.picking .attrib { bottom: calc(env(safe-area-inset-bottom, 0px) + 122px); }
 .link-btn.danger { color: var(--danger); }
 .sample-note .link-btn { flex: none; white-space: nowrap; }
 .top-cta { margin-left: auto; }
+.mini-seg { display: inline-flex; padding: 2px; border-radius: 999px; background: var(--surface-2); }
+.mini-seg button { height: 26px; padding: 0 10px; border: 0; border-radius: 999px; background: none; color: var(--muted); font-size: 12.5px; font-weight: 600; }
+.mini-seg button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 3px rgba(40, 90, 140, .16); }
 .feed, .reviews, .near-list, .search-results, .area-list { list-style: none; margin: 0; padding: 0; }
 .feed-item {
   width: 100%; display: grid; grid-template-columns: 36px minmax(0, 1fr) auto; gap: 12px; align-items: start;
@@ -349,8 +352,8 @@ body.picking .attrib { bottom: calc(env(safe-area-inset-bottom, 0px) + 122px); }
 }
 .legend b { font-weight: 700; }
 .legend i { width: 48px; height: 6px; border-radius: 3px; background: linear-gradient(90deg, #8E9893, #F08C00, #D7261E); }
-.empty { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; padding: 20px 4px; }
-.empty p { margin: 0; max-width: 34ch; color: var(--muted); font-size: 14.5px; }
+.empty { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; padding: 6px 2px 10px; }
+.empty p { margin: 0; color: var(--muted); font-size: 13.5px; }
 .empty.small { padding: 16px 4px; color: var(--muted); font-size: 14px; }
 
 .view-top { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: 8px; padding: 2px 0 12px; background: var(--surface); }
@@ -385,7 +388,22 @@ body.picking .attrib { bottom: calc(env(safe-area-inset-bottom, 0px) + 122px); }
 .rv-who { width: 100%; }
 .rv-text { margin: 2px 0 0; font-size: 14.5px; white-space: pre-wrap; overflow-wrap: anywhere; }
 .rv-photos { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
-.sticky-cta { position: sticky; bottom: 0; z-index: 2; margin-top: 6px; padding: 12px 0 4px; background: var(--surface); box-shadow: 0 -1px 0 var(--line); }
+.view-top #f-submit { flex: none; min-width: 64px; }
+.switch-row {
+  width: 100%; display: flex; align-items: center; gap: 12px; padding: 12px 14px; border: 0; border-radius: 14px;
+  background: var(--surface-2); color: var(--ink); text-align: left; font: inherit;
+}
+.sw-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.sw-text b { font-size: 15px; }
+.sw-text small { color: var(--muted); font-size: 12.5px; }
+.switch { flex: none; position: relative; width: 46px; height: 28px; border-radius: 14px; background: var(--line); transition: background .2s; }
+.switch::after { content: ""; position: absolute; top: 3px; left: 3px; width: 22px; height: 22px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, .25); transition: transform .2s; }
+.switch-row[aria-checked="true"] .switch { background: var(--accent); }
+.switch-row[aria-checked="true"] .switch::after { transform: translateX(18px); }
+.more summary { padding: 4px 0; color: var(--accent); font-size: 13.5px; font-weight: 700; cursor: pointer; }
+.more-body { display: flex; flex-direction: column; gap: 18px; padding-top: 12px; }
+/* 最后一项和底部之间多留一点，键盘弹起时也能滑到 */
+.form { padding-bottom: 48px; }
 
 .btn {
   height: 44px; padding: 0 18px; border: 1px solid transparent; border-radius: 999px;
@@ -417,6 +435,9 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
 .f-err { color: var(--danger); font-size: 12.5px; font-weight: 700; }
 .chips-wrap { display: flex; flex-wrap: wrap; gap: 6px; }
 .chips-wrap .chip { background: var(--surface-2); }
+.chips-wrap.one-line { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin: 0 -18px; padding: 0 18px 2px; }
+.chips-wrap.one-line::-webkit-scrollbar { display: none; }
+.chips-wrap.one-line .chip { flex: none; }
 .chips-wrap .chip[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
 .f-loc { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
 .form-place { display: flex; align-items: center; gap: 8px; font-size: 16px; }
@@ -448,7 +469,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
 .ph-edit img { width: 100%; height: 100%; object-fit: cover; }
 .ph-del { position: absolute; top: 4px; right: 4px; width: 24px; height: 24px; padding: 0; border: 0; border-radius: 50%; background: rgba(10, 25, 40, .6); color: #fff; font-size: 16px; line-height: 1; display: grid; place-items: center; }
 .ph-add {
-  width: 76px; height: 76px; border: 1.5px dashed color-mix(in srgb, var(--accent) 35%, var(--line)); border-radius: 14px; background: none; color: var(--accent);
+  width: 76px; height: 76px; border: 1.5px dashed var(--line); border: 1.5px dashed color-mix(in srgb, var(--accent) 35%, var(--line)); border-radius: 14px; background: none; color: var(--accent);
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; font-size: 12px; font-weight: 600;
 }
 .ph-add svg { width: 22px; height: 22px; }
@@ -469,15 +490,15 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
 
 /* ---------- overlays ---------- */
 .toast {
-  position: fixed; z-index: 60; left: 50%; top: calc(env(safe-area-inset-top, 0px) + 72px); transform: translateX(-50%);
+  position: fixed; z-index: 60; left: 50%; top: calc(env(safe-area-inset-top, 0px) + 16px); transform: translateX(-50%);
   width: max-content; max-width: calc(100% - 128px); padding: 10px 16px; border-radius: 999px; text-align: center;
   background: var(--ink); color: var(--surface); font-size: 14px; font-weight: 600; box-shadow: var(--shadow);
 }
-.modal { position: fixed; inset: 0; z-index: 70; display: grid; place-items: center; padding: 20px; background: rgba(20, 40, 60, .38); -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px); }
+.modal { position: fixed; top: 0; right: 0; bottom: 0; left: 0; z-index: 70; display: grid; place-items: center; padding: 20px; background: rgba(20, 40, 60, .38); -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px); }
 .modal-card { width: min(420px, 100%); display: flex; flex-direction: column; gap: 12px; padding: 22px; border-radius: 22px; background: var(--surface); color: var(--ink); box-shadow: var(--shadow); }
 .modal-card h3 { margin: 0; font-size: 18px; }
 .modal-card p { margin: 0; }
-.lightbox { position: fixed; inset: 0; z-index: 80; display: grid; place-items: center; background: rgba(6, 12, 18, .93); }
+.lightbox { position: fixed; top: 0; right: 0; bottom: 0; left: 0; z-index: 80; display: grid; place-items: center; background: rgba(6, 12, 18, .93); }
 .lightbox img { max-width: min(92vw, 1200px); max-height: 84vh; border-radius: 10px; object-fit: contain; }
 .lb-btn { position: absolute; width: 46px; height: 46px; padding: 0; border: 0; border-radius: 50%; background: rgba(255, 255, 255, .14); color: #fff; font-size: 22px; display: grid; place-items: center; }
 .lb-close { top: calc(env(safe-area-inset-top, 0px) + 14px); right: max(14px, env(safe-area-inset-right, 0px)); }
@@ -504,9 +525,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
   .panel-brand { display: flex; }
   .panel-body { padding: 0 22px 24px; }
   .tabbar { right: auto; width: 400px; border-right: 1px solid var(--line); }
-  .fab-hint { left: 200px; }
-  /* 桌面上顶部是一张浮在地图上的卡片 */
-  .topbar { top: 12px; left: 12px; right: auto; width: min(480px, calc(100% - 24px)); padding: 0; }
+    /* 桌面上顶部是一张浮在地图上的卡片 */
   .map-ctrls { top: 12px; }
   .locate-btn { bottom: 24px; }
   .attrib { bottom: 6px; }
@@ -536,9 +555,6 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     <div class="map" id="map"></div>
     <div class="map-error" id="map-error" hidden></div>
 
-    <header class="topbar" id="topbar">
-      <button type="button" class="search-bar" data-action="search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg><span data-i18n="searchBarPh">搜店名、地方</span></button>
-    </header>
     <div class="map-ctrls" id="map-ctrls"></div>
 
     <button type="button" class="icon-btn locate-btn" data-action="locate" data-i18n-aria="locate" data-i18n-title="locate"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="12" cy="12" r="6.5"/><circle cx="12" cy="12" r="2.2" fill="currentColor" stroke="none"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3"/></svg></button>
@@ -566,7 +582,6 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     <button type="button" class="tab" data-action="scope" data-scope="mine"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" aria-hidden="true"><path d="m3.5 6.5 5.5-2.5 6 2.5 5.5-2.5v13.5l-5.5 2.5-6-2.5-5.5 2.5z"/><path d="M9 4v13.5M15 6.5V20"/></svg><span data-i18n="tabMine">我的地图</span></button>
     <button type="button" class="tab" data-action="profile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="8.5" r="3.8"/><path d="M4.5 20c1.4-3.6 4.2-5.4 7.5-5.4s6.1 1.8 7.5 5.4"/></svg><span data-i18n="tabMe">我</span></button>
   </nav>
-  <div class="fab-hint" id="fab-hint" data-action="hint-close" role="button" hidden></div>
 </div>
 
 <div class="bsheet" id="bsheet" hidden><div class="bsheet-card" id="bsheet-card" role="dialog" aria-modal="true"></div></div>
@@ -597,6 +612,9 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
   var LS_DATA = 'xmum-chiwan-map:data:v1';
   var LS_VIEW = 'xmum-chiwan-map:view:v1';
   var LS_AREAS = 'xuetuan:areas';
+  var LS_SHARE = 'xuetuan:share';
+  function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+  function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* 存不了就算了 */ } }
   /* Supabase 的地址和 publishable key 本来就是公开的，放在前端没问题；权限靠数据库的 RLS 规则 */
   var SUPABASE_URL = 'https://pshxrwfjcbvqlixdxlzs.supabase.co';
   var SUPABASE_KEY = 'sb_publishable_BhsWKzuwXJG2de1mg7kMkg_wL2Koj6C';
@@ -735,34 +753,34 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       dist_walk: '步行 · 1.5km 内', dist_short: '短途打车 · 1.5–10km', dist_mid: '中距离 · 10–40km', dist_far: '更远 · 40km 以上',
       tier_walk: '步行可达', tier_short: '短途打车', tier_mid: '中距离', tier_far: '吉隆坡及更远',
       feedFoodAll: '大家最近在吃', feedTravelAll: '大家最近去了', feedFoodMine: '我吃过的', feedTravelMine: '我去过的', feedBothMine: '我的足迹',
-      mine_food: '美食', mine_travel: '旅行', mine_both: '合并', mineShow: '显示', filterCat: '分类',
+      mine_food: '美食', mine_travel: '旅行', mine_both: '合并', savedAll: '全部', savedWant: '想去的', mineShow: '显示', filterCat: '分类',
       modeToTravel: '切换到旅行地图', modeToFood: '切换到美食地图', litCountries: '点亮国家', litN: '已去 {n} 国', worldFail: '国家边界没加载出来，等下再试',
       feedSavedFood: '想去吃的', feedSavedTravel: '想去的地方',
-      emptySaved: '还没收藏过。在探索地图里看到想去的，点地点页上的“收藏”。', goExplore: '去探索',
+      emptySaved: '还没收藏过，地点页点“收藏”就会出现在这里。', emptyWant: '收藏的地方都去过了。', goExplore: '去探索',
       wish: '收藏', wished: '已收藏', wishAdded: '收藏了，在“收藏”地图里能找到', wishRemoved: '取消收藏了',
-      emptyFoodAll: '这片还没人写过。加第一家，后面的同学就有参考了。',
-      emptyTravelAll: '还没人分享去处。把你去过的地方标上去。',
-      emptyMine: '你还没加过地方。', emptyFiltered: '没有符合筛选的地方。', clearFilters: '清除筛选',
+      emptyFoodAll: '这片还没人写过。',
+      emptyTravelAll: '还没人分享去处。',
+      emptyMine: '还没记录过地方。', emptyFiltered: '没有符合筛选的地方。', clearFilters: '清除筛选',
       addFood: '加一家店', addTravel: '打卡一个地方', fabFood: '加一家', fabTravel: '打卡',
-      fabHint: '学校附近还没人加过店，你来加第一家？',
       pickHintFood: '拖动地图，让针尖对准店门口', pickHintTravel: '拖动地图对准位置。只标城市的话，缩小一点再确认',
       pickPrecision: '会标成：{p}', confirmSpot: '就是这里', cancel: '取消', back: '返回', close: '关闭',
       nearbyTitle: '附近已经有这些，是同一个地方吗？', nearbyThis: '是这家', nearbyNone: '都不是，新建一个',
       formNewFood: '加一家店', formNewTravel: '打卡新地方', formReview: '写点评', formEdit: '编辑记录',
-      name: '名称', namePhFood: '用大家平时叫的名字', namePhTravel: '比如：Nusa Penida',
-      altName: '原名 / 英文名（选填）', altNamePh: '招牌上的英文或马来文名字',
-      category: '分类', precision: '标到哪一级',
+      name: '名称（选填）', namePhFood: '用大家平时叫的名字', namePhTravel: '比如：Nusa Penida',
+      altName: '原名 / 英文名', altNamePh: '招牌上的英文或马来文名字',
+      category: '分类（选填）', precision: '标到哪一级',
       precExact: '具体地点', precArea: '一片区域', precCity: '整个城市',
       precHint: '吃饭的店标到门口；旅行可以只标城市，放大时会显示成一个范围。',
       rating: '评分（0–5）', ratingHint: '0 分踩雷，5 分强推。', errRating: '打个分再发布',
-      priceFood: '人均（RM）', priceTravel: '大概花费（RM，选填）',
-      review: '说两句', reviewPhFood: '推荐点什么？要排队吗？几点去人少？', reviewPhTravel: '怎么去，玩多久，有什么坑？',
-      photos: '照片', photoLimit: '最多 {n} 张', addPhoto: '加照片', photoReadFail: '这张图读不了，换一张试试',
-      visibility: '谁能看到', visPublic: '公开到大地图', visPrivate: '只有我', visPrivateShort: '仅自己',
-      visHint: '选“只有我”的话，只会出现在“我的”地图里。',
-      link: '相关链接（选填）', linkPh: '官网、订位、门票页面…',
+      priceFood: '人均（RM，选填）', priceTravel: '大概花费（RM，选填）',
+      review: '说两句（选填）', reviewPhFood: '推荐点什么？要排队吗？几点去人少？', reviewPhTravel: '怎么去，玩多久，有什么坑？',
+      photos: '照片（选填）', photoLimit: '最多 {n} 张', addPhoto: '加照片', photoReadFail: '这张图读不了，换一张试试',
+      visPrivateShort: '仅自己',
+      shareBig: '分享到大地图', shareHint: '不分享也会存进“我的地图”', formMore: '更多：精度、原名、链接',
+      unnamedFood: '没起名的店', unnamedTravel: '没起名的地方',
+      link: '相关链接', linkPh: '官网、订位、门票页面…',
       nickname: '昵称', nicknamePh: '大家看到的名字',
-      publish: '发布', errName: '先写个名字', errCat: '选一个分类',
+      publish: '发布',
       location: '位置', repick: '重新选',
       noRating: '暂无评分', myScore: '我的评分', avgOf: '{n} 人打分的平均', perPerson: '人均', costLabel: '花费', reviewsLabel: '条点评', reviewsTitle: '点评',
       navGoogle: 'Google 地图', navWaze: 'Waze', viewGoogle: '在 Google 地图看', copyCoords: '复制坐标',
@@ -797,13 +815,13 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       previewHint: '雪团里还没人写过这里。', previewAddFood: '加到雪团，写点评', previewAddTravel: '加到雪团，打卡',
       searchLocal: '雪团里的', searchOsm: '地图上的地点', osmMin: '再多打一个字，就会去地图上搜', osmLoading: '正在搜…',
       osmFail: '地图搜索暂时用不了，可以自己插针添加', osmCredit: '地点数据：Overture Maps Foundation · © OpenStreetMap 贡献者（Photon）· 维基百科', osmAdd: '添加', osmOpen: '已在雪团',
-      published: '发布了', savedPrivate: '存好了，只在“我的”里能看到',
+      addedMine: '已存进我的地图', addedShared: '已存进我的地图，也分享到了大地图',
       locating: '正在定位…', locateFail: '定位失败，检查一下浏览器的定位权限',
       photoFail: '有照片没存上，刷新后会丢', saveFail: '浏览器不让存数据，关掉页面就没了',
       mapFail: '地图没加载出来。检查网络后刷新页面。',
       justNow: '刚刚', minAgo: '{n} 分钟前', hourAgo: '{n} 小时前', dayAgo: '{n} 天前',
       locate: '我的位置',
-      searchBarPh: '搜店名、地方', tabsAria: '主菜单', tabExplore: '探索', tabSaved: '收藏', tabMine: '我的地图', tabMe: '我',
+      tabsAria: '主菜单', tabExplore: '探索', tabSaved: '收藏', tabMine: '我的地图', tabMe: '我',
       filterBtn: '筛选', filtersTitle: '筛选', filterScore: '评分', filterDist: '离学校多远', filterPrice: '人均价位', anyOpt: '不限',
       scoreOpt: '{n} 分以上', priceOpt: 'RM{n} 以内', filterReset: '重置', filterShow: '看 {n} 个地方',
       areasTitle: '去哪儿看', locWorld: '全球', locHere: '这附近', saveHere: '记住现在这片'
@@ -817,34 +835,34 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       dist_walk: 'Walk · under 1.5 km', dist_short: 'Short ride · 1.5–10 km', dist_mid: 'Mid trip · 10–40 km', dist_far: 'Further · 40 km+',
       tier_walk: 'Walkable', tier_short: 'Short ride', tier_mid: 'Mid-distance', tier_far: 'KL & beyond',
       feedFoodAll: 'What people are eating', feedTravelAll: 'Where people went', feedFoodMine: 'Places I’ve eaten', feedTravelMine: 'Places I’ve been', feedBothMine: 'My footprints',
-      mine_food: 'Food', mine_travel: 'Travel', mine_both: 'Both', mineShow: 'Show', filterCat: 'Category',
+      mine_food: 'Food', mine_travel: 'Travel', mine_both: 'Both', savedAll: 'All', savedWant: 'Not been yet', mineShow: 'Show', filterCat: 'Category',
       modeToTravel: 'Switch to the travel map', modeToFood: 'Switch to the food map', litCountries: 'Countries', litN: '{n} visited', worldFail: 'Couldn’t load country borders. Try again later.',
       feedSavedFood: 'Food spots I saved', feedSavedTravel: 'Places I saved',
-      emptySaved: 'Nothing saved yet. When you spot somewhere on the Explore map, tap “Save” on its page.', goExplore: 'Explore',
+      emptySaved: 'Nothing saved yet. Tap “Save” on a place to keep it here.', emptyWant: 'You’ve been to every place you saved.', goExplore: 'Explore',
       wish: 'Save', wished: 'Saved', wishAdded: 'Saved. Find it on the Saved map', wishRemoved: 'Removed from saved',
-      emptyFoodAll: 'Nobody has written about this area yet. Add the first spot so the next person has something to go on.',
-      emptyTravelAll: 'No trips shared yet. Pin the places you’ve been.',
-      emptyMine: 'You haven’t added any places yet.', emptyFiltered: 'Nothing matches these filters.', clearFilters: 'Clear filters',
+      emptyFoodAll: 'Nobody has written about this area yet.',
+      emptyTravelAll: 'No trips shared yet.',
+      emptyMine: 'You haven’t recorded any places yet.', emptyFiltered: 'Nothing matches these filters.', clearFilters: 'Clear filters',
       addFood: 'Add a food spot', addTravel: 'Pin a place', fabFood: 'Add spot', fabTravel: 'Pin a place',
-      fabHint: 'No food spots near campus yet. Add the first one?',
       pickHintFood: 'Drag the map until the pin points at the entrance', pickHintTravel: 'Drag the map to the spot. For a whole city, zoom out before confirming',
       pickPrecision: 'Will be saved as: {p}', confirmSpot: 'Use this spot', cancel: 'Cancel', back: 'Back', close: 'Close',
       nearbyTitle: 'These are already nearby. Same place?', nearbyThis: 'That’s it', nearbyNone: 'None of these, create new',
       formNewFood: 'Add a food spot', formNewTravel: 'Pin a new place', formReview: 'Write a review', formEdit: 'Edit entry',
-      name: 'Name', namePhFood: 'The name people actually use', namePhTravel: 'e.g. Nusa Penida',
-      altName: 'Original / other name (optional)', altNamePh: 'The name on the signboard',
-      category: 'Category', precision: 'How precise',
+      name: 'Name (optional)', namePhFood: 'The name people actually use', namePhTravel: 'e.g. Nusa Penida',
+      altName: 'Original / other name', altNamePh: 'The name on the signboard',
+      category: 'Category (optional)', precision: 'How precise',
       precExact: 'Exact spot', precArea: 'An area', precCity: 'Whole city',
       precHint: 'Pin restaurants at the door. Trips can be city-level and show as an area when zoomed in.',
       rating: 'Score (0–5)', ratingHint: '0 = avoid, 5 = must go.', errRating: 'Give it a score first',
-      priceFood: 'Per person (RM)', priceTravel: 'Rough cost (RM, optional)',
-      review: 'Your notes', reviewPhFood: 'What to order? Is there a queue? When is it quiet?', reviewPhTravel: 'How to get there, how long to stay, what to watch out for',
-      photos: 'Photos', photoLimit: 'up to {n}', addPhoto: 'Add photo', photoReadFail: 'Couldn’t read that image. Try another one',
-      visibility: 'Who can see it', visPublic: 'Everyone (big map)', visPrivate: 'Only me', visPrivateShort: 'Private',
-      visHint: '“Only me” keeps it on your own map.',
-      link: 'Link (optional)', linkPh: 'Website, booking or ticket page',
+      priceFood: 'Per person (RM, optional)', priceTravel: 'Rough cost (RM, optional)',
+      review: 'Notes (optional)', reviewPhFood: 'What to order? Is there a queue? When is it quiet?', reviewPhTravel: 'How to get there, how long to stay, what to watch out for',
+      photos: 'Photos (optional)', photoLimit: 'up to {n}', addPhoto: 'Add photo', photoReadFail: 'Couldn’t read that image. Try another one',
+      visPrivateShort: 'Private',
+      shareBig: 'Share on the big map', shareHint: 'Either way it’s saved to My map', formMore: 'More: precision, other name, link',
+      unnamedFood: 'Unnamed spot', unnamedTravel: 'Unnamed place',
+      link: 'Link', linkPh: 'Website, booking or ticket page',
       nickname: 'Nickname', nicknamePh: 'The name others see',
-      publish: 'Publish', errName: 'Add a name first', errCat: 'Pick a category',
+      publish: 'Publish',
       location: 'Location', repick: 'Change',
       noRating: 'No score yet', myScore: 'My score', avgOf: 'Average of {n}', perPerson: 'per person', costLabel: 'cost', reviewsLabel: 'reviews', reviewsTitle: 'Reviews',
       navGoogle: 'Google Maps', navWaze: 'Waze', viewGoogle: 'Open in Google Maps', copyCoords: 'Copy coordinates',
@@ -879,13 +897,13 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       previewHint: 'Nobody on XueTuan has written about this place yet.', previewAddFood: 'Add to XueTuan and review', previewAddTravel: 'Add to XueTuan and check in',
       searchLocal: 'On XueTuan', searchOsm: 'Places on the map', osmMin: 'Type one more character to search the map', osmLoading: 'Searching…',
       osmFail: 'Map search isn’t available right now. You can still drop a pin.', osmCredit: 'Place data: Overture Maps Foundation · © OpenStreetMap contributors (via Photon) · Wikipedia', osmAdd: 'Add', osmOpen: 'On XueTuan',
-      published: 'Published', savedPrivate: 'Saved. Only you can see it, under “Mine”',
+      addedMine: 'Saved to My map', addedShared: 'Saved to My map and shared on the big map',
       locating: 'Finding you…', locateFail: 'Couldn’t get your location. Check the browser’s location permission',
       photoFail: 'Some photos weren’t saved and will be lost on refresh', saveFail: 'This browser won’t store data, so it will be lost when you close the page',
       mapFail: 'The map didn’t load. Check your connection and refresh.',
       justNow: 'just now', minAgo: '{n} min ago', hourAgo: '{n} h ago', dayAgo: '{n} d ago',
       locate: 'My location',
-      searchBarPh: 'Search places', tabsAria: 'Main menu', tabExplore: 'Explore', tabSaved: 'Saved', tabMine: 'My map', tabMe: 'Me',
+      tabsAria: 'Main menu', tabExplore: 'Explore', tabSaved: 'Saved', tabMine: 'My map', tabMe: 'Me',
       filterBtn: 'Filters', filtersTitle: 'Filters', filterScore: 'Score', filterDist: 'Distance from campus', filterPrice: 'Price per person', anyOpt: 'Any',
       scoreOpt: '{n}+', priceOpt: 'Up to RM{n}', filterReset: 'Reset', filterShow: 'Show {n} places',
       areasTitle: 'Go to', locWorld: 'The world', locHere: 'Around here', saveHere: 'Save this area'
@@ -907,7 +925,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     lang: 'zh', mode: 'food', scope: 'all', cat: 'all', priceMax: 0, minScore: 0, dist: 'any',
     view: 'feed', placeId: null, form: null, nearby: null, query: '',
     snap: 'peek', feedSnap: 'peek', picking: null, preview: null, bsheet: null, me: null, styleKey: 'light',
-    mineBoth: false, countries: false
+    mineBoth: false, countries: false, savedWant: false
   };
   var map = null;
   var lastRenderedView = null;
@@ -1571,8 +1589,9 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
   function visibleToMe(p) {
     return reviewsOf(p.id).some(function (r) { return r.visibility === 'public' || isMine(r); });
   }
+  function beenThere(p) { return reviewsOf(p.id).some(isMine); }
   function inScope(p) {
-    if (state.scope === 'saved') return store.isSaved(p.id) && visibleToMe(p);
+    if (state.scope === 'saved') return store.isSaved(p.id) && visibleToMe(p) && !(state.savedWant && beenThere(p));
     return scopedReviews(p.id).length > 0;
   }
   function avgOf(list, key) {
@@ -1750,7 +1769,6 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     patchLabels();
     repaintAccent();
     updateSelection();
-    updateFabHint();
     if (state.me && map.getSource('me')) map.getSource('me').setData(meFC());
   }
   var hoverBound = false;
@@ -1893,7 +1911,6 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     var src = map && map.getSource && map.getSource('places');
     if (src) src.setData(placesGeoJSON());
     syncCountries();
-    updateFabHint();
   }
   function repaintAccent() {
     if (!map || !map.getLayer('cl-circle')) return;
@@ -1928,7 +1945,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
   }
 
   function mapPadding() {
-    var top = ($('#topbar') ? $('#topbar').offsetHeight : 120) + 16;
+    var top = 24;
     if (!isMobile()) return { top: top + 12, bottom: 40, left: 40, right: 70 };
     return { top: top, bottom: snapVisible(state.snap) + tabbarH() + 12, left: 20, right: 64 };
   }
@@ -2008,9 +2025,46 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
   /* ================= sheet ================= */
   var panel = $('#panel'), stage = $('#stage'), view = $('#view');
 
+  /* 真实可见高度：有 visualViewport 就用它（没在双指缩放时），量完写进 --app-h，整个界面按它排 */
+  var appH = 0;
+  function measureAppH() {
+    var vv = window.visualViewport, h = window.innerHeight;
+    if (vv && vv.scale && Math.abs(vv.scale - 1) < 0.01 && vv.height > 0) h = Math.min(h, vv.height);
+    return Math.round(h);
+  }
+  /* 键盘弹起时浏览器可能把可见区域往下挪，界面要跟着挪，不然顶部被切掉、底部滑不到 */
+  var appTop = 0, fullH = 0, kbOpen = false;
+  function measureAppTop() {
+    var vv = window.visualViewport;
+    return vv && vv.scale && Math.abs(vv.scale - 1) < 0.01 ? Math.max(0, Math.round(vv.offsetTop)) : 0;
+  }
+  function typingNow() {
+    var a = document.activeElement;
+    return !!a && (a.tagName === 'TEXTAREA' || (a.tagName === 'INPUT' && !/^(button|checkbox|radio|file|submit)$/.test(a.type)));
+  }
+  function syncViewport() {
+    var h = measureAppH(), top = measureAppTop(), typing = typingNow();
+    if (window.scrollY || window.scrollX) window.scrollTo(0, 0);
+    if (!typing) fullH = h;
+    /* 正在打字、可见高度又明显变矮，就当是键盘弹起来了：先把标签栏收起来，给表单腾地方 */
+    var kb = typing && isMobile() && fullH > 0 && h < fullH - 120;
+    if (h === appH && top === appTop && kb === kbOpen) return;
+    appH = h; appTop = top; kbOpen = kb;
+    var root = document.documentElement;
+    root.style.setProperty('--app-h', h + 'px');
+    root.style.setProperty('--app-top', top + 'px');
+    root.classList.toggle('kb-open', kb);
+    applySnap();
+    if (map) map.resize();
+    /* 键盘刚弹起：把正在填的那一栏滑到中间 */
+    if (kb) setTimeout(function () {
+      var a = document.activeElement;
+      if (a && typingNow() && a.scrollIntoView) a.scrollIntoView({ block: 'center' });
+    }, 60);
+  }
   function snapVisible(snap) {
     if (!isMobile()) return 0;
-    var H = window.innerHeight;
+    var H = appH || window.innerHeight;
     if (snap === 'hidden') return 0;
     if (snap === 'peek') return 112;
     if (snap === 'half') return Math.round((H - tabbarH()) * 0.5);
@@ -2024,12 +2078,13 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     applySnap();
   }
   function applySnap() {
-    var v = snapVisible(state.snap);
+    /* 露出来的高度不能超过面板本身，不然面板会悬在半空 */
+    var v = Math.min(snapVisible(state.snap), panel.offsetHeight || Infinity);
     /* 收起时连标签栏的高度也一起移出屏幕 */
     panel.style.setProperty('--visible', (state.snap === 'hidden' && isMobile() ? -(parseFloat(getComputedStyle(panel).bottom) || 0) : v) + 'px');
     panel.style.setProperty('--hidden', (isMobile() ? Math.max(0, panel.offsetHeight - v) : 0) + 'px');
     document.body.dataset.snap = isMobile() ? state.snap : '';
-    stage.style.setProperty('--sheet-visible', (isMobile() ? Math.min(v, Math.round(window.innerHeight * 0.5)) : 0) + 'px');
+    stage.style.setProperty('--sheet-visible', (isMobile() ? Math.min(v, Math.round((appH || window.innerHeight) * 0.5)) : 0) + 'px');
   }
 
   (function setupDrag() {
@@ -2078,7 +2133,6 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     $('#fab-label').textContent = t(state.mode === 'food' ? 'fabFood' : 'fabTravel');
     renderFilters();
     renderTabs();
-    updateFabHint();
     if (state.picking) updatePickUI();
     if (state.bsheet) renderBSheet();
   }
@@ -2097,6 +2151,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     return (state.cat !== 'all' ? 1 : 0) + (state.minScore ? 1 : 0) + (state.dist !== 'any' ? 1 : 0) + (state.priceMax ? 1 : 0);
   }
   var CTRL_ICON = {
+    search: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg>',
     plane: '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/></svg>',
     food: '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z"/></svg>',
     filter: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h10M4 12h4M12 12h8M4 18h12"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg>',
@@ -2107,7 +2162,8 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     document.documentElement.classList.toggle('scope-mine', state.scope === 'mine');
     var food = state.mode === 'food', n = activeFilterCount();
     var toKey = food ? 'modeToTravel' : 'modeToFood';
-    var h = '<button type="button" class="icon-btn mode-btn" data-action="toggle-mode" aria-label="' + esc(t(toKey)) + '" title="' + esc(t(toKey)) + '">' + (food ? CTRL_ICON.plane : CTRL_ICON.food) + '</button>';
+    var h = '<button type="button" class="icon-btn search-btn" data-action="search" aria-label="' + esc(t('searchBtn')) + '" title="' + esc(t('searchBtn')) + '">' + CTRL_ICON.search + '</button>';
+    h += '<button type="button" class="icon-btn mode-btn" data-action="toggle-mode" aria-label="' + esc(t(toKey)) + '" title="' + esc(t(toKey)) + '">' + (food ? CTRL_ICON.plane : CTRL_ICON.food) + '</button>';
     h += '<button type="button" class="icon-btn filter-btn" data-action="filters" aria-pressed="' + (n > 0) + '" aria-label="' + esc(t('filterBtn')) + '" title="' + esc(t('filterBtn')) + '">' + CTRL_ICON.filter + (n ? '<b>' + n + '</b>' : '') + '</button>';
     if (globeChipShown()) {
       var lit = state.countries && world.fc;
@@ -2295,7 +2351,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
             PRICE_STEPS.map(function (n) { return optHTML('set-price', n, state.priceMax === n, n ? t('priceOpt', { n: n }) : t('anyOpt')); }).join('') + '</div></div>';
         }
       }
-      h += '<div class="bsheet-foot">' + (mine ? '' : '<button type="button" class="btn ghost" data-action="clear-filters">' + esc(t('filterReset')) + '</button>') +
+      h += '<div class="bsheet-foot' + (mine ? ' single' : '') + '">' + (mine ? '' : '<button type="button" class="btn ghost" data-action="clear-filters">' + esc(t('filterReset')) + '</button>') +
         '<button type="button" class="btn primary" data-action="sheet-close">' + esc(t('filterShow', { n: shown })) + '</button></div>';
     }
     card.innerHTML = h;
@@ -2310,25 +2366,6 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     store.areas().forEach(function (a) { h += li('<button type="button" class="area-opt" data-action="goto-area" data-id="' + esc(a.id) + '">' + pin + esc(a.name) + '</button>'); });
     h += li('<button type="button" class="area-opt muted" data-action="save-area">＋ ' + esc(t('saveHere')) + '</button>');
     return h;
-  }
-
-  /* “加一家”的小提示：只在探索页的列表上出现，点一下就再也不出现 */
-  var LS_HINT = 'xmum-chiwan-map:hint-closed';
-  function hintClosed() { try { return localStorage.getItem(LS_HINT) === '1'; } catch (e) { return false; } }
-  function closeFabHint() {
-    try { localStorage.setItem(LS_HINT, '1'); } catch (e) { /* storage blocked: hide for this visit */ }
-    state.hintClosed = true;
-    updateFabHint();
-  }
-  function updateFabHint() {
-    var el = $('#fab-hint');
-    if (!el || !me()) return;
-    var empty = state.mode === 'food' && !store.places().some(function (p) {
-      return p.mode === 'food' && visibleToMe(p) && haversine(XMUM, p) < 8000;
-    });
-    el.innerHTML = esc(t('fabHint')) + '<span class="x" aria-hidden="true">✕</span>';
-    el.setAttribute('aria-label', t('fabHint') + ' ' + t('close'));
-    el.hidden = !empty || !!state.picking || !map || state.view !== 'feed' || state.scope !== 'all' || state.hintClosed || hintClosed();
   }
 
   /* ================= views ================= */
@@ -2347,7 +2384,6 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     lastRenderedView = v;
     updateSelPin();
     renderTabs();
-    updateFabHint();
     hydratePhotos(view);
   }
 
@@ -2371,7 +2407,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
   function savedPlaces() {
     return store.wishlist().slice().sort(function (a, b) { return b.createdAt - a.createdAt; })
       .map(function (w) { return placeById(w.placeId); })
-      .filter(function (p) { return p && p.mode === state.mode && visibleToMe(p) && passesFilters(p); });
+      .filter(function (p) { return p && p.mode === state.mode && visibleToMe(p) && !(state.savedWant && beenThere(p)) && passesFilters(p); });
   }
 
   function renderFeed() {
@@ -2382,8 +2418,11 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       travel: { all: 'feedTravelAll', mine: 'feedTravelMine', saved: 'feedSavedTravel' }
     }[state.mode][state.scope];
     if (state.scope === 'mine' && state.mineBoth) key = 'feedBothMine';
-    var h = '<div class="view-head"><div class="title-row"><h2 class="view-title" data-action="expand">' + esc(t(key)) + '</h2><span class="count">' + items.length + '</span></div></div>';
-    if (store.hasSamples()) {
+    var h = '<div class="view-head"><div class="title-row"><h2 class="view-title" data-action="expand">' + esc(t(key)) + '</h2><span class="count">' + items.length + '</span>' +
+      (saved ? '<span class="mini-seg top-cta">' + ['all', 'want'].map(function (v) {
+        return '<button type="button" data-action="saved-want" data-v="' + v + '" aria-pressed="' + ((v === 'want') === state.savedWant) + '">' + esc(t(v === 'want' ? 'savedWant' : 'savedAll')) + '</button>';
+      }).join('') + '</span>' : '') + '</div></div>';
+    if (store.hasSamples() && state.scope === 'all') {
       h += '<div class="sample-note"><span>' + esc(t('samplesShown')) + '</span><button type="button" class="link-btn" data-action="clear-samples">' + esc(t('clearSamples')) + '</button></div>';
     }
     if (!items.length) h += emptyHTML();
@@ -2425,17 +2464,18 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     return placeRowHTML(p, 'open-place', sub, s.score != null ? scoreHTML(s.score) : '<span class="near-cta muted">' + esc(t('noRating')) + '</span>');
   }
 
+  /* 空的时候只给一行小字 + 一个文字按钮 */
   function emptyHTML() {
     var filtered = filtersActive();
     var msg = filtered ? t('emptyFiltered')
       : state.scope === 'mine' ? t('emptyMine')
-      : state.scope === 'saved' ? t('emptySaved')
+      : state.scope === 'saved' ? t(state.savedWant && store.wishlist().length ? 'emptyWant' : 'emptySaved')
       : t(state.mode === 'food' ? 'emptyFoodAll' : 'emptyTravelAll');
     var btn = filtered
-      ? '<button type="button" class="btn small" data-action="clear-filters">' + esc(t('clearFilters')) + '</button>'
+      ? '<button type="button" class="link-btn" data-action="clear-filters">' + esc(t('clearFilters')) + '</button>'
       : state.scope === 'saved'
-        ? '<button type="button" class="btn small" data-action="scope" data-scope="all">' + esc(t('goExplore')) + '</button>'
-        : '<button type="button" class="btn primary" data-action="add">' + esc(t(state.mode === 'food' ? 'addFood' : 'addTravel')) + '</button>';
+        ? '<button type="button" class="link-btn" data-action="scope" data-scope="all">' + esc(t('goExplore')) + '</button>'
+        : '<button type="button" class="link-btn" data-action="add">' + esc(t(state.mode === 'food' ? 'addFood' : 'addTravel')) + '</button>';
     return '<div class="empty"><p>' + esc(msg) + '</p>' + btn + '</div>';
   }
 
@@ -2516,40 +2556,51 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     var isFood = state.mode === 'food';
     var p = f.placeId ? placeById(f.placeId) : null;
     var placeFields = formHasPlaceFields(f, p);
+    var share = f.visibility === 'public';
     var title = f.editId ? t('formEdit') : p ? t('formReview') : t(isFood ? 'formNewFood' : 'formNewTravel');
-    var h = '<div class="view-top"><button type="button" class="icon-btn flat" data-action="form-cancel" aria-label="' + esc(t('back')) + '">' + ICON.back + '</button><h2 class="view-title">' + esc(title) + '</h2></div>' +
+    /* 发布按钮放在顶部右边，不用滑到底才找得到 */
+    var h = '<div class="view-top"><button type="button" class="icon-btn flat" data-action="form-cancel" aria-label="' + esc(t('back')) + '">' + ICON.back + '</button><h2 class="view-title">' + esc(title) + '</h2>' +
+      '<button type="submit" form="place-form" class="btn primary small" id="f-submit">' + esc(t(f.editId ? 'saveEdit' : 'publish')) + '</button></div>' +
       '<form id="place-form" class="form" novalidate>';
     if (p && !placeFields) h += '<div class="form-place">' + catIconHTML(catOf(p)) + '<b>' + esc(placeTitle(p)) + '</b></div>';
-    if (!me().name) h += fieldHTML('f-nick', esc(t('nickname')), '<input id="f-nick" class="input" maxlength="20" autocomplete="nickname" placeholder="' + esc(t('nicknamePh')) + '">');
     if (placeFields) {
-      h += fieldHTML('f-name', esc(t('name')) + ' *', '<input id="f-name" class="input" maxlength="60" placeholder="' + esc(t(isFood ? 'namePhFood' : 'namePhTravel')) + '">');
-      h += fieldHTML('f-alt', esc(t('altName')), '<input id="f-alt" class="input" maxlength="60" placeholder="' + esc(t('altNamePh')) + '">');
-      h += '<div class="field"><span class="f-label" id="lbl-cat">' + esc(t('category')) + ' *</span><div class="chips-wrap" role="group" aria-labelledby="lbl-cat">' +
+      h += fieldHTML('f-name', esc(t('name')), '<input id="f-name" class="input" maxlength="60" placeholder="' + esc(t(isFood ? 'namePhFood' : 'namePhTravel')) + '">');
+      h += '<div class="f-loc"><span>' + esc(t('location')) + '：' + f.loc.lat.toFixed(5) + ', ' + f.loc.lng.toFixed(5) + '</span><button type="button" class="link-btn" data-action="repick">' + esc(t('repick')) + '</button></div>';
+      h += '<div class="field"><span class="f-label" id="lbl-cat">' + esc(t('category')) + '</span><div class="chips-wrap one-line" role="group" aria-labelledby="lbl-cat">' +
         CATS[state.mode].map(function (c) {
           return '<button type="button" class="chip" data-action="f-cat" data-cat="' + c.id + '" aria-pressed="' + (f.cat === c.id) + '">' + catIconHTML(c) + esc(catName(c)) + '</button>';
-        }).join('') + '</div><div class="f-err" id="err-cat" hidden></div></div>';
-      h += '<div class="field"><span class="f-label" id="lbl-prec">' + esc(t('precision')) + '</span><div class="seg" role="group" aria-labelledby="lbl-prec">' +
-        ['exact', 'area', 'city'].map(function (k) {
-          return '<button type="button" data-action="f-prec" data-prec="' + k + '" aria-pressed="' + (f.precision === k) + '">' + esc(precLabel(k)) + '</button>';
-        }).join('') + '</div><p class="f-hint">' + esc(t('precHint')) + '</p></div>';
-      h += '<div class="f-loc"><span>' + esc(t('location')) + '：' + f.loc.lat.toFixed(5) + ', ' + f.loc.lng.toFixed(5) + '</span><button type="button" class="link-btn" data-action="repick">' + esc(t('repick')) + '</button></div>';
+        }).join('') + '</div></div>';
     }
+    /* 只有评分必填，其余都是选填 */
     h += '<div class="field"><span class="f-label" id="lbl-rating">' + esc(t('rating')) + ' *</span><div class="score-input" role="group" aria-labelledby="lbl-rating">' +
       [0, 1, 2, 3, 4, 5].map(function (n) {
         return '<button type="button" class="sc" data-action="f-score" data-n="' + n + '" style="--c:' + scoreColor(n) + '" aria-label="' + esc(t('scoreAria', { n: n })) + '" aria-pressed="' + (f.rating === n) + '">' + n + '</button>';
       }).join('') + '</div><p class="f-hint">' + esc(t('ratingHint')) + '</p><div class="f-err" id="err-rating" hidden></div></div>';
-    h += fieldHTML('f-price', esc(t(isFood ? 'priceFood' : 'priceTravel')), '<input id="f-price" class="input" type="number" inputmode="decimal" min="0" step="0.5"' + (isFood ? ' placeholder="12"' : '') + '>');
-    h += fieldHTML('f-text', esc(t('review')), '<textarea id="f-text" class="input" rows="4" maxlength="1000" placeholder="' + esc(t(isFood ? 'reviewPhFood' : 'reviewPhTravel')) + '"></textarea>');
+    h += fieldHTML('f-text', esc(t('review')), '<textarea id="f-text" class="input" rows="3" maxlength="1000" placeholder="' + esc(t(isFood ? 'reviewPhFood' : 'reviewPhTravel')) + '"></textarea>');
     h += '<div class="field"><span class="f-label">' + esc(t('photos')) + ' <small>· ' + esc(t('photoLimit', { n: MAX_PHOTOS })) + '</small></span><div class="photo-grid" id="f-photos"></div></div>';
-    if (placeFields) h += fieldHTML('f-link', esc(t('link')), '<input id="f-link" class="input" type="url" inputmode="url" placeholder="' + esc(t('linkPh')) + '">');
-    h += '<div class="field"><span class="f-label" id="lbl-vis">' + esc(t('visibility')) + '</span><div class="seg" role="group" aria-labelledby="lbl-vis">' +
-      '<button type="button" data-action="f-vis" data-vis="public" aria-pressed="' + (f.visibility === 'public') + '">' + esc(t('visPublic')) + '</button>' +
-      '<button type="button" data-action="f-vis" data-vis="private" aria-pressed="' + (f.visibility === 'private') + '">' + esc(t('visPrivate')) + '</button></div>' +
-      '<p class="f-hint">' + esc(t('visHint')) + '</p></div>';
-    h += '<div class="sticky-cta"><button type="submit" class="btn primary block" id="f-submit">' + esc(t(f.editId ? 'saveEdit' : 'publish')) + '</button></div></form>';
+    h += fieldHTML('f-price', esc(t(isFood ? 'priceFood' : 'priceTravel')), '<input id="f-price" class="input" type="number" inputmode="decimal" min="0" step="0.5"' + (isFood ? ' placeholder="12"' : '') + '>');
+    /* 记录默认进“我的地图”，只问要不要分享到大地图 */
+    h += '<button type="button" class="switch-row" role="switch" data-action="f-share" aria-checked="' + share + '">' +
+      '<span class="sw-text"><b>' + esc(t('shareBig')) + '</b><small>' + esc(t('shareHint')) + '</small></span><span class="switch" aria-hidden="true"></span></button>';
+    if (!me().name) h += '<div class="field" id="nick-field"' + (share ? '' : ' hidden') + '><label class="f-label" for="f-nick">' + esc(t('nickname')) + '</label><input id="f-nick" class="input" maxlength="20" autocomplete="nickname" placeholder="' + esc(t('nicknamePh')) + '"></div>';
+    if (placeFields) {
+      var d0 = f.draft || {};
+      h += '<details class="more"' + (d0.alt || d0.link ? ' open' : '') + '><summary>' + esc(t('formMore')) + '</summary><div class="more-body">' +
+        '<div class="field"><span class="f-label" id="lbl-prec">' + esc(t('precision')) + '</span><div class="seg" role="group" aria-labelledby="lbl-prec">' +
+        ['exact', 'area', 'city'].map(function (k) {
+          return '<button type="button" data-action="f-prec" data-prec="' + k + '" aria-pressed="' + (f.precision === k) + '">' + esc(precLabel(k)) + '</button>';
+        }).join('') + '</div><p class="f-hint">' + esc(t('precHint')) + '</p></div>' +
+        fieldHTML('f-alt', esc(t('altName')), '<input id="f-alt" class="input" maxlength="60" placeholder="' + esc(t('altNamePh')) + '">') +
+        fieldHTML('f-link', esc(t('link')), '<input id="f-link" class="input" type="url" inputmode="url" placeholder="' + esc(t('linkPh')) + '">') +
+        '</div></details>';
+    }
+    h += '</form>';
     view.innerHTML = h;
     renderFormPhotos();
     restoreFormDraft();
+    /* 分类只占一行，横着滑；预选的那个滑到看得见的地方 */
+    var row = $('#place-form .chips-wrap.one-line'), sel = row && row.querySelector('[aria-pressed="true"]');
+    if (sel) row.scrollLeft += sel.getBoundingClientRect().left - row.getBoundingClientRect().left - 18;
   }
 
   /* 表单里的照片：existing 是这条记录原来就有的（存在 IndexedDB），其余是刚选的 */
@@ -3027,7 +3078,6 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     $('#pick').hidden = false;
     if (isMobile()) setSnap('hidden');
     updatePickUI();
-    updateFabHint();
     if (state.mode === 'food' && map.getZoom() < 15 && !state.picking.repick) {
       var c = map.getContainer();
       map.easeTo({ zoom: 16, around: map.unproject([c.clientWidth / 2, c.clientHeight / 2]), duration: reduceMotion ? 0 : 700 });
@@ -3045,7 +3095,6 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     state.picking = null;
     document.body.classList.remove('picking');
     $('#pick').hidden = true;
-    updateFabHint();
   }
   function cancelPick() {
     var ctx = state.picking;
@@ -3064,7 +3113,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     startNewPlace(loc, defaultPrecision(z), z >= 14 ? 60 : z >= 10 ? 800 : 15000);
   }
   function newForm(o) {
-    return Object.assign({ placeId: null, editId: null, loc: null, cat: null, precision: 'exact', rating: null, visibility: 'public', photos: [], draft: null, osm: '' }, o);
+    return Object.assign({ placeId: null, editId: null, loc: null, cat: null, precision: 'exact', rating: null, visibility: lsGet(LS_SHARE) === '1' ? 'public' : 'private', photos: [], draft: null, osm: '' }, o);
   }
   /* 新地点：先看附近有没有已经存在的同类地点，有就让用户先确认是不是同一个 */
   function startNewPlace(loc, precision, radius, prefill) {
@@ -3162,17 +3211,15 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     var p0 = f.placeId ? placeById(f.placeId) : null;
     var placeFields = formHasPlaceFields(f, p0);
     var bad = null;
-    if (placeFields && !(d.name || '').trim()) { showErr('f-name', t('errName')); bad = bad || $('#f-name'); }
-    if (placeFields && !f.cat) { showErr('cat', t('errCat')); bad = bad || $('.chips-wrap .chip'); }
     if (f.rating == null) { showErr('rating', t('errRating')); bad = bad || $('.score-input .sc'); }
     if (bad) { bad.focus(); bad.scrollIntoView({ block: 'center', behavior: reduceMotion ? 'auto' : 'smooth' }); return; }
 
     var btn = $('#f-submit');
     if (btn) btn.disabled = true;
-    if ((d.nick || '').trim()) store.updateProfile({ name: d.nick.trim().slice(0, 20) });
+    if (f.visibility === 'public' && (d.nick || '').trim()) store.updateProfile({ name: d.nick.trim().slice(0, 20) });
     var placeData = placeFields ? {
-      mode: p0 ? p0.mode : state.mode, cat: f.cat, precision: f.precision, lat: f.loc.lat, lng: f.loc.lng,
-      name: d.name.trim().slice(0, 60), altName: (d.alt || '').trim().slice(0, 60), link: safeURL(d.link), osm: f.osm
+      mode: p0 ? p0.mode : state.mode, cat: f.cat || 'other', precision: f.precision, lat: f.loc.lat, lng: f.loc.lng,
+      name: ((d.name || '').trim() || t((p0 ? p0.mode : state.mode) === 'food' ? 'unnamedFood' : 'unnamedTravel')).slice(0, 60), altName: (d.alt || '').trim().slice(0, 60), link: safeURL(d.link), osm: f.osm
     } : null;
     var price = parseFloat(d.price);
     var rv = {
@@ -3188,10 +3235,15 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       return save.then(function (res) { return { place: place, res: res }; });
     }).then(function (x) {
       state.form = null;
-      if (x.res.review.visibility === 'private' && state.scope === 'all') {
-        state.scope = 'mine'; renderFilters();
-        toast(t('savedPrivate'));
-      } else toast(t(f.editId ? 'updated' : 'published'));
+      var shared = x.res.review.visibility === 'public';
+      if (!f.editId) {
+        /* 新记录直接进我的地图 */
+        state.scope = 'mine'; renderFilters(); renderTabs();
+        toast(t(shared ? 'addedShared' : 'addedMine'));
+      } else {
+        if (!shared && state.scope === 'all') { state.scope = 'mine'; renderFilters(); renderTabs(); }
+        toast(t('updated'));
+      }
       if (!x.res.photosOk) setTimeout(function () { toast(t('photoFail')); }, 2600);
       refreshMap();
       openPlace(x.place.id, { drop: !f.editId });
@@ -3371,7 +3423,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
         else goFeed(state.snap === 'peek' ? 'half' : null);
         break;
       case 'cat': state.cat = d.cat; refilter(); break;
-      case 'hint-close': closeFabHint(); break;
+      case 'saved-want': state.savedWant = d.v === 'want'; refilter(); break;
       case 'mine-mode': if (state.view !== 'feed') goFeed(); setMineView(d.v); if (state.bsheet) renderBSheet(); break;
       case 'countries': state.countries = !state.countries; syncCountries(); renderFilters(); saveView(); break;
       case 'filters': openBSheet('filters'); break;
@@ -3405,9 +3457,14 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       case 'del-review': deleteReview(d.id); break;
       case 'form-cancel': formCancel(); break;
       case 'repick': captureFormDraft(); startPick({ repick: true }); break;
-      case 'f-cat': state.form.cat = d.cat; setPressed('[data-action="f-cat"]', 'cat', d.cat); $('#err-cat').hidden = true; break;
+      case 'f-cat': state.form.cat = d.cat; setPressed('[data-action="f-cat"]', 'cat', d.cat); break;
       case 'f-prec': state.form.precision = d.prec; setPressed('[data-action="f-prec"]', 'prec', d.prec); break;
-      case 'f-vis': state.form.visibility = d.vis; setPressed('[data-action="f-vis"]', 'vis', d.vis); break;
+      case 'f-share':
+        state.form.visibility = state.form.visibility === 'public' ? 'private' : 'public';
+        el.setAttribute('aria-checked', String(state.form.visibility === 'public'));
+        if ($('#nick-field')) $('#nick-field').hidden = state.form.visibility !== 'public';
+        lsSet(LS_SHARE, state.form.visibility === 'public' ? '1' : '0');
+        break;
       case 'f-score': state.form.rating = +d.n; setPressed('[data-action="f-score"]', 'n', d.n); $('#err-rating').hidden = true; break;
       case 'f-photo-add': $('#f-file').click(); break;
       case 'f-photo-del':
@@ -3456,7 +3513,17 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
   });
   var onBreakpoint = function () { applySnap(); if (map) setTimeout(function () { map.resize(); }, 60); };
   if (mqMobile.addEventListener) mqMobile.addEventListener('change', onBreakpoint); else mqMobile.addListener(onBreakpoint);
-  window.addEventListener('resize', function () { applySnap(); });
+  window.addEventListener('resize', function () { syncViewport(); applySnap(); });
+  window.addEventListener('orientationchange', function () { setTimeout(syncViewport, 300); });
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', syncViewport);
+    window.visualViewport.addEventListener('scroll', syncViewport);
+  }
+  document.addEventListener('focusin', function () { setTimeout(syncViewport, 350); });
+  document.addEventListener('focusout', function () { setTimeout(syncViewport, 350); });
+  /* 有的浏览器收起/展开工具栏时不发 resize，隔一会儿量一次（没变就什么都不做） */
+  setInterval(syncViewport, 800);
+  syncViewport();
   var mqDark = window.matchMedia('(prefers-color-scheme: dark)');
   if (mqDark.addEventListener) mqDark.addEventListener('change', repaintAccent);
 
