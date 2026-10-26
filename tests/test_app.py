@@ -57,6 +57,45 @@ def tier(x):
     d = dist_m(x['lat'], x['lng'])
     return 'walk' if d <= 1500 else 'short' if d <= 10000 else 'mid' if d <= 40000 else 'far'
 
+def map_expr(e, z, props):
+    """Evaluate the small subset of MapLibre expressions the app builds (interpolate / step on zoom, match, case, get, ==, *)."""
+    if not isinstance(e, list):
+        return e
+    op, a = e[0], e[1:]
+    if op == 'step':
+        v = map_expr(a[1], z, props)
+        for i in range(2, len(a) - 1, 2):
+            if z >= a[i]:
+                v = map_expr(a[i + 1], z, props)
+        return v
+    if op == 'interpolate':
+        zs, outs = a[2::2], a[3::2]
+        if z <= zs[0]:
+            return map_expr(outs[0], z, props)
+        for i in range(len(zs) - 1):
+            if z <= zs[i + 1]:
+                lo, hi = map_expr(outs[i], z, props), map_expr(outs[i + 1], z, props)
+                return lo + (hi - lo) * (z - zs[i]) / (zs[i + 1] - zs[i])
+        return map_expr(outs[-1], z, props)
+    if op == 'match':
+        v = map_expr(a[0], z, props)
+        for i in range(1, len(a) - 1, 2):
+            if a[i] == v:
+                return map_expr(a[i + 1], z, props)
+        return map_expr(a[-1], z, props)
+    if op == 'case':
+        for i in range(0, len(a) - 1, 2):
+            if map_expr(a[i], z, props):
+                return map_expr(a[i + 1], z, props)
+        return map_expr(a[-1], z, props)
+    if op == 'get':
+        return props.get(a[0])
+    if op == '==':
+        return map_expr(a[0], z, props) == map_expr(a[1], z, props)
+    if op == '*':
+        return map_expr(a[0], z, props) * map_expr(a[1], z, props)
+    raise ValueError(op)
+
 def check(name, cond, extra=''):
     results.append((name, bool(cond), extra))
     print(('PASS ' if cond else 'FAIL ') + name + ('' if cond else '  -> ' + str(extra)))
@@ -98,7 +137,7 @@ with sync_playwright() as p:
     page = ctx.new_page()
     errors = []
     page.on('pageerror', lambda e: errors.append('pageerror: ' + str(e)))
-    page.on('console', lambda m: errors.append('console.' + m.type + ': ' + m.text) if m.type in ('error',) else None)
+    page.on('console', lambda m: errors.append('console.' + m.type + ': ' + m.text) if m.type in ('error', 'warning') else None)
     page.goto(APP)
     page.wait_for_function('window.__map && window.__map.getSource("places")', timeout=8000)
     page.wait_for_timeout(900)
@@ -111,7 +150,7 @@ with sync_playwright() as p:
         countFont: m.layers.find(l => l.id === 'cl-count').layout['text-font'],
         labelFont: m.layers.find(l => l.id === 'pt-label').layout['text-font'],
         intro: m.calls.filter(c => c[0] === 'move').length } }''')
-    check('app layers added', st['layers'] == ['pt-area', 'cl-halo', 'cl-circle', 'cl-count', 'pt-sel', 'pt-pin', 'pt-label', 'me-halo', 'me-dot'], st['layers'])
+    check('app layers added', st['layers'] == ['pt-area', 'cl-halo', 'cl-circle', 'cl-count', 'pt-sel', 'pt-pin', 'pt-photo', 'pt-label', 'me-halo', 'me-dot'], st['layers'])
     check('parsed sample rows', len(SAMPLE_ROWS) >= 60 and len(FOOD_S) >= 30, len(SAMPLE_ROWS))
     want_imgs = len({(x['cat'], 'none' if x['rating'] is None else x['rating'] * 10) for x in FOOD_S})
     check('pin images drawn on demand (one per category + score bucket)', st['images'] == want_imgs, (st['images'], want_imgs))
@@ -173,9 +212,16 @@ with sync_playwright() as p:
     check('place view title', page.inner_text('.place-head h2') == '金门大桥', page.inner_text('.place-head h2') if page.locator('.place-head h2').count() else 'none')
     check('far place offers google view only', page.locator('a.btn', has_text='在 Google 地图看').count() == 1 and page.locator('a.btn', has_text='Waze').count() == 0)
     sel = page.evaluate('window.__map.layers.find(l=>l.id==="pt-sel").filter')
-    check('selection ring on the opened place (not under photo pins)', sel == ['all', ['==', ['get', 'id'], 's-golden-gate'], ['!=', ['get', 'photo'], True]], sel)
+    check('selection ring on the opened place', sel == ['==', ['get', 'id'], 's-golden-gate'], sel)
     check('opened place gets the red pin', page.locator('#map .sel-pin').count() == 1)
+    check('place I have not recorded offers 0-5 scores right on its page', page.locator('[data-action="place-score"]').count() == 6 and '去过？打个分' in page.inner_text('.quick-rate'))
     page.screenshot(path=os.path.join(SHOTS, '03-mobile-place.png'))
+    page.click('[data-action="place-score"][data-n="5"]')
+    page.wait_for_timeout(200)
+    check('tapping a score opens the form for this place, score picked', page.locator('#place-form').count() == 1 and page.get_attribute('[data-action="f-score"][data-n="5"]', 'aria-pressed') == 'true' and page.locator('#f-name').count() == 0, page.inner_text('#view')[:120])
+    page.click('[data-action="form-cancel"]')
+    page.wait_for_timeout(200)
+    check('back from that form returns to the place', page.locator('.place-head h2').count() == 1 and page.inner_text('.place-head h2') == '金门大桥')
     page.click('[data-action="back"]')
     page.wait_for_timeout(200)
     check('back to feed', page.locator('.feed').count() == 1)
@@ -246,22 +292,39 @@ with sync_playwright() as p:
     page.screenshot(path=os.path.join(SHOTS, '05-mobile-form.png'), full_page=False)
     page.click('#f-submit')
     page.wait_for_timeout(600)
-    check('after publish: place view', page.locator('.place-head h2').count() == 1 and page.inner_text('.place-head h2') == '测试椰浆饭')
+    check('after publish: place view', page.locator('.place-head h2').count() == 1 and page.inner_text('.place-head h2') == '测试椰浆饭', errors[-4:])
     check('new record lands on my map', page.get_attribute('[data-action="scope"][data-scope="mine"]', 'aria-current') == 'page' and '也分享到了大地图' in page.inner_text('#toast'), page.inner_text('#toast'))
     check('stats show score and price', page.inner_text('.score-big') == '4' and 'RM 9.5' in page.inner_text('.stats'), page.inner_text('.stats'))
     mine_pin = page.evaluate('window.__map.getSource("places").data.features.find(f => f.properties.name === "测试椰浆饭").properties')
     check('pin colour follows score (4 -> orange-red)', mine_pin['color'] == '#e14f12', mine_pin)
     PIN = 'window.__map.getSource("places").data.features.find(f => f.properties.name === "测试椰浆饭").properties'
-    page.wait_for_function(PIN + '.icon.startsWith("ph-")', timeout=5000)
+    page.wait_for_function(PIN + '.pic.startsWith("ph-")', timeout=5000)
     mine_pin = page.evaluate(PIN)
-    img = page.evaluate('window.__map.images[%s.icon]' % PIN)
+    img = page.evaluate('window.__map.images[%s.pic]' % PIN)
     check('no red pin covering the photo pin on its own page', page.locator('#map .sel-pin').count() == 0)
-    lay = page.evaluate('window.__map.layers.find(l => l.id === "pt-pin").layout')
+    check('place with a photo gets a photo pin (frame in the score colour) and keeps its plain pin', mine_pin['photo'] is True and mine_pin['pic'].endswith('-40') and mine_pin['icon'] == 'pin-food-malay-40' and img == {'w': 128, 'h': 148, 'pr': 2}, (mine_pin, img))
+    lays = page.evaluate('Object.fromEntries(window.__map.layers.filter(l => l.id === "pt-pin" || l.id === "pt-photo" || l.id === "pt-sel").map(l => [l.id, l]))')
     pid = mine_pin['id']
-    check('opened photo pin drawn on top and a size bigger', lay['symbol-sort-key'][1] == ['==', ['get', 'id'], pid] and lay['symbol-sort-key'][2] == 2
-          and lay['icon-size'][-1][2] == ['case', ['==', ['get', 'id'], pid], 1.15 * 1.2, 1.15], lay)
-    check('place with a photo gets a photo pin (frame in the score colour)', mine_pin['photo'] is True and mine_pin['icon'].endswith('-40') and img == {'w': 128, 'h': 148, 'pr': 2}, (mine_pin, img))
+    ph_props = {'id': pid, 'photo': True, 'precision': 'exact'}
+    ph_op, pin_op, ph_size = lays['pt-photo']['paint']['icon-opacity'], lays['pt-pin']['paint']['icon-opacity'], lays['pt-photo']['layout']['icon-size']
+    check('photo pins only when zoomed in: plain pin below 15, photo from 15', map_expr(ph_op, 14.9, ph_props) == 0 and map_expr(pin_op, 14.9, ph_props) == 1
+          and map_expr(ph_op, 15, ph_props) == 1 and map_expr(pin_op, 15, ph_props) == 0, [map_expr(x, z, ph_props) for x in (ph_op, pin_op) for z in (14.9, 15)])
+    sizes = [round(map_expr(ph_size, z, dict(ph_props, id='x')), 3) for z in (15, 15.5, 16, 17)]
+    check('zooming out shrinks the photo step by step to pin size before it turns into the pin', sizes == [0.55, 0.775, 1.0, 1.15], sizes)
+    check('area / city photos show from district / city zoom', map_expr(ph_op, 11.9, {'photo': True, 'precision': 'area'}) == 0 and map_expr(ph_op, 12, {'photo': True, 'precision': 'area'}) == 1
+          and map_expr(ph_op, 7.9, {'photo': True, 'precision': 'city'}) == 0 and map_expr(ph_op, 8, {'photo': True, 'precision': 'city'}) == 1)
+    check('places without photos keep their pin at every zoom', all(map_expr(pin_op, z, {'photo': False, 'precision': 'exact'}) == 1 for z in (3, 12, 15.5, 18)))
+    check('opened photo pin drawn on top and a size bigger', lays['pt-photo']['layout']['symbol-sort-key'][1] == ['==', ['get', 'id'], pid] and lays['pt-photo']['layout']['symbol-sort-key'][2] == 2
+          and abs(map_expr(ph_size, 16, ph_props) - 1.2) < 0.01 and abs(map_expr(ph_size, 16, dict(ph_props, id='x')) - 1.0) < 0.01, lays['pt-photo']['layout'])
+    check('selection ring fades out under the photo', map_expr(lays['pt-sel']['paint']['circle-stroke-opacity'], 16, ph_props) == 0 and map_expr(lays['pt-sel']['paint']['circle-stroke-opacity'], 13, ph_props) == 1)
+    page.evaluate('window.__map.jumpTo({zoom: 12})')
+    page.wait_for_timeout(200)
+    check('zoomed out on its page: back to a pin, red pin shows again', page.locator('#map .sel-pin').count() == 1)
+    page.evaluate('window.__map.jumpTo({zoom: 16})')
+    page.wait_for_timeout(200)
+    check('zoomed in again: photo pin, no red pin', page.locator('#map .sel-pin').count() == 0)
     check('food place shows distance tier', page.locator('.tag', has_text='步行可达').count() == 1)
+    check('no score row on a place I already recorded', page.locator('[data-action="place-score"]').count() == 0)
     check('near place offers navigation', page.locator('a.btn', has_text='Waze').count() == 1)
     nav = page.get_attribute('a.btn.primary', 'href')
     check('google directions link', nav.startswith('https://www.google.com/maps/dir/?api=1&destination=2.833100,101.703100'), nav)
@@ -285,13 +348,13 @@ with sync_playwright() as p:
     check('review persisted', len(rv) == 1 and rv[0]['rating'] == 4 and rv[0]['price'] == 9.5 and len(rv[0]['photos']) == 1 and rv[0]['visibility'] == 'public', rv)
     check('nickname saved', stored['profile']['name'] == '小测', stored['profile'])
     page.screenshot(path=os.path.join(SHOTS, '06-mobile-after-publish.png'))
-    # list: the photo comes first and big
+    # list: the photo is a compact square on the left, in place of the avatar
     page.click('[data-action="back"]')
     page.wait_for_timeout(300)
-    page.wait_for_function('[...document.querySelectorAll(".fi-pics img")].some(i => i.naturalWidth > 0)', timeout=5000)
-    pic = page.evaluate('''(() => { const it = [...document.querySelectorAll(".feed-item")].find(e => e.textContent.includes("测试椰浆饭")), i = it.querySelector(".fi-pics img"), b = i.getBoundingClientRect(), pl = it.querySelector(".fi-place").getBoundingClientRect();
-      return [i.naturalWidth, Math.round(b.height), b.top < pl.top]; })()''')
-    check('feed shows the photo big, before the text', pic[0] == 640 and pic[1] >= 180 and pic[2], pic)
+    page.wait_for_function('[...document.querySelectorAll(".fi-pic img")].some(i => i.naturalWidth > 0)', timeout=5000)
+    pic = page.evaluate('''(() => { const it = [...document.querySelectorAll(".feed-item")].find(e => e.textContent.includes("测试椰浆饭")), i = it.querySelector(".fi-pic img"), b = i.getBoundingClientRect(), pl = it.querySelector(".fi-place").getBoundingClientRect();
+      return [i.naturalWidth, Math.round(b.width), Math.round(b.height), b.right < pl.left, Math.round(it.getBoundingClientRect().height), it.querySelectorAll(".avatar").length]; })()''')
+    check('feed photo is a compact square left of the text (no avatar), row stays short', pic[0] == 640 and 90 <= pic[1] <= 110 and pic[1] == pic[2] and pic[3] and pic[4] <= 150 and pic[5] == 0, pic)
     check('UI back consumed the history entry', page.evaluate('history.state') is None)
     page.screenshot(path=os.path.join(SHOTS, '06b-mobile-feed-photo.png'))
     page.click('[data-action="search"]')
@@ -556,9 +619,9 @@ with sync_playwright() as p:
     page.click('[data-action="set-style"][data-style="color"]')
     page.wait_for_timeout(300)
     st2 = page.evaluate('({setStyle: window.__map.calls.filter(c=>c[0]==="setStyle").length, layers: window.__map.layers.map(l=>l.id).length, images: Object.keys(window.__map.images).length, proj: window.__map.projection})')
-    st2['icons'] = page.evaluate('[...new Set(window.__map.getSource("places").data.features.map(f => f.properties.icon))].sort()')
+    st2['icons'] = page.evaluate('[...new Set(window.__map.getSource("places").data.features.flatMap(f => [f.properties.icon, f.properties.pic]).filter(Boolean))].sort()')
     st2['imageIds'] = page.evaluate('Object.keys(window.__map.images).sort()')
-    check('base map switch re-adds layers + images', st2['setStyle'] == 1 and st2['layers'] == 9 and st2['icons'] == st2['imageIds'] and st2['proj'] == {'type': 'globe'}, st2)
+    check('base map switch re-adds layers + images', st2['setStyle'] == 1 and st2['layers'] == 10 and st2['icons'] == st2['imageIds'] and st2['proj'] == {'type': 'globe'}, st2)
     page.click('[data-action="back"]')
     set_mode(page, 'food')
     check('feed shows hometown', page.locator('.feed-item', has_text='来自 深圳·南山').count() >= 1)
@@ -623,6 +686,34 @@ with sync_playwright() as p:
     page.wait_for_timeout(200)
     last = page.evaluate('window.__map.calls.filter(c => c[0] === "move").slice(-1)[0][1]')
     check('cluster click zooms in to expansion zoom', abs(last.get('zoom', 0) - 12.4) < 0.01 and last['center'] == [115.3, -8.6], last)
+    page.evaluate('window.__qrf = []')
+
+    # adding: tapping an existing place or a basemap shop while picking opens its card (score there), no search needed
+    page.click('[data-action="scope"][data-scope="all"]')
+    page.wait_for_timeout(200)
+    (page.click('#fab') if page.locator('#fab').is_visible() else page.click('.title-add'))
+    page.wait_for_timeout(200)
+    page.click('[data-action="add-pin"]')
+    page.wait_for_timeout(300)
+    feat = page.evaluate('window.__map.getSource("places").data.features.find(f => f.properties.id).properties')
+    page.evaluate('window.__qrf = [{layer: {id: "pt-photo"}, properties: {id: %s}, geometry: {type: "Point", coordinates: [101.70, 2.83]}}]' % json.dumps(feat['id']))
+    page.evaluate('window.__map.fire("click", {point: {x: 150, y: 250}, lngLat: {lng: 101.70, lat: 2.83}})')
+    page.wait_for_timeout(300)
+    check('picking: tapping an existing pin opens that place', page.locator('#pick').is_hidden() and page.locator('.place-head h2').count() == 1 and page.inner_text('.place-head h2') == feat['name'], (feat, page.inner_text('#view')[:120]))
+    if page.locator('#pick').is_visible():
+        page.keyboard.press('Escape')
+    page.click('[data-action="back"]')
+    page.wait_for_timeout(200)
+    (page.click('#fab') if page.locator('#fab').is_visible() else page.click('.title-add'))
+    page.wait_for_timeout(200)
+    page.click('[data-action="add-pin"]')
+    page.wait_for_timeout(300)
+    page.evaluate('''window.__qrf = [{layer: {id: "poi_r1"}, properties: {name: "Kedai Pilih Peta", class: "restaurant", subclass: "restaurant"}, geometry: {type: "Point", coordinates: [101.7051, 2.8312]}}]''')
+    page.evaluate('window.__map.fire("click", {point: {x: 150, y: 250}, lngLat: {lng: 101.7051, lat: 2.8312}})')
+    page.wait_for_timeout(300)
+    check('picking: tapping a basemap shop opens its card with scores', page.locator('#pick').is_hidden() and page.locator('[data-action="preview-score"]').count() == 6 and page.inner_text('.place-head h2') == 'Kedai Pilih Peta', page.inner_text('#view')[:120])
+    page.click('[data-action="back"]')
+    page.wait_for_timeout(200)
     page.evaluate('window.__qrf = []')
 
     # basemap POI labels are tappable (on my map too): preview -> score -> form -> saved

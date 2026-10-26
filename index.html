@@ -332,18 +332,16 @@ body.picking .attrib { bottom: calc(env(safe-area-inset-bottom, 0px) + 122px); }
 .fi-meta, .rv-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
 .sep { opacity: .5; }
 .fi-text { font-size: 14px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
-/* 列表里的照片：大图在前 */
-.fi-pics { display: grid; gap: 3px; height: 230px; margin: 6px 0 5px; border-radius: 14px; overflow: hidden; }
-@supports (aspect-ratio: 1) { .fi-pics { height: auto; aspect-ratio: 4 / 3; } }
-.fi-pics.n2 { grid-template-columns: 1fr 1fr; }
-.fi-pics.n3 { grid-template-columns: 2fr 1fr; grid-template-rows: 1fr 1fr; }
-.fi-pics.n3 .fi-pic:first-child { grid-row: span 2; }
-.fi-pic { position: relative; min-width: 0; min-height: 0; background: var(--surface-2); }
+/* 列表里有照片的一条：照片放在左边代替头像（像美团的列表），多张时角上标张数 */
+.feed-item.with-pic { grid-template-columns: 104px minmax(0, 1fr); }
+.fi-pic { position: relative; width: 104px; height: 104px; border-radius: 12px; overflow: hidden; background: var(--surface-2); }
 .fi-pic img { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; }
-.fi-pic.more::after {
-  content: attr(data-more); position: absolute; top: 0; right: 0; bottom: 0; left: 0; display: grid; place-items: center;
-  background: rgba(10, 20, 30, .45); color: #fff; font-size: 20px; font-weight: 800;
+.fi-count {
+  position: absolute; right: 5px; bottom: 5px; display: inline-flex; align-items: center; gap: 3px; height: 20px; padding: 0 6px;
+  border-radius: 999px; background: rgba(10, 20, 30, .55); color: #fff; font-size: 11.5px; font-weight: 700; font-variant-numeric: tabular-nums;
 }
+.fi-count svg { width: 13px; height: 13px; }
+@media (max-width: 370px) { .feed-item.with-pic { grid-template-columns: 92px minmax(0, 1fr); } .fi-pic { width: 92px; height: 92px; } }
 .row-pic { flex: none; width: 56px; height: 56px; border-radius: 12px; overflow: hidden; background: var(--surface-2); }
 .row-pic img { display: block; width: 100%; height: 100%; object-fit: cover; }
 .badge {
@@ -646,7 +644,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
   };
   var STYLE_ORDER = ['light', 'color', 'dark'];
   var PRICE_STEPS = [0, 15, 30, 50];
-  var APP_LAYERS = ['pt-area', 'cl-halo', 'cl-circle', 'cl-count', 'pt-sel', 'pt-pin', 'pt-label', 'me-halo', 'me-dot'];
+  var APP_LAYERS = ['pt-area', 'cl-halo', 'cl-circle', 'cl-count', 'pt-sel', 'pt-pin', 'pt-photo', 'pt-label', 'me-halo', 'me-dot'];
   var DPR = Math.min(window.devicePixelRatio || 1, 3);
   /* 每张照片多存一张小图：列表、地图图钉用它，省流量；地点页和看大图用原图 */
   var THUMB_SIDE = 640, THUMB_KEY = '#t';
@@ -833,7 +831,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       addSearchPhFood: '输入店名搜索', addSearchPhTravel: '输入地名搜索', addPin: '地图选点',
       addPinLong: '搜不到？在地图上选点', addHint: '先搜名字。学校附近的小店搜不到的话，点“地图选点”自己标。',
       addNoResult: '地图上没搜到这个名字。',
-      poiFood: '餐厅', poiPlace: '地点', quickRate: '去过？打个分就记进我的地图', quickRateHint: '下一步还能加照片、说两句，都是选填。',
+      poiFood: '餐厅', poiPlace: '地点', quickRate: '去过？打个分就记进我的地图', quickRateFood: '吃过？打个分就记进我的地图', quickRateHint: '下一步还能加照片、说两句，都是选填。',
       searchLocal: '雪团里的', searchOsm: '地图上的地点', osmMin: '再多打一个字，就会去地图上搜', osmLoading: '正在搜…',
       osmFail: '地图搜索暂时用不了，可以自己插针添加', osmCredit: '地点数据：Overture Maps Foundation · © OpenStreetMap 贡献者（Photon）· 维基百科', osmAdd: '添加', osmOpen: '已在雪团',
       addedMine: '已存进我的地图', addedShared: '已存进我的地图，也分享到了大地图',
@@ -915,7 +913,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       addSearchPhFood: 'Search by name', addSearchPhTravel: 'Search a place', addPin: 'Pick on map',
       addPinLong: 'Can’t find it? Pick it on the map', addHint: 'Search by name first. If a small stall doesn’t show up, use “Pick on map”.',
       addNoResult: 'Nothing on the map with that name.',
-      poiFood: 'Restaurant', poiPlace: 'Place', quickRate: 'Been here? Score it to add it to My map', quickRateHint: 'Photos and notes are optional on the next step.',
+      poiFood: 'Restaurant', poiPlace: 'Place', quickRate: 'Been here? Score it to add it to My map', quickRateFood: 'Eaten here? Score it to add it to My map', quickRateHint: 'Photos and notes are optional on the next step.',
       searchLocal: 'On XueTuan', searchOsm: 'Places on the map', osmMin: 'Type one more character to search the map', osmLoading: 'Searching…',
       osmFail: 'Map search isn’t available right now. You can still drop a pin.', osmCredit: 'Place data: Overture Maps Foundation · © OpenStreetMap contributors (via Photon) · Wikipedia', osmAdd: 'Add', osmOpen: 'On XueTuan',
       addedMine: 'Saved to My map', addedShared: 'Saved to My map and shared on the big map',
@@ -1789,6 +1787,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       map.on('moveend', function () {
         clearTimeout(viewTimer); viewTimer = setTimeout(saveView, 400);
         ensurePinThumbs();
+        updateSelPin();
         var g = globeChipShown();
         if (g !== lastGlobeChip) { lastGlobeChip = g; renderFilters(); }
       });
@@ -1807,7 +1806,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       hoverBound = true;
       map.on('mousemove', function (e) {
         if (isMobile() || state.picking) return;
-        var ours = ['pt-pin', 'cl-circle', 'pt-area'].filter(function (id) { return map.getLayer(id); });
+        var ours = ['pt-photo', 'pt-pin', 'cl-circle', 'pt-area'].filter(function (id) { return map.getLayer(id); });
         var hit = (ours.length && map.queryRenderedFeatures(e.point, { layers: ours }).length) || basePoiAt(e.point);
         map.getCanvas().style.cursor = hit ? 'pointer' : '';
       });
@@ -1879,9 +1878,39 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     return id;
   }
 
-  /* 有照片的地点直接用照片当图钉，外框颜色仍然按评分。
-     照片要先读出来画成小方块：只读地图上看得到的，最多同时读 3 张 */
+  /* 有照片的地点放大地图后显示成照片图钉，外框颜色仍然按评分。
+     照片要先读出来画成小方块：只读地图上看得到、快放大到位的，最多同时读 3 张 */
   var PIN_PHOTO = 52;
+  /* 放大到多少级照片才出来：具体地点 15 级、片区 12 级、城市 8 级。
+     到了这一级照片从图钉大小长出来，再放大一级长到正常大小；缩小时照片慢慢缩回图钉大小，再换回普通图钉。
+     都用整数级：地图只在整数级上计算这类样式，用半级会在 15 级那里突然变大变小 */
+  var PHOTO_ZOOM = { city: 8, area: 12, exact: 15 };
+  function photoZoom(prec) { return PHOTO_ZOOM[prec] || PHOTO_ZOOM.exact; }
+  /* 差一级就到了才去读照片，世界地图上不白白下载 */
+  function photoWanted(p) { return !map || map.getZoom() >= photoZoom(p.precision) - 1; }
+  /* 同一个缩放级别，三种精度的值一样就直接给数字，不一样就按精度分 */
+  function byPrecision(fn) {
+    var v = ['city', 'area', 'exact'].map(function (pr) { return Math.round(fn(pr) * 1000) / 1000; });
+    return v[0] === v[1] && v[1] === v[2] ? v[0] : ['match', ['get', 'precision'], 'city', v[0], 'area', v[1], v[2]];
+  }
+  /* 有照片的地点到了照片级别取 onPhoto，其余取 k（照片层的不透明度、普通图钉和选中圆圈的淡出都用它） */
+  function whenPhoto(onPhoto, k) {
+    var e = ['step', ['zoom'], k];
+    [PHOTO_ZOOM.city, PHOTO_ZOOM.area, PHOTO_ZOOM.exact].forEach(function (z) {
+      var v = byPrecision(function (pr) { return z >= photoZoom(pr) ? onPhoto : k; });
+      e.push(z, v === k ? k : ['case', ['==', ['get', 'photo'], true], v, k]);
+    });
+    return e;
+  }
+  /* 照片图钉大小：刚出来时和图钉差不多大，放大一级到正常大小，再放大一级大一点。打开的那家再大一圈 */
+  function photoPinSize(selId) {
+    var e = ['interpolate', ['linear'], ['zoom']];
+    for (var z = 7; z <= 17; z++) {
+      var v = byPrecision(function (pr) { var d = z - photoZoom(pr); return d <= 0 ? 0.55 : d === 1 ? 1 : 1.15; });
+      e.push(z, !selId ? v : ['case', ['==', ['get', 'id'], selId], typeof v === 'number' ? Math.round(v * 1200) / 1000 : ['*', v, 1.2], v]);
+    }
+    return e;
+  }
   var pinThumbs = new Map();   // 照片 id → 'loading' | canvas | false（读不了）
   var thumbQueue = [], thumbBusy = 0, THUMB_PIN_MAX = 300, pinRefreshTimer = null;
   function photoPinImage(photo, score) {
@@ -1974,7 +2003,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     var b = viewBounds();
     placesInView().forEach(function (p) {
       var photo = coverPhoto(p);
-      if (photo && !pinThumbs.has(photo) && (!b || b.contains([p.lng, p.lat]))) queueThumb(photo);
+      if (photo && !pinThumbs.has(photo) && photoWanted(p) && (!b || b.contains([p.lng, p.lat]))) queueThumb(photo);
     });
   }
 
@@ -1992,11 +2021,11 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       type: 'FeatureCollection',
       features: placesInView().map(function (p) {
         var s = stats(p), photo = coverPhoto(p), ph = photo ? photoPinImage(photo, s.score) : null;
-        if (photo && !ph && !pinThumbs.has(photo) && (!b || b.contains([p.lng, p.lat]))) queueThumb(photo);
+        if (photo && !ph && !pinThumbs.has(photo) && photoWanted(p) && (!b || b.contains([p.lng, p.lat]))) queueThumb(photo);
         return {
           type: 'Feature',
           geometry: { type: 'Point', coordinates: [p.lng, p.lat] },
-          properties: { id: p.id, name: placeTitle(p), icon: ph || pinImage(p, s.score), photo: !!ph, color: scoreColor(s.score), precision: p.precision, r0: radiusAtZoom0(p) }
+          properties: { id: p.id, name: placeTitle(p), icon: pinImage(p, s.score), pic: ph || '', photo: !!ph, color: scoreColor(s.score), precision: p.precision, r0: radiusAtZoom0(p) }
         };
       })
     };
@@ -2005,14 +2034,9 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     return { type: 'FeatureCollection', features: state.me ? [{ type: 'Feature', geometry: { type: 'Point', coordinates: [state.me.lng, state.me.lat] }, properties: {} }] : [] };
   }
 
-  /* 照片图钉压在普通图钉上面，地图放大时照片也跟着变大；地点页选中的那张照片再大一圈、放到最上面 */
+  /* 打开的那家画在最上面 */
   function pinSortKey(selId) {
     return ['case', ['==', ['get', 'id'], selId || '__none__'], 2, ['get', 'photo'], 1, 0];
-  }
-  function pinSize(selId) {
-    var sel = ['==', ['get', 'id'], selId || '__none__'];
-    function at(photo, plain) { return ['case', ['get', 'photo'], ['case', sel, photo * 1.2, photo], plain]; }
-    return ['interpolate', ['linear'], ['zoom'], 2, at(0.62, 0.78), 12, at(0.85, 1), 16, at(1.15, 1)];
   }
 
   function addAppLayers() {
@@ -2049,14 +2073,23 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     });
     map.addLayer({
       id: 'pt-sel', type: 'circle', source: 'places', filter: ['==', ['get', 'id'], '__none__'],
-      paint: { 'circle-radius': 15, 'circle-color': accent, 'circle-opacity': 0.25, 'circle-stroke-color': accent, 'circle-stroke-width': 2, 'circle-pitch-alignment': 'map' }
+      paint: { 'circle-radius': 15, 'circle-color': accent, 'circle-opacity': whenPhoto(0, 0.25), 'circle-stroke-color': accent, 'circle-stroke-width': 2, 'circle-stroke-opacity': whenPhoto(0, 1), 'circle-pitch-alignment': 'map' }
     });
     map.addLayer({
       id: 'pt-pin', type: 'symbol', source: 'places', filter: ['!', ['has', 'point_count']],
       layout: {
         'icon-image': ['get', 'icon'], 'icon-anchor': 'bottom', 'icon-allow-overlap': true, 'icon-ignore-placement': true,
-        'symbol-sort-key': pinSortKey(null), 'icon-size': pinSize(null)
-      }
+        'symbol-sort-key': pinSortKey(null), 'icon-size': ['interpolate', ['linear'], ['zoom'], 2, 0.78, 12, 1]
+      },
+      paint: { 'icon-opacity': whenPhoto(0, 1) }
+    });
+    map.addLayer({
+      id: 'pt-photo', type: 'symbol', source: 'places', filter: ['all', ['!', ['has', 'point_count']], ['==', ['get', 'photo'], true]],
+      layout: {
+        'icon-image': ['get', 'pic'], 'icon-anchor': 'bottom', 'icon-allow-overlap': true, 'icon-ignore-placement': true,
+        'symbol-sort-key': pinSortKey(null), 'icon-size': photoPinSize(null)
+      },
+      paint: { 'icon-opacity': whenPhoto(1, 0) }
     });
     map.addLayer({
       id: 'pt-label', type: 'symbol', source: 'places', filter: ['!', ['has', 'point_count']], minzoom: 13,
@@ -2087,15 +2120,15 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     if ((v === 'form' || v === 'nearby') && f) return f.placeId ? placeById(f.placeId) : f.loc;
     return null;
   }
-  function hasPhotoPin(p) {
+  function photoPinShown(p) {
     var ph = coverPhoto(p), cv = ph && pinThumbs.get(ph);
-    return !!cv && cv !== 'loading';
+    return !!cv && cv !== 'loading' && map.getZoom() >= photoZoom(p.precision);
   }
   function updateSelPin() {
     if (!map || !window.maplibregl || !maplibregl.Marker) return;
     var loc = selPinLoc();
-    /* 地点已经是照片图钉了就不再插红针，免得把照片挡住 */
-    if (loc && state.view === 'place' && hasPhotoPin(loc)) loc = null;
+    /* 地图上正显示着这家的照片就不再插红针，免得把照片挡住；缩小变回图钉后红针再出来 */
+    if (loc && state.view === 'place' && photoPinShown(loc)) loc = null;
     if (!loc) { if (selPin) selPin.remove(); return; }
     if (!selPin) {
       var el = document.createElement('div');
@@ -2111,10 +2144,11 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     var id = state.view === 'place' && state.placeId ? state.placeId : null;
     if (id === selDrawn && !force) return;
     selDrawn = id;
-    /* 照片图钉本身够显眼，底下不再垫圆圈（圆圈会从照片下面露出半个） */
-    map.setFilter('pt-sel', ['all', ['==', ['get', 'id'], id || '__none__'], ['!=', ['get', 'photo'], true]]);
+    /* 选中圆圈在照片出来时会淡掉（不然会从照片下面露出半个） */
+    map.setFilter('pt-sel', ['==', ['get', 'id'], id || '__none__']);
     map.setLayoutProperty('pt-pin', 'symbol-sort-key', pinSortKey(id));
-    map.setLayoutProperty('pt-pin', 'icon-size', pinSize(id));
+    map.setLayoutProperty('pt-photo', 'symbol-sort-key', pinSortKey(id));
+    map.setLayoutProperty('pt-photo', 'icon-size', photoPinSize(id));
   }
 
   function mapPadding() {
@@ -2138,13 +2172,28 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     });
   }
 
+  function placeIdAt(pt) {
+    var layers = ['pt-photo', 'pt-pin'].filter(function (id) { return map.getLayer(id); });
+    var hits = layers.length ? map.queryRenderedFeatures([[pt.x - 12, pt.y - 12], [pt.x + 12, pt.y + 10]], { layers: layers }) : [];
+    for (var i = 0; i < hits.length; i++) if (hits[i].properties && hits[i].properties.id) return hits[i].properties.id;
+    return null;
+  }
   function onMapClick(e) {
     if (state.picking) {
+      /* 加一家时点到地图上已有的地点、或底图上的店名：直接打开它的卡片，在卡片上打分添加，不用再搜 */
+      if (!state.picking.repick) {
+        var pid = placeIdAt(e.point), poi0 = !pid && basePoiAt(e.point);
+        if (pid || poi0) {
+          cancelPick();
+          if (pid) openPlace(pid, { fly: false }); else openBasePoi(poi0);
+          return;
+        }
+      }
       var c = map.getContainer();
       map.panBy([e.point.x - c.clientWidth / 2, e.point.y - c.clientHeight / 2], { duration: 350 });
       return;
     }
-    var layers = ['cl-circle', 'pt-pin', 'pt-label'].filter(function (id) { return map.getLayer(id); });
+    var layers = ['cl-circle', 'pt-photo', 'pt-pin', 'pt-label'].filter(function (id) { return map.getLayer(id); });
     var box = [[e.point.x - 12, e.point.y - 12], [e.point.x + 12, e.point.y + 10]];
     var hits = layers.length ? map.queryRenderedFeatures(box, { layers: layers }) : [];
     if (hits.length) {
@@ -2683,23 +2732,17 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     return parts.join('<span class="sep">·</span>');
   }
 
-  /* 有照片的记录：照片放大放在前面（1 张整幅，2 张并排，3 张一大两小，多的显示 +N），文字在下面 */
-  function picsHTML(ids) {
-    var show = ids.slice(0, 3);
-    return '<span class="fi-pics n' + show.length + '">' + show.map(function (id, i) {
-      var more = i === 2 && ids.length > 3 ? ' more" data-more="+' + (ids.length - 3) : '';
-      return '<span class="fi-pic' + more + '"><img data-photo="' + esc(id) + '" data-small alt=""></span>';
-    }).join('') + '</span>';
-  }
+  /* 列表一条：有照片时第一张照片放在左边代替头像，多张时角上标张数；点进去看大图 */
   function feedItemHTML(r) {
     var p = placeById(r.placeId), c = catOf(p);
     var name = authorLabel(r), from = authorFrom(r), meta = metaHTML(r), text = reviewText(r);
-    var pics = r.photos && r.photos.length ? picsHTML(r.photos) : '';
-    return '<li><button type="button" class="feed-item" data-action="open-place" data-id="' + esc(p.id) + '">' +
-      avatarHTML(name) +
+    var n = r.photos ? r.photos.length : 0;
+    var lead = n ? '<span class="fi-pic"><img data-photo="' + esc(r.photos[0]) + '" data-small alt="">' +
+      (n > 1 ? '<span class="fi-count">' + ICON.camera + n + '</span>' : '') + '</span>' : avatarHTML(name);
+    return '<li><button type="button" class="feed-item' + (n ? ' with-pic' : '') + '" data-action="open-place" data-id="' + esc(p.id) + '">' +
+      lead +
       '<span class="fi-main">' +
       '<span class="fi-who"><b>' + esc(name) + '</b>' + (from ? '<span class="muted">' + esc(t('fromPrefix') + from) + '</span>' : '') + '<span class="fi-time">' + esc(timeAgo(r.createdAt)) + '</span></span>' +
-      pics +
       '<span class="fi-place">' + catIconHTML(c) + '<span>' + esc(placeTitle(p)) + '</span>' + (p.sample ? '<span class="badge">' + esc(t('sample')) + '</span>' : '') + '</span>' +
       (meta ? '<span class="fi-meta">' + meta + '</span>' : '') +
       (text ? '<span class="fi-text">' + esc(text) + '</span>' : '') +
@@ -2768,6 +2811,8 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       '<div class="place-head"><h2>' + esc(placeTitle(p)) + '</h2>' +
       (placeSub(p) ? '<div class="alt">' + esc(placeSub(p)) + '</div>' : '') +
       '<div class="tags">' + tags + '</div></div>' +
+      /* 别人记过、我还没记的地方：直接在这里打分添加，不用再去搜 */
+      (beenThere(p) ? '' : quickRateHTML('place-score', p.mode, false)) +
       (photos.length ? '<div class="photo-strip">' + photos.map(function (id) {
         return '<button type="button" class="ph" data-action="photo" data-id="' + esc(id) + '" data-group="place"><img data-photo="' + esc(id) + '" data-small alt=""></button>';
       }).join('') + '</div>' : '') +
@@ -3132,6 +3177,13 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     flyTo([r.lng, r.lat], (mode === r.mode && r.zoom) || (precision === 'city' ? 10 : precision === 'area' ? 14 : 16.5));
     startNewPlace({ lng: r.lng, lat: r.lat }, precision, NEAR_RADIUS[precision], { name: r.name, alt: r.alt, cat: cat, osm: r.osm, rating: rating });
   }
+  /* 0–5 分一排按钮：点一下就带着分数进表单（地图卡片、地点页都用） */
+  function quickRateHTML(action, mode, hint) {
+    return '<div class="field quick-rate"><span class="f-label" id="lbl-qr">' + esc(t(mode === 'food' ? 'quickRateFood' : 'quickRate')) + '</span><div class="score-input" role="group" aria-labelledby="lbl-qr">' +
+      [0, 1, 2, 3, 4, 5].map(function (n) {
+        return '<button type="button" class="sc" data-action="' + action + '" data-n="' + n + '" style="--c:' + scoreColor(n) + '" aria-label="' + esc(t('scoreAria', { n: n })) + '">' + n + '</button>';
+      }).join('') + '</div>' + (hint ? '<p class="f-hint">' + esc(t('quickRateHint')) + '</p>' : '') + '</div>';
+  }
   function renderPreview() {
     var r = state.preview;
     if (!r) { goFeed(); return; }
@@ -3146,10 +3198,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     view.innerHTML = '<div class="view-top"><button type="button" class="icon-btn flat" data-action="back" aria-label="' + esc(t('back')) + '">' + ICON.back + '</button></div>' +
       '<div class="place-head"><h2>' + esc(r.name) + '</h2>' + (r.alt ? '<div class="alt">' + esc(r.alt) + '</div>' : '') +
       '<div class="tags">' + tags + '</div></div>' +
-      '<div class="field quick-rate"><span class="f-label" id="lbl-qr">' + esc(t('quickRate')) + '</span><div class="score-input" role="group" aria-labelledby="lbl-qr">' +
-      [0, 1, 2, 3, 4, 5].map(function (n) {
-        return '<button type="button" class="sc" data-action="preview-score" data-n="' + n + '" style="--c:' + scoreColor(n) + '" aria-label="' + esc(t('scoreAria', { n: n })) + '">' + n + '</button>';
-      }).join('') + '</div><p class="f-hint">' + esc(t('quickRateHint')) + '</p></div>' +
+      quickRateHTML('preview-score', r.mode, true) +
       '<div class="actions"><a class="btn" href="https://www.google.com/maps/dir/?api=1&destination=' + coords + '" target="_blank" rel="noopener">' + ICON.nav + esc(t('navGoogle')) + '</a></div>';
   }
 
@@ -3392,8 +3441,8 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     render();
     setSnap('full');
   }
-  function startReview(placeId) {
-    state.form = newForm({ placeId: placeId });
+  function startReview(placeId, rating) {
+    state.form = newForm({ placeId: placeId, rating: rating == null ? null : rating });
     state.view = 'form';
     render();
     setSnap('full');
@@ -3517,7 +3566,8 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       if (!x.res.photosOk) setTimeout(function () { toast(t('photoFail')); }, 2600);
       refreshMap();
       openPlace(x.place.id, { drop: !f.editId });
-    }).catch(function () {
+    }).catch(function (e) {
+      if (window.console) console.warn('save:', e);
       if (btn) btn.disabled = false;
       toast(t('saveFail'));
     });
@@ -3722,6 +3772,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       case 'open-place': openPlace(d.id); break;
       case 'back': back(); break;
       case 'write-review': if (state.placeId && requireLogin()) startReview(state.placeId); break;
+      case 'place-score': if (state.placeId && requireLogin()) startReview(state.placeId, +d.n); break;
       case 'toggle-save': if (state.placeId && requireLogin()) toggleSave(state.placeId); break;
       case 'copy-coords': copyCoords(d.c); break;
       case 'photo': openLightbox(d.id, d.group); break;
