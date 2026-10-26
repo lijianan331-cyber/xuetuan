@@ -110,21 +110,18 @@ img { max-width: 100%; display: block; }
   padding: 24px; text-align: center; color: var(--ink); font-weight: 600; font-size: 15px;
 }
 
-/* ---------- header: place name + 吃/玩, search bar, category row (like Grab / Meituan) ---------- */
+/* ---------- header: just a floating search bar (like Google Maps) ---------- */
 .topbar {
   position: absolute; z-index: 10; top: 0; left: 0; right: 0;
-  padding: calc(env(safe-area-inset-top, 0px) + 8px) max(12px, env(safe-area-inset-right, 0px)) 8px max(12px, env(safe-area-inset-left, 0px));
-  border-radius: 0 0 22px 22px;
-  display: flex; flex-direction: column; gap: 8px;
+  padding: calc(env(safe-area-inset-top, 0px) + 10px) max(12px, env(safe-area-inset-right, 0px)) 0 max(12px, env(safe-area-inset-left, 0px));
+  pointer-events: none;
 }
-.top-row { display: flex; align-items: center; gap: 10px; min-height: 38px; }
-.loc-btn {
-  flex: 1; min-width: 0; height: 38px; padding: 0 4px; border: 0; background: none; border-radius: 10px;
-  display: flex; align-items: center; gap: 5px; color: var(--ink); text-align: left;
+.search-bar {
+  pointer-events: auto; width: 100%; height: 48px; padding: 0 18px; border: 0; border-radius: 999px;
+  background: var(--surface); box-shadow: var(--shadow);
+  display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 15.5px; text-align: left;
 }
-.loc-btn > svg:first-child { flex: none; width: 19px; height: 19px; color: var(--accent); }
-.loc-btn > svg:last-child { flex: none; width: 16px; height: 16px; color: var(--muted); }
-#loc-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 17px; font-weight: 800; letter-spacing: -.01em; }
+.search-bar svg { flex: none; width: 20px; height: 20px; color: var(--ink); }
 .brand-badge {
   flex: none; width: 40px; height: 40px; border-radius: 50%;
   background: radial-gradient(circle at 34% 28%, #FFFFFF 0%, #EAF4FE 45%, #BCD9F5 100%);
@@ -132,29 +129,21 @@ img { max-width: 100%; display: block; }
   color: #2E7DCB; display: grid; place-items: center;
   font-family: var(--font-display); font-size: 14px; line-height: 1; letter-spacing: .02em;
 }
-.mode-switch {
-  position: relative; flex: none; width: 128px; height: 36px; padding: 3px;
-  display: flex; border-radius: 12px; background: var(--surface-2);
+/* 地图右上角：吃/玩切换（显示要切去的那个：吃的地图上是飞机）、筛选、点亮国家 */
+.map-ctrls {
+  position: absolute; z-index: 9; right: max(12px, env(safe-area-inset-right, 0px));
+  top: calc(env(safe-area-inset-top, 0px) + 70px);
+  display: flex; flex-direction: column; gap: 10px;
 }
-.mode-switch::before {
-  content: ""; position: absolute; top: 3px; bottom: 3px; left: 3px; width: calc(50% - 3px);
-  border-radius: 9px; background: var(--accent);
-  box-shadow: 0 2px 8px color-mix(in srgb, var(--accent) 35%, transparent);
-  transition: transform .3s cubic-bezier(.2, .8, .2, 1), background-color .3s;
+.map-ctrls .icon-btn { position: relative; width: 44px; height: 44px; border-radius: 50%; }
+.map-ctrls .icon-btn svg { width: 22px; height: 22px; }
+.map-ctrls .icon-btn[aria-pressed="true"] { color: var(--accent); }
+.map-ctrls .icon-btn b {
+  position: absolute; top: -4px; right: -4px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px;
+  background: var(--accent); color: var(--accent-ink); font-size: 11px; line-height: 18px; text-align: center;
 }
-html.mode-travel .mode-switch::before { transform: translateX(100%); }
-.mode-switch button {
-  position: relative; z-index: 1; flex: 1; min-width: 0; border: 0; background: none; border-radius: 9px;
-  display: flex; align-items: center; justify-content: center; gap: 4px; color: var(--muted); transition: color .2s;
-}
-.mode-switch button[aria-selected="true"] { color: var(--accent-ink); }
-.mode-switch b { font-family: var(--font-display); font-weight: 400; font-size: 18px; line-height: 1; }
-.mode-switch small { display: none; }
-.search-bar {
-  height: 42px; padding: 0 14px; border: 0; border-radius: 999px; background: var(--surface-2);
-  display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 15px; text-align: left;
-}
-.search-bar svg { flex: none; width: 19px; height: 19px; color: var(--ink); }
+.map-ctrls .globe-btn[aria-pressed="true"] { background: #FFF4D6; color: #9a6400; }
+.map-ctrls .globe-btn b { background: #F5B21B; color: #2b1c00; }
 .icon-btn {
   flex: none; width: 44px; height: 44px; padding: 0; border: 0; border-radius: 14px;
   background: var(--surface); color: var(--ink); box-shadow: var(--shadow);
@@ -164,15 +153,7 @@ html.mode-travel .mode-switch::before { transform: translateX(100%); }
 .icon-btn.flat { width: 36px; height: 36px; margin-left: -6px; border-radius: 50%; background: none; box-shadow: none; }
 .icon-btn.flat:hover { background: var(--surface-2); }
 
-/* ---------- category row + filter button ---------- */
-.filters {
-  display: flex; align-items: center; gap: 2px; overflow-x: auto;
-  margin: 0 calc(-1 * max(12px, env(safe-area-inset-right, 0px))) 0 calc(-1 * max(12px, env(safe-area-inset-left, 0px)));
-  padding: 0 max(12px, env(safe-area-inset-right, 0px)) 0 max(12px, env(safe-area-inset-left, 0px));
-  scrollbar-width: none;
-}
-.filters::-webkit-scrollbar { display: none; }
-.filters > * { flex: none; }
+/* ---------- chips (filter sheet, forms) ---------- */
 .chip {
   height: 32px; padding: 0 12px; border-radius: 999px; border: 0;
   background: none; color: var(--ink); font-size: 13px; font-weight: 600;
@@ -181,13 +162,6 @@ html.mode-travel .mode-switch::before { transform: translateX(100%); }
 .chip:hover { background: var(--surface-2); }
 .chip[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); }
 .chip svg { width: 16px; height: 16px; }
-/* 我的地图：顶部吃/玩藏起来，改用下面一行的 美食 / 旅行 / 合并 */
-html.scope-mine .mode-switch { display: none; }
-.chip.globe-chip { gap: 6px; }
-.chip.globe-chip[aria-pressed="true"] { background: rgba(245, 178, 27, .2); color: #8a5a00; }
-.chip.globe-chip b { padding: 1px 7px; border-radius: 999px; background: #F5B21B; color: #2b1c00; font-size: 12px; }
-.filter-btn { margin-right: 4px; background: var(--surface-2); }
-.filter-btn b { min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--accent); color: var(--accent-ink); font-size: 11px; line-height: 18px; text-align: center; }
 .seg { display: inline-flex; gap: 2px; padding: 3px; border-radius: 12px; background: var(--surface-2); }
 .seg button { height: 36px; padding: 0 14px; border: 0; border-radius: 9px; background: none; color: var(--muted); font-size: 14px; font-weight: 600; white-space: nowrap; }
 .seg button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 3px rgba(40, 90, 140, .16); }
@@ -247,8 +221,7 @@ html.scope-mine .mode-switch { display: none; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .attrib { background: rgba(18, 27, 37, .6); color: #93A4B5; } }
 .attrib a { color: inherit; text-decoration: none; }
 .attrib a:hover { text-decoration: underline; }
-body.picking .tabbar, body.picking .fab-hint, body.picking .filters, body.picking .search-bar, body.picking .locate-btn { display: none; }
-body.picking .mode-switch, body.picking .loc-btn { pointer-events: none; opacity: .6; }
+body.picking .tabbar, body.picking .fab-hint, body.picking .topbar, body.picking .map-ctrls, body.picking .locate-btn { display: none; }
 body.picking .attrib { bottom: calc(env(safe-area-inset-bottom, 0px) + 122px); }
 
 /* ---------- bottom sheets (filters, places) ---------- */
@@ -369,6 +342,7 @@ body.picking .attrib { bottom: calc(env(safe-area-inset-bottom, 0px) + 122px); }
 .score-big { font-size: 28px; }
 .cat-ic { flex: none; font-style: normal; font-size: 15px; line-height: 1; }
 .near-item > .cat-ic { width: 22px; text-align: center; font-size: 18px; }
+.f-label .legend { margin-left: 8px; }
 .legend {
   display: inline-flex; align-items: center; gap: 5px; height: 28px; padding: 0 8px 0 10px;
   color: var(--muted); font-size: 11.5px; font-weight: 700;
@@ -495,7 +469,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
 
 /* ---------- overlays ---------- */
 .toast {
-  position: fixed; z-index: 60; left: 50%; top: calc(env(safe-area-inset-top, 0px) + 158px); transform: translateX(-50%);
+  position: fixed; z-index: 60; left: 50%; top: calc(env(safe-area-inset-top, 0px) + 72px); transform: translateX(-50%);
   width: max-content; max-width: calc(100% - 128px); padding: 10px 16px; border-radius: 999px; text-align: center;
   background: var(--ink); color: var(--surface); font-size: 14px; font-weight: 600; box-shadow: var(--shadow);
 }
@@ -532,15 +506,15 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
   .tabbar { right: auto; width: 400px; border-right: 1px solid var(--line); }
   .fab-hint { left: 200px; }
   /* 桌面上顶部是一张浮在地图上的卡片 */
-  .topbar { top: 12px; left: 12px; right: auto; width: min(560px, calc(100% - 24px)); padding: 10px 12px; border-radius: 20px; }
-  .filters { margin: 0 -12px; padding: 0 12px; }
+  .topbar { top: 12px; left: 12px; right: auto; width: min(480px, calc(100% - 24px)); padding: 0; }
+  .map-ctrls { top: 12px; }
   .locate-btn { bottom: 24px; }
   .attrib { bottom: 6px; }
   .feed-item { border-radius: 12px; padding: 14px 8px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .pick-pin, .drop-pulse { animation: none; }
-  .panel, .locate-btn, .attrib, .mode-switch::before, .bsheet-card { transition: none; animation: none; }
+  .panel, .locate-btn, .attrib, .bsheet-card { transition: none; animation: none; }
 }
 </style>
 </head>
@@ -562,21 +536,10 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     <div class="map" id="map"></div>
     <div class="map-error" id="map-error" hidden></div>
 
-    <header class="topbar frost" id="topbar">
-      <div class="top-row">
-        <button type="button" class="loc-btn" data-action="areas" data-i18n-aria="areas">
-          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 22c-.4 0-7-6.6-7-12a7 7 0 0 1 14 0c0 5.4-6.6 12-7 12zm0-9.2a2.8 2.8 0 1 0 0-5.6 2.8 2.8 0 0 0 0 5.6z"/></svg>
-          <span id="loc-name">XMUM</span>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
-        </button>
-        <div class="mode-switch" role="tablist">
-          <button type="button" role="tab" data-action="mode" data-mode="food" aria-selected="true" data-i18n-aria="foodAria"><b>吃</b><small>Makan</small></button>
-          <button type="button" role="tab" data-action="mode" data-mode="travel" aria-selected="false" data-i18n-aria="travelAria"><b>玩</b><small>Jalan</small></button>
-        </div>
-      </div>
+    <header class="topbar" id="topbar">
       <button type="button" class="search-bar" data-action="search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg><span data-i18n="searchBarPh">搜店名、地方</span></button>
-      <div class="filters" id="filters"></div>
     </header>
+    <div class="map-ctrls" id="map-ctrls"></div>
 
     <button type="button" class="icon-btn locate-btn" data-action="locate" data-i18n-aria="locate" data-i18n-title="locate"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="12" cy="12" r="6.5"/><circle cx="12" cy="12" r="2.2" fill="currentColor" stroke="none"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3"/></svg></button>
 
@@ -772,7 +735,8 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       dist_walk: '步行 · 1.5km 内', dist_short: '短途打车 · 1.5–10km', dist_mid: '中距离 · 10–40km', dist_far: '更远 · 40km 以上',
       tier_walk: '步行可达', tier_short: '短途打车', tier_mid: '中距离', tier_far: '吉隆坡及更远',
       feedFoodAll: '大家最近在吃', feedTravelAll: '大家最近去了', feedFoodMine: '我吃过的', feedTravelMine: '我去过的', feedBothMine: '我的足迹',
-      mine_food: '美食', mine_travel: '旅行', mine_both: '合并', litCountries: '点亮国家', litN: '已去 {n} 国', worldFail: '国家边界没加载出来，等下再试',
+      mine_food: '美食', mine_travel: '旅行', mine_both: '合并', mineShow: '显示', filterCat: '分类',
+      modeToTravel: '切换到旅行地图', modeToFood: '切换到美食地图', litCountries: '点亮国家', litN: '已去 {n} 国', worldFail: '国家边界没加载出来，等下再试',
       feedSavedFood: '想去吃的', feedSavedTravel: '想去的地方',
       emptySaved: '还没收藏过。在探索地图里看到想去的，点地点页上的“收藏”。', goExplore: '去探索',
       wish: '收藏', wished: '已收藏', wishAdded: '收藏了，在“收藏”地图里能找到', wishRemoved: '取消收藏了',
@@ -853,7 +817,8 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       dist_walk: 'Walk · under 1.5 km', dist_short: 'Short ride · 1.5–10 km', dist_mid: 'Mid trip · 10–40 km', dist_far: 'Further · 40 km+',
       tier_walk: 'Walkable', tier_short: 'Short ride', tier_mid: 'Mid-distance', tier_far: 'KL & beyond',
       feedFoodAll: 'What people are eating', feedTravelAll: 'Where people went', feedFoodMine: 'Places I’ve eaten', feedTravelMine: 'Places I’ve been', feedBothMine: 'My footprints',
-      mine_food: 'Food', mine_travel: 'Travel', mine_both: 'Both', litCountries: 'Countries', litN: '{n} visited', worldFail: 'Couldn’t load country borders. Try again later.',
+      mine_food: 'Food', mine_travel: 'Travel', mine_both: 'Both', mineShow: 'Show', filterCat: 'Category',
+      modeToTravel: 'Switch to the travel map', modeToFood: 'Switch to the food map', litCountries: 'Countries', litN: '{n} visited', worldFail: 'Couldn’t load country borders. Try again later.',
       feedSavedFood: 'Food spots I saved', feedSavedTravel: 'Places I saved',
       emptySaved: 'Nothing saved yet. When you spot somewhere on the Explore map, tap “Save” on its page.', goExplore: 'Explore',
       wish: 'Save', wished: 'Saved', wishAdded: 'Saved. Find it on the Saved map', wishRemoved: 'Removed from saved',
@@ -1761,7 +1726,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       });
       map.on('click', onMapClick);
       map.on('moveend', function () {
-        clearTimeout(viewTimer); viewTimer = setTimeout(saveView, 400); updateLocName();
+        clearTimeout(viewTimer); viewTimer = setTimeout(saveView, 400);
         var g = globeChipShown();
         if (g !== lastGlobeChip) { lastGlobeChip = g; renderFilters(); }
       });
@@ -2110,7 +2075,6 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
   }
   function renderChrome() {
     document.documentElement.classList.toggle('mode-travel', state.mode === 'travel');
-    $$('.mode-switch button').forEach(function (b) { b.setAttribute('aria-selected', String(b.dataset.mode === state.mode)); });
     $('#fab-label').textContent = t(state.mode === 'food' ? 'fabFood' : 'fabTravel');
     renderFilters();
     renderTabs();
@@ -2129,41 +2093,33 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
   var SCORE_STEPS = [0, 3, 4];
   var DIST_STEPS = ['any'].concat(DIST_TIERS.map(function (x) { return x.id; }));
   function activeFilterCount() {
-    return (state.minScore ? 1 : 0) + (state.dist !== 'any' ? 1 : 0) + (state.priceMax ? 1 : 0);
+    if (state.scope === 'mine') return 0;
+    return (state.cat !== 'all' ? 1 : 0) + (state.minScore ? 1 : 0) + (state.dist !== 'any' ? 1 : 0) + (state.priceMax ? 1 : 0);
   }
-  /* 顶部一行：筛选按钮（评分、距离、价位都在里面）+ 分类 */
+  var CTRL_ICON = {
+    plane: '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/></svg>',
+    food: '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z"/></svg>',
+    filter: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h10M4 12h4M12 12h8M4 18h12"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg>',
+    globe: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg>'
+  };
+  /* 地图右上角的按钮：吃/玩切换、筛选；我的地图缩小到国家级别再多一个“点亮国家” */
   function renderFilters() {
     document.documentElement.classList.toggle('scope-mine', state.scope === 'mine');
-    if (state.scope === 'mine') { renderMineFilters(); return; }
-    var n = activeFilterCount();
-    var html = '<button type="button" class="chip filter-btn" data-action="filters" aria-pressed="' + (n > 0) + '">' +
-      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h10M4 12h4M12 12h8M4 18h12"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg>' +
-      esc(t('filterBtn')) + (n ? '<b>' + n + '</b>' : '') + '</button>';
-    html += '<button type="button" class="chip" data-action="cat" data-cat="all" aria-pressed="' + (state.cat === 'all') + '">' + esc(t('catAll')) + '</button>';
-    CATS[state.mode].forEach(function (c) {
-      html += '<button type="button" class="chip" data-action="cat" data-cat="' + c.id + '" aria-pressed="' + (state.cat === c.id) + '">' + catIconHTML(c) + esc(catName(c)) + '</button>';
-    });
-    html += '<span class="legend" aria-hidden="true">' + esc(t('legend')) + ' <b>0</b><i></i><b>5</b></span>';
-    $('#filters').innerHTML = html;
+    var food = state.mode === 'food', n = activeFilterCount();
+    var toKey = food ? 'modeToTravel' : 'modeToFood';
+    var h = '<button type="button" class="icon-btn mode-btn" data-action="toggle-mode" aria-label="' + esc(t(toKey)) + '" title="' + esc(t(toKey)) + '">' + (food ? CTRL_ICON.plane : CTRL_ICON.food) + '</button>';
+    h += '<button type="button" class="icon-btn filter-btn" data-action="filters" aria-pressed="' + (n > 0) + '" aria-label="' + esc(t('filterBtn')) + '" title="' + esc(t('filterBtn')) + '">' + CTRL_ICON.filter + (n ? '<b>' + n + '</b>' : '') + '</button>';
+    if (globeChipShown()) {
+      var lit = state.countries && world.fc;
+      h += '<button type="button" class="icon-btn globe-btn" data-action="countries" aria-pressed="' + state.countries + '" aria-label="' + esc(t('litCountries')) + '" title="' + esc(t('litCountries')) + '">' + CTRL_ICON.globe + (lit ? '<b>' + world.litCount + '</b>' : '') + '</button>';
+    }
+    $('#map-ctrls').innerHTML = h;
   }
 
-  /* 我的地图那一行：美食 / 旅行 / 合并；缩小到国家级别再加一个“点亮国家” */
+  /* 我的地图只分 美食 / 旅行 / 合并（在筛选里选） */
   var COUNTRY_ZOOM = 5;
   function mineView() { return state.mineBoth ? 'both' : state.mode; }
   function globeChipShown() { return state.scope === 'mine' && (state.mode === 'travel' || state.mineBoth) && !!map && map.getZoom() <= COUNTRY_ZOOM; }
-  function renderMineFilters() {
-    var cur = mineView();
-    var html = ['food', 'travel', 'both'].map(function (v) {
-      return '<button type="button" class="chip" data-action="mine-mode" data-v="' + v + '" aria-pressed="' + (cur === v) + '">' + esc(t('mine_' + v)) + '</button>';
-    }).join('');
-    if (globeChipShown()) {
-      var lit = state.countries && world.fc;
-      html += '<button type="button" class="chip globe-chip" data-action="countries" aria-pressed="' + state.countries + '">🌏 ' +
-        esc(t('litCountries')) + (lit ? '<b>' + esc(t('litN', { n: world.litCount })) + '</b>' : '') + '</button>';
-    }
-    html += '<span class="legend" aria-hidden="true">' + esc(t('legend')) + ' <b>0</b><i></i><b>5</b></span>';
-    $('#filters').innerHTML = html;
-  }
   function setMineView(v) {
     if (v === 'both') {
       state.mineBoth = true;
@@ -2177,7 +2133,6 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     }
     saveView();
   }
-
   /* ================= 点亮去过的国家 =================
    * 国家边界：world-atlas（Natural Earth 1:50m，公有领域），打开开关时才下载。
    * 去过 = 我自己记录过的地点（吃和玩都算）落在哪个国家里。 */
@@ -2319,66 +2274,44 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
   function renderBSheet() {
     var card = $('#bsheet-card'), h = '';
     if (state.bsheet === 'filters') {
-      var food = state.mode === 'food';
+      var food = state.mode === 'food', mine = state.scope === 'mine';
       var shown = store.places().filter(function (p) { return inScope(p) && passesFilters(p); }).length;
       h += '<div class="bsheet-head"><h3>' + esc(t('filtersTitle')) + '</h3></div>';
-      h += '<div class="field"><span class="f-label">' + esc(t('filterScore')) + '</span><div class="chips-wrap">' +
-        SCORE_STEPS.map(function (n) { return optHTML('set-score', n, state.minScore === n, n ? t('scoreOpt', { n: n }) : t('anyOpt')); }).join('') + '</div></div>';
-      if (food) {
-        h += '<div class="field"><span class="f-label">' + esc(t('filterDist')) + '</span><div class="chips-wrap">' +
-          DIST_STEPS.map(function (d) { return optHTML('set-dist', d, state.dist === d, d === 'any' ? t('anyOpt') : t('dist_' + d)); }).join('') + '</div></div>';
-        h += '<div class="field"><span class="f-label">' + esc(t('filterPrice')) + '</span><div class="chips-wrap">' +
-          PRICE_STEPS.map(function (n) { return optHTML('set-price', n, state.priceMax === n, n ? t('priceOpt', { n: n }) : t('anyOpt')); }).join('') + '</div></div>';
+      if (mine) {
+        h += '<div class="field"><span class="f-label">' + esc(t('mineShow')) + '</span><div class="chips-wrap">' +
+          ['food', 'travel', 'both'].map(function (v) { return '<button type="button" class="chip" data-action="mine-mode" data-v="' + v + '" aria-pressed="' + (mineView() === v) + '">' + esc(t('mine_' + v)) + '</button>'; }).join('') + '</div></div>';
+      } else {
+        h += '<div class="field"><span class="f-label">' + esc(t('filterCat')) + '</span><div class="chips-wrap">' +
+          '<button type="button" class="chip" data-action="cat" data-cat="all" aria-pressed="' + (state.cat === 'all') + '">' + esc(t('catAll')) + '</button>' +
+          CATS[state.mode].map(function (c) {
+            return '<button type="button" class="chip" data-action="cat" data-cat="' + c.id + '" aria-pressed="' + (state.cat === c.id) + '">' + catIconHTML(c) + esc(catName(c)) + '</button>';
+          }).join('') + '</div></div>';
+        h += '<div class="field"><span class="f-label">' + esc(t('filterScore')) + '<span class="legend" aria-hidden="true"><b>0</b><i></i><b>5</b></span></span><div class="chips-wrap">' +
+          SCORE_STEPS.map(function (n) { return optHTML('set-score', n, state.minScore === n, n ? t('scoreOpt', { n: n }) : t('anyOpt')); }).join('') + '</div></div>';
+        if (food) {
+          h += '<div class="field"><span class="f-label">' + esc(t('filterDist')) + '</span><div class="chips-wrap">' +
+            DIST_STEPS.map(function (d) { return optHTML('set-dist', d, state.dist === d, d === 'any' ? t('anyOpt') : t('dist_' + d)); }).join('') + '</div></div>';
+          h += '<div class="field"><span class="f-label">' + esc(t('filterPrice')) + '</span><div class="chips-wrap">' +
+            PRICE_STEPS.map(function (n) { return optHTML('set-price', n, state.priceMax === n, n ? t('priceOpt', { n: n }) : t('anyOpt')); }).join('') + '</div></div>';
+        }
       }
-      h += '<div class="bsheet-foot"><button type="button" class="btn ghost" data-action="clear-filters">' + esc(t('filterReset')) + '</button>' +
+      h += '<div class="bsheet-foot">' + (mine ? '' : '<button type="button" class="btn ghost" data-action="clear-filters">' + esc(t('filterReset')) + '</button>') +
         '<button type="button" class="btn primary" data-action="sheet-close">' + esc(t('filterShow', { n: shown })) + '</button></div>';
-    } else if (state.bsheet === 'areas') {
-      var pin = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 22c-.4 0-7-6.6-7-12a7 7 0 0 1 14 0c0 5.4-6.6 12-7 12zm0-9.2a2.8 2.8 0 1 0 0-5.6 2.8 2.8 0 0 0 0 5.6z"/></svg>';
-      h += '<div class="bsheet-head"><h3>' + esc(t('areasTitle')) + '</h3></div>';
-      h += '<button type="button" class="area-opt" data-action="locate">' + ICON.nav + esc(t('locate')) + '</button>';
-      PRESET_AREAS.forEach(function (a) { h += '<button type="button" class="area-opt" data-action="goto-area" data-id="' + esc(a.id) + '">' + pin + esc(state.lang === 'en' ? a.en : a.zh) + '</button>'; });
-      store.areas().forEach(function (a) { h += '<button type="button" class="area-opt" data-action="goto-area" data-id="' + esc(a.id) + '">' + pin + esc(a.name) + '</button>'; });
-      h += '<button type="button" class="area-opt muted" data-action="save-area">＋ ' + esc(t('saveHere')) + '</button>';
     }
     card.innerHTML = h;
   }
+  /* 常去的地方：搜索框还没输字时列在搜索页里 */
+  function areasHTML() {
+    var pin = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 22c-.4 0-7-6.6-7-12a7 7 0 0 1 14 0c0 5.4-6.6 12-7 12zm0-9.2a2.8 2.8 0 1 0 0-5.6 2.8 2.8 0 0 0 0 5.6z"/></svg>';
+    var li = function (inner) { return '<li>' + inner + '</li>'; };
+    var h = '<li class="sec-title">' + esc(t('areasTitle')) + '</li>';
+    h += li('<button type="button" class="area-opt" data-action="locate">' + ICON.nav + esc(t('locate')) + '</button>');
+    PRESET_AREAS.forEach(function (a) { h += li('<button type="button" class="area-opt" data-action="goto-area" data-id="' + esc(a.id) + '">' + pin + esc(state.lang === 'en' ? a.en : a.zh) + '</button>'); });
+    store.areas().forEach(function (a) { h += li('<button type="button" class="area-opt" data-action="goto-area" data-id="' + esc(a.id) + '">' + pin + esc(a.name) + '</button>'); });
+    h += li('<button type="button" class="area-opt muted" data-action="save-area">＋ ' + esc(t('saveHere')) + '</button>');
+    return h;
+  }
 
-  /* 顶部显示地图中心大概是哪儿：先看是不是在常去的地方附近，不是就问 Photon */
-  var PHOTON_REVERSE = 'https://photon.komoot.io/reverse';
-  var locName = { timer: null, seq: 0 };
-  function setLocName(name) { $('#loc-name').textContent = name; }
-  function nearestArea(c, maxM) {
-    var best = null;
-    PRESET_AREAS.map(function (a) { return { name: state.lang === 'en' ? a.en : a.zh, lng: a.lng, lat: a.lat }; })
-      .concat(store.areas()).forEach(function (a) {
-        var d = haversine(c, a);
-        if (d <= maxM && (!best || d < best.d)) best = { name: a.name, d: d };
-      });
-    return best;
-  }
-  function updateLocName() {
-    clearTimeout(locName.timer);
-    locName.timer = setTimeout(function () {
-      if (!map) return;
-      var c = map.getCenter(), z = map.getZoom(), seq = ++locName.seq;
-      if (z < 4) { setLocName(t('locWorld')); return; }
-      var near = z >= 11 ? nearestArea(c, 2500) : null;
-      if (near) { setLocName(near.name); return; }
-      fetch(PHOTON_REVERSE + '?lat=' + c.lat.toFixed(4) + '&lon=' + c.lng.toFixed(4) + (state.lang === 'en' ? '&lang=en' : '')).then(function (res) {
-        if (!res.ok) throw new Error('reverse ' + res.status);
-        return res.json();
-      }).then(function (json) {
-        if (seq !== locName.seq) return;
-        var pr = (json && json.features && json.features[0] && json.features[0].properties) || {};
-        var name = z >= 11 ? (pr.district || pr.locality || pr.city || pr.county || pr.state) : z >= 7 ? (pr.city || pr.county || pr.state || pr.country) : (pr.country || pr.state);
-        setLocName(name || t('locHere'));
-      }).catch(function () {
-        if (seq !== locName.seq) return;
-        var n = nearestArea(c, 30000);
-        setLocName(n ? n.name : t('locHere'));
-      });
-    }, 500);
-  }
   /* “加一家”的小提示：只在探索页的列表上出现，点一下就再也不出现 */
   var LS_HINT = 'xmum-chiwan-map:hint-closed';
   function hintClosed() { try { return localStorage.getItem(LS_HINT) === '1'; } catch (e) { return false; } }
@@ -2684,7 +2617,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     if (!box) return;
     var adding = state.view === 'add';
     var q = state.query.trim().toLowerCase();
-    if (!q) { box.innerHTML = ''; return; }
+    if (!q) { box.innerHTML = adding ? '' : areasHTML(); return; }
     var res = store.places().filter(function (p) {
       if (adding && p.mode !== state.mode) return false;
       return visibleToMe(p) && ((p.name || '').toLowerCase().indexOf(q) !== -1 || (p.altName || '').toLowerCase().indexOf(q) !== -1);
@@ -3426,7 +3359,11 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     if (!el) return;
     var a = el.dataset.action, d = el.dataset;
     switch (a) {
-      case 'mode': if (state.view !== 'feed') goFeed(); setMode(d.mode); break;
+      case 'toggle-mode':
+        if (state.view !== 'feed') goFeed();
+        state.mineBoth = false;
+        setMode(state.mode === 'food' ? 'travel' : 'food');
+        break;
       case 'scope':
         state.scope = d.scope; renderFilters(); refreshMap();
         if (state.view === 'place' && scopedReviews(state.placeId).length) render();
@@ -3435,10 +3372,9 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
         break;
       case 'cat': state.cat = d.cat; refilter(); break;
       case 'hint-close': closeFabHint(); break;
-      case 'mine-mode': if (state.view !== 'feed') goFeed(); setMineView(d.v); break;
+      case 'mine-mode': if (state.view !== 'feed') goFeed(); setMineView(d.v); if (state.bsheet) renderBSheet(); break;
       case 'countries': state.countries = !state.countries; syncCountries(); renderFilters(); saveView(); break;
       case 'filters': openBSheet('filters'); break;
-      case 'areas': openBSheet('areas'); break;
       case 'sheet-close': closeBSheet(); break;
       case 'set-price': state.priceMax = +d.v; refilter(); break;
       case 'set-score': state.minScore = +d.v; refilter(); break;
@@ -3448,14 +3384,14 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       case 'profile': if (state.view === 'feed') state.feedSnap = state.snap; closeBSheet(); state.view = 'profile'; render(); setSnap('full'); break;
       case 'set-lang': setLang(d.lang); break;
       case 'set-style': setBasemap(d.style); break;
-      case 'locate': closeBSheet(); locate(); break;
+      case 'locate': closeBSheet(); if (state.view === 'search') goFeed(); locate(); break;
       case 'add': if (requireLogin()) openAdd(); break;
       case 'add-pin': startPick({}); break;
       case 'add-existing': startReview(d.id); break;
       case 'pick-cancel': cancelPick(); break;
       case 'pick-confirm': confirmPick(); break;
       case 'expand': if (isMobile()) setSnap(state.snap === 'peek' ? 'half' : state.snap === 'half' ? 'full' : 'half'); break;
-      case 'goto-area': closeBSheet(); gotoArea(d.id); break;
+      case 'goto-area': closeBSheet(); if (state.view === 'search') goFeed(); gotoArea(d.id); break;
       case 'save-area': closeBSheet(); openAreaDialog(); break;
       case 'del-area': store.deleteArea(d.id).then(render); break;
       case 'clear-samples': clearSamples(); break;
@@ -3518,9 +3454,6 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     else if (state.picking) cancelPick();
     else if (state.view !== 'feed') back();
   });
-  $('#filters').addEventListener('wheel', function (e) {
-    if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) { e.currentTarget.scrollLeft += e.deltaY; e.preventDefault(); }
-  }, { passive: false });
   var onBreakpoint = function () { applySnap(); if (map) setTimeout(function () { map.resize(); }, 60); };
   if (mqMobile.addEventListener) mqMobile.addEventListener('change', onBreakpoint); else mqMobile.addListener(onBreakpoint);
   window.addEventListener('resize', function () { applySnap(); });
