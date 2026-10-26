@@ -26,6 +26,13 @@ PHOTON = json.dumps({"type": "FeatureCollection", "features": [
 ]})
 photon_calls = []
 world_calls = []
+wiki_calls = []
+WIKI_BALI = json.dumps({'batchcomplete': True, 'query': {
+    'redirects': [{'from': '巴厘岛', 'to': '峇里岛'}],
+    'pages': [
+        {'pageid': 1001, 'ns': 0, 'title': '峇里岛', 'index': 1, 'description': '印度尼西亚岛屿', 'coordinates': [{'lat': -8.65, 'lon': 115.216667, 'primary': True, 'globe': 'earth', 'type': 'isle'}]},
+        {'pageid': 1002, 'ns': 0, 'title': '巴厘岛爆炸案', 'index': 2, 'coordinates': [{'lat': -8.72, 'lon': 115.17, 'primary': True, 'globe': 'earth', 'type': 'event'}]},
+        {'pageid': 1003, 'ns': 0, 'title': '巴厘岛语', 'index': 3}]}})
 WORLD = open(os.path.join(SCR, 'fixtures', 'countries-110m.json'), encoding='utf-8').read()
 TOPOJSON = open(os.path.join(SCR, 'fixtures', 'topojson-client.min.js'), encoding='utf-8').read()
 results = []
@@ -65,6 +72,10 @@ def route_all(ctx, supabase=False):
         if 'photon.komoot.io/api/' in url:
             photon_calls.append(url)
             return route.fulfill(status=200, body=PHOTON, headers={'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'})
+        if 'wikipedia.org/w/api.php' in url:
+            wiki_calls.append(url)
+            body = WIKI_BALI if '%E5%B7%B4%E5%8E%98' in url else json.dumps({'batchcomplete': True})
+            return route.fulfill(status=200, body=body, headers={'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'})
         if 'world-atlas@' in url:
             world_calls.append(url)
             return route.fulfill(status=200, body=WORLD, headers={'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'})
@@ -409,6 +420,18 @@ with sync_playwright() as p:
     page.fill('#q', '鼓浪')
     page.wait_for_timeout(150)
     check('search finds travel sample', page.locator('#search-results .near-item', has_text='鼓浪屿').count() == 1)
+    page.fill('#q', '巴厘岛')
+    page.wait_for_selector('[data-action="osm-pick"]', timeout=5000)
+    first = page.locator('[data-action="osm-pick"]').first.inner_text()
+    check('famous place (Wikipedia) comes first, under the name searched', page.locator('[data-action="osm-pick"] b').first.inner_text().startswith('巴厘岛') and '印度尼西亚岛屿' in first and '爆炸' not in page.inner_text('#search-results'), first)
+    check('Chinese query searches Chinese Wikipedia', any('zh.wikipedia.org' in u and 'variant=zh-cn' in u for u in wiki_calls), wiki_calls[-1:])
+    page.locator('[data-action="osm-pick"]').first.click()
+    page.wait_for_timeout(300)
+    last = page.evaluate('window.__map.calls.filter(c => c[0] === "move").slice(-1)[0][1]')
+    check("island result zooms to the whole island", abs(last.get('zoom', 0) - 9) < 0.01 and last['center'] == [115.216667, -8.65], last)
+    page.click('[data-action="back"]')
+    page.fill('#q', '鼓浪')
+    page.wait_for_timeout(150)
     page.click('#search-results .near-item')
     page.wait_for_timeout(300)
     check('opening travel result switches mode', page.evaluate('document.documentElement.classList.contains("mode-travel")'))
@@ -584,19 +607,36 @@ with sync_playwright() as p:
     def mk_review(id_, pid, by):
         return {'id': id_, 'placeId': pid, 'authorId': by, 'rating': 4, 'price': None, 'text': '', 'photos': [], 'visibility': 'public', 'createdAt': 1}
     mine_seed = {'version': 2, 'seeded': 2, 'profile': {'id': 'u-me', 'name': '我'}, 'areas': [], 'wishlist': [],
-                 'places': [mk_place('m-food', 'food', 'malay', 2.83, 101.70, '校门口饭', 'u-me'),
+                 'places': [mk_place('m-food', 'food', 'malay', 3.15, 101.71, '校门口饭', 'u-me'),
                             mk_place('m-bkk', 'travel', 'city', 13.75, 100.50, '曼谷', 'u-me'),
                             mk_place('o-tyo', 'travel', 'city', 35.68, 139.76, '东京', 'u-other')],
                  'reviews': [mk_review('r1', 'm-food', 'u-me'), mk_review('r2', 'm-bkk', 'u-me'), mk_review('r3', 'o-tyo', 'u-other')]}
     ctx5 = browser.new_context(viewport={'width': 390, 'height': 844}, device_scale_factor=2, has_touch=True)
     route_all(ctx5)
-    ctx5.add_init_script('if (!sessionStorage.getItem("seeded")) { sessionStorage.setItem("seeded", "1"); localStorage.setItem("xmum-chiwan-map:data:v1", ' + json.dumps(json.dumps(mine_seed)) + '); localStorage.setItem("xmum-chiwan-map:view:v1", ' + json.dumps(json.dumps({'center': [105, 8], 'zoom': 3, 'mode': 'travel'})) + '); }')
+    ctx5.add_init_script('if (!localStorage.getItem("test-seeded")) { localStorage.setItem("test-seeded", "1"); localStorage.setItem("xmum-chiwan-map:data:v1", ' + json.dumps(json.dumps(mine_seed)) + '); localStorage.setItem("xmum-chiwan-map:view:v1", ' + json.dumps(json.dumps({'center': [105, 8], 'zoom': 3, 'mode': 'travel'})) + '); }')
     page5 = ctx5.new_page()
     errors5 = []
     page5.on('pageerror', lambda e: errors5.append('pageerror: ' + str(e)))
     page5.goto(APP)
     page5.wait_for_function('window.__map && window.__map.getSource("places")', timeout=8000)
     page5.wait_for_timeout(400)
+    # “加一家”提示：只在探索页出现，点一下关掉，以后不再出现
+    page5.click('[data-action="mode"][data-mode="food"]')
+    page5.wait_for_timeout(300)
+    check('add hint shows on explore when campus is empty', page5.locator('#fab-hint').is_visible())
+    page5.click('[data-action="search"]')
+    page5.wait_for_timeout(200)
+    check('add hint hidden while searching', not page5.locator('#fab-hint').is_visible())
+    page5.click('[data-action="back"]')
+    page5.wait_for_timeout(200)
+    page5.click('#fab-hint')
+    page5.wait_for_timeout(200)
+    check('tapping the hint closes it', not page5.locator('#fab-hint').is_visible())
+    page5.wait_for_timeout(800)  # 让 localStorage 写完再刷新
+    page5.reload()
+    page5.wait_for_function('window.__map && window.__map.getSource("places")', timeout=8000)
+    page5.wait_for_timeout(400)
+    check('closed hint stays closed after reload', not page5.locator('#fab-hint').is_visible())
     page5.click('[data-action="scope"][data-scope="mine"]')
     page5.wait_for_timeout(200)
     chips = page5.eval_on_selector_all('#filters [data-action="mine-mode"]', 'els => els.map(e => e.textContent.trim())')
@@ -636,12 +676,8 @@ with sync_playwright() as p:
     page5.wait_for_timeout(200)
     vis = page5.evaluate('["ct-dim", "ct-lit", "ct-line"].map(id => window.__map.getLayer(id).layout.visibility)')
     check('explore map: countries off, normal row back', vis == ['none'] * 3 and page5.locator('.mode-switch').is_visible() and page5.locator('[data-action="filters"]').count() == 1, vis)
-    page5.reload()
-    page5.wait_for_function('window.__map && window.__map.getSource("places")', timeout=8000)
-    page5.click('[data-action="scope"][data-scope="mine"]')
-    page5.wait_for_function('window.__map.getSource("countries")', timeout=5000)
-    page5.wait_for_timeout(200)
-    check('country switch remembered after reload', page5.get_attribute('[data-action="countries"]', 'aria-pressed') == 'true')
+    sv = page5.evaluate('JSON.parse(localStorage.getItem("xmum-chiwan-map:view:v1"))')
+    check('country switch remembered', sv.get('countries') is True and sv.get('mineBoth') is False, sv)
     check('my map: no page errors', not errors5, errors5)
     ctx5.close()
 

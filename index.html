@@ -232,8 +232,9 @@ html.scope-mine .mode-switch { display: none; }
   bottom: calc(var(--tabbar) + 8px);
   width: max-content; max-width: 240px; padding: 7px 11px; border-radius: 12px;
   background: var(--ink); color: var(--surface); font-size: 12.5px; font-weight: 600; line-height: 1.35;
-  box-shadow: var(--shadow);
+  box-shadow: var(--shadow); cursor: pointer;
 }
+.fab-hint .x { margin-left: 8px; opacity: .7; font-weight: 700; }
 .fab-hint::after { content: ""; position: absolute; left: calc(50% - 5px); bottom: -5px; width: 10px; height: 10px; background: inherit; transform: rotate(45deg); }
 .attrib {
   position: absolute; z-index: 8;
@@ -602,7 +603,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     <button type="button" class="tab" data-action="scope" data-scope="mine"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" aria-hidden="true"><path d="m3.5 6.5 5.5-2.5 6 2.5 5.5-2.5v13.5l-5.5 2.5-6-2.5-5.5 2.5z"/><path d="M9 4v13.5M15 6.5V20"/></svg><span data-i18n="tabMine">我的地图</span></button>
     <button type="button" class="tab" data-action="profile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="8.5" r="3.8"/><path d="M4.5 20c1.4-3.6 4.2-5.4 7.5-5.4s6.1 1.8 7.5 5.4"/></svg><span data-i18n="tabMe">我</span></button>
   </nav>
-  <div class="fab-hint" id="fab-hint" hidden></div>
+  <div class="fab-hint" id="fab-hint" data-action="hint-close" role="button" hidden></div>
 </div>
 
 <div class="bsheet" id="bsheet" hidden><div class="bsheet-card" id="bsheet-card" role="dialog" aria-modal="true"></div></div>
@@ -831,7 +832,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       addNoResult: '地图上没搜到这个名字。',
       previewHint: '雪团里还没人写过这里。', previewAddFood: '加到雪团，写点评', previewAddTravel: '加到雪团，打卡',
       searchLocal: '雪团里的', searchOsm: '地图上的地点', osmMin: '再多打一个字，就会去地图上搜', osmLoading: '正在搜…',
-      osmFail: '地图搜索暂时用不了，可以自己插针添加', osmCredit: '地点数据：Overture Maps Foundation · © OpenStreetMap 贡献者（Photon）', osmAdd: '添加', osmOpen: '已在雪团',
+      osmFail: '地图搜索暂时用不了，可以自己插针添加', osmCredit: '地点数据：Overture Maps Foundation · © OpenStreetMap 贡献者（Photon）· 维基百科', osmAdd: '添加', osmOpen: '已在雪团',
       published: '发布了', savedPrivate: '存好了，只在“我的”里能看到',
       locating: '正在定位…', locateFail: '定位失败，检查一下浏览器的定位权限',
       photoFail: '有照片没存上，刷新后会丢', saveFail: '浏览器不让存数据，关掉页面就没了',
@@ -912,7 +913,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       addNoResult: 'Nothing on the map with that name.',
       previewHint: 'Nobody on XueTuan has written about this place yet.', previewAddFood: 'Add to XueTuan and review', previewAddTravel: 'Add to XueTuan and check in',
       searchLocal: 'On XueTuan', searchOsm: 'Places on the map', osmMin: 'Type one more character to search the map', osmLoading: 'Searching…',
-      osmFail: 'Map search isn’t available right now. You can still drop a pin.', osmCredit: 'Place data: Overture Maps Foundation · © OpenStreetMap contributors (via Photon)', osmAdd: 'Add', osmOpen: 'On XueTuan',
+      osmFail: 'Map search isn’t available right now. You can still drop a pin.', osmCredit: 'Place data: Overture Maps Foundation · © OpenStreetMap contributors (via Photon) · Wikipedia', osmAdd: 'Add', osmOpen: 'On XueTuan',
       published: 'Published', savedPrivate: 'Saved. Only you can see it, under “Mine”',
       locating: 'Finding you…', locateFail: 'Couldn’t get your location. Check the browser’s location permission',
       photoFail: 'Some photos weren’t saved and will be lost on refresh', saveFail: 'This browser won’t store data, so it will be lost when you close the page',
@@ -2378,14 +2379,23 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       });
     }, 500);
   }
+  /* “加一家”的小提示：只在探索页的列表上出现，点一下就再也不出现 */
+  var LS_HINT = 'xmum-chiwan-map:hint-closed';
+  function hintClosed() { try { return localStorage.getItem(LS_HINT) === '1'; } catch (e) { return false; } }
+  function closeFabHint() {
+    try { localStorage.setItem(LS_HINT, '1'); } catch (e) { /* storage blocked: hide for this visit */ }
+    state.hintClosed = true;
+    updateFabHint();
+  }
   function updateFabHint() {
     var el = $('#fab-hint');
     if (!el || !me()) return;
     var empty = state.mode === 'food' && !store.places().some(function (p) {
       return p.mode === 'food' && visibleToMe(p) && haversine(XMUM, p) < 8000;
     });
-    el.textContent = t('fabHint');
-    el.hidden = !empty || !!state.picking || !map;
+    el.innerHTML = esc(t('fabHint')) + '<span class="x" aria-hidden="true">✕</span>';
+    el.setAttribute('aria-label', t('fabHint') + ' ' + t('close'));
+    el.hidden = !empty || !!state.picking || !map || state.view !== 'feed' || state.scope !== 'all' || state.hintClosed || hintClosed();
   }
 
   /* ================= views ================= */
@@ -2404,6 +2414,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     lastRenderedView = v;
     updateSelPin();
     renderTabs();
+    updateFabHint();
     hydratePhotos(view);
   }
 
@@ -2706,6 +2717,43 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
    * 同一个外部编号（ovt/… 或 node/…）算同一个地点，避免大家重复建同一家店。
    */
   var PHOTON_URL = 'https://photon.komoot.io/api/';
+  /* 3. 维基百科（有坐标的词条）：像谷歌那样，搜“巴厘岛”“富士山”这种知名地方直接出来，中文名也认。
+     有中文就搜中文维基，没有就搜英文维基 */
+  var WIKI_TYPES = {
+    country: ['city', 'city', 5], adm1st: ['city', 'city', 7], adm2nd: ['city', 'city', 9], adm3rd: ['city', 'city', 10],
+    city: ['city', 'city', 10], isle: ['island', 'area', 9], mountain: ['nature', 'exact', 12], forest: ['nature', 'area', 11],
+    waterbody: ['nature', 'area', 11], river: ['nature', 'area', 10], glacier: ['nature', 'area', 11], pass: ['nature', 'exact', 13],
+    landmark: ['culture', 'exact', 15], airport: ['other', 'exact', 13], railwaystation: ['other', 'exact', 15], edu: ['culture', 'exact', 15]
+  };
+  function wikiSearch(q) {
+    var zh = /[\u3400-\u9fff]/.test(q);
+    var url = 'https://' + (zh ? 'zh' : 'en') + '.wikipedia.org/w/api.php?action=query&format=json&formatversion=2&origin=*' +
+      '&generator=prefixsearch&gpsnamespace=0&gpslimit=8&gpssearch=' + encodeURIComponent(q) +
+      '&prop=coordinates%7Cdescription&coprop=type%7Cdim&colimit=50&redirects=1' + (zh ? '&variant=zh-cn' : '');
+    return fetch(url).then(function (res) {
+      if (!res.ok) throw new Error('wiki ' + res.status);
+      return res.json();
+    }).then(function (json) { return parseWiki(json, zh ? 'zh' : 'en', q); });
+  }
+  function parseWiki(json, lang, q) {
+    var pages = (json && json.query && json.query.pages) || [];
+    /* 搜“巴厘岛”会跳到词条“峇里岛”：显示用户搜的那个名字，词条名放在旁边 */
+    var from = {};
+    ((json && json.query && json.query.redirects) || []).forEach(function (r) {
+      if (r.from && r.to && r.from.toLowerCase().indexOf(q.toLowerCase()) === 0 && !from[r.to]) from[r.to] = r.from;
+    });
+    return pages.slice().sort(function (a, b) { return (a.index || 0) - (b.index || 0); }).map(function (pg) {
+      var co = pg.coordinates && pg.coordinates[0];
+      if (!co || (co.globe && co.globe !== 'earth')) return null;
+      var type = String(co.type || '').replace(/\(.*$/, '');
+      if (type === 'event') return null;
+      var info = WIKI_TYPES[type] || ['other', 'exact', 14];
+      var zoom = info[2];
+      if (co.dim) zoom = clamp(Math.round(Math.log(40000000 / co.dim) / Math.LN2) + 1, 4, 16);
+      var shown = pg.title.toLowerCase().indexOf(q.toLowerCase()) !== 0 && from[pg.title] ? from[pg.title] : pg.title;
+      return { osm: 'wiki/' + lang + '/' + pg.pageid, name: shown, alt: shown !== pg.title ? pg.title : '', lng: round6(co.lon), lat: round6(co.lat), mode: 'travel', cat: info[0], precision: info[1], where: pg.description || '', zoom: zoom, wiki: true };
+    }).filter(Boolean).slice(0, 4);
+  }
   var osm = { q: '', status: 'idle', results: [], timer: null, seq: 0 };
   function searchCenter() {
     if (state.me) return state.me;
@@ -2728,12 +2776,18 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       return res.json();
     }).then(parsePhoton);
   }
-  /* 地点库在前；Photon 里名字一样、又在 150 米内的算重复 */
-  function mergeResults(a, b) {
-    var out = a.slice();
-    b.forEach(function (r) {
-      var dup = out.some(function (x) { return x.name.toLowerCase() === r.name.toLowerCase() && haversine(x, r) < 150; });
-      if (!dup) out.push(r);
+  /* 按顺序合并；名字一样、又在 150 米内的算重复。
+     维基的城市、海岛和 Photon 里 5 公里内的城市、地区算同一个（名字语言常常不一样） */
+  function mergeResults() {
+    var out = [];
+    Array.prototype.forEach.call(arguments, function (list) {
+      list.forEach(function (r) {
+        var dup = out.some(function (x) {
+          if (x.name.toLowerCase() === r.name.toLowerCase() && haversine(x, r) < 150) return true;
+          return (x.wiki || r.wiki) && x.precision !== 'exact' && r.precision !== 'exact' && haversine(x, r) < 5000;
+        });
+        if (!dup) out.push(r);
+      });
     });
     return out;
   }
@@ -2747,10 +2801,15 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     osm.timer = setTimeout(function () {
       var c = searchCenter();
       var fail = function () { return null; };
-      Promise.all([poiSearch(q, c).catch(fail), photonSearch(q, c).catch(fail)]).then(function (rs) {
+      Promise.all([poiSearch(q, c).catch(fail), photonSearch(q, c).catch(fail), wikiSearch(q).catch(fail)]).then(function (rs) {
         if (seq !== osm.seq) return;
-        if (!rs[0] && !rs[1]) osm.status = 'fail';
-        else { osm.results = mergeResults(rs[0] || [], rs[1] || []); osm.status = 'done'; }
+        var poi = rs[0] || [], photon = rs[1] || [], wiki = rs[2] || [];
+        if (!rs[0] && !rs[1] && !rs[2]) osm.status = 'fail';
+        else {
+          /* 知名地方排最前；正在加吃的，店铺排最前 */
+          osm.results = state.view === 'add' && state.mode === 'food' ? mergeResults(poi, photon, wiki) : mergeResults(wiki, poi, photon);
+          osm.status = 'done';
+        }
         renderSearchResults();
       });
     }, 300);
@@ -2824,7 +2883,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     state.view = 'preview';
     render();
     setSnap('half');
-    flyTo([r.lng, r.lat], r.precision === 'city' ? 10 : r.precision === 'area' ? 14 : 16.5);
+    flyTo([r.lng, r.lat], r.zoom || (r.precision === 'city' ? 10 : r.precision === 'area' ? 14 : 16.5));
   }
   function addFromResult(r, keepMode) {
     if (!requireLogin()) return;
@@ -2832,7 +2891,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     if (mode !== state.mode) setMode(mode, { noFly: true });
     var precision = mode === 'food' ? 'exact' : r.precision;
     var cat = mode === r.mode ? r.cat : null;
-    flyTo([r.lng, r.lat], precision === 'city' ? 10 : precision === 'area' ? 14 : 16.5);
+    flyTo([r.lng, r.lat], (mode === r.mode && r.zoom) || (precision === 'city' ? 10 : precision === 'area' ? 14 : 16.5));
     startNewPlace({ lng: r.lng, lat: r.lat }, precision, NEAR_RADIUS[precision], { name: r.name, cat: cat, osm: r.osm });
   }
   function renderPreview() {
@@ -3375,6 +3434,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
         else goFeed(state.snap === 'peek' ? 'half' : null);
         break;
       case 'cat': state.cat = d.cat; refilter(); break;
+      case 'hint-close': closeFabHint(); break;
       case 'mine-mode': if (state.view !== 'feed') goFeed(); setMineView(d.v); break;
       case 'countries': state.countries = !state.countries; syncCountries(); renderFilters(); saveView(); break;
       case 'filters': openBSheet('filters'); break;
