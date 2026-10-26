@@ -778,8 +778,8 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       precExact: '具体地点', precArea: '一片区域', precCity: '整个城市',
       precHint: '吃饭的店标到门口；旅行可以只标城市，放大时会显示成一个范围。',
       rating: '评分（0–5）', ratingHint: '0 分踩雷，5 分强推。', errRating: '打个分再发布',
-      priceFood: '人均（RM，选填）', priceTravel: '大概花费（RM，选填）',
-      review: '说两句（选填）', reviewPhFood: '推荐点什么？要排队吗？几点去人少？', reviewPhTravel: '怎么去，玩多久，有什么坑？',
+      priceFood: '人均（RM，选填）',
+      review: '评论（选填）', reviewPhFood: '写评论', reviewPhTravel: '写评论',
       photos: '照片（选填）', photoLimit: '最多 {n} 张', addPhoto: '加照片', photoReadFail: '这张图读不了，换一张试试',
       visPrivateShort: '仅自己',
       shareBig: '分享到大地图', shareHint: '不分享也会存进“我的地图”', formMore: '更多：精度、原名、链接',
@@ -824,7 +824,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       addSearchPhFood: '输入店名搜索', addSearchPhTravel: '输入地名搜索', addPin: '地图选点',
       addPinLong: '搜不到？在地图上选点', addHint: '先搜名字。学校附近的小店搜不到的话，点“地图选点”自己标。',
       addNoResult: '地图上没搜到这个名字。',
-      poiFood: '餐厅', poiPlace: '地点', quickRate: '去过？打个分就记进我的地图', quickRateFood: '吃过？打个分就记进我的地图', quickRateHint: '下一步还能加照片、说两句，都是选填。',
+      poiFood: '餐厅', poiPlace: '地点', quickRate: '去过？打个分就记进我的地图', quickRateFood: '吃过？打个分就记进我的地图', quickRateHint: '下一步还能写评论、加照片，都是选填。',
       searchLocal: '雪团里的', searchOsm: '地图上的地点', osmMin: '再多打一个字，就会去地图上搜', osmLoading: '正在搜…',
       osmFail: '地图搜索暂时用不了，可以自己插针添加', osmCredit: '地点数据：Overture Maps Foundation · © OpenStreetMap 贡献者（Photon）· 维基百科', osmAdd: '添加', osmOpen: '已在雪团',
       addedMine: '已存进我的地图', addedShared: '已存进我的地图，也分享到了大地图',
@@ -866,8 +866,8 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       precExact: 'Exact spot', precArea: 'An area', precCity: 'Whole city',
       precHint: 'Pin restaurants at the door. Trips can be city-level and show as an area when zoomed in.',
       rating: 'Score (0–5)', ratingHint: '0 = avoid, 5 = must go.', errRating: 'Give it a score first',
-      priceFood: 'Per person (RM, optional)', priceTravel: 'Rough cost (RM, optional)',
-      review: 'Notes (optional)', reviewPhFood: 'What to order? Is there a queue? When is it quiet?', reviewPhTravel: 'How to get there, how long to stay, what to watch out for',
+      priceFood: 'Per person (RM, optional)',
+      review: 'Review (optional)', reviewPhFood: 'Write a review', reviewPhTravel: 'Write a review',
       photos: 'Photos (optional)', photoLimit: 'up to {n}', addPhoto: 'Add photo', photoReadFail: 'Couldn’t read that image. Try another one',
       visPrivateShort: 'Private',
       shareBig: 'Share on the big map', shareHint: 'Either way it’s saved to My map', formMore: 'More: precision, other name, link',
@@ -2242,24 +2242,18 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     ['cl-circle', 'cl-halo', 'pt-sel'].forEach(function (id) { try { map.setPaintProperty(id, 'circle-color', a); } catch (e) { /* ignore */ } });
     try { map.setPaintProperty('pt-sel', 'circle-stroke-color', a); } catch (e) { /* ignore */ }
   }
-  /* 选中的地点上插一根谷歌地图那样的红针：地点页、搜索结果预览、正在加的新地点 */
+  /* 红针只给还没人记录过的地方用（搜索结果预览、正在第一次记录的新地点）。
+     雪团里已经有的地点一律用自己的图钉，不再插红针（用户 2026-10-26） */
   var selPin = null;
   function selPinLoc() {
     var v = state.view, f = state.form;
-    if (v === 'place') return placeById(state.placeId);
     if (v === 'preview') return state.preview;
-    if ((v === 'form' || v === 'nearby') && f) return f.placeId ? placeById(f.placeId) : f.loc;
+    if ((v === 'form' || v === 'nearby') && f && !f.placeId) return f.loc;
     return null;
-  }
-  function photoPinShown(p) {
-    var ph = coverPhoto(p), cv = ph && pinThumbs.get(ph);
-    return !!cv && cv !== 'loading' && map.getZoom() >= photoZoom(p.precision);
   }
   function updateSelPin() {
     if (!map || !window.maplibregl || !maplibregl.Marker) return;
     var loc = selPinLoc();
-    /* 地图上正显示着这家的照片就不再插红针，免得把照片挡住；缩小变回图钉后红针再出来 */
-    if (loc && state.view === 'place' && photoPinShown(loc)) loc = null;
     if (!loc) { if (selPin) selPin.remove(); return; }
     if (!selPin) {
       var el = document.createElement('div');
@@ -3080,8 +3074,8 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
   function renderForm() {
     var f = state.form;
     if (!f) { goFeed(); return; }
-    var isFood = state.mode === 'food';
     var p = f.placeId ? placeById(f.placeId) : null;
+    var isFood = (p ? p.mode : state.mode) === 'food';
     var placeFields = formHasPlaceFields(f, p);
     var share = f.visibility === 'public';
     var title = f.editId ? t('formEdit') : p ? t('formReview') : t(isFood ? 'formNewFood' : 'formNewTravel');
@@ -3105,7 +3099,8 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       }).join('') + '</div><p class="f-hint">' + esc(t('ratingHint')) + '</p><div class="f-err" id="err-rating" hidden></div></div>';
     h += fieldHTML('f-text', esc(t('review')), '<textarea id="f-text" class="input" rows="3" maxlength="1000" placeholder="' + esc(t(isFood ? 'reviewPhFood' : 'reviewPhTravel')) + '"></textarea>');
     h += '<div class="field"><span class="f-label">' + esc(t('photos')) + ' <small>· ' + esc(t('photoLimit', { n: MAX_PHOTOS })) + '</small></span><div class="photo-grid" id="f-photos"></div></div>';
-    h += fieldHTML('f-price', esc(t(isFood ? 'priceFood' : 'priceTravel')), '<input id="f-price" class="input" type="number" inputmode="decimal" min="0" step="0.5"' + (isFood ? ' placeholder="12"' : '') + '>');
+    /* 人均只问吃的（筛选按人均）；旅行不问花费（用户 2026-10-26） */
+    if (isFood) h += fieldHTML('f-price', esc(t('priceFood')), '<input id="f-price" class="input" type="number" inputmode="decimal" min="0" step="0.5" placeholder="12">');
     /* 记录默认进“我的地图”，只问要不要分享到大地图 */
     h += '<button type="button" class="switch-row" role="switch" data-action="f-share" aria-checked="' + share + '">' +
       '<span class="sw-text"><b>' + esc(t('shareBig')) + '</b><small>' + esc(t('shareHint')) + '</small></span><span class="switch" aria-hidden="true"></span></button>';
@@ -3303,6 +3298,17 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     });
     return out;
   }
+  /* 城市 / 国家的维基坐标、OSM 边界的中心点常常落在地理中心（新加坡会落到岛中间的水库）。
+     像谷歌地图那样定到市中心：同一次搜索里 Photon 给了 30 公里内的城市点（place=city/town 的点），就用它的位置 */
+  function snapToTown(list, towns) {
+    return list.map(function (r) {
+      if (r.precision !== 'city' || r.town) return r;
+      var best = null;
+      towns.forEach(function (n) { var d = haversine(r, n); if (d < 30000 && (!best || d < best.d)) best = { n: n, d: d }; });
+      return best ? Object.assign({}, r, { lng: best.n.lng, lat: best.n.lat }) : r;
+    });
+  }
+  function townsIn(list) { return (list || []).filter(function (r) { return r.town; }); }
   function queueOsmSearch() {
     var q = state.query.trim(), key = q.toLowerCase();
     clearTimeout(osm.timer);
@@ -3315,7 +3321,8 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       var fail = function () { return null; };
       Promise.all([poiSearch(q, c).catch(fail), photonSearch(q, c).catch(fail), wikiSearch(q).catch(fail)]).then(function (rs) {
         if (seq !== osm.seq) return;
-        var poi = rs[0] || [], photon = rs[1] || [], wiki = rs[2] || [];
+        var towns = townsIn(rs[1]);
+        var poi = rs[0] || [], photon = snapToTown(rs[1] || [], towns), wiki = snapToTown(rs[2] || [], towns);
         if (!rs[0] && !rs[1] && !rs[2]) osm.status = 'fail';
         else {
           /* 知名地方排最前；正在加吃的，店铺排最前 */
@@ -3337,7 +3344,8 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       var g = guessFromOsm(pr);
       var where = [];
       [pr.city || pr.county, pr.state, pr.country].forEach(function (x) { if (x && where.indexOf(x) === -1 && x !== pr.name) where.push(x); });
-      return { osm: key, name: pr.name, lng: round6(co[0]), lat: round6(co[1]), mode: g.mode, cat: g.cat, precision: g.precision, where: where.join(', ') };
+      var town = pr.osm_type === 'N' && pr.osm_key === 'place' && ['city', 'town'].indexOf(pr.osm_value) !== -1;
+      return { osm: key, name: pr.name, lng: round6(co[0]), lat: round6(co[1]), mode: g.mode, cat: g.cat, precision: g.precision, where: where.join(', '), town: town };
     }).filter(Boolean);
   }
   var OSM_FOOD = {
@@ -3533,8 +3541,9 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       Promise.all([wikiSearch(q).catch(fail), photon.catch(fail)]).then(function (rs) {
         if (seq !== homeQ.seq) return;
         if (!rs[0] && !rs[1]) { homeQ.status = 'fail'; renderHomeResults(); return; }
-        var wiki = (rs[0] || []).filter(function (r) { return r.cat === 'city' && (r.zoom || 10) >= 7; });
-        var cities = (rs[1] || []).filter(function (r) { return r.precision === 'city'; });
+        var towns = townsIn(rs[1]);
+        var wiki = snapToTown(rs[0] || [], towns).filter(function (r) { return r.cat === 'city' && (r.zoom || 10) >= 7; });
+        var cities = snapToTown(rs[1] || [], towns).filter(function (r) { return r.precision === 'city'; });
         homeQ.results = mergeResults(wiki, cities).slice(0, 8);
         homeQ.status = 'done';
         renderHomeResults();

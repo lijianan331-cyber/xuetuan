@@ -25,6 +25,12 @@ PHOTON = json.dumps({"type": "FeatureCollection", "features": [
      "properties": {"name": "Kafe Ujian", "osm_type": "N", "osm_id": 111, "osm_key": "amenity", "osm_value": "cafe", "type": "house"}}
 ]})
 photon_calls = []
+# 城市 / 国家：Photon 给了边界中心点（新加坡落在岛中间）和城市点（市中心）
+PHOTON_SG = json.dumps({"type": "FeatureCollection", "features": [
+    {"type": "Feature", "geometry": {"type": "Point", "coordinates": [103.8198, 1.3572]},
+     "properties": {"name": "Singapura", "osm_type": "R", "osm_id": 536780, "osm_key": "place", "osm_value": "country", "type": "country"}},
+    {"type": "Feature", "geometry": {"type": "Point", "coordinates": [103.8520, 1.2899]},
+     "properties": {"name": "Singapura", "osm_type": "N", "osm_id": 1, "osm_key": "place", "osm_value": "city", "type": "city", "country": "Singapore"}}]})
 PHOTON_REV = json.dumps({"type": "FeatureCollection", "features": [
     {"type": "Feature", "geometry": {"type": "Point", "coordinates": [101.7021, 2.8317]},
      "properties": {"name": "Jalan Kampus", "osm_type": "W", "osm_id": 333, "osm_key": "highway", "osm_value": "residential", "type": "street", "city": "Sepang", "state": "Selangor", "country": "Malaysia"}}]})
@@ -132,7 +138,7 @@ def route_all(ctx, supabase=False):
             return route.fulfill(status=200, body=PHOTON_REV, headers={'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'})
         if 'photon.komoot.io/api/' in url:
             photon_calls.append(url)
-            return route.fulfill(status=200, body=PHOTON, headers={'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'})
+            return route.fulfill(status=200, body=PHOTON_SG if 'q=Singapura' in url else PHOTON, headers={'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'})
         if 'wikipedia.org/w/api.php' in url:
             wiki_calls.append(url)
             body = WIKI_BALI if '%E5%B7%B4%E5%8E%98' in url else json.dumps({'batchcomplete': True})
@@ -256,12 +262,13 @@ with sync_playwright() as p:
     check('far place offers google view only', page.locator('a.btn', has_text='在 Google 地图看').count() == 1 and page.locator('a.btn', has_text='Waze').count() == 0)
     sel = page.evaluate('window.__map.layers.find(l=>l.id==="pt-sel").filter')
     check('selection ring on the opened place', sel == ['==', ['get', 'id'], 's-golden-gate'], sel)
-    check('opened place gets the red pin', page.locator('#map .sel-pin').count() == 1)
+    check('existing place: no red pin, just its own pin + ring', page.locator('#map .sel-pin').count() == 0)
     check('place I have not recorded offers 0-5 scores right on its page', page.locator('[data-action="place-score"]').count() == 6 and '去过？打个分' in page.inner_text('.quick-rate'))
     page.screenshot(path=os.path.join(SHOTS, '03-mobile-place.png'))
     page.click('[data-action="place-score"][data-n="5"]')
     page.wait_for_timeout(200)
     check('tapping a score opens the form for this place, score picked', page.locator('#place-form').count() == 1 and page.get_attribute('[data-action="f-score"][data-n="5"]', 'aria-pressed') == 'true' and page.locator('#f-name').count() == 0, page.inner_text('#view')[:120])
+    check('travel form: no cost field, plain review box, no red pin on an existing place', page.locator('#f-price').count() == 0 and page.inner_text('label[for="f-text"]') == '评论（选填）' and page.get_attribute('#f-text', 'placeholder') == '写评论' and page.locator('#map .sel-pin').count() == 0, page.inner_text('#view')[:200])
     page.click('[data-action="form-cancel"]')
     page.wait_for_timeout(200)
     check('back from that form returns to the place', page.locator('.place-head h2').count() == 1 and page.inner_text('.place-head h2') == '金门大桥')
@@ -373,10 +380,9 @@ with sync_playwright() as p:
     check('selection ring fades out under the photo', map_expr(lays['pt-sel']['paint']['circle-stroke-opacity'], 16, ph_props) == 0 and map_expr(lays['pt-sel']['paint']['circle-stroke-opacity'], 13, ph_props) == 1)
     page.evaluate('window.__map.jumpTo({zoom: 12})')
     page.wait_for_timeout(200)
-    check('zoomed out on its page: back to a pin, red pin shows again', page.locator('#map .sel-pin').count() == 1)
+    check('zoomed out on its page: still no red pin', page.locator('#map .sel-pin').count() == 0)
     page.evaluate('window.__map.jumpTo({zoom: 16})')
     page.wait_for_timeout(200)
-    check('zoomed in again: photo pin, no red pin', page.locator('#map .sel-pin').count() == 0)
     check('food place shows distance tier', page.locator('.tag', has_text='步行可达').count() == 1)
     check('no score row on a place I already recorded', page.locator('[data-action="place-score"]').count() == 0)
     check('near place offers navigation', page.locator('a.btn', has_text='Waze').count() == 1)
@@ -666,6 +672,15 @@ with sync_playwright() as p:
     page.wait_for_timeout(300)
     last = page.evaluate('window.__map.calls.filter(c => c[0] === "move").slice(-1)[0][1]')
     check("island result zooms to the whole island", abs(last.get('zoom', 0) - 9) < 0.01 and last['center'] == [115.216667, -8.65], last)
+    page.click('[data-action="back"]')
+    page.fill('#q', 'Singapura')
+    page.wait_for_selector('[data-action="osm-pick"]', timeout=5000)
+    page.wait_for_timeout(100)
+    sg_rows = page.locator('[data-action="osm-pick"] b').all_inner_texts()
+    page.locator('[data-action="osm-pick"]').first.click()
+    page.wait_for_timeout(300)
+    last = page.evaluate('window.__map.calls.filter(c => c[0] === "move").slice(-1)[0][1]')
+    check('country / city result lands on the city centre, not the middle of the map shape', last['center'] == [103.852, 1.2899] and sg_rows == ['Singapura'], (last, sg_rows))
     page.click('[data-action="back"]')
     page.fill('#q', '鼓浪')
     page.wait_for_timeout(150)
