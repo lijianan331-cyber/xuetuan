@@ -100,6 +100,11 @@ body[data-snap="full"] .map-ctrls, body[data-snap="full"] .map-chips { opacity: 
     radial-gradient(1.4px 1.4px at 60% 38%, rgba(255,255,255,.8) 50%, transparent 60%),
     radial-gradient(ellipse 80% 70% at 50% 42%, #FBFDFF 0%, #E3EEF9 55%, #C9DDF1 100%);
 }
+/* 谷歌底图试用：谷歌地图在 #map 里最下面，MapLibre 的画布透明、不接手势 */
+html.gmap-on #map { background: #E8EEF3; }
+#map .gmap { position: absolute; top: 0; right: 0; bottom: 0; left: 0; }
+html.gmap-on #map .maplibregl-canvas-container, html.gmap-on #map .maplibregl-canvas { pointer-events: none; }
+html.gmap-on .attrib { display: none; }
 .map-error {
   position: absolute; top: 0; right: 0; bottom: 0; left: 0; z-index: 4; display: grid; place-items: center;
   padding: 24px; text-align: center; color: var(--ink); font-weight: 600; font-size: 15px;
@@ -2155,9 +2160,12 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       state.styleKey = 'light';
       return loadStyle('light');
     }).then(function (style) {
+      /* 谷歌底图试用：MapLibre 只画我们自己的东西，底图层全去掉（字体还要用底图的） */
+      if (GMAP) style = { version: 8, glyphs: style.glyphs, sources: {}, layers: [] };
       map = new maplibregl.Map({
         container: 'map',
         style: style,
+        interactive: !GMAP,
         center: first ? [104, 8] : v.center,
         zoom: first ? 1.4 : v.zoom,
         attributionControl: false,
@@ -2172,6 +2180,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
         localIdeographFontFamily: '"PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", "Noto Sans CJK SC", sans-serif'
       });
       if (map.touchZoomRotate && map.touchZoomRotate.disableRotation) map.touchZoomRotate.disableRotation();
+      if (GMAP) startGoogleMap(first ? [104, 8] : v.center, first ? 1.4 : v.zoom);
       map.on('style.load', onStyleLoad);
       map.on('load', function () {
         if (!first) return;
@@ -2182,23 +2191,123 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       });
       map.on('click', onMapClick);
       map.on('styleimagemissing', onImageMissing);
-      map.on('moveend', function () {
-        clearTimeout(viewTimer); viewTimer = setTimeout(saveView, 400);
-        ensurePinThumbs();
-        updateSelPin();
-        var g = globeChipShown();
-        if (g !== lastGlobeChip) { lastGlobeChip = g; renderFilters(); }
-      });
+      map.on('moveend', function () { if (!gSyncing) onMoveEnd(); });
       map.on('zoom', function () { if (state.picking) updatePickUI(); });
       map.on('error', function (e) { if (window.console) console.warn('map:', e && e.error ? e.error.message : e); });
     }).catch(function () { showMapError(); });
   }
   var viewTimer = null, lastGlobeChip = false;
+  function onMoveEnd() {
+    clearTimeout(viewTimer); viewTimer = setTimeout(saveView, 400);
+    ensurePinThumbs();
+    updateSelPin();
+    var g = globeChipShown();
+    if (g !== lastGlobeChip) { lastGlobeChip = g; renderFilters(); }
+  }
+
+  /* ================= 谷歌底图（试用：网址加 &map=google）[建议，用户 2026-10-27 要先试再决定] =================
+   * 谷歌地图画在最下面、管手势；我们的 MapLibre 地图叠在上面，背景透明、不接手势，只画自己的东西
+   * （图钉、照片、家乡红针、点亮国家），每一帧跟着谷歌的镜头走，原来的地图代码基本不用改。
+   * MapLibre 的缩放级别比谷歌小 1（瓦片 512 对 256）。
+   * 我们代码里让地图动的地方（flyTo / easeTo / jumpTo / panBy）都转给谷歌，padding 自己换算。
+   * 点地图：先看点没点到我们的图钉，再看是不是谷歌地图上的店（谷歌卡片 + 我们的打分），都不是就照原来的处理 */
+  var GMAP = /[?&]map=google\b/.test(location.search);
+  var gmap = null, gSyncing = false, gPending = null, gAnim = 0, mlJump = null;
+  function startGoogleMap(center, zoom) {
+    document.documentElement.classList.add('gmap-on');
+    var el = document.createElement('div');
+    el.className = 'gmap';
+    mapEl.insertBefore(el, mapEl.firstChild);
+    mlJump = map.jumpTo;
+    map.jumpTo = function (o) { gCamera(o || {}, false); return map; };
+    map.flyTo = map.easeTo = function (o) { o = o || {}; gCamera(o, !reduceMotion && o.duration !== 0, o.duration); return map; };
+    map.panBy = function (off) { if (gmap) gmap.panBy(off[0], off[1]); return map; };
+    loadGoogle().then(function () { return google.maps.importLibrary('maps'); }).then(function (lib) {
+      gmap = new lib.Map(el, {
+        center: { lat: center[1], lng: center[0] }, zoom: zoom + 1, mapId: 'DEMO_MAP_ID', disableDefaultUI: true,
+        gestureHandling: 'greedy', clickableIcons: true, isFractionalZoomEnabled: true, keyboardShortcuts: false
+      });
+      /* 每画一帧就把镜头抄给 MapLibre */
+      var ov = new lib.WebGLOverlayView();
+      ov.onDraw = function () { gSync(); };
+      ov.setMap(gmap);
+      gmap.addListener('bounds_changed', gSync);
+      gmap.addListener('idle', function () { gSync(); onMoveEnd(); });
+      gmap.addListener('click', onGoogleClick);
+      if (gPending) { var pd = gPending; gPending = null; gCamera(pd.o, pd.animate, pd.duration); }
+    }).catch(function () {
+      /* 谷歌加载不了：回到原来的地图 */
+      location.replace(location.href.replace(/([?&])map=google\b&?/, '$1').replace(/[?&]$/, ''));
+    });
+  }
+  function gSync() {
+    if (!gmap || !map) return;
+    var c = gmap.getCenter(), z = gmap.getZoom();
+    if (!c || z == null) return;
+    gSyncing = true;
+    try { mlJump.call(map, { center: [c.lng(), c.lat()], zoom: z - 1, padding: { top: 0, bottom: 0, left: 0, right: 0 } }); } finally { gSyncing = false; }
+  }
+  function merc(lng, lat) {
+    var s = Math.sin(clamp(lat, -85, 85) * Math.PI / 180);
+    return { x: (lng + 180) / 360, y: 0.5 - Math.log((1 + s) / (1 - s)) / (4 * Math.PI) };
+  }
+  function unmerc(x, y) {
+    var n = Math.PI - 2 * Math.PI * y;
+    return { lng: x * 360 - 180, lat: 180 / Math.PI * Math.atan(0.5 * (Math.exp(n) - Math.exp(-n))) };
+  }
+  /* MapLibre 的镜头参数（中心、缩放、padding）换成谷歌的中心和缩放 */
+  function gTarget(o) {
+    var cur = map.getCenter(), z = o.zoom != null ? o.zoom : map.getZoom();
+    var ll = o.center ? maplibregl.LngLat.convert(o.center) : cur;
+    var m = merc(ll.lng, ll.lat), p = o.padding;
+    if (p && o.center) {
+      var ws = 512 * Math.pow(2, z);
+      m.x -= ((p.left || 0) - (p.right || 0)) / 2 / ws;
+      m.y -= ((p.top || 0) - (p.bottom || 0)) / 2 / ws;
+    }
+    return { x: m.x, y: m.y, zoom: z };
+  }
+  function gCamera(o, animate, duration) {
+    if (!gmap) { gPending = { o: o, animate: animate, duration: duration }; return; }
+    var to = gTarget(o);
+    cancelAnimationFrame(gAnim);
+    function put(x, y, z) { var ll = unmerc(x, y); gmap.moveCamera({ center: { lat: ll.lat, lng: ll.lng }, zoom: z + 1 }); }
+    if (!animate) { put(to.x, to.y, to.zoom); return; }
+    var c = gmap.getCenter(), from = merc(c.lng(), c.lat()), fz = gmap.getZoom() - 1;
+    /* 离得远就先退到两头都看得见的高度再进去（像 flyTo） */
+    var W = map.getContainer().clientWidth || 360, d = Math.hypot(to.x - from.x, to.y - from.y);
+    var mid = Math.min(fz, to.zoom, d > 0 ? Math.log(W / (d * 512)) / Math.LN2 - 0.3 : 99);
+    var ms = duration != null ? duration : clamp(400 + Math.abs(fz - mid) * 120 + Math.abs(to.zoom - mid) * 120, 400, 1800);
+    var t0 = performance.now();
+    function ease(t) { return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2; }
+    function step(now) {
+      var t = Math.min(1, (now - t0) / ms), e = ease(t);
+      var z = t < 0.5 ? fz + (mid - fz) * ease(t * 2) : mid + (to.zoom - mid) * ease(t * 2 - 1);
+      put(from.x + (to.x - from.x) * e, from.y + (to.y - from.y) * e, z);
+      if (t < 1) gAnim = requestAnimationFrame(step);
+    }
+    gAnim = requestAnimationFrame(step);
+  }
+  function onGoogleClick(e) {
+    if (!e.latLng) return;
+    var lngLat = { lng: e.latLng.lng(), lat: e.latLng.lat() }, pt = map.project([lngLat.lng, lngLat.lat]);
+    var ev = { point: pt, lngLat: lngLat };
+    if (!e.placeId) { onMapClick(ev); return; }
+    /* 点到谷歌地图上的店：不弹谷歌自己的小窗。图钉盖在店上面时算点图钉 */
+    if (e.stop) e.stop();
+    var ours = ['cl-circle', 'pt-photo', 'pt-pin', 'hometown-pin', 'home-pin'].filter(function (id) { return map.getLayer(id); });
+    var hit = ours.length && map.queryRenderedFeatures([[pt.x - 12, pt.y - 12], [pt.x + 12, pt.y + 10]], { layers: ours }).length;
+    if (hit || state.picking) { onMapClick(ev); return; }
+    pickResult({ osm: 'g/' + e.placeId, gid: e.placeId, name: '', alt: '', lng: round6(lngLat.lng), lat: round6(lngLat.lat), mode: state.mode, cat: null, precision: 'exact', where: '', google: true, zoom: map.getZoom() });
+  }
 
   function onStyleLoad() {
     poiLayerIds = null;
-    try { map.setProjection({ type: 'globe' }); } catch (e) { /* older renderer: stay flat */ }
-    try { if (map.setSky) map.setSky({ 'atmosphere-blend': ['interpolate', ['linear'], ['zoom'], 0, 1, 5, 1, 7, 0] }); } catch (e) { /* optional */ }
+    /* 谷歌底图下面是平的，MapLibre 也要平的才对得上 */
+    if (!GMAP) {
+      try { map.setProjection({ type: 'globe' }); } catch (e) { /* older renderer: stay flat */ }
+      try { if (map.setSky) map.setSky({ 'atmosphere-blend': ['interpolate', ['linear'], ['zoom'], 0, 1, 5, 1, 7, 0] }); } catch (e) { /* optional */ }
+    }
     if (!map.getSource('places')) { addAppLayers(); world.litKey = null; syncCountries(); }
     if (!hoverBound) {
       hoverBound = true;
@@ -2804,7 +2913,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
   }
 
   function setBasemap(key) {
-    if (!map) return;
+    if (!map || GMAP) return;
     loadStyle(key).then(function (style) {
       state.styleKey = key; saveView();
       map.setStyle(style, { diff: false });
