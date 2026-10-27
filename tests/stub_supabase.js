@@ -18,14 +18,17 @@
   function visibleVisit(v) { return v.visibility === 'public' || v.user_id === uid(); }
   function visible(table, row) {
     if (table === 'visits') return visibleVisit(row);
-    if (table === 'places') return row.created_by === uid() || db.visits.some(function (v) { return v.place_id === row.id && visibleVisit(v); });
+    if (table === 'places') return row.created_by === uid() || db.visits.some(function (v) { return v.place_id === row.id && visibleVisit(v); }) ||
+      db.wishlist.some(function (w) { return w.place_id === row.id && w.user_id === uid(); });
     if (table === 'wishlist') return row.user_id === uid();
     if (table === 'homes') return row.is_public || row.user_id === uid();
     return true;
   }
   function canWrite(table, row) {
     if (!uid()) return false;
-    if (table === 'visits' || table === 'wishlist' || table === 'homes') return row.user_id === uid();
+    if (table === 'visits' || table === 'homes') return row.user_id === uid();
+    // 只能收藏看得见的地点
+    if (table === 'wishlist') return row.user_id === uid() && db.places.some(function (p) { return p.id === row.place_id && visible('places', p); });
     if (table === 'places') return row.created_by === uid();
     if (table === 'profiles') return row.id === uid();
     return false;
@@ -83,13 +86,11 @@
       } else if (this.op === 'delete') {
         rows = rows.filter(function (r) { return canWrite(self.table, r); });
         db[this.table] = t.filter(function (r) { return rows.indexOf(r) === -1; });
-        if (this.table === 'visits') {
-          // 和数据库里的 drop_empty_place 触发器一样
+        if (this.table === 'visits' || this.table === 'wishlist') {
+          // 和数据库里的 drop_empty_place 触发器一样：没人记录、也没人想去了才删地点
           rows.forEach(function (v) {
-            if (!db.visits.some(function (x) { return x.place_id === v.place_id; })) {
-              db.places = db.places.filter(function (p) { return p.id !== v.place_id; });
-              db.wishlist = db.wishlist.filter(function (w) { return w.place_id !== v.place_id; });
-            }
+            var used = function (x) { return x.place_id === v.place_id; };
+            if (!db.visits.some(used) && !db.wishlist.some(used)) db.places = db.places.filter(function (p) { return p.id !== v.place_id; });
           });
         }
         window.__sb.db = db;
