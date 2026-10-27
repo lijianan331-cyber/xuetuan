@@ -500,6 +500,13 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
 .rv-actions { display: flex; gap: 16px; }
 .search-results .sec-title { margin: 16px 0 2px; }
 .search-results .sec-title:first-child { margin-top: 4px; }
+/* 谷歌的搜索列表：谷歌自己画（带谷歌标志，不能遮），只把字体、底色调成和我们一样 */
+.g-search .sec-title { margin: 16px 0 6px; }
+#search-local:empty + .g-search .sec-title { margin-top: 4px; }
+.g-search gmp-place-search { display: block; color-scheme: light; --gmp-mat-font-family: inherit; }
+.g-search.g-wait .sec-title { visibility: hidden; }
+.g-detail gmp-place-details-compact { display: block; color-scheme: light; --gmp-mat-font-family: inherit; }
+.g-head .tags { margin-top: 8px; }
 .or-line { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 12.5px; }
 .or-line::before, .or-line::after { content: ""; flex: 1; height: 1px; background: var(--line); }
 .account-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 14px; overflow-wrap: anywhere; }
@@ -1008,7 +1015,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       addPinLong: '搜不到？在地图上选点', addHint: '先搜名字。学校附近的小店搜不到的话，点“地图选点”自己标。',
       addNoResult: '地图上没搜到这个名字。',
       poiFood: '餐厅', poiPlace: '地点', quickRate: '去过？打个分就记进足迹', quickRateFood: '吃过？打个分就记进足迹', quickRateHint: '下一步还能写评论、加照片，都是选填。',
-      searchLocal: '雪团里的', searchOsm: '地图上的地点', osmMin: '再多打一个字，就会去地图上搜', osmLoading: '正在搜…', osmMore: '还在找更多…',
+      searchLocal: '雪团里的', searchOsm: '地图上的地点', searchGoogle: '谷歌地图上的', osmMin: '再多打一个字，就会去地图上搜', osmLoading: '正在搜…', osmMore: '还在找更多…',
       osmFail: '地图搜索暂时用不了，可以自己插针添加', osmCredit: '地点数据：Overture Maps Foundation · © OpenStreetMap 贡献者（Photon）· 维基百科', osmAdd: '添加', osmOpen: '已在雪团',
       addedMine: '已存进足迹', addedShared: '已存进足迹，也分享到了大地图',
       locating: '正在定位…', locateFail: '定位失败，检查一下浏览器的定位权限',
@@ -1110,7 +1117,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       addPinLong: 'Can’t find it? Pick it on the map', addHint: 'Search by name first. If a small stall doesn’t show up, use “Pick on map”.',
       addNoResult: 'Nothing on the map with that name.',
       poiFood: 'Restaurant', poiPlace: 'Place', quickRate: 'Been here? Score it to add it to Footprints', quickRateFood: 'Eaten here? Score it to add it to Footprints', quickRateHint: 'Photos and notes are optional on the next step.',
-      searchLocal: 'On XueTuan', searchOsm: 'Places on the map', osmMin: 'Type one more character to search the map', osmLoading: 'Searching…', osmMore: 'Looking for more…',
+      searchLocal: 'On XueTuan', searchOsm: 'Places on the map', searchGoogle: 'On Google Maps', osmMin: 'Type one more character to search the map', osmLoading: 'Searching…', osmMore: 'Looking for more…',
       osmFail: 'Map search isn’t available right now. You can still drop a pin.', osmCredit: 'Place data: Overture Maps Foundation · © OpenStreetMap contributors (via Photon) · Wikipedia', osmAdd: 'Add', osmOpen: 'On XueTuan',
       addedMine: 'Saved to Footprints', addedShared: 'Saved to Footprints and shared on the big map',
       locating: 'Finding you…', locateFail: 'Couldn’t get your location. Check the browser’s location permission',
@@ -3613,12 +3620,15 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     view.innerHTML = h;
   }
 
+  /* 搜索结果分三段：雪团里的、谷歌地图上的（谷歌自己画的列表，单独一块，不跟着重画）、地图上的地点 */
+  var SEARCH_LISTS = '<ul class="search-results" id="search-local"></ul><div class="g-search" id="g-search" hidden></div><ul class="search-results" id="search-results"></ul>';
   function renderSearch() {
     view.innerHTML = '<div class="view-top"><button type="button" class="icon-btn flat" data-action="back" aria-label="' + esc(t('back')) + '">' + ICON.back + '</button>' +
       '<div class="search-box"><input id="q" class="input" type="search" autocomplete="off" placeholder="' + esc(t('searchPh')) + '" aria-label="' + esc(t('searchBtn')) + '" value="' + esc(state.query) + '"></div></div>' +
-      '<ul class="search-results" id="search-results"></ul>';
+      SEARCH_LISTS;
     queueOsmSearch();
     renderSearchResults();
+    mountGoogle();
     setTimeout(function () { var q = $('#q'); if (q) q.focus(); }, 60);
   }
   /* 加地点：先按名字搜（雪团里已有的 + 地图上的），搜不到再去地图上选点 */
@@ -3629,9 +3639,10 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       '<button type="button" class="btn add-pin" data-action="add-pin">' + ICON.pin + esc(t('addPin')) + '</button></div>' +
       '<p class="f-hint add-hint">' + esc(t('addHint')) + '</p>' +
       '<button type="button" class="btn ghost block bulk-btn" data-action="bulk-start">' + ICON.camera + esc(t('bulkBtn')) + '</button>' +
-      '<ul class="search-results" id="search-results"></ul>';
+      SEARCH_LISTS;
     queueOsmSearch();
     renderSearchResults();
+    mountGoogle();
     setTimeout(function () { var q = $('#q'); if (q) q.focus(); }, 60);
   }
   function openAdd() {
@@ -3642,10 +3653,11 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
   }
 
   function renderSearchResults() {
-    var box = $('#search-results');
+    var box = $('#search-results'), local = $('#search-local');
     if (!box) return;
     var adding = state.view === 'add';
     var q = state.query.trim().toLowerCase();
+    if (local) local.innerHTML = '';
     if (!q) { box.innerHTML = adding ? '' : areasHTML(); return; }
     var res = store.places().filter(function (p) {
       if (adding && p.mode !== state.mode) return false;
@@ -3661,6 +3673,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
           : placeRowHTML(p, 'open-place', info);
       }).join('');
     }
+    if (local) { local.innerHTML = h; hydratePhotos(local); h = ''; }
     h += '<li class="sec-title">' + esc(t('searchOsm')) + '</li>';
     if (q.length < 2) h += '<li class="empty small">' + esc(t('osmMin')) + '</li>';
     else if (osm.q !== q || osm.status === 'loading') h += '<li class="empty small">' + esc(t('osmLoading')) + '</li>';
@@ -3811,6 +3824,116 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       });
     }, 200);
   }
+  /* ================= 谷歌地图搜索（Places UI Kit）[建议，用户 2026-10-27 给了密钥] =================
+   * 新开的小店 Overture、OSM 里常常还没有（比如 Katsu Lab Bell），谷歌有。
+   * 用 Places UI Kit 的搜索列表 gmp-place-search 和地点卡片 gmp-place-details-compact：服务条款 B.15 允许配非谷歌地图；
+   * 列表和卡片是谷歌自己画的，带谷歌标志，不能遮。谷歌只把地点编号和坐标交给我们，店名、评分都在它画的卡片里，
+   * 所以记录时店名先填用户搜的词，用户自己改。
+   * 计费是 Places UI Kit（每月 1 万次免费，之后每千次 1 美元左右）。打字停 0.6 秒才问，同一个词不重问，
+   * 每台手机每天最多问 GOOGLE_DAILY 次。谷歌加载不了、密钥不让用（本地文件、别的网址）或次数用完，这一块就不出，原来的搜索照常。
+   * 谷歌的组件要先把请求填好再放进页面，放进去以后再改请求它不理。
+   * 条款 B.15.2：谷歌给的坐标最多存 30 天，记录下来的地点以后要按编号（osm 里的 g/编号）定期更新坐标（还没做） */
+  var GOOGLE_KEY = 'AIzaSyC5-uXGoj_4uAi8peKUEuBfzfsl517NeOA';
+  var GOOGLE_DAILY = 60;
+  var LS_GOOGLE = 'xuetuan:google-day';
+  var gsearch = { loading: null, failed: /[?&]nogoogle\b/.test(location.search), timer: null };
+  function loadGoogle() {
+    if (gsearch.failed) return Promise.reject(new Error('google off'));
+    if (gsearch.loading) return gsearch.loading;
+    gsearch.loading = new Promise(function (resolve, reject) {
+      window.__xtGoogleReady = resolve;
+      /* 密钥不让这个网址用时谷歌会调这个 */
+      window.gm_authFailure = function () { gsearch.failed = true; hideGoogle(); };
+      var el = document.createElement('script');
+      el.src = 'https://maps.googleapis.com/maps/api/js?key=' + GOOGLE_KEY + '&v=weekly&loading=async&libraries=places&region=MY&language=' + (state.lang === 'en' ? 'en' : 'zh-CN') + '&callback=__xtGoogleReady';
+      el.async = true;
+      el.onerror = function () { reject(new Error('google load')); };
+      document.head.appendChild(el);
+    }).then(function () { return google.maps.importLibrary('places'); });
+    gsearch.loading.catch(function () { gsearch.failed = true; hideGoogle(); });
+    return gsearch.loading;
+  }
+  function googleDay() {
+    var day = new Date().toISOString().slice(0, 10), v = null;
+    try { v = JSON.parse(localStorage.getItem(LS_GOOGLE) || 'null'); } catch (e) { /* ignore */ }
+    return v && v.d === day ? v : { d: day, n: 0 };
+  }
+  function googleCount() {
+    var v = googleDay(); v.n++;
+    try { localStorage.setItem(LS_GOOGLE, JSON.stringify(v)); } catch (e) { /* ignore */ }
+  }
+  function hideGoogle() { var box = $('#g-search'); if (box) box.hidden = true; var d = $('#g-detail'); if (d) d.hidden = true; }
+  function mountGoogle() {
+    var box = $('#g-search');
+    if (!box) return;
+    box.innerHTML = '<p class="sec-title">' + esc(t('searchGoogle')) + '</p><div class="g-list"></div>';
+    queueGoogle();
+  }
+  /* 每个词放一个新的谷歌列表（请求先填好再放进去） */
+  function queueGoogle() {
+    var box = $('#g-search');
+    if (!box) return;
+    var q = state.query.trim();
+    clearTimeout(gsearch.timer);
+    if (q.length < 2 || gsearch.failed) { box.hidden = true; return; }
+    if (box.dataset.q === q) { box.hidden = !box.dataset.n; return; }
+    if (googleDay().n >= GOOGLE_DAILY) { box.hidden = true; return; }
+    gsearch.timer = setTimeout(function () {
+      loadGoogle().then(function () {
+        var slot = box.querySelector('.g-list');
+        if (!slot || !box.isConnected || state.query.trim() !== q) return;
+        var c = searchCenter();
+        var list = document.createElement('gmp-place-search');
+        list.setAttribute('selectable', '');
+        list.appendChild(document.createElement('gmp-place-standard-content'));
+        var req = document.createElement('gmp-place-text-search-request');
+        req.setAttribute('max-result-count', '5');
+        req.locationBias = { lat: c.lat, lng: c.lng };
+        req.textQuery = q;
+        list.appendChild(req);
+        list.addEventListener('gmp-load', function () {
+          var n = list.places ? list.places.length : 0;
+          box.dataset.n = n ? String(n) : '';
+          box.hidden = !n;
+          box.classList.remove('g-wait');
+        });
+        list.addEventListener('gmp-error', function () { box.dataset.n = ''; box.hidden = true; });
+        list.addEventListener('gmp-select', function (e) { pickResult(googleResult(e.place, q)); });
+        box.dataset.q = q; box.dataset.n = '';
+        /* 谷歌的列表要在页面上看得见才会去搜：先显示（标题藏着），有结果再露标题，没结果再藏 */
+        box.classList.add('g-wait');
+        box.hidden = false;
+        slot.innerHTML = '';
+        slot.appendChild(list);
+        googleCount();
+      }, function () { /* hidden by loadGoogle */ });
+    }, 600);
+  }
+  /* 谷歌只给编号和坐标：店名先用搜的词，吃还是玩跟着现在的地图 */
+  function googleResult(pl, q) {
+    if (!pl || !pl.id || !pl.location) return null;
+    var lat = typeof pl.location.lat === 'function' ? pl.location.lat() : pl.location.lat;
+    var lng = typeof pl.location.lng === 'function' ? pl.location.lng() : pl.location.lng;
+    if (!isFinite(lat) || !isFinite(lng)) return null;
+    return { osm: 'g/' + pl.id, gid: pl.id, name: q, alt: '', lng: round6(lng), lat: round6(lat), mode: state.mode, cat: null, precision: 'exact', where: '', google: true };
+  }
+  /* 预览里放谷歌的地点卡片（店名、照片、评分、地址都是谷歌画的） */
+  function mountGoogleDetail(r) {
+    var slot = $('#g-detail');
+    if (!slot) return;
+    loadGoogle().then(function () {
+      if (!slot.isConnected || state.preview !== r) return;
+      var card = document.createElement('gmp-place-details-compact');
+      card.setAttribute('orientation', 'horizontal');
+      var req = document.createElement('gmp-place-details-place-request');
+      req.place = r.gid;
+      card.appendChild(req);
+      card.appendChild(document.createElement('gmp-place-standard-content'));
+      card.addEventListener('gmp-error', function () { slot.hidden = true; });
+      slot.innerHTML = '';
+      slot.appendChild(card);
+    }, function () { slot.hidden = true; });
+  }
   function parsePhoton(json) {
     var seen = {};
     return ((json && json.features) || []).map(function (f) {
@@ -3872,16 +3995,16 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
   /* 从“加地点”进来时，用户已经选了吃还是玩，就不按搜索结果的类型切换 */
   /* 搜索里选中一个还不在雪团的地点：先像谷歌地图那样插一根红针、显示地点卡片，
      确认要加再进表单。从“加地点”进来的直接进表单 */
-  function pickOsm(i) {
-    var r = osm.results[i];
+  function pickOsm(i) { pickResult(osm.results[i]); }
+  function pickResult(r) {
     if (!r) return;
-    var existing = osmExisting(r);
+    var existing = osmExisting(r) || (r.google && osmExisting({ name: r.name, lat: r.lat, lng: r.lng }));
     var adding = state.view === 'add';
     if (existing) {
       if (adding && existing.mode === state.mode) startReview(existing.id); else openPlace(existing.id);
       return;
     }
-    if (adding) { addFromResult(r, true); return; }
+    if (adding && !r.google) { addFromResult(r, true); return; }
     toMapTab();
     state.preview = r;
     state.view = 'preview';
@@ -3914,13 +4037,17 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     var tags = '<span class="tag">' + catIconHTML(c) + esc(generic ? t(r.mode === 'food' ? 'poiFood' : 'poiPlace') : catName(c)) + '</span>' +
       (r.where ? '<span class="tag">' + esc(r.where) + '</span>' : '') +
       '<span class="tag">' + esc(t('distFrom', { d: fmtDist(haversine(XMUM, r)) })) + '</span>';
+    /* 谷歌搜到的：店名、照片、评分在谷歌画的卡片里，我们只加距离 */
+    var head = r.google
+      ? '<div class="place-head g-head"><div class="g-detail" id="g-detail"></div><div class="tags"><span class="tag">' + esc(t('distFrom', { d: fmtDist(haversine(XMUM, r)) })) + '</span></div></div>'
+      : '<div class="place-head"><h2>' + esc(r.name) + '</h2>' + (r.alt ? '<div class="alt">' + esc(r.alt) + '</div>' : '') + '<div class="tags">' + tags + '</div></div>';
     view.innerHTML = '<div class="view-top"><button type="button" class="icon-btn flat" data-action="back" aria-label="' + esc(t('back')) + '">' + ICON.back + '</button></div>' +
-      '<div class="place-head"><h2>' + esc(r.name) + '</h2>' + (r.alt ? '<div class="alt">' + esc(r.alt) + '</div>' : '') +
-      '<div class="tags">' + tags + '</div></div>' +
+      head +
       quickRateHTML('preview-score', r.mode, true) +
       /* 还没去过也能先收藏（想去） */
       '<div class="actions"><a class="btn" href="https://www.google.com/maps/dir/?api=1&destination=' + coords + '" target="_blank" rel="noopener">' + ICON.nav + esc(t('navGoogle')) + '</a>' +
       '<button type="button" class="btn save-btn" data-action="save-preview">' + ICON.star + esc(t('wish')) + '</button></div>';
+    if (r.google) mountGoogleDetail(r);
   }
 
   /* 我的：上面是头像、昵称、来自哪、去过 / 想去 / 分享几个，下面是原来“我”里的资料和设置 */
@@ -5238,7 +5365,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
   });
   document.addEventListener('input', function (e) {
     var el = e.target;
-    if (el.id === 'q') { state.query = el.value; queueOsmSearch(); renderSearchResults(); }
+    if (el.id === 'q') { state.query = el.value; queueOsmSearch(); renderSearchResults(); queueGoogle(); }
     else if (el.id === 'home-q') { homeQ.q = el.value; queueHomeSearch(); renderHomeResults(); }
     else if (el.dataset && el.dataset.bkName != null) { var bg = state.bulk && state.bulk.groups && state.bulk.groups[+el.dataset.bkName]; if (bg) bg.name = el.value; }
     else if (el.dataset && el.dataset.bkQ != null) { var bq = state.bulk && state.bulk.groups && state.bulk.groups[+el.dataset.bkQ]; if (bq) { bq.q = el.value; bulkFind(bq); } }

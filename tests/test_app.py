@@ -86,7 +86,7 @@ def open_place(pg, q, name=None):
     # 在探索里按名字搜出来，打开地点页
     tab(pg, 'explore')
     pg.click('#map-ctrls [data-action="search"]'); pg.fill('#q', q); pg.wait_for_timeout(200)
-    pg.locator('#search-results .near-item', has_text=name or q).first.click(); pg.wait_for_timeout(300)
+    pg.locator('#search-local .near-item', has_text=name or q).first.click(); pg.wait_for_timeout(300)
 def via_home(pg, text, to_place=True):
     # 首页卡片 → 帖子 →（帖子里的地点）→ 探索地图上的地点页
     tab(pg, 'home')
@@ -463,7 +463,7 @@ with sync_playwright() as p:
     page.click('[data-action="search"]')
     page.fill('#q', '椰浆')
     page.wait_for_timeout(300)
-    check('search rows show the place photo', page.locator('#search-results .row-pic img').count() >= 1)
+    check('search rows show the place photo', page.locator('#search-local .row-pic img').count() >= 1)
     page.evaluate('history.back()')
     page.wait_for_timeout(300)
     check('phone back from search returns to the list', page.locator('.feed').count() == 1 and page.locator('#q').count() == 0)
@@ -696,10 +696,10 @@ with sync_playwright() as p:
     page.click('[data-action="search"]')
     page.fill('#q', 'nasi')
     page.wait_for_timeout(150)
-    check('search finds by alt name', page.locator('#search-results .near-item', has_text='测试椰浆饭').count() == 1)
+    check('search finds by alt name', page.locator('#search-local .near-item', has_text='测试椰浆饭').count() == 1)
     page.fill('#q', '鼓浪')
     page.wait_for_timeout(150)
-    check('search finds travel sample', page.locator('#search-results .near-item', has_text='鼓浪屿').count() == 1)
+    check('search finds travel sample', page.locator('#search-local .near-item', has_text='鼓浪屿').count() == 1)
     page.fill('#q', '巴厘岛')
     page.wait_for_selector('[data-action="osm-pick"]', timeout=5000)
     first = page.locator('[data-action="osm-pick"]').first.inner_text()
@@ -733,7 +733,7 @@ with sync_playwright() as p:
     check('country / city result lands on the city centre, not the middle of the map shape', last['center'] == [103.852, 1.2899] and sg_rows == ['Singapura'], (last, sg_rows))
     page.fill('#q', '鼓浪')
     page.wait_for_timeout(150)
-    page.click('#search-results .near-item')
+    page.click('#search-local .near-item')
     page.wait_for_timeout(300)
     check('opening travel result switches mode', page.evaluate('document.documentElement.classList.contains("mode-travel")'))
     page.click('[data-action="back"]')
@@ -1166,6 +1166,86 @@ with sync_playwright() as p:
     check('map buttons fit a 360px phone (XMUM button beside locate)', tb == [True, True, True, True], tb)
     page4.screenshot(path=os.path.join(SHOTS, '12-mobile-360.png'))
     ctx4.close()
+
+    # ---------- 谷歌地图搜索（Places UI Kit，假的谷歌脚本）----------
+    STUB_GOOGLE = r'''(function () {
+      var calls = window.__gcalls = [];
+      function def(n, c) { if (!customElements.get(n)) customElements.define(n, c); }
+      class Plain extends HTMLElement {}
+      class Search extends HTMLElement {
+        connectedCallback() {
+          var r = this.querySelector('gmp-place-text-search-request'), self = this;
+          calls.push(['search', r && r.textQuery, r && r.locationBias, r && r.getAttribute('max-result-count')]);
+          setTimeout(function () {
+            self.places = /katsu/i.test(r.textQuery) ? [{ id: 'gK1', location: { lat: 2.8286977, lng: 101.7055681 } }] : [];
+            self.dispatchEvent(new Event('gmp-load'));
+          }, 30);
+        }
+      }
+      class Details extends HTMLElement {
+        connectedCallback() { var r = this.querySelector('gmp-place-details-place-request'); calls.push(['details', r && r.place]); }
+      }
+      def('gmp-place-search', Search); def('gmp-place-text-search-request', class extends Plain {}); def('gmp-place-standard-content', class extends Plain {});
+      def('gmp-place-details-compact', Details); def('gmp-place-details-place-request', class extends Plain {});
+      window.google = { maps: { importLibrary: function () { return Promise.resolve({}); } } };
+      var cb = (document.currentScript.src.match(/callback=([^&]+)/) || [])[1];
+      setTimeout(function () { window[cb](); }, 0);
+    })();'''
+    ctxg = browser.new_context(viewport={'width': 392, 'height': 709}, device_scale_factor=2, has_touch=True, locale='zh-CN')
+    route_all(ctxg)
+    gurls = []
+    def google_route(route):
+        gurls.append(route.request.url)
+        route.fulfill(status=200, body=STUB_GOOGLE, headers={'Content-Type': 'application/javascript'})
+    ctxg.route('**/maps.googleapis.com/**', google_route)
+    pg = ctxg.new_page()
+    pg.goto(APP)
+    pg.wait_for_function('window.__map && window.__map.getSource("places")', timeout=8000)
+    tab(pg, 'explore')
+    pg.click('#map-ctrls [data-action="search"]')
+    pg.fill('#q', 'k')
+    pg.wait_for_timeout(800)
+    check('google: not asked for one letter', len(gurls) == 0 and pg.locator('#g-search').is_hidden())
+    pg.fill('#q', 'katsu lab')
+    pg.wait_for_timeout(900)
+    gc = pg.evaluate('window.__gcalls')
+    check('google: script loaded once with the key, places library, Malaysia region', len(gurls) == 1 and 'key=AIza' in gurls[0] and 'libraries=places' in gurls[0] and 'region=MY' in gurls[0] and 'language=zh-CN' in gurls[0], gurls)
+    check('google: text search asked near the map centre, 5 results', gc and gc[0][0] == 'search' and gc[0][1] == 'katsu lab' and abs(gc[0][2]['lat'] - 2.83) < 0.5 and gc[0][3] == '5', gc)
+    check('google: results shown between XueTuan and map results, titled', pg.locator('#g-search').is_visible() and pg.inner_text('#g-search .sec-title') == '谷歌地图上的' and pg.evaluate('(() => { const a = document.querySelector("#search-local"), g = document.querySelector("#g-search"), r = document.querySelector("#search-results"); return a.nextElementSibling === g && g.nextElementSibling === r; })()'))
+    pg.fill('#q', 'katsu la'); pg.wait_for_timeout(100); pg.fill('#q', 'katsu lab'); pg.wait_for_timeout(900)
+    check('google: same words are not asked again', len(pg.evaluate('window.__gcalls')) == 1 and pg.locator('#g-search').is_visible(), pg.evaluate('window.__gcalls'))
+    check('google: one search counted for today', pg.evaluate('JSON.parse(localStorage.getItem("xuetuan:google-day")).n') == 1)
+    pg.fill('#q', 'zzz nothing'); pg.wait_for_timeout(900)
+    check('google: no results, no Google block', pg.locator('#g-search').is_hidden())
+    pg.fill('#q', 'katsu'); pg.wait_for_timeout(900)
+    pg.screenshot(path=os.path.join(SHOTS, '05g-google-search.png'))
+    pg.evaluate('(() => { const e = new Event("gmp-select"); e.place = document.querySelector("gmp-place-search").places[0]; document.querySelector("gmp-place-search").dispatchEvent(e); })()')
+    pg.wait_for_timeout(400)
+    check('google: picking shows Google’s own place card, a red pin and scores', pg.locator('#g-detail gmp-place-details-compact').count() == 1 and pg.evaluate('window.__gcalls.slice(-1)[0]') == ['details', 'gK1'] and pg.locator('#map .sel-pin').count() == 1 and pg.locator('[data-commit="preview-score"]').count() == 1 and '距 XMUM' in pg.inner_text('#view'), pg.inner_text('#view')[:100])
+    rate(pg, 4, '[data-commit="preview-score"]')
+    pg.wait_for_timeout(300)
+    check('google: form starts with the words searched as the name', pg.input_value('#f-name') == 'katsu' and stars_val(pg) == '4', pg.input_value('#f-name') if pg.locator('#f-name').count() else 'no form')
+    pg.fill('#f-name', 'Katsu Lab Bell')
+    pg.click('#f-submit')
+    pg.wait_for_timeout(500)
+    stored = pg.evaluate('JSON.parse(localStorage.getItem("xmum-chiwan-map:data:v1"))')
+    kl = [p_ for p_ in stored['places'] if p_['name'] == 'Katsu Lab Bell']
+    check('google: place saved with the Google place id', len(kl) == 1 and kl[0]['osm'] == 'g/gK1' and kl[0]['mode'] == 'food' and kl[0]['lat'] == 2.828698, kl)
+    pg.click('[data-action="search"]') if pg.locator('[data-action="search"]').count() else None
+    tab(pg, 'explore'); pg.click('#map-ctrls [data-action="search"]'); pg.fill('#q', 'katsu'); pg.wait_for_timeout(900)
+    pg.evaluate('(() => { const e = new Event("gmp-select"); e.place = document.querySelector("gmp-place-search").places[0]; document.querySelector("gmp-place-search").dispatchEvent(e); })()')
+    pg.wait_for_timeout(400)
+    check('google: picking a place already in XueTuan opens it', pg.locator('#g-detail').count() == 0 and 'Katsu Lab Bell' in pg.inner_text('#view'), pg.inner_text('#view')[:100])
+    ctxg.close()
+    # 谷歌加载不了（本地文件、密钥不让用）：这一块不出，原来的搜索照常
+    ctxn = browser.new_context(viewport={'width': 392, 'height': 709})
+    route_all(ctxn)
+    pn = ctxn.new_page()
+    pn.goto(APP)
+    pn.wait_for_function('window.__map && window.__map.getSource("places")', timeout=8000)
+    tab(pn, 'explore'); pn.click('#map-ctrls [data-action="search"]'); pn.fill('#q', 'katsu'); pn.wait_for_timeout(1200)
+    check('google: when Google can’t load, the block stays hidden and map results still show', pn.locator('#g-search').is_hidden() and pn.locator('#search-results .sec-title').count() >= 1)
+    ctxn.close()
 
     # ---------- 我的地图：美食 / 旅行 / 合并 + 点亮去过的国家 ----------
     def mk_place(id_, mode, cat, lat, lng, name, by):

@@ -61,3 +61,10 @@ Supabase 自带的发信服务**只能发给项目团队成员的邮箱**（就�
 - 文件放在仓库的 `poi-data` 分支（`data/*.tsv`），筛选条件写在那个分支的 README 里，新加坡、日本、泰国这批的生成脚本在 `scripts/`。
 - 表结构和搜索函数 `search_poi` 在 `supabase/migrations/20261025121500_poi_search.sql`。表只读，谁都能查，不能写。
 - 导入：在 SQL Editor 里运行 `poi-data` 分支的 `scripts/import.sql`。它临时开启 `http` 扩展，用 `extensions.http_get` 从 raw.githubusercontent.com 读文件，按 `\t` 拆列后 `insert ... on conflict (id) do nothing`，导完删掉 `http` 扩展。要导别的文件就改脚本里的文件名列表。
+
+## 谷歌地图搜索（Places UI Kit）
+
+1. Google Cloud 项目 xuetuan 绑结算账号，启用 Maps JavaScript API、Places API (New) 和 **Places UI Kit**（`placewidgets.googleapis.com`）。
+2. 凭据 → API 密钥：API 限制勾上面三个；应用限制选“网站”，加 `https://xuetuan.vercel.app/*` 和 `https://raw.githack.com/*`（浏览器跨站只发域名，不发路径，所以 githack 只能写到域名）。
+3. 密钥写在 `index.html` 的 `GOOGLE_KEY`。网页里的谷歌密钥本来就是公开的，靠第 2 步的网站限制保护。
+4. 建议在结算里设预算提醒。
