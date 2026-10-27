@@ -2216,7 +2216,8 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       map.on('click', onMapClick);
       map.on('styleimagemissing', onImageMissing);
       map.on('moveend', function () { if (!gSyncing) onMoveEnd(); });
-      if (PERF) { map.on('move', perfMoved); if (!GMAP) map.on('idle', perfMark); }
+      if (PERF) { map.on('move', perfMoved); map.on('style.load', perfHook); perfHook(); if (!GMAP) map.on('idle', perfMark); }
+      map.on('idle', function () { if (!glyphsWarmed) setTimeout(warmGlyphs, 800); });
       map.on('zoom', function () { if (state.picking) updatePickUI(); });
       map.on('error', function (e) { if (window.console) console.warn('map:', e && e.error ? e.error.message : e); });
     }).catch(function () { showMapError(); });
@@ -2235,8 +2236,34 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
    * 打开：页面出来、地图第一次画完（谷歌底图就是谷歌瓦片第一次加载完）各用了几秒
    * 瓦片：下载了几块、平均几毫秒、最慢一块几毫秒（从手机到瓦片服务器的真实速度）
    * 滑动：最近一次拖动、缩放时每秒几帧、卡顿（一帧超过 50 毫秒）几次、最长一帧几毫秒 */
-  var PERF = /[?&]perf\b/.test(location.search) ? { map: 0, n: 0, sum: 0, max: 0, frames: [], jank: [], moving: 0, last: 0 } : null;
+  var PERF = /[?&]perf\b/.test(location.search) ? { map: 0, n: 0, sum: 0, max: 0, frames: [], jank: [], moving: 0, sh: 0, shMs: 0, gl: 0, glMs: 0, last: 0 } : null;
   function perfMark() { if (PERF && !PERF.map) PERF.map = performance.now(); }
+  /* 第一次遇到新东西才做的两件事，量它们花了多久：编译新的着色器、在手机上现画中文字。
+     用的是 MapLibre 内部的方法（版本固定 5.24.0），只在 ?perf 时装上 */
+  function perfHook() {
+    if (!PERF || !map) return;
+    var p = map.painter;
+    if (p && p.useProgram && !p.__perf) {
+      p.__perf = true;
+      var use = p.useProgram;
+      p.useProgram = function () {
+        var before = this.cache ? Object.keys(this.cache).length : 0, t0 = performance.now();
+        var r = use.apply(this, arguments);
+        if (this.cache && Object.keys(this.cache).length !== before) { PERF.sh++; PERF.shMs += performance.now() - t0; }
+        return r;
+      };
+    }
+    var gm = map.style && map.style.glyphManager;
+    if (gm && gm._drawGlyph && !gm.__perf) {
+      gm.__perf = true;
+      var draw = gm._drawGlyph;
+      gm._drawGlyph = function () {
+        var t0 = performance.now(), r = draw.apply(this, arguments);
+        PERF.gl++; PERF.glMs += performance.now() - t0;
+        return r;
+      };
+    }
+  }
   function perfMoved() { if (PERF) PERF.moving = performance.now(); }
   function perfStart() {
     if (!PERF) return;
@@ -2278,6 +2305,8 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
         if (PERF.jank.length) lines.push('卡在缩放 ' + PERF.jank.join(' '));
       } else lines.push('滑动 拖一下地图再看');
       if (map) lines.push('现在缩放 ' + map.getZoom().toFixed(1) + ' · ' + (GMAP ? '谷歌平面' : map.getZoom() < 7 ? '地球' : '平面'));
+      lines.push('新着色器 ' + PERF.sh + ' 个 ' + Math.round(PERF.shMs) + 'ms · 画字 ' + PERF.gl + ' 个 ' + Math.round(PERF.glMs) + 'ms');
+      if (PERF.warm) lines.push('提前画字 ' + (PERF.warm - warmTodo.length) + '/' + PERF.warm);
       box.textContent = lines.join('\n');
     }
     show();
@@ -2410,6 +2439,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       });
     }
     patchLabels();
+    baseFilters = null; trimBaseLabels();
     repaintAccent();
     updateSelection(true);
     if (state.me && map.getSource('me')) map.getSource('me').setData(meFC());
@@ -2442,6 +2472,105 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       if (APP_LAYERS.indexOf(l.id) !== -1) return;
       if (!/name/.test(JSON.stringify(l.layout['text-field']))) return;
       try { map.setLayoutProperty(l.id, 'text-field', expr); } catch (e) { /* skip layer */ }
+    });
+  }
+
+  /* 底图只留和吃、玩有关的：地点标签（店、景点）美食地图只留吃喝的，旅行地图再加景点；
+     车站、医院、学校、政府这些不显示（要找直接用谷歌）。小村落、街区名（label_other）也不显示，
+     城镇、机场（KLIA）这些大的留着（用户 2026-10-27）。字少了，第一次缩放要现画的中文字也少 */
+  var BASE_FOOD = ['restaurant', 'fast_food', 'food_court', 'cafe', 'bar', 'beer', 'pub', 'ice_cream', 'bakery'];
+  var BASE_TRAVEL = BASE_FOOD.concat(['attraction', 'museum', 'castle', 'monument', 'zoo', 'aquarium', 'theme_park', 'viewpoint', 'art_gallery']);
+  var HIDE_BASE = ['label_other'];
+  var baseFilters = null;
+  function trimBaseLabels() {
+    if (!map || GMAP) return;
+    var st = map.getStyle();
+    if (!st || !st.layers) return;
+    if (!baseFilters) {
+      baseFilters = {};
+      st.layers.forEach(function (l) { if (l.type === 'symbol' && l['source-layer'] === 'poi') baseFilters[l.id] = l.filter || null; });
+    }
+    var keep = state.mode === 'travel' ? BASE_TRAVEL : BASE_FOOD;
+    Object.keys(baseFilters).forEach(function (id) {
+      if (!map.getLayer(id)) return;
+      var only = ['match', ['get', 'class'], keep, true, false];
+      try { map.setFilter(id, baseFilters[id] ? ['all', baseFilters[id], only] : only); } catch (e) { /* skip layer */ }
+    });
+    HIDE_BASE.forEach(function (id) { if (map.getLayer(id)) try { map.setLayoutProperty(id, 'visibility', 'none'); } catch (e) { /* skip */ } });
+  }
+
+  /* 提前画中文字（2026-10-27 提速）：手机实测第一次缩小会顿一下，之后就顺了——第一次出现的中文字要在手机上现画。
+     地图停下来后，悄悄下载附近 6 到 12 级的瓦片，把里面的中文字挑出来，空闲时一点点先画好存着，
+     真缩小时就不用现画。用的是 MapLibre 内部的字形缓存（版本固定 5.24.0），没有就跳过 */
+  var glyphsWarmed = false;
+  function warmGlyphs() {
+    if (glyphsWarmed || GMAP || !map || !map.style) return;
+    var gm = map.style.glyphManager;
+    if (!gm || !(gm._getAndCacheGlyphsPromise || gm.getGlyphs)) return;
+    var conn = navigator.connection;
+    if (conn && conn.saveData) return;
+    glyphsWarmed = true;
+    var c = map.getCenter();
+    loadStyle(state.styleKey).then(function (style) {
+      var tpl = null, maxz = 14;
+      Object.keys(style.sources || {}).forEach(function (id) {
+        var src = style.sources[id];
+        if (!tpl && src.type === 'vector' && src.tiles && src.tiles.length) { tpl = src.tiles[0]; maxz = src.maxzoom || 14; }
+      });
+      if (!tpl) return;
+      var urls = [];
+      [12, 11, 10, 9, 8, 7, 6].forEach(function (z) {
+        if (z > maxz) return;
+        var n = Math.pow(2, z), m = merc(c.lng, c.lat), fx = m.x * n, fy = m.y * n;
+        var x0 = Math.floor(fx), y0 = Math.floor(fy), x1 = fx - x0 < 0.5 ? x0 - 1 : x0 + 1, y1 = fy - y0 < 0.5 ? y0 - 1 : y0 + 1;
+        [[x0, y0], [x1, y0], [x0, y1], [x1, y1]].forEach(function (t) {
+          if (t[1] < 0 || t[1] >= n) return;
+          urls.push(tpl.replace('{z}', z).replace('{x}', ((t[0] % n) + n) % n).replace('{y}', t[1]));
+        });
+      });
+      var chars = new Set(), dec = new TextDecoder('utf-8');
+      return Promise.all(urls.map(function (u) {
+        return fetch(u).then(function (r) { return r.ok ? r.arrayBuffer() : null; }).then(function (buf) {
+          if (!buf) return;
+          (dec.decode(buf).match(/[\u3400-\u9fff\uf900-\ufaff]/g) || []).forEach(function (ch) { chars.add(ch.codePointAt(0)); });
+        }).catch(function () {});
+      })).then(function () {
+        var stacks = [];
+        ((map.getStyle() || {}).layers || []).forEach(function (l) {
+          var f = l.type === 'symbol' && l.layout && l.layout['text-font'];
+          if (!f || !f.every || !f.every(function (x) { return typeof x === 'string'; }) || (l.layout.visibility === 'none')) return;
+          var k = f.join(',');
+          if (stacks.indexOf(k) === -1) stacks.push(k);
+        });
+        /* 常规字体最多，先画它 */
+        stacks.sort(function (a, b) { return (/Regular/.test(b) ? 1 : 0) - (/Regular/.test(a) ? 1 : 0); });
+        var todo = [];
+        stacks.forEach(function (k) { chars.forEach(function (cp) { todo.push([k, cp]); }); });
+        warmTodo = todo;
+        if (PERF) PERF.warm = todo.length;
+        pumpWarm();
+      });
+    }).catch(function () {});
+  }
+  var warmTodo = [];
+  function pumpWarm() {
+    if (!warmTodo.length || !map || !map.style) return;
+    var idle = window.requestIdleCallback || function (fn) { return setTimeout(function () { fn({ timeRemaining: function () { return 8; } }); }, 60); };
+    idle(function (dl) {
+      var gm = map.style && map.style.glyphManager;
+      if (!gm) { warmTodo = []; return; }
+      /* 用户在拖地图时不画，让给地图 */
+      if (!map.isMoving || !map.isMoving()) {
+        var t0 = performance.now();
+        while (warmTodo.length && performance.now() - t0 < 8 && dl.timeRemaining() > 1) {
+          var job = warmTodo.shift();
+          try {
+            if (gm._getAndCacheGlyphsPromise) gm._getAndCacheGlyphsPromise(job[0], job[1]);
+            else { var q = {}; q[job[0]] = [job[1]]; gm.getGlyphs(q); }
+          } catch (e) { warmTodo = []; }
+        }
+      }
+      pumpWarm();
     });
   }
 
@@ -4616,6 +4745,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     renderChrome();
     refreshMap();
     repaintAccent();
+    trimBaseLabels();
     saveView();
     if (state.view === 'feed') render();
     /* 换吃 / 玩时地图基本不动（用户 2026-10-27 嫌一换就飞到地球或一下放很大）：

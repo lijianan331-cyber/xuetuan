@@ -15,7 +15,8 @@
       { id: 'background', type: 'background' },
       { id: 'place-city', type: 'symbol', layout: { 'text-field': ['coalesce', ['get', 'name:en'], ['get', 'name']], 'text-font': ['Noto Sans Regular'] } },
       { id: 'road-shield', type: 'symbol', layout: { 'text-field': '{ref}', 'text-font': ['Noto Sans Bold'] } },
-      { id: 'poi_r1', type: 'symbol', source: 'openmaptiles', 'source-layer': 'poi', layout: { 'text-field': '{name}', 'text-font': ['Noto Sans Regular'] } }
+      { id: 'poi_r1', type: 'symbol', source: 'openmaptiles', 'source-layer': 'poi', layout: { 'text-field': '{name}', 'text-font': ['Noto Sans Regular'] } },
+      { id: 'label_other', type: 'symbol', source: 'openmaptiles', 'source-layer': 'place', layout: { 'text-field': '{name}', 'text-font': ['Noto Sans Italic'] } }
     ] };
   }
   function Map(opts) {

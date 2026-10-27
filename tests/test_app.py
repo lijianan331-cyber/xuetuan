@@ -28,6 +28,7 @@ PHOTON = json.dumps({"type": "FeatureCollection", "features": [
 ]})
 photon_calls = []
 tilejson_calls = []
+tile_calls = []
 # 城市 / 国家：Photon 给了边界中心点（新加坡落在岛中间）和城市点（市中心）
 PHOTON_SG = json.dumps({"type": "FeatureCollection", "features": [
     {"type": "Feature", "geometry": {"type": "Point", "coordinates": [103.8198, 1.3572]},
@@ -169,6 +170,9 @@ def route_all(ctx, supabase=False):
             return route.fulfill(status=200, body=STUB, headers={'Content-Type': 'application/javascript', 'Access-Control-Allow-Origin': '*'})
         if 'maplibre-gl.css' in url or 'fonts.googleapis.com' in url:
             return route.fulfill(status=200, body='', headers={'Content-Type': 'text/css'})
+        if 'tiles.openfreemap.org/planet/' in url and url.endswith('.pbf'):
+            tile_calls.append(url)
+            return route.fulfill(status=200, body='\x1a\x05place吉隆坡巴生'.encode('utf-8'), headers={'Content-Type': 'application/x-protobuf', 'Access-Control-Allow-Origin': '*'})
         if url.endswith('tiles.openfreemap.org/planet'):
             tilejson_calls.append(url)
             return route.fulfill(status=200, body=TILEJSON, headers={'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'})
@@ -241,6 +245,15 @@ with sync_playwright() as p:
     src0 = page.evaluate('window.__map.opts.style.sources.openmaptiles')
     check('tile directory fetched with the style and written into it (map starts tiles one round trip sooner)', src0.get('tiles') == json.loads(TILEJSON)['tiles'] and 'url' not in src0 and src0.get('maxzoom') == 14 and len(tilejson_calls) == 1, (src0, tilejson_calls))
     check('web fonts do not block the page (loaded as print, switched on when ready)', page.get_attribute('link[href*="fonts.googleapis.com/css2"]', 'media') == 'all')
+    # 底图只留吃喝（旅行再加景点），车站医院这些不显示；小村落街区名藏起来（用户 2026-10-27）
+    bf = page.evaluate('(() => { const l = window.__map.style.layers; return [l.find(x => x.id === "poi_r1").filter, (l.find(x => x.id === "label_other").layout || {}).visibility]; })()')
+    check('basemap: only food places on the food map, small village/neighbourhood names hidden', bf[0] and bf[0][0] == 'match' and 'restaurant' in bf[0][2] and 'cafe' in bf[0][2] and 'bus' not in bf[0][2] and 'hospital' not in bf[0][2] and 'attraction' not in bf[0][2] and bf[1] == 'none', bf)
+    # 提前画中文字：地图停下后取附近 6–12 级瓦片，把里面的中文字先画好（常规字体先画）
+    page.evaluate('window.__warmCalls = []; window.__map.style.glyphManager = { _getAndCacheGlyphsPromise: function (s, c) { window.__warmCalls.push([s, c]); } }; window.__map.fire("idle")')
+    page.wait_for_timeout(2500)
+    wc = page.evaluate('window.__warmCalls')
+    want = sorted(ord(ch) for ch in '吉隆坡巴生')
+    check('glyph warm-up: Chinese characters from nearby zoom 6–12 tiles drawn ahead, regular font first, once', len(tile_calls) == 28 and all('/planet/20261022_001001_pt/' in u for u in tile_calls) and wc and wc[0][0] == 'Noto Sans Regular' and sorted(c for s_, c in wc if s_ == 'Noto Sans Regular') == want and len(wc) == len(want) * len({s_ for s_, c in wc}), (len(tile_calls), wc[:12]))
     check('first visit opens straight on campus, no long flight from the globe', len(st['intro']) >= 1 and st['intro'][0].get('center') == [101.7029, 2.8329] and st['intro'][0].get('zoom') == 14.6 and not any((c.get('duration') or 0) > 2000 for c in st['intro']), st['intro'])
     tabs0 = page.locator('#tabbar .tab').all_inner_texts()
     check('tab bar: home / explore / footprints / me, no + in it', tabs0 == ['首页', '探索', '足迹', '我的'] and page.locator('#tabbar #fab').count() == 0, tabs0)
