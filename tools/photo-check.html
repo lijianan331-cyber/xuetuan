@@ -39,18 +39,18 @@
     if (!files.length) return;
     out.innerHTML = '<p>正在读 ' + files.length + ' 张…</p>';
     Promise.all(files.map(function (f) {
-      return exifr.parse(f, { gps: true, pick: ['DateTimeOriginal', 'CreateDate', 'latitude', 'longitude', 'Make', 'Model'] })
+      return exifr.parse(f)
         .catch(function () { return null; })
         .then(function (x) { return { f: f, x: x || {} }; });
     })).then(function (rows) {
       var withGps = rows.filter(function (r) { return typeof r.x.latitude === 'number' && typeof r.x.longitude === 'number'; });
-      var withTime = rows.filter(function (r) { return r.x.DateTimeOriginal || r.x.CreateDate; });
+      var withTime = rows.filter(function (r) { return r.x.DateTimeOriginal || r.x.CreateDate || r.x.ModifyDate; });
       var spots = {};
       withGps.forEach(function (r) { spots[r.x.latitude.toFixed(3) + ',' + r.x.longitude.toFixed(3)] = 1; });
       var h = '<div class="sum">共 ' + rows.length + ' 张：有位置的 <b>' + withGps.length + '</b> 张，有拍摄时间的 ' + withTime.length + ' 张' +
         (withGps.length ? '，大约 ' + Object.keys(spots).length + ' 个不同的地方' : '') + '。</div><ul>';
       rows.forEach(function (r) {
-        var x = r.x, t = x.DateTimeOriginal || x.CreateDate;
+        var x = r.x, t = x.DateTimeOriginal || x.CreateDate || x.ModifyDate;
         var gps = typeof x.latitude === 'number'
           ? '<span class="yes">有位置</span> <a target="_blank" rel="noopener" href="https://www.google.com/maps?q=' + x.latitude.toFixed(6) + ',' + x.longitude.toFixed(6) + '">' + x.latitude.toFixed(5) + ', ' + x.longitude.toFixed(5) + '</a>'
           : '<span class="no">没有位置</span>';
