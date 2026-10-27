@@ -212,7 +212,7 @@ with sync_playwright() as p:
         feats: m.getSource('places').data.features.length,
         countFont: m.layers.find(l => l.id === 'cl-count').layout['text-font'],
         labelFont: m.layers.find(l => l.id === 'pt-label').layout['text-font'],
-        intro: m.calls.filter(c => c[0] === 'move').length } }''')
+        intro: m.calls.filter(c => c[0] === 'move').map(c => c[1]) } }''')
     check('app layers added', st['layers'] == ['cl-halo', 'hometown-pin', 'cl-circle', 'cl-count', 'home-pin', 'pt-pin', 'pt-photo', 'pt-label', 'me-halo', 'me-dot'], st['layers'])
     check('parsed sample rows', len(SAMPLE_ROWS) >= 60 and len(FOOD_S) >= 30, len(SAMPLE_ROWS))
     want_imgs = len({(x['cat'], 'none' if x['rating'] is None else x['rating'] * 10) for x in FOOD_S})
@@ -233,7 +233,7 @@ with sync_playwright() as p:
     check('shield labels untouched', st['shield'] == '{ref}', st['shield'])
     check('fonts picked from style', st['countFont'] == ['Noto Sans Bold'] and st['labelFont'] == ['Noto Sans Regular'], (st['countFont'], st['labelFont']))
     check('food mode shows all sample food places', st['feats'] == len(FOOD_S), (st['feats'], len(FOOD_S)))
-    check('intro flight to campus', st['intro'] >= 1, st['intro'])
+    check('first visit opens straight on campus, no long flight from the globe', len(st['intro']) >= 1 and st['intro'][0].get('center') == [101.7029, 2.8329] and st['intro'][0].get('zoom') == 14.6 and not any((c.get('duration') or 0) > 2000 for c in st['intro']), st['intro'])
     tabs0 = page.locator('#tabbar .tab').all_inner_texts()
     check('tab bar: home / explore / footprints / me, no + in it', tabs0 == ['首页', '探索', '足迹', '我的'] and page.locator('#tabbar #fab').count() == 0, tabs0)
     # 首页：整页（盖住地图）；上面品牌 + 搜索，地图预览就是那张地图，下面最新分享；只有示例时诚实地说还没有
@@ -1242,6 +1242,15 @@ with sync_playwright() as p:
     pg2.goto(APP + '?map=google')
     pg2.wait_for_function('!/map=google/.test(location.href) && window.__map && window.__map.getSource("places")', timeout=10000)
     check('google basemap trial: falls back to our own map when Google can’t start', pg2.locator('#map .gmap').count() == 0 and pg2.evaluate('window.__map.getStyle().layers.length > 10'))
+    # 实测开关 ?perf：左上角小框，显示打开时间、瓦片、滑动帧率；平时没有
+    check('perf box: not shown normally', pg.locator('#perf').count() == 0)
+    pg3 = ctxg.new_page()
+    pg3.goto(APP + '?perf')
+    pg3.wait_for_function('window.__map && window.__map.getSource("places") && document.querySelector("#perf")', timeout=10000)
+    pg3.wait_for_timeout(700)
+    pt = pg3.inner_text('#perf')
+    pb = pg3.evaluate('(() => { const r = document.querySelector("#perf").getBoundingClientRect(); return [r.left >= 0, r.right <= innerWidth, getComputedStyle(document.querySelector("#perf")).pointerEvents]; })()')
+    check('perf box: ?perf shows open time, tiles and swipe frame rate, does not take taps', '打开' in pt and '瓦片' in pt and '滑动' in pt and pb == [True, True, 'none'], (pt, pb))
     ctxg.close()
     # 谷歌加载不了（本地文件、密钥不让用）：这一块不出，原来的搜索照常
     ctxn = browser.new_context(viewport={'width': 392, 'height': 709})

@@ -1297,7 +1297,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       place: function (id) { return find(data.places, id); },
       reviews: function () { return data.reviews; },
       review: function (id) { return find(data.reviews, id); },
-      reviewsOf: function (placeId) { return data.reviews.filter(function (r) { return r.placeId === placeId; }); },
+      reviewsOf: function (placeId) { return reviewsByPlace(data.reviews, placeId); },
       areas: function () { return data.areas; },
       wishlist: function () { return data.wishlist.filter(mineW); },
       isSaved: function (placeId) { return data.wishlist.some(function (w) { return mineW(w) && w.placeId === placeId; }); },
@@ -1601,7 +1601,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       place: function (id) { return find(cache.places, id); },
       reviews: function () { return cache.reviews; },
       review: function (id) { return find(cache.reviews, id); },
-      reviewsOf: function (placeId) { return cache.reviews.filter(function (r) { return r.placeId === placeId; }); },
+      reviewsOf: function (placeId) { return reviewsByPlace(cache.reviews, placeId); },
       areas: function () { return areaCache; },
       wishlist: function () { return cache.wishlist; },
       isSaved: function (placeId) { return cache.wishlist.some(function (w) { return w.placeId === placeId; }); },
@@ -1907,6 +1907,18 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
   function me() { return store.me(); }
   function placeById(id) { return store.place(id); }
   function reviewsOf(placeId) { return store.reviewsOf(placeId); }
+  /* 按地点分好的记录：画图钉时每个地点都要找自己的记录，原来每次都扫一遍全部记录，
+     地点和记录一多就是“地点数 × 记录数”，手机上会卡好几秒。记录数组换了或长度变了才重新分（2026-10-27 提速） */
+  var rIdx = { list: null, n: -1, by: null };
+  function reviewsByPlace(list, placeId) {
+    if (list !== rIdx.list || list.length !== rIdx.n) {
+      var by = new Map();
+      list.forEach(function (r) { var a = by.get(r.placeId); if (!a) by.set(r.placeId, a = []); a.push(r); });
+      rIdx = { list: list, n: list.length, by: by };
+    }
+    var got = rIdx.by.get(placeId);
+    return got ? got.slice() : [];
+  }
   function isMine(r) { return r.authorId === me().id; }
   /* 三种地图：all = 探索（公开记录），mine = 我的足迹，saved = 收藏（公开记录 + 我自己的） */
   function scopedReviews(placeId, scope) {
@@ -2166,8 +2178,9 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
         container: 'map',
         style: style,
         interactive: !GMAP,
-        center: first ? [104, 8] : v.center,
-        zoom: first ? 1.4 : v.zoom,
+        /* 第一次打开直接在 XMUM，不再从地球飞过去：飞的路上每一级的瓦片都要下载，手机上要等好几秒（2026-10-27 提速） */
+        center: first ? [XMUM.lng, XMUM.lat] : v.center,
+        zoom: first ? 14.6 : v.zoom,
         attributionControl: false,
         dragRotate: false,
         pitchWithRotate: false,
@@ -2180,18 +2193,14 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
         localIdeographFontFamily: '"PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", "Noto Sans CJK SC", sans-serif'
       });
       if (map.touchZoomRotate && map.touchZoomRotate.disableRotation) map.touchZoomRotate.disableRotation();
-      if (GMAP) startGoogleMap(first ? [104, 8] : v.center, first ? 1.4 : v.zoom);
+      if (GMAP) startGoogleMap(first ? [XMUM.lng, XMUM.lat] : v.center, first ? 14.6 : v.zoom);
+      /* 面板挡住下面一截，学校要落在看得见的那块中间 */
+      if (first) map.jumpTo({ center: [XMUM.lng, XMUM.lat], zoom: 14.6, padding: mapPadding() });
       map.on('style.load', onStyleLoad);
-      map.on('load', function () {
-        if (!first) return;
-        if (reduceMotion) flyTo([XMUM.lng, XMUM.lat], 14.6, true);
-        else setTimeout(function () {
-          map.flyTo({ center: [XMUM.lng, XMUM.lat], zoom: 14.6, duration: 5200, curve: 1.7, essential: true, padding: mapPadding() });
-        }, 700);
-      });
       map.on('click', onMapClick);
       map.on('styleimagemissing', onImageMissing);
       map.on('moveend', function () { if (!gSyncing) onMoveEnd(); });
+      if (PERF) { map.on('move', perfMoved); if (!GMAP) map.on('idle', perfMark); }
       map.on('zoom', function () { if (state.picking) updatePickUI(); });
       map.on('error', function (e) { if (window.console) console.warn('map:', e && e.error ? e.error.message : e); });
     }).catch(function () { showMapError(); });
@@ -2205,6 +2214,55 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     if (g !== lastGlobeChip) { lastGlobeChip = g; renderFilters(); }
   }
 
+  /* ================= 实测开关（网址加 ?perf）[建议，用户 2026-10-27 要先在手机上测] =================
+   * 左上角一个小黑框，截图发过来就知道慢在哪：
+   * 打开：页面出来、地图第一次画完（谷歌底图就是谷歌瓦片第一次加载完）各用了几秒
+   * 瓦片：下载了几块、平均几毫秒、最慢一块几毫秒（从手机到瓦片服务器的真实速度）
+   * 滑动：最近一次拖动、缩放时每秒几帧、卡顿（一帧超过 50 毫秒）几次、最长一帧几毫秒 */
+  var PERF = /[?&]perf\b/.test(location.search) ? { map: 0, n: 0, sum: 0, max: 0, frames: [], moving: 0, last: 0 } : null;
+  function perfMark() { if (PERF && !PERF.map) PERF.map = performance.now(); }
+  function perfMoved() { if (PERF) PERF.moving = performance.now(); }
+  function perfStart() {
+    if (!PERF) return;
+    var box = document.body.appendChild(document.createElement('div'));
+    box.id = 'perf';
+    box.style.cssText = 'position:fixed;z-index:99;left:4px;top:calc(env(safe-area-inset-top) + 4px);padding:4px 7px;border-radius:7px;background:rgba(0,0,0,.72);color:#fff;font:11px/1.45 monospace;pointer-events:none;white-space:pre';
+    try { performance.setResourceTimingBufferSize(3000); } catch (e) { /* old browser */ }
+    var tileRe = /\.(pbf|mvt)(\?|$)|googleapis\.com\/maps\/vt|\/maps\/vt\?|\/vt\/pb=/;
+    function onEntries(list) {
+      list.getEntries().forEach(function (e) {
+        if (!tileRe.test(e.name)) return;
+        PERF.n++; PERF.sum += e.duration; PERF.max = Math.max(PERF.max, e.duration);
+      });
+    }
+    try { new PerformanceObserver(onEntries).observe({ type: 'resource', buffered: true }); } catch (e) { /* old browser */ }
+    /* 只记地图在动的那些帧；停下半秒以上再动算新的一次 */
+    function frame(now) {
+      if (PERF.last && now - PERF.moving < 120) {
+        if (now - (PERF.lastMove || 0) > 500) PERF.frames = [];
+        else PERF.frames.push(now - PERF.last);
+        PERF.lastMove = now;
+      }
+      PERF.last = now;
+      requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+    function sec(ms) { return (ms / 1000).toFixed(1) + 's'; }
+    function show() {
+      var nav = performance.getEntriesByType && performance.getEntriesByType('navigation')[0];
+      var page = nav && nav.domContentLoadedEventEnd ? sec(nav.domContentLoadedEventEnd) : '…';
+      var f = PERF.frames, lines = [(GMAP ? '谷歌底图' : '雪团底图') + ' · 打开 页面 ' + page + ' · 地图 ' + (PERF.map ? sec(PERF.map) : '…')];
+      lines.push('瓦片 ' + PERF.n + ' 块' + (PERF.n ? ' · 平均 ' + Math.round(PERF.sum / PERF.n) + 'ms · 最慢 ' + Math.round(PERF.max) + 'ms' : ''));
+      if (f.length > 5) {
+        var sorted = f.slice().sort(function (a, b) { return a - b; }), med = sorted[sorted.length >> 1];
+        lines.push('滑动 ' + Math.round(1000 / med) + ' 帧/秒 · 卡顿 ' + f.filter(function (x) { return x > 50; }).length + ' 次 · 最长 ' + Math.round(sorted[sorted.length - 1]) + 'ms');
+      } else lines.push('滑动 拖一下地图再看');
+      box.textContent = lines.join('\n');
+    }
+    show();
+    setInterval(show, 500);
+  }
+
   /* ================= 谷歌底图（试用：网址加 &map=google）[建议，用户 2026-10-27 要先试再决定] =================
    * 谷歌地图画在最下面、管手势；我们的 MapLibre 地图叠在上面，背景透明、不接手势，只画自己的东西
    * （图钉、照片、家乡红针、点亮国家），每一帧跟着谷歌的镜头走，原来的地图代码基本不用改。
@@ -2212,7 +2270,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
    * 我们代码里让地图动的地方（flyTo / easeTo / jumpTo / panBy）都转给谷歌，padding 自己换算。
    * 点地图：先看点没点到我们的图钉，再看是不是谷歌地图上的店（谷歌卡片 + 我们的打分），都不是就照原来的处理 */
   var GMAP = /[?&]map=google\b/.test(location.search);
-  var gmap = null, gSyncing = false, gPending = null, gAnim = 0, mlJump = null;
+  var gmap = null, gSyncing = false, gPending = null, gAnim = 0, mlJump = null, gLast = {};
   function startGoogleMap(center, zoom) {
     document.documentElement.classList.add('gmap-on');
     var el = document.createElement('div');
@@ -2225,7 +2283,9 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     loadGoogle().then(function () { return google.maps.importLibrary('maps'); }).then(function (lib) {
       gmap = new lib.Map(el, {
         center: { lat: center[1], lng: center[0] }, zoom: zoom + 1, mapId: 'DEMO_MAP_ID', disableDefaultUI: true,
-        gestureHandling: 'greedy', clickableIcons: true, isFractionalZoomEnabled: true, keyboardShortcuts: false
+        gestureHandling: 'greedy', clickableIcons: true, isFractionalZoomEnabled: true, keyboardShortcuts: false,
+        /* 不让两指倾斜、旋转：MapLibre 这边是平的、朝北的，转了图钉就对不上 */
+        tiltInteractionEnabled: false, headingInteractionEnabled: false
       });
       /* 每画一帧就把镜头抄给 MapLibre */
       var ov = new lib.WebGLOverlayView();
@@ -2234,6 +2294,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       gmap.addListener('bounds_changed', gSync);
       gmap.addListener('idle', function () { gSync(); onMoveEnd(); });
       gmap.addListener('click', onGoogleClick);
+      if (PERF) gmap.addListener('tilesloaded', perfMark);
       if (gPending) { var pd = gPending; gPending = null; gCamera(pd.o, pd.animate, pd.duration); }
     }).catch(function () {
       /* 谷歌加载不了：回到原来的地图 */
@@ -2244,8 +2305,15 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     if (!gmap || !map) return;
     var c = gmap.getCenter(), z = gmap.getZoom();
     if (!c || z == null) return;
+    var lng = c.lng(), lat = c.lat();
+    if (lng === gLast.lng && lat === gLast.lat && z === gLast.z) return;
+    gLast = { lng: lng, lat: lat, z: z };
     gSyncing = true;
-    try { mlJump.call(map, { center: [c.lng(), c.lat()], zoom: z - 1, padding: { top: 0, bottom: 0, left: 0, right: 0 } }); } finally { gSyncing = false; }
+    try {
+      mlJump.call(map, { center: [lng, lat], zoom: z - 1, padding: { top: 0, bottom: 0, left: 0, right: 0 } });
+      /* 马上画，不等下一帧：等下一帧的话图钉总比谷歌地图慢一帧，一滑就晃（用户 2026-10-27） */
+      if (map.redraw) map.redraw();
+    } finally { gSyncing = false; }
   }
   function merc(lng, lat) {
     var s = Math.sin(clamp(lat, -85, 85) * Math.PI / 180);
@@ -5562,6 +5630,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     renderChrome();
     render();
     setSnap(feedSnapNow('peek'));
+    perfStart();
     initMap();
   });
 })();
