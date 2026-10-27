@@ -1348,20 +1348,22 @@ with sync_playwright() as p:
     ctx7.close()
 
     # ---------- 从照片批量加（本地版；假的 exifr 按文件名给拍摄地点和时间） ----------
-    S0 = [x for x in FOOD_S if x['rating'] is not None][0]
+    S0, S1 = [x for x in FOOD_S if x['rating'] is not None][:2]
     ctxb = browser.new_context(viewport={'width': 390, 'height': 844}, device_scale_factor=2, has_touch=True, locale='zh-CN')
     route_all(ctxb)
     ctxb.add_init_script('window.__exif = ' + json.dumps({
         'a1.jpg': {'latitude': S0['lat'] + 0.0001, 'longitude': S0['lng'], 'DateTimeOriginal': '2026-09-01T12:00:00'},
         'a2.jpg': {'latitude': S0['lat'] + 0.0002, 'longitude': S0['lng'], 'DateTimeOriginal': '2026-09-01T12:20:00'},
-        'b1.jpg': {'latitude': 3.15, 'longitude': 101.6, 'DateTimeOriginal': '2026-09-02T19:00:00'}}) + ';')
+        'b1.jpg': {'latitude': 3.15, 'longitude': 101.6, 'DateTimeOriginal': '2026-09-02T19:00:00'},
+        # 手机把经纬度去掉了，只剩拍摄时间：隔不到 1 小时的算一组
+        'c1.jpg': {'DateTimeOriginal': '2026-08-30T12:00:00'}, 'c2.jpg': {'DateTimeOriginal': '2026-08-30T12:40:00'}}) + ';')
     pb = ctxb.new_page()
     errorsb = []
     pb.on('pageerror', lambda e: errorsb.append('pageerror: ' + str(e)))
     pb.goto(APP)
     pb.wait_for_function('window.__map && window.__map.getSource("places")', timeout=8000)
     bfiles = []
-    for i_, n_ in enumerate(['a1.jpg', 'a2.jpg', 'b1.jpg', 'c1.jpg']):
+    for i_, n_ in enumerate(['a1.jpg', 'a2.jpg', 'b1.jpg', 'c1.jpg', 'c2.jpg']):
         fp_ = os.path.join(SHOTS, n_)
         Image.new('RGB', (1200, 900), (60 + 40 * i_, 120, 200)).save(fp_, 'JPEG')
         bfiles.append(fp_)
@@ -1370,15 +1372,20 @@ with sync_playwright() as p:
     with pb.expect_file_chooser() as fc_:
         pb.click('[data-action="bulk-start"]')
     fc_.value.set_files(bfiles)
-    pb.wait_for_function('document.querySelectorAll(".bk-card").length === 2 && !document.querySelector(".bk-names .f-hint")', timeout=8000)
+    pb.wait_for_function('document.querySelectorAll(".bk-card").length === 3 && !document.querySelector(".bk-names .f-hint")', timeout=8000)
     sumb = pb.inner_text('.bk-sum')
-    check('bulk: photos grouped by where they were taken, ones without a location left out', '3 张照片，分成 2 个地方' in sumb and '1 张没有拍摄地点' in sumb, sumb)
-    check('bulk: newest place first', '9月2日' in pb.inner_text('#bk-meta-0') and '9月1日' in pb.inner_text('#bk-meta-1'), [pb.inner_text('#bk-meta-0'), pb.inner_text('#bk-meta-1')])
+    check('bulk: photos grouped by where they were taken; ones without a location grouped by time', '5 张照片，分成 3 组' in sumb and '2 张读不到位置' in sumb, sumb)
+    check('bulk: newest place first', '9月2日' in pb.inner_text('#bk-meta-0') and '9月1日' in pb.inner_text('#bk-meta-1') and '8月30日' in pb.inner_text('#bk-meta-2'), [pb.inner_text('#bk-meta-0'), pb.inner_text('#bk-meta-1')])
+    check('bulk: no-location photos taken 40 min apart are one group with a search box', pb.locator('#bk-2 .bk-ph').count() == 2 and '没有位置' in pb.inner_text('#bk-meta-2')
+          and '12:00' in pb.inner_text('#bk-meta-2') and pb.locator('#bk-2 [data-bk-q]').count() == 1 and pb.locator('#bk-2 [data-action="bulk-pick"]').count() == 0)
+    check('bulk: explains the missing locations and offers the file manager', pb.locator('.bk-tip [data-action="bulk-files"]').is_visible() and '文件管理' in pb.inner_text('.bk-tip'))
     chips_b = pb.eval_on_selector_all('#bk-1 .bk-names .chip', 'els => els.map(e => e.textContent + ":" + e.getAttribute("aria-pressed"))')
     check('bulk: a place already in XueTuan nearby is picked by default', chips_b[0].startswith(S0['name']) and chips_b[0].endswith(':true') and ' m' in chips_b[0], chips_b)
     check('bulk: both photos of that visit are in, none picked for the far one', pb.locator('#bk-1 .bk-ph[aria-pressed="true"]').count() == 2
           and pb.locator('#bk-0 [data-bk-name]').count() == 1 and pb.get_attribute('#bk-0 [data-action="bulk-pick"][data-k="-1"]', 'aria-pressed') == 'true')
     check('bulk: nothing to save before scoring', pb.inner_text('#bk-save') == '保存 0' and pb.is_disabled('#bk-save'))
+    check('bulk: food or travel is picked automatically from the place', pb.get_attribute('#bk-1 [data-action="bulk-mode"][data-v="food"]', 'aria-pressed') == 'true'
+          and pb.get_attribute('#bk-2 [data-action="bulk-mode"][data-v="food"]', 'aria-pressed') == 'true')
     rate(pb, 4, '#bk-rate-1')
     pb.click('#bk-1 .bk-ph >> nth=1')
     pb.fill('[data-bk-name="0"]', '照片夜市')
@@ -1386,6 +1393,18 @@ with sync_playwright() as p:
     rate(pb, 3.5, '#bk-rate-0')
     check('bulk: typing a name and switching to travel keeps the name', pb.input_value('[data-bk-name="0"]') == '照片夜市' and pb.get_attribute('#bk-0 [data-action="bulk-mode"][data-v="travel"]', 'aria-pressed') == 'true')
     check('bulk: a photo can be left out', pb.get_attribute('#bk-1 .bk-ph >> nth=1', 'aria-pressed') == 'false' and pb.inner_text('#bk-save') == '保存 2')
+    rate(pb, 5, '#bk-rate-2')
+    check('bulk: a scored no-location group needs a place before it can be saved', pb.is_visible('#bk-need-2') and pb.inner_text('#bk-save') == '保存 2')
+    pb.fill('[data-bk-q="2"]', S1['name'])
+    pb.wait_for_function('document.querySelector("#bk-found-2 .chip")', timeout=5000)
+    found_b = pb.locator('#bk-found-2 .chip b').all_inner_texts()
+    check('bulk: searching finds the place by name, XueTuan places first', found_b and found_b[0] == S1['name'], found_b)
+    pb.click('#bk-found-2 .chip >> nth=0')
+    check('bulk: picking a search result makes it ready to save, input keeps its text', pb.get_attribute('#bk-found-2 .chip >> nth=0', 'aria-pressed') == 'true'
+          and not pb.is_visible('#bk-need-2') and pb.inner_text('#bk-save') == '保存 3' and pb.input_value('[data-bk-q="2"]') == S1['name'])
+    pb.click('#bk-2 [data-action="bulk-mode"][data-v="travel"]')
+    check('bulk: food / travel can be switched by hand, the picked place stays', pb.get_attribute('#bk-2 [data-action="bulk-mode"][data-v="travel"]', 'aria-pressed') == 'true'
+          and pb.get_attribute('#bk-found-2 .chip >> nth=0', 'aria-pressed') == 'true' and pb.input_value('[data-bk-q="2"]') == S1['name'])
     gb = pb.evaluate('(() => { const c = document.querySelector(".bk-card").getBoundingClientRect(), s = document.querySelector("#bk-save").getBoundingClientRect(); return [document.documentElement.scrollWidth <= innerWidth, c.right <= innerWidth, s.right <= innerWidth, document.querySelector("#panel").dataset.snap]; })()')
     check('bulk: fits the phone, opens as a full panel', gb == [True, True, True, 'full'], gb)
     pb.screenshot(path=os.path.join(SHOTS, '14-bulk.png'))
@@ -1393,14 +1412,17 @@ with sync_playwright() as p:
     check('bulk: leaving with scores asks first', '还没保存' in pb.inner_text('#modal'))
     pb.click('[data-modal="no"]'); pb.wait_for_timeout(150)
     pb.click('#bk-save')
-    pb.wait_for_function('document.querySelector("#toast") && document.querySelector("#toast").textContent.indexOf("存进足迹 2 个") !== -1', timeout=8000)
+    pb.wait_for_function('document.querySelector("#toast") && document.querySelector("#toast").textContent.indexOf("存进足迹 3 个") !== -1', timeout=8000)
     pb.wait_for_timeout(200)
-    stb = pb.evaluate('''(() => { const d = JSON.parse(localStorage.getItem("xmum-chiwan-map:data:v1")), me = d.profile.id;
+    stb = pb.evaluate('''(s1name) => { const d = JSON.parse(localStorage.getItem("xmum-chiwan-map:data:v1")), me = d.profile.id;
       const mine = d.reviews.filter(r => r.authorId === me && !r.sample), np = d.places.find(p => p.name === "照片夜市");
-      return { mine: mine.map(r => [r.placeId, r.rating, r.photos.length, r.visibility, r.createdAt]), np: np && [np.mode, Math.round(np.lat * 100) / 100, np.lng], t1: new Date("2026-09-01T12:00:00").getTime(), t2: new Date("2026-09-02T19:00:00").getTime() }; })()''')
-    want_b = sorted([[S0['id'], 4, 1, 'private', stb['t1']], [None, 3.5, 1, 'private', stb['t2']]], key=lambda r: r[1])
+      return { mine: mine.map(r => [r.placeId, r.rating, r.photos.length, r.visibility, r.createdAt]), np: np && [np.mode, Math.round(np.lat * 100) / 100, np.lng],
+        s1: d.places.filter(p => p.name === s1name).map(p => p.mode).sort(),
+        t1: new Date("2026-09-01T12:00:00").getTime(), t2: new Date("2026-09-02T19:00:00").getTime(), t3: new Date("2026-08-30T12:00:00").getTime() }; }''', S1['name'])
+    want_b = sorted([[S0['id'], 4, 1, 'private', stb['t1']], [None, 3.5, 1, 'private', stb['t2']], [None, 5, 2, 'private', stb['t3']]], key=lambda r: r[1])
     got_b = sorted([[r[0] if r[0] == S0['id'] else None] + r[1:] for r in stb['mine']], key=lambda r: r[1])
     check('bulk: saved as private records with the photos, dated when they were taken', got_b == want_b and stb['np'] and stb['np'][0] == 'travel' and stb['np'][1] == 3.15, stb)
+    check('bulk: switched to travel by hand, so it is saved as a travel place of its own', stb['s1'] == ['food', 'travel'], stb['s1'])
     check('bulk: after saving you land on footprints', pb.get_attribute('#tabbar [data-tab="foot"]', 'aria-current') == 'page' and pb.locator('.bk-card').count() == 0)
     check('bulk: no page errors', not errorsb, errorsb)
     ctxb.close()
