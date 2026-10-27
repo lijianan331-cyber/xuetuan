@@ -341,8 +341,7 @@ body.picking .attrib { bottom: calc(env(safe-area-inset-bottom, 0px) + 122px); }
 }
 .score-big { font-size: 24px; }
 .cat-ic { flex: none; font-style: normal; font-size: 14px; line-height: 1; }
-/* 探索的地点列表：和标题隔开一点，收起时不露出第一行的字 */
-.view-head + .near-list, .sample-note + .near-list { margin-top: 6px; }
+.explore-hint { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
 .near-item > .cat-ic { width: 20px; text-align: center; font-size: 16px; }
 .f-label .legend { margin-left: 8px; }
 .legend {
@@ -656,7 +655,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
   };
   var STYLE_ORDER = ['light', 'color', 'dark'];
   var PRICE_STEPS = [0, 15, 30, 50];
-  var APP_LAYERS = ['pt-area', 'cl-halo', 'cl-circle', 'cl-count', 'pt-sel', 'pt-pin', 'pt-photo', 'pt-label', 'me-halo', 'me-dot'];
+  var APP_LAYERS = ['pt-area', 'cl-halo', 'cl-circle', 'cl-count', 'pt-pin', 'pt-photo', 'pt-label', 'me-halo', 'me-dot'];
   /* 地图最多按 2 倍画（提速），图钉图片也画 2 倍就够 */
   var DPR = Math.min(window.devicePixelRatio || 1, 2);
   /* 每张照片多存一张小图：列表、地图图钉用它，省流量；地点页和看大图用原图 */
@@ -787,7 +786,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       feedFoodAll: '大家最近在吃', feedTravelAll: '大家最近去了', feedFoodMine: '我吃过的', feedTravelMine: '我去过的', feedBothMine: '我的足迹',
       mine_food: '美食', mine_travel: '旅行', mine_both: '合并', savedAll: '全部', savedWant: '还没去过', mineShow: '显示', subBeen: '去过', subSaved: '收藏', savedShow: '收藏里', filterCat: '分类',
       modeToTravel: '切换到旅行地图', modeToFood: '切换到美食地图', litCountries: '点亮国家', litN: '已去 {n} 国', worldFail: '国家边界没加载出来，等下再试',
-      feedSavedFood: '想去吃的', feedSavedTravel: '想去的地方', placesFoodAll: '大家吃过的店', placesTravelAll: '大家去过的地方', reviewsN: '{n} 条点评',
+      feedSavedFood: '想去吃的', feedSavedTravel: '想去的地方', placesFoodAll: '探索美食', placesTravelAll: '探索旅行', exploreHint: '点地图上的图钉看大家的评价；大家最近在吃什么在“社区”。',
       emptySaved: '还没收藏过，地点页点“收藏”就会出现在这里。', emptyWant: '收藏的地方都去过了。', goExplore: '去探索',
       wish: '收藏', wished: '已收藏', wishAdded: '收藏了，在“我的地图 · 收藏”里能找到', wishRemoved: '取消收藏了',
       emptyFoodAll: '这片还没人写过。',
@@ -877,7 +876,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       feedFoodAll: 'What people are eating', feedTravelAll: 'Where people went', feedFoodMine: 'Places I’ve eaten', feedTravelMine: 'Places I’ve been', feedBothMine: 'My footprints',
       mine_food: 'Food', mine_travel: 'Travel', mine_both: 'Both', savedAll: 'All', savedWant: 'Not been yet', mineShow: 'Show', subBeen: 'Been', subSaved: 'Saved', savedShow: 'Saved places', filterCat: 'Category',
       modeToTravel: 'Switch to the travel map', modeToFood: 'Switch to the food map', litCountries: 'Countries', litN: '{n} visited', worldFail: 'Couldn’t load country borders. Try again later.',
-      feedSavedFood: 'Food spots I saved', feedSavedTravel: 'Places I saved', placesFoodAll: 'Places people ate at', placesTravelAll: 'Places people went', reviewsN: '{n} reviews',
+      feedSavedFood: 'Food spots I saved', feedSavedTravel: 'Places I saved', placesFoodAll: 'Explore food', placesTravelAll: 'Explore travel', exploreHint: 'Tap a pin to see what people said. Recent reviews are under Community.',
       emptySaved: 'Nothing saved yet. Tap “Save” on a place to keep it here.', emptyWant: 'You’ve been to every place you saved.', goExplore: 'Explore',
       wish: 'Save', wished: 'Saved', wishAdded: 'Saved. Find it under My map · Saved', wishRemoved: 'Removed from saved',
       emptyFoodAll: 'Nobody has written about this area yet.',
@@ -2123,6 +2122,11 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     return e;
   }
   /* 照片图钉大小：刚出来时和图钉差不多大，放大一级到正常大小，再放大一级大一点。打开的那家再大一圈 */
+  /* 普通图钉的大小；正在看的那家大一圈（像谷歌地图那样，不再在针下面画圈，用户 2026-10-27） */
+  function pinSize(selId) {
+    function at(v) { return !selId ? v : ['case', ['==', ['get', 'id'], selId], Math.round(v * 1300) / 1000, v]; }
+    return ['interpolate', ['linear'], ['zoom'], 2, at(0.66), 12, at(0.85)];
+  }
   function photoPinSize(selId) {
     var e = ['interpolate', ['linear'], ['zoom']];
     for (var z = 7; z <= 17; z++) {
@@ -2368,14 +2372,10 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       }
     });
     map.addLayer({
-      id: 'pt-sel', type: 'circle', source: 'places', filter: ['==', ['get', 'id'], '__none__'],
-      paint: { 'circle-radius': 13, 'circle-color': accent, 'circle-opacity': whenPhoto(0, 0.25), 'circle-stroke-color': accent, 'circle-stroke-width': 2, 'circle-stroke-opacity': whenPhoto(0, 1), 'circle-pitch-alignment': 'map' }
-    });
-    map.addLayer({
       id: 'pt-pin', type: 'symbol', source: 'places', filter: ['!', ['has', 'point_count']],
       layout: {
         'icon-image': ['get', 'icon'], 'icon-anchor': 'bottom', 'icon-allow-overlap': true, 'icon-ignore-placement': true,
-        'symbol-sort-key': pinSortKey(null), 'icon-size': ['interpolate', ['linear'], ['zoom'], 2, 0.66, 12, 0.85]
+        'symbol-sort-key': pinSortKey(null), 'icon-size': pinSize(null)
       },
       paint: { 'icon-opacity': whenPhoto(0, 1) }
     });
@@ -2406,8 +2406,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
   function repaintAccent() {
     if (!map || !map.getLayer('cl-circle')) return;
     var a = accentColor();
-    ['cl-circle', 'cl-halo', 'pt-sel'].forEach(function (id) { try { map.setPaintProperty(id, 'circle-color', a); } catch (e) { /* ignore */ } });
-    try { map.setPaintProperty('pt-sel', 'circle-stroke-color', a); } catch (e) { /* ignore */ }
+    ['cl-circle', 'cl-halo'].forEach(function (id) { try { map.setPaintProperty(id, 'circle-color', a); } catch (e) { /* ignore */ } });
   }
   /* 红针只给还没人记录过的地方用（搜索结果预览、正在第一次记录的新地点）。
      雪团里已经有的地点一律用自己的图钉，不再插红针（用户 2026-10-26） */
@@ -2432,13 +2431,12 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
   }
   var selDrawn = null;
   function updateSelection(force) {
-    if (!map || !map.getLayer('pt-sel')) return;
+    if (!map || !map.getLayer('pt-pin')) return;
     var id = state.view === 'place' && state.placeId ? state.placeId : null;
     if (id === selDrawn && !force) return;
     selDrawn = id;
-    /* 选中圆圈在照片出来时会淡掉（不然会从照片下面露出半个） */
-    map.setFilter('pt-sel', ['==', ['get', 'id'], id || '__none__']);
     map.setLayoutProperty('pt-pin', 'symbol-sort-key', pinSortKey(id));
+    map.setLayoutProperty('pt-pin', 'icon-size', pinSize(id));
     map.setLayoutProperty('pt-photo', 'symbol-sort-key', pinSortKey(id));
     map.setLayoutProperty('pt-photo', 'icon-size', photoPinSize(id));
   }
@@ -2509,7 +2507,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     if (poi) { openBasePoi(poi); return; }
     if (state.view === 'preview' && state.preview && state.preview.fromMap) { state.preview = null; goFeed('peek'); return; }
     if (isMobile() && state.snap !== 'peek' && (state.view === 'feed' || state.view === 'place')) {
-      if (state.view === 'place') goFeed('peek'); else setSnap('peek');
+      if (state.view === 'place') goFeed('peek'); else setSnap(feedSnapNow('peek'));
     }
   }
 
@@ -2701,7 +2699,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     if (snap === 'peek' && isMobile()) view.scrollTop = 0;
     state.snap = snap;
     panel.dataset.snap = snap;
-    if (state.view === 'feed' && snap !== 'hidden') state.feedSnap = snap;
+    if (state.view === 'feed' && snap !== 'hidden' && !exploreHome()) state.feedSnap = snap;
     applySnap();
   }
   function applySnap() {
@@ -3095,22 +3093,9 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       .filter(function (p) { return p && p.mode === state.mode && visibleToMe(p) && !(state.savedWant && beenThere(p)) && passesFilters(p); });
   }
 
-  /* 探索的列表：每个地点一行，平均分高的在前 */
-  function explorePlaces() {
-    var withStats = placesInView().map(function (p) { return { p: p, s: stats(p) }; });
-    withStats.sort(function (a, b) {
-      return (b.s.score == null ? -1 : b.s.score) - (a.s.score == null ? -1 : a.s.score) || b.s.count - a.s.count;
-    });
-    return withStats.slice(0, 80);
-  }
-  function explorePlaceHTML(x) {
-    var p = x.p, s = x.s;
-    var sub = esc(catName(catOf(p))) + ' · ' + esc(t('reviewsN', { n: s.count })) + (p.mode === 'food' ? ' · ' + esc(t('distFrom', { d: fmtDist(haversine(XMUM, p)) })) : '');
-    return placeRowHTML(p, 'open-place', sub, s.score != null ? scoreHTML(s.score) : '<span class="near-cta muted">' + esc(t('noRating')) + '</span>');
-  }
   function renderFeed() {
     var saved = state.scope === 'saved', places = state.scope === 'all' && !state.community;
-    var items = saved ? savedPlaces() : places ? explorePlaces() : feedReviews();
+    var items = saved ? savedPlaces() : places ? placesInView() : feedReviews();
     var key = {
       food: { all: 'feedFoodAll', mine: 'feedFoodMine', saved: 'feedSavedFood' },
       travel: { all: 'feedTravelAll', mine: 'feedTravelMine', saved: 'feedSavedTravel' }
@@ -3126,7 +3111,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     }
     if (!items.length) h += emptyHTML();
     else if (saved) h += '<ul class="near-list">' + items.map(savedItemHTML).join('') + '</ul>';
-    else if (places) h += '<ul class="near-list">' + items.map(explorePlaceHTML).join('') + '</ul>';
+    else if (places) h += '<p class="explore-hint">' + esc(t('exploreHint')) + '</p>';
     else h += '<ul class="feed">' + items.map(feedItemHTML).join('') + '</ul>';
     view.innerHTML = h;
   }
@@ -3871,10 +3856,17 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
   }
 
   /* ================= navigation ================= */
+  /* 探索在手机上只有地图，不放列表（用户 2026-10-27）：回到探索首页时面板整个收起 */
+  function exploreHome() { return state.view === 'feed' && state.scope === 'all' && !state.community; }
+  function feedSnapNow(snap) {
+    if (exploreHome() && isMobile()) return 'hidden';
+    snap = snap || state.feedSnap;
+    return snap && snap !== 'hidden' ? snap : 'peek';
+  }
   function goFeed(snap) {
     state.view = 'feed'; state.placeId = null; state.form = null; state.nearby = null;
     render();
-    setSnap(snap || state.feedSnap || 'peek');
+    setSnap(feedSnapNow(snap));
     updateSelection();
   }
   function openPlace(id, opts) {
@@ -3996,7 +3988,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     endPick();
     if (ctx && ctx.repick && state.form) { state.view = 'form'; render(); setSnap('full'); return; }
     if (ctx && ctx.home) { state.view = 'home'; render(); setSnap('full'); return; }
-    setSnap(state.view === 'feed' ? (state.feedSnap || 'peek') : state.view === 'place' ? 'half' : 'full');
+    setSnap(state.view === 'feed' ? feedSnapNow() : state.view === 'place' ? 'half' : 'full');
   }
   function confirmPick() {
     var loc = pickLngLat(), z = map.getZoom(), ctx = state.picking || {};
@@ -4338,9 +4330,11 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
         else { state.scope = 'all'; state.community = d.scope === 'community'; }
         renderFilters(); refreshMap();
         /* 社区直接拉满看点评；离开社区时面板回到进社区之前的高度，露出地图 */
+        var pre = state.preCommunitySnap;
+        if (wasCommunity && !(state.scope === 'all' && state.community)) state.feedSnap = pre === 'peek' || pre === 'half' ? pre : 'half';
         if (a === 'scope' && state.community && state.scope === 'all') goFeed('full');
-        else if (a === 'scope' && wasCommunity) goFeed(!state.preCommunitySnap || state.preCommunitySnap === 'full' ? 'half' : state.preCommunitySnap);
         else if (state.view === 'place' && scopedReviews(state.placeId).length) render();
+        else if (a === 'scope' && state.view === 'feed') goFeed();
         else if (state.view === 'feed') render();
         else goFeed(state.snap === 'peek' ? 'half' : null);
         break;
@@ -4502,7 +4496,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     applyStaticI18n();
     renderChrome();
     render();
-    setSnap('peek');
+    setSnap(feedSnapNow('peek'));
     initMap();
   });
 })();

@@ -73,6 +73,8 @@ def rate(pg, v, sel='.stars-input'):
     pg.wait_for_timeout(150)
 def stars_val(pg, sel='#f-rating'):
     return pg.get_attribute(sel, 'aria-valuenow')
+def community(pg):
+    pg.click('#tabbar [data-scope="community"]'); pg.wait_for_timeout(300)
 def add(pg):
     # 加一笔只在我的地图上（地图右下角蓝色 +）：不在我的地图就先切过去
     if 'scope-my' not in (pg.get_attribute('html', 'class') or ''):
@@ -196,7 +198,7 @@ with sync_playwright() as p:
         countFont: m.layers.find(l => l.id === 'cl-count').layout['text-font'],
         labelFont: m.layers.find(l => l.id === 'pt-label').layout['text-font'],
         intro: m.calls.filter(c => c[0] === 'move').length } }''')
-    check('app layers added', st['layers'] == ['pt-area', 'cl-halo', 'cl-circle', 'cl-count', 'home-pin', 'pt-sel', 'pt-pin', 'pt-photo', 'pt-label', 'me-halo', 'me-dot'], st['layers'])
+    check('app layers added', st['layers'] == ['pt-area', 'cl-halo', 'cl-circle', 'cl-count', 'home-pin', 'pt-pin', 'pt-photo', 'pt-label', 'me-halo', 'me-dot'], st['layers'])
     check('parsed sample rows', len(SAMPLE_ROWS) >= 60 and len(FOOD_S) >= 30, len(SAMPLE_ROWS))
     want_imgs = len({(x['cat'], 'none' if x['rating'] is None else x['rating'] * 10) for x in FOOD_S})
     check('pin images drawn on demand (one per category + score bucket)', st['images'] == want_imgs, (st['images'], want_imgs))
@@ -211,26 +213,14 @@ with sync_playwright() as p:
     ctl = page.evaluate('(() => { const c = document.querySelector("#map-ctrls").getBoundingClientRect(); return [c.top < 40, c.right <= innerWidth]; })()')
     check('map buttons sit in the top right corner', ctl == [True, True], ctl)
     check('switch button is coloured, not plain white', page.evaluate('getComputedStyle(document.querySelector(".mode-btn")).backgroundImage').startswith('linear-gradient'))
-    # 面板和底部栏：不管面板拉到哪，面板都接着底部栏，底部栏贴着屏幕底边；视口变高变矮也一样
-    GEO = '(() => { const p = document.querySelector("#panel").getBoundingClientRect(), t = document.querySelector("#tabbar").getBoundingClientRect(); return [Math.round(p.bottom) >= Math.round(t.top), Math.round(t.bottom) === innerHeight, document.documentElement.scrollHeight <= innerHeight]; })()'
-    geo = page.evaluate(GEO)
-    check('peek: sheet sits on the tab bar, tab bar on the screen edge', geo == [True, True, True], geo)
-    for hh in (700, 900, 844):
-        page.set_viewport_size({'width': 390, 'height': hh})
-        page.wait_for_timeout(250)
-        geo = page.evaluate(GEO)
-        check('viewport %d tall: no gap under the sheet, tab bar at the bottom' % hh, geo == [True, True, True], geo)
     check('globe projection', st['proj'] == {'type': 'globe'}, st['proj'])
     check('labels patched to Chinese', 'name:zh' in json.dumps(st['label']), st['label'])
     check('shield labels untouched', st['shield'] == '{ref}', st['shield'])
     check('fonts picked from style', st['countFont'] == ['Noto Sans Bold'] and st['labelFont'] == ['Noto Sans Regular'], (st['countFont'], st['labelFont']))
     check('food mode shows all sample food places', st['feats'] == len(FOOD_S), (st['feats'], len(FOOD_S)))
     check('intro flight to campus', st['intro'] >= 1, st['intro'])
-    feed_n = page.locator('.near-list .near-item').count()
-    check('explore lists each food sample place once', feed_n == min(80, len(FOOD_S)) and page.inner_text('.view-title') == '大家吃过的店', (feed_n, page.inner_text('.view-title')))
-    check('explore places carry their scores', page.locator('.near-item .score').count() == len([x for x in FOOD_S if x['rating'] is not None]))
-    sc_ex = [float(x) for x in page.locator('.near-item .score').all_inner_texts()]
-    check('explore places: best score first', sc_ex == sorted(sc_ex, reverse=True), sc_ex)
+    exp0 = page.evaluate('(() => { const p = document.querySelector("#panel").getBoundingClientRect(), t = document.querySelector("#tabbar").getBoundingClientRect(); return [document.querySelector("#panel").dataset.snap, Math.round(p.top) >= Math.round(t.top)]; })()')
+    check('explore on a phone is just the map: no list, sheet tucked away', exp0 == ['hidden', True], exp0)
     tabs0 = page.locator('#tabbar .tab').all_inner_texts()
     check('tab bar: explore / community / my map / me, no + in it', tabs0 == ['探索', '社区', '我的地图', '我'] and page.locator('#tabbar #fab').count() == 0, tabs0)
     check('no add button on explore', not page.locator('#fab').is_visible())
@@ -240,13 +230,30 @@ with sync_playwright() as p:
     page.click('#tabbar [data-scope="mine"]'); page.wait_for_timeout(300)
     check('my map: the + add button shows', page.locator('#fab').is_visible() and page.get_attribute('#fab', 'aria-label') == '加一家店')
     page.click('#tabbar [data-scope="all"]'); page.wait_for_timeout(300)
-    check('back to explore: sheet as low as before, places again', page.get_attribute('#panel', 'data-snap') == 'peek' and page.locator('.near-list').count() == 1)
+    check('back to explore: map only again', page.get_attribute('#panel', 'data-snap') == 'hidden')
+    page.evaluate('''window.__qrf = [{layer: {id: "poi_r1"}, properties: {name: "Kedai Teroka", class: "restaurant", subclass: "restaurant"}, geometry: {type: "Point", coordinates: [101.71, 2.84]}}]''')
+    page.evaluate('window.__map.fire("click", {point: {x: 200, y: 300}, lngLat: {lng: 101.71, lat: 2.84}})'); page.wait_for_timeout(300)
+    snap_card = page.get_attribute('#panel', 'data-snap')
+    page.click('[data-action="back"]'); page.wait_for_timeout(300)
+    page.evaluate('window.__qrf = null')
+    check('explore: a tapped place opens a card, back tucks the sheet away again', snap_card == 'half' and page.get_attribute('#panel', 'data-snap') == 'hidden', snap_card)
+    page.click('#tabbar [data-scope="community"]'); page.wait_for_timeout(400)
+    # 面板和底部栏：不管面板拉到哪，面板都接着底部栏，底部栏贴着屏幕底边；视口变高变矮也一样
+    GEO = '(() => { const p = document.querySelector("#panel").getBoundingClientRect(), t = document.querySelector("#tabbar").getBoundingClientRect(); return [Math.round(p.bottom) >= Math.round(t.top), Math.round(t.bottom) === innerHeight, document.documentElement.scrollHeight <= innerHeight]; })()'
+    geo = page.evaluate(GEO)
+    check('peek: sheet sits on the tab bar, tab bar on the screen edge', geo == [True, True, True], geo)
+    for hh in (700, 900, 844):
+        page.set_viewport_size({'width': 390, 'height': hh})
+        page.wait_for_timeout(500)
+        geo = page.evaluate(GEO)
+        check('viewport %d tall: no gap under the sheet, tab bar at the bottom' % hh, geo == [True, True, True], geo)
     check('no add hint bubble any more', page.locator('#fab-hint, .fab-hint').count() == 0)
     ov = page.evaluate('document.documentElement.scrollWidth <= document.documentElement.clientWidth')
     check('no horizontal overflow (mobile)', ov)
     page.screenshot(path=os.path.join(SHOTS, '01-mobile-peek.png'))
 
-    # travel mode
+    # travel mode（面板拉满时右上角按钮藏起来，先放下一半）
+    page.click('.title-row .view-title'); page.wait_for_timeout(400)
     set_mode(page, 'travel')
     check('travel map shows the food icon to switch back', page.get_attribute('[data-action="toggle-mode"]', 'aria-label') == '切换到美食地图')
     tf = page.evaluate('window.__map.getSource("places").data.features.length')
@@ -254,10 +261,8 @@ with sync_playwright() as p:
     check('accent repainted', page.evaluate('window.__map.layers.find(l=>l.id==="cl-circle").paint["circle-color"]').lower() == '#4f63d8', page.evaluate('window.__map.layers.find(l=>l.id==="cl-circle").paint["circle-color"]'))
     check('add button label follows the mode', page.get_attribute('#fab', 'aria-label') == '打卡一个地方', page.get_attribute('#fab', 'aria-label'))
     # expand sheet by tapping title
-    page.click('.title-row .view-title')
-    page.wait_for_timeout(400)
-    check('sheet expands to half', page.get_attribute('#panel', 'data-snap') == 'half')
-    vis = page.evaluate('''(() => { const body = document.querySelector('.panel-body'); body.scrollTop = body.scrollHeight; const r = document.querySelector('.near-list li:last-child').getBoundingClientRect(); return r.bottom <= document.querySelector('#tabbar').getBoundingClientRect().top + 1; })()''')
+    check('community sheet: tapping the title brings it to half', page.get_attribute('#panel', 'data-snap') == 'half')
+    vis = page.evaluate('''(() => { const body = document.querySelector('.panel-body'); body.scrollTop = body.scrollHeight; const r = document.querySelector('.feed li:last-child').getBoundingClientRect(); return r.bottom <= document.querySelector('#tabbar').getBoundingClientRect().top + 1; })()''')
     check('last feed item reachable in half sheet', vis)
     page.screenshot(path=os.path.join(SHOTS, '02-mobile-travel-half.png'))
     # 像谷歌地图那样直接拖内容：列表滚到中间时往下拖是滚列表；在最上面往下拖是收面板，收起后往上拖是拉开
@@ -282,19 +287,20 @@ with sync_playwright() as p:
     g0 = page.evaluate('(() => { const r = document.querySelector("#grip").getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; })()')
     page.mouse.move(g0[0], g0[1]); page.mouse.down(); page.mouse.move(g0[0], g0[1] + 200, steps=6); page.mouse.move(g0[0], 830, steps=6); page.mouse.up()
     page.wait_for_timeout(450)
-    pk = page.evaluate('(() => { const t = document.querySelector(".title-row").getBoundingClientRect(), tb = document.querySelector("#tabbar").getBoundingClientRect(), it = document.querySelector(".near-item .near-text").getBoundingClientRect(); return [document.querySelector("#panel").dataset.snap, document.querySelector(".panel-body").scrollTop, t.bottom <= tb.top, it.top >= tb.top]; })()')
+    pk = page.evaluate('(() => { const t = document.querySelector(".title-row").getBoundingClientRect(), tb = document.querySelector("#tabbar").getBoundingClientRect(), it = document.querySelector(".feed-item .fi-main").getBoundingClientRect(); return [document.querySelector("#panel").dataset.snap, document.querySelector(".panel-body").scrollTop, t.bottom <= tb.top, it.top >= tb.top]; })()')
     check('collapsed sheet shows its title, not half a list', pk == ['peek', 0, True, True], pk)
     page.click('.title-row .view-title')
     page.wait_for_timeout(400)
 
     # open a sample place
-    page.locator('.near-item', has_text='金门大桥').click()
+    page.locator('.feed-item', has_text='金门大桥').click()
     page.wait_for_timeout(300)
     check('place view title', page.inner_text('.place-head h2') == '金门大桥', page.inner_text('.place-head h2') if page.locator('.place-head h2').count() else 'none')
     check('far place offers google view only', page.locator('a.btn', has_text='在 Google 地图看').count() == 1 and page.locator('a.btn', has_text='Waze').count() == 0)
-    sel = page.evaluate('window.__map.layers.find(l=>l.id==="pt-sel").filter')
-    check('selection ring on the opened place', sel == ['==', ['get', 'id'], 's-golden-gate'], sel)
-    check('existing place: no red pin, just its own pin + ring', page.locator('#map .sel-pin').count() == 0)
+    pin_l = page.evaluate('window.__map.layers.find(l=>l.id==="pt-pin").layout')
+    check('opened place: its pin a size bigger, no ring under it', abs(map_expr(pin_l['icon-size'], 14, {'id': 's-golden-gate'}) - 1.105) < 0.01 and abs(map_expr(pin_l['icon-size'], 14, {'id': 'x'}) - 0.85) < 0.01
+          and page.evaluate('!window.__map.layers.some(l => l.type === "circle" && l.source === "places" && l.id !== "pt-area" && !l.id.startsWith("cl-"))'), pin_l['icon-size'])
+    check('existing place: no red pin, just its own pin', page.locator('#map .sel-pin').count() == 0)
     check('place I have not recorded offers five stars right on its page', page.locator('[data-commit="place-score"]').count() == 1 and '去过？打个分' in page.inner_text('.quick-rate'))
     page.screenshot(path=os.path.join(SHOTS, '03-mobile-place.png'))
     rate(page, 5, '[data-commit="place-score"]')
@@ -306,7 +312,7 @@ with sync_playwright() as p:
     check('back from that form returns to the place', page.locator('.place-head h2').count() == 1 and page.inner_text('.place-head h2') == '金门大桥')
     page.click('[data-action="back"]')
     page.wait_for_timeout(200)
-    check('back to feed', page.locator('.near-list').count() == 1)
+    check('back to feed', page.locator('.feed').count() == 1)
     check('red pin removed on the feed', page.locator('#map .sel-pin').count() == 0)
 
     # back to food, add a place at XMUM
@@ -396,7 +402,7 @@ with sync_playwright() as p:
     img = page.evaluate('window.__map.images[%s.pic]' % PIN)
     check('no red pin covering the photo pin on its own page', page.locator('#map .sel-pin').count() == 0)
     check('place with a photo gets a photo pin (frame in the score colour) and keeps its plain pin', mine_pin['photo'] is True and mine_pin['pic'].endswith('-40') and mine_pin['icon'] == 'pin-food-malay-40' and img == {'w': 112, 'h': 132, 'pr': 2}, (mine_pin, img))
-    lays = page.evaluate('Object.fromEntries(window.__map.layers.filter(l => l.id === "pt-pin" || l.id === "pt-photo" || l.id === "pt-sel").map(l => [l.id, l]))')
+    lays = page.evaluate('Object.fromEntries(window.__map.layers.filter(l => l.id === "pt-pin" || l.id === "pt-photo").map(l => [l.id, l]))')
     pid = mine_pin['id']
     ph_props = {'id': pid, 'photo': True, 'precision': 'exact'}
     ph_op, pin_op, ph_size = lays['pt-photo']['paint']['icon-opacity'], lays['pt-pin']['paint']['icon-opacity'], lays['pt-photo']['layout']['icon-size']
@@ -409,7 +415,6 @@ with sync_playwright() as p:
     check('places without photos keep their pin at every zoom', all(map_expr(pin_op, z, {'photo': False, 'precision': 'exact'}) == 1 for z in (3, 12, 15.5, 18)))
     check('opened photo pin drawn on top and a size bigger', lays['pt-photo']['layout']['symbol-sort-key'][1] == ['==', ['get', 'id'], pid] and lays['pt-photo']['layout']['symbol-sort-key'][2] == 2
           and abs(map_expr(ph_size, 16, ph_props) - 1.2) < 0.01 and abs(map_expr(ph_size, 16, dict(ph_props, id='x')) - 1.0) < 0.01, lays['pt-photo']['layout'])
-    check('selection ring fades out under the photo', map_expr(lays['pt-sel']['paint']['circle-stroke-opacity'], 16, ph_props) == 0 and map_expr(lays['pt-sel']['paint']['circle-stroke-opacity'], 13, ph_props) == 1)
     page.evaluate('window.__map.jumpTo({zoom: 12})')
     page.wait_for_timeout(200)
     check('zoomed out on its page: still no red pin', page.locator('#map .sel-pin').count() == 0)
@@ -540,11 +545,10 @@ with sync_playwright() as p:
     page.click('[data-action="del-review"]')
     page.click('[data-modal="yes"]')
     page.wait_for_timeout(400)
-    page.click('[data-action="scope"][data-scope="all"]')
-    page.wait_for_timeout(200)
+    community(page)
 
     # wishlist
-    page.locator('.near-item', has_text='亚罗街').click()
+    page.locator('.feed-item', has_text='亚罗街').click()
     page.wait_for_timeout(200)
     page.click('[data-action="toggle-save"]')
     page.wait_for_timeout(200)
@@ -608,7 +612,9 @@ with sync_playwright() as p:
     page.click('[data-action="sheet-close"]')
     page.wait_for_timeout(100)
     check('filter button shows 1 active filter', not page.locator('#bsheet').is_visible() and page.inner_text('[data-action="filters"]').endswith('1'), page.inner_text('[data-action="filters"]'))
-    check('feed follows distance filter', page.locator('.near-list .near-item').count() == len(want_mid), page.locator('.near-list .near-item').count())
+    community(page)
+    check('community follows distance filter', page.locator('.feed-item').count() == len(want_mid), page.locator('.feed-item').count())
+    page.click('#tabbar [data-scope="all"]'); page.wait_for_timeout(300)
     page.click('[data-action="filters"]')
     page.click('#bsheet [data-action="clear-filters"]')
     page.click('#bsheet', position={'x': 10, 'y': 10})
@@ -805,7 +811,7 @@ with sync_playwright() as p:
     st2 = page.evaluate('({setStyle: window.__map.calls.filter(c=>c[0]==="setStyle").length, layers: window.__map.layers.map(l=>l.id).length, images: Object.keys(window.__map.images).length, proj: window.__map.projection})')
     st2['icons'] = page.evaluate('[...new Set(window.__map.getSource("places").data.features.concat(window.__map.getSource("homes").data.features).flatMap(f => [f.properties.icon, f.properties.pic]).filter(Boolean))].sort()')
     st2['imageIds'] = page.evaluate('Object.keys(window.__map.images).sort()')
-    check('base map switch re-adds layers + images', st2['setStyle'] == 1 and st2['layers'] == 11 and st2['icons'] == st2['imageIds'] and st2['proj'] == {'type': 'globe'}, st2)
+    check('base map switch re-adds layers + images', st2['setStyle'] == 1 and st2['layers'] == 10 and st2['icons'] == st2['imageIds'] and st2['proj'] == {'type': 'globe'}, st2)
     page.click('[data-action="back"]')
     set_mode(page, 'food')
 
@@ -814,7 +820,7 @@ with sync_playwright() as p:
     page.click('[data-action="set-lang"][data-lang="en"]')
     page.click('[data-action="scope"][data-scope="all"]')
     page.wait_for_timeout(200)
-    check('UI in English', page.inner_text('.view-title') == 'Places people ate at', page.inner_text('.view-title'))
+    check('UI in English', page.inner_text('.view-title') == 'Explore food', page.inner_text('.view-title'))
     lab = page.evaluate('window.__map.style.layers.find(l => l.id === "place-city").layout["text-field"]')
     check('map labels English', 'name:en' in json.dumps(lab), lab)
     names = page.evaluate('window.__map.getSource("places").data.features.map(f => f.properties.name)')
@@ -849,7 +855,8 @@ with sync_playwright() as p:
     page.wait_for_timeout(500)
     check('after reload: own places still on map', page.evaluate('window.__map.getSource("places").data.features.length') == 2)
     check('no sample re-seed after clearing', page.locator('.sample-note').count() == 0)
-    page.locator('.near-item', has_text='测试椰浆饭').first.click()
+    community(page)
+    page.locator('.feed-item', has_text='测试椰浆饭').first.click()
     page.wait_for_function('[...document.querySelectorAll(".ph img")].some(i => i.src.startsWith("blob:") && i.naturalWidth > 0)', timeout=5000)
     check('photo restored from IndexedDB', True)
 
@@ -977,7 +984,8 @@ with sync_playwright() as p:
     st3 = page2.evaluate('JSON.parse(localStorage.getItem("xmum-chiwan-map:data:v1"))')
     check('import merges places and adopts profile', any(p_['name'] == '测试椰浆饭' for p_ in st3['places']) and st3['profile']['name'] == '小测', (len(st3['places']), st3['profile']))
     page2.click('[data-action="back"]')
-    page2.locator('.near-item', has_text='测试椰浆饭').first.click()
+    community(page2)
+    page2.locator('.feed-item', has_text='测试椰浆饭').first.click()
     page2.wait_for_function('[...document.querySelectorAll(".ph img")].some(i => i.src.startsWith("blob:") && i.naturalWidth > 0)', timeout=5000)
     check('imported photo displays', True)
     page2.screenshot(path=os.path.join(SHOTS, '10-desktop-place.png'))
@@ -997,7 +1005,8 @@ with sync_playwright() as p:
     page5.wait_for_timeout(300)
     st5 = page5.evaluate('JSON.parse(localStorage.getItem("xmum-chiwan-map:data:v1"))')
     check('v1 data migrated (0 -> not rated)', st5['version'] == 2 and [r['rating'] for r in st5['reviews']] == [None, 3] and st5['wishlist'] == [], st5)
-    page5.locator('.near-item').first.click()
+    community(page5)
+    page5.locator('.feed-item').first.click()
     page5.wait_for_timeout(200)
     check('migrated average ignores unrated', page5.inner_text('.score-big') == '3', page5.inner_text('.stats'))
     ctx5.close()
@@ -1335,7 +1344,8 @@ with sync_playwright() as p:
     page6.click('[data-action="back"]')
     page6.click('[data-action="scope"][data-scope="all"]')
     page6.wait_for_timeout(200)
-    page6.locator('.near-item', has_text='B 的公开店').click()
+    community(page6)
+    page6.locator('.feed-item', has_text='B 的公开店').click()
     page6.wait_for_timeout(200)
     page6.click('[data-action="toggle-save"]')
     page6.wait_for_timeout(200)
@@ -1347,7 +1357,8 @@ with sync_playwright() as p:
 
     # 编辑自己的记录（换照片），再删掉：地点跟着删，照片也删
     page6.click('[data-action="back"]')
-    page6.locator('.near-item', has_text='线上测试店').click()
+    community(page6)
+    page6.locator('.feed-item', has_text='线上测试店').click()
     page6.wait_for_timeout(200)
     page6.click('[data-action="edit-review"]')
     page6.wait_for_timeout(200)
