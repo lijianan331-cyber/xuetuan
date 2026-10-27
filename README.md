@@ -2,7 +2,7 @@
 
 以厦门大学马来西亚分校（XMUM）为起点的社区吃喝玩乐地图：记录自己去过的地方，打分、拍照、写点评，公开的部分合并到公共地图上。
 
-- 需求文档：[`docs/PRD.md`](docs/PRD.md)
+- 需求文档：[`docs/PRD-V2.md`](docs/PRD-V2.md)（V2.0，现在的方向），[`docs/PRD.md`](docs/PRD.md)（V1.0）
 - 改进方案和步骤：[`docs/PLAN.md`](docs/PLAN.md)
 
 ## 运行
