@@ -1236,6 +1236,12 @@ with sync_playwright() as p:
     pg.evaluate('(() => { const e = new Event("gmp-select"); e.place = document.querySelector("gmp-place-search").places[0]; document.querySelector("gmp-place-search").dispatchEvent(e); })()')
     pg.wait_for_timeout(400)
     check('google: picking a place already in XueTuan opens it', pg.locator('#g-detail').count() == 0 and 'Katsu Lab Bell' in pg.inner_text('#view'), pg.inner_text('#view')[:100])
+    check('google basemap trial: off unless the address asks for it', pg.locator('#map .gmap').count() == 0 and pg.evaluate('!document.documentElement.classList.contains("gmap-on") && window.__map.interactive !== false'))
+    # 谷歌底图试用（&map=google）：谷歌地图起不来就回到原来的地图
+    pg2 = ctxg.new_page()
+    pg2.goto(APP + '?map=google')
+    pg2.wait_for_function('!/map=google/.test(location.href) && window.__map && window.__map.getSource("places")', timeout=10000)
+    check('google basemap trial: falls back to our own map when Google can’t start', pg2.locator('#map .gmap').count() == 0 and pg2.evaluate('window.__map.getStyle().layers.length > 10'))
     ctxg.close()
     # 谷歌加载不了（本地文件、密钥不让用）：这一块不出，原来的搜索照常
     ctxn = browser.new_context(viewport={'width': 392, 'height': 709})
