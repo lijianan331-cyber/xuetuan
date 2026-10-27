@@ -1455,7 +1455,7 @@ with sync_playwright() as p:
     check('remote: wishlist row removed', page6.evaluate('window.__sb.db.wishlist.length') == 0)
     check('remote: cannot edit someone else’s review', page6.locator('[data-action="edit-review"]').count() == 0)
 
-    # 还不在雪团的店先收藏：一个地点（没有记录）+ 想去；取消后再收藏，还是用这个地点
+    # 还不在雪团的店先收藏：一个地点（没有记录）+ 想去；取消收藏后没人记录也没人想去，地点就删掉
     def kafe_search():
         tab(page6, 'explore'); page6.click('#map-ctrls [data-action="search"]'); page6.fill('#q', 'kafe')
         page6.wait_for_selector('[data-action="osm-pick"]', timeout=5000); page6.wait_for_timeout(150)
@@ -1467,18 +1467,20 @@ with sync_playwright() as p:
     kd = [p_ for p_ in db6['places'] if p_['name'] == 'Kafe Ujian Dekat']
     check('remote: saving an unrecorded place writes a place (no visit) + a wishlist row', len(kd) == 1 and kd[0]['created_by'] == A and kd[0]['osm'] == 'ovt/aaa'
           and [w['place_id'] for w in db6['wishlist']] == [kd[0]['id']] and not any(v['place_id'] == kd[0]['id'] for v in db6['visits']) and page6.locator('.place-empty').count() == 1, (kd, db6['wishlist']))
-    page6.click('[data-action="toggle-save"]'); page6.wait_for_timeout(300)
-    page6.click('[data-action="back"]'); page6.wait_for_timeout(200)
+    page6.click('[data-action="toggle-save"]'); page6.wait_for_timeout(400)
+    db6 = page6.evaluate('window.__sb.db')
+    check('remote: unsaving a place nobody recorded removes it', not any(p_['name'] == 'Kafe Ujian Dekat' for p_ in db6['places']) and not db6['wishlist']
+          and page6.locator('.place-head').count() == 0, db6['wishlist'])
     kafe_search()
     row6 = page6.locator('[data-action="osm-pick"]', has_text='Kafe Ujian Dekat').inner_text()
     page6.locator('[data-action="osm-pick"]', has_text='Kafe Ujian Dekat').click(); page6.wait_for_timeout(300)
-    page6.click('[data-action="toggle-save"]'); page6.wait_for_timeout(300)
+    page6.click('[data-action="save-preview"]'); page6.wait_for_timeout(400)
     db6 = page6.evaluate('window.__sb.db')
-    check('remote: saving it again reuses the same place', '已在雪团' in row6 and len([p_ for p_ in db6['places'] if p_['name'] == 'Kafe Ujian Dekat']) == 1 and len(db6['wishlist']) == 1, (row6, db6['wishlist']))
-    page6.click('[data-action="toggle-save"]'); page6.wait_for_timeout(300)
+    check('remote: it can be saved again from search', '已在雪团' not in row6 and len([p_ for p_ in db6['places'] if p_['name'] == 'Kafe Ujian Dekat']) == 1 and len(db6['wishlist']) == 1
+          and page6.locator('[data-action="toggle-save"][aria-pressed="true"]').count() == 1, (row6, db6['wishlist']))
+    page6.click('[data-action="toggle-save"]'); page6.wait_for_timeout(400)
 
     # 编辑自己的记录（换照片），再删掉：地点跟着删，照片也删
-    page6.click('[data-action="back"]')
     via_home(page6, '线上测试店')
     page6.wait_for_timeout(200)
     page6.click('[data-action="edit-review"]')
@@ -1527,7 +1529,26 @@ with sync_playwright() as p:
     check('remote: local entries uploaded (samples skipped, wishlist kept)', len(up) == 1 and up[0]['created_by'] == A and not any(p_['name'] == '示例' for p_ in db6['places']) and len(db6['wishlist']) == 1 and db6['wishlist'][0]['place_id'] == up[0]['id'], (up, db6['wishlist']))
     check('remote: upload toast', '上传了 1 个地点' in page6.inner_text('#toast'), page6.inner_text('#toast'))
 
+    # 别人删掉最后一条记录，我收藏的地点还在（数据库触发器：还有人想去就不删）
+    via_home(page6, 'B 的公开店')
+    page6.click('[data-action="toggle-save"]'); page6.wait_for_timeout(300)
+    page6.evaluate('window.__sbLogin("%s", "b@example.com")' % B); page6.wait_for_timeout(400)
+    page6.evaluate('window.supabase.createClient().from("visits").delete().eq("id", "v-b-pub").then(() => {})'); page6.wait_for_timeout(200)
+    page6.evaluate('window.__sbLogin("%s", "a@example.com")' % A); page6.wait_for_timeout(600)
+    db6 = page6.evaluate('window.__sb.db')
+    check('remote: someone deleting the last record keeps a place I saved', any(p_['id'] == 'p-b-pub' for p_ in db6['places']) and not any(v['place_id'] == 'p-b-pub' for v in db6['visits'])
+          and any(w['place_id'] == 'p-b-pub' and w['user_id'] == A for w in db6['wishlist']), db6['wishlist'])
+    tab(page6, 'foot')
+    page6.click('[data-action="mine-sub"][data-v="saved"]'); page6.wait_for_timeout(300)
+    check('remote: …and it is still in my wishlist', page6.locator('.near-item', has_text='B 的公开店').count() == 1, page6.inner_text('#view')[:200])
+    page6.locator('.near-item', has_text='B 的公开店').click(); page6.wait_for_timeout(300)
+    check('remote: …opening it says nobody has recorded it yet', page6.locator('.place-empty').count() == 1)
+    page6.click('[data-action="toggle-save"]'); page6.wait_for_timeout(400)
+    check('remote: the last unsave removes the empty place', not any(p_['id'] == 'p-b-pub' for p_ in page6.evaluate('window.__sb.db.places')))
+    check('remote: cannot save a place I cannot see', page6.evaluate('window.supabase.createClient().from("wishlist").insert({ user_id: "%s", place_id: "p-b-priv" }).then(r => !!r.error)' % A))
+
     # 退出登录
+    tab(page6, 'me')
     page6.click('[data-action="logout"]')
     page6.wait_for_timeout(400)
     check('remote: logout clears my private data', '已退出登录' in page6.inner_text('#toast') and page6.locator('[data-action="login"]').count() == 1, page6.inner_text('#toast'))

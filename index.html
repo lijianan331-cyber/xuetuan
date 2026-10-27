@@ -1575,7 +1575,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
           });
         });
       },
-      /* 删最后一条记录时数据库会顺带删地点；删完查一下地点还在不在（或者我还看不看得见） */
+      /* 删最后一条记录、又没人想去时，数据库会顺带删地点；删完查一下地点还在不在（或者我还看不看得见） */
       deleteReview: function (id) {
         var r = find(cache.reviews, id);
         if (!r) return Promise.reject(new Error('missing'));
@@ -1598,8 +1598,13 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
           : client.from('wishlist').delete().eq('place_id', placeId).eq('user_id', uidNow());
         return needLogin() || q.then(ok).then(function () {
           cache.wishlist = cache.wishlist.filter(function (w) { return w.placeId !== placeId; });
-          if (saved) cache.wishlist.push({ placeId: placeId, createdAt: Date.now() });
-          return saved;
+          if (saved) { cache.wishlist.push({ placeId: placeId, createdAt: Date.now() }); return saved; }
+          /* 没人记录、也没人想去的地点，数据库会顺带删掉；查一下还在不在 */
+          if (cache.reviews.some(function (r) { return r.placeId === placeId; })) return saved;
+          return client.from('places').select('id').eq('id', placeId).then(ok).then(function (rows) {
+            if (!rows.length) cache.places = cache.places.filter(function (p) { return p.id !== placeId; });
+            return saved;
+          });
         });
       },
       setHome: function (h) {
@@ -4509,7 +4514,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     store.setSaved(placeId, on).then(function () {
       toast(t(on ? 'wishAdded' : 'wishRemoved'));
       refreshMap();
-      render();
+      if (placeById(placeId)) render(); else goFeed();
     });
   }
 
