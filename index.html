@@ -775,7 +775,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
   };
   var STYLE_ORDER = ['light', 'color', 'dark'];
   var PRICE_STEPS = [0, 15, 30, 50];
-  var APP_LAYERS = ['pt-area', 'cl-halo', 'cl-circle', 'cl-count', 'pt-pin', 'pt-photo', 'pt-label', 'me-halo', 'me-dot'];
+  var APP_LAYERS = ['cl-halo', 'cl-circle', 'cl-count', 'pt-pin', 'pt-photo', 'pt-label', 'me-halo', 'me-dot'];
   /* 地图最多按 2 倍画（提速），图钉图片也画 2 倍就够 */
   var DPR = Math.min(window.devicePixelRatio || 1, 2);
   /* 每张照片多存一张小图：列表、地图图钉用它，省流量；地点页和看大图用原图 */
@@ -2170,7 +2170,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       hoverBound = true;
       map.on('mousemove', function (e) {
         if (isMobile() || state.picking) return;
-        var ours = ['pt-photo', 'pt-pin', 'cl-circle', 'pt-area'].filter(function (id) { return map.getLayer(id); });
+        var ours = ['pt-photo', 'pt-pin', 'cl-circle'].filter(function (id) { return map.getLayer(id); });
         var hit = (ours.length && map.queryRenderedFeatures(e.point, { layers: ours }).length) || basePoiAt(e.point);
         map.getCanvas().style.cursor = hit ? 'pointer' : '';
       });
@@ -2259,11 +2259,11 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
 
   /* 有照片的地点放大地图后显示成照片图钉，外框颜色仍然按评分。
      照片要先读出来画成小方块：只读地图上看得到、快放大到位的，最多同时读 3 张 */
-  var PIN_PHOTO = 44;
-  /* 放大到多少级照片才出来：具体地点 15 级、片区 12 级、城市 8 级。
+  var PIN_PHOTO = 56;
+  /* 放大到多少级照片才出来：具体地点 13 级、片区 11 级、城市 8 级（用户 2026-10-27 嫌 15 级太晚、照片太小）。
      到了这一级照片从图钉大小长出来，再放大一级长到正常大小；缩小时照片慢慢缩回图钉大小，再换回普通图钉。
      都用整数级：地图只在整数级上计算这类样式，用半级会在 15 级那里突然变大变小 */
-  var PHOTO_ZOOM = { city: 8, area: 12, exact: 15 };
+  var PHOTO_ZOOM = { city: 8, area: 11, exact: 13 };
   function photoZoom(prec) { return PHOTO_ZOOM[prec] || PHOTO_ZOOM.exact; }
   /* 差一级就到了才去读照片，世界地图上不白白下载 */
   function photoWanted(p) { return !map || map.getZoom() >= photoZoom(p.precision) - 1; }
@@ -2290,7 +2290,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
   function photoPinSize(selId) {
     var e = ['interpolate', ['linear'], ['zoom']];
     for (var z = 7; z <= 17; z++) {
-      var v = byPrecision(function (pr) { var d = z - photoZoom(pr); return d <= 0 ? 0.55 : d === 1 ? 1 : 1.15; });
+      var v = byPrecision(function (pr) { var d = z - photoZoom(pr); return d <= 0 ? 0.6 : d === 1 ? 1 : 1.15; });
       e.push(z, !selId ? v : ['case', ['==', ['get', 'id'], selId], typeof v === 'number' ? Math.round(v * 1200) / 1000 : ['*', v, 1.2], v]);
     }
     return e;
@@ -2392,11 +2392,6 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     });
   }
 
-  function radiusAtZoom0(p) {
-    var meters = p.precision === 'city' ? 6000 : p.precision === 'area' ? 450 : 0;
-    return meters / (78271.517 * Math.cos(p.lat * Math.PI / 180));
-  }
-
   function placesInView() {
     return store.places().filter(function (p) { return inScope(p) && passesFilters(p); });
   }
@@ -2412,7 +2407,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
         return {
           type: 'Feature',
           geometry: { type: 'Point', coordinates: [p.lng, p.lat] },
-          properties: { id: p.id, name: placeTitle(p), icon: pinImage(p, s.score, saved), pic: ph || '', photo: !!ph, saved: saved, color: scoreColor(s.score), precision: p.precision, r0: radiusAtZoom0(p) }
+          properties: { id: p.id, name: placeTitle(p), icon: pinImage(p, s.score, saved), pic: ph || '', photo: !!ph, saved: saved, color: scoreColor(s.score), precision: p.precision }
         };
       })
     };
@@ -2493,23 +2488,10 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
   function addAppLayers() {
     var fonts = pickFonts();
     var accent = accentColor();
-    map.addSource('places', { type: 'geojson', data: placesGeoJSON(), cluster: true, clusterMaxZoom: 15, clusterRadius: 46 });
+    map.addSource('places', { type: 'geojson', data: placesGeoJSON(), cluster: true, clusterMaxZoom: 13, clusterRadius: 46 });
     map.addSource('me', { type: 'geojson', data: meFC() });
     map.addSource('homes', { type: 'geojson', data: homesFC(), cluster: true, clusterMaxZoom: 11, clusterRadius: 36 });
-    var isCity = ['==', ['get', 'precision'], 'city'];
-    map.addLayer({
-      id: 'pt-area', type: 'circle', source: 'places',
-      filter: ['all', ['!', ['has', 'point_count']], ['!=', ['get', 'precision'], 'exact']],
-      paint: {
-        'circle-radius': ['interpolate', ['exponential', 2], ['zoom'], 0, ['get', 'r0'], 16, ['*', ['get', 'r0'], 65536]],
-        'circle-color': ['get', 'color'],
-        'circle-opacity': ['interpolate', ['linear'], ['zoom'], 2, ['case', isCity, 0.2, 0.24], 11, ['case', isCity, 0.12, 0.22], 13, ['case', isCity, 0, 0.18], 17, ['case', isCity, 0, 0.1]],
-        'circle-stroke-color': ['get', 'color'],
-        'circle-stroke-width': 1.5,
-        'circle-stroke-opacity': ['interpolate', ['linear'], ['zoom'], 11, ['case', isCity, 0.6, 0.7], 13, ['case', isCity, 0, 0.7]],
-        'circle-pitch-alignment': 'map'
-      }
-    });
+    /* 城市、片区的地点不再画范围圈，和具体地点一样只有图钉（用户 2026-10-27） */
     map.addLayer({
       id: 'cl-halo', type: 'circle', source: 'places', filter: ['has', 'point_count'],
       paint: { 'circle-radius': ['step', ['get', 'point_count'], 22, 10, 26, 50, 31, 200, 37], 'circle-color': accent, 'circle-opacity': 0.2 }
@@ -2666,8 +2648,6 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     }
     var homes = map.getLayer('home-pin') ? map.queryRenderedFeatures([[e.point.x - 14, e.point.y - 14], [e.point.x + 14, e.point.y + 14]], { layers: ['home-pin'] }) : [];
     if (homes.length) { openHomesAt(homes); return; }
-    var area = map.getLayer('pt-area') ? map.queryRenderedFeatures(e.point, { layers: ['pt-area'] }) : [];
-    if (area.length && area[0].properties && area[0].properties.id) { openPlace(area[0].properties.id, { fly: false }); return; }
     /* 底图上自带的店名、景点名也能点：还不在雪团的先预览，打个分就能记进我的地图 */
     var poi = (state.view === 'feed' || state.view === 'place' || state.view === 'preview') && basePoiAt(e.point);
     if (poi) { openBasePoi(poi); return; }
@@ -3151,11 +3131,11 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     map.addSource('countries', { type: 'geojson', data: data });
     var fade = function (a) { return ['interpolate', ['linear'], ['zoom'], 3, a, 5.5, a * 0.8, 7, 0]; };
     map.addLayer({ id: 'ct-dim', type: 'fill', source: 'countries', maxzoom: 8, filter: ['==', ['get', 'v'], 0],
-      paint: { 'fill-color': '#0B1626', 'fill-opacity': fade(0.5) } }, 'pt-area');
+      paint: { 'fill-color': '#0B1626', 'fill-opacity': fade(0.5) } }, 'cl-halo');
     map.addLayer({ id: 'ct-lit', type: 'fill', source: 'countries', maxzoom: 8, filter: ['==', ['get', 'v'], 1],
-      paint: { 'fill-color': '#FFC23D', 'fill-opacity': fade(0.55) } }, 'pt-area');
+      paint: { 'fill-color': '#FFC23D', 'fill-opacity': fade(0.55) } }, 'cl-halo');
     map.addLayer({ id: 'ct-line', type: 'line', source: 'countries', maxzoom: 8, filter: ['==', ['get', 'v'], 1],
-      paint: { 'line-color': '#F29D00', 'line-width': 1.4, 'line-opacity': fade(0.9) } }, 'pt-area');
+      paint: { 'line-color': '#F29D00', 'line-width': 1.4, 'line-opacity': fade(0.9) } }, 'cl-halo');
   }
 
   /* ================= bottom sheets: 筛选、去哪儿看 ================= */
@@ -4253,10 +4233,12 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     repaintAccent();
     saveView();
     if (state.view === 'feed') render();
+    /* 换吃 / 玩时地图基本不动（用户 2026-10-27 嫌一换就飞到地球或一下放很大）：
+       玩时贴得太近就退到看得见整座城；吃时在看整个大洲以上，回到自己附近 */
     if (map && !opts.noFly) {
-      var z = map.getZoom(), c = map.getCenter();
-      if (mode === 'travel' && z > 6) flyTo([c.lng, c.lat], 3.2);
-      if (mode === 'food' && z < 9) flyTo([XMUM.lng, XMUM.lat], 14.5);
+      var z = map.getZoom();
+      if (mode === 'travel' && z > 11) map.easeTo({ zoom: 10, duration: reduceMotion ? 0 : 500, padding: mapPadding() });
+      if (mode === 'food' && z < 5) flyTo([(state.me || XMUM).lng, (state.me || XMUM).lat], 12);
     }
   }
 

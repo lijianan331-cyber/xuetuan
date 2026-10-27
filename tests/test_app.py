@@ -213,7 +213,7 @@ with sync_playwright() as p:
         countFont: m.layers.find(l => l.id === 'cl-count').layout['text-font'],
         labelFont: m.layers.find(l => l.id === 'pt-label').layout['text-font'],
         intro: m.calls.filter(c => c[0] === 'move').length } }''')
-    check('app layers added', st['layers'] == ['pt-area', 'cl-halo', 'cl-circle', 'cl-count', 'home-pin', 'pt-pin', 'pt-photo', 'pt-label', 'me-halo', 'me-dot'], st['layers'])
+    check('app layers added', st['layers'] == ['cl-halo', 'cl-circle', 'cl-count', 'home-pin', 'pt-pin', 'pt-photo', 'pt-label', 'me-halo', 'me-dot'], st['layers'])
     check('parsed sample rows', len(SAMPLE_ROWS) >= 60 and len(FOOD_S) >= 30, len(SAMPLE_ROWS))
     want_imgs = len({(x['cat'], 'none' if x['rating'] is None else x['rating'] * 10) for x in FOOD_S})
     check('pin images drawn on demand (one per category + score bucket)', st['images'] == want_imgs, (st['images'], want_imgs))
@@ -275,7 +275,10 @@ with sync_playwright() as p:
 
     # travel mode（探索地图上切换）
     tab(page, 'explore')
+    page.evaluate('window.__map.jumpTo({zoom: 14.5})')
     set_mode(page, 'travel')
+    mv = page.evaluate('window.__map.calls.filter(c => c[0] === "move").slice(-1)[0][1]')
+    check('switching to travel only steps back to city level, no jump to the globe', mv.get('zoom') == 10 and 'center' not in mv, mv)
     check('travel map shows the food icon to switch back', page.get_attribute('[data-action="toggle-mode"]', 'aria-label') == '切换到美食地图')
     tf = page.evaluate('window.__map.getSource("places").data.features.length')
     check('travel mode shows all travel samples', tf == len(TRAVEL_S), (tf, len(TRAVEL_S)))
@@ -292,7 +295,7 @@ with sync_playwright() as p:
     check('far place offers google view only', page.locator('a.btn', has_text='在 Google 地图看').count() == 1 and page.locator('a.btn', has_text='Waze').count() == 0)
     pin_l = page.evaluate('window.__map.layers.find(l=>l.id==="pt-pin").layout')
     check('opened place: its pin a size bigger, no ring under it', abs(map_expr(pin_l['icon-size'], 14, {'id': 's-golden-gate'}) - 1.105) < 0.01 and abs(map_expr(pin_l['icon-size'], 14, {'id': 'x'}) - 0.85) < 0.01
-          and page.evaluate('!window.__map.layers.some(l => l.type === "circle" && l.source === "places" && l.id !== "pt-area" && !l.id.startsWith("cl-"))'), pin_l['icon-size'])
+          and page.evaluate('!window.__map.layers.some(l => l.type === "circle" && l.source === "places" && !l.id.startsWith("cl-"))'), pin_l['icon-size'])
     check('existing place: no red pin, just its own pin', page.locator('#map .sel-pin').count() == 0)
     check('place I have not recorded offers five stars right on its page', page.locator('[data-commit="place-score"]').count() == 1 and '去过？打个分' in page.inner_text('.quick-rate'))
     page.screenshot(path=os.path.join(SHOTS, '03-mobile-place.png'))
@@ -394,20 +397,20 @@ with sync_playwright() as p:
     mine_pin = page.evaluate(PIN)
     img = page.evaluate('window.__map.images[%s.pic]' % PIN)
     check('no red pin covering the photo pin on its own page', page.locator('#map .sel-pin').count() == 0)
-    check('place with a photo gets a photo pin (frame in the score colour) and keeps its plain pin', mine_pin['photo'] is True and mine_pin['pic'].endswith('-40') and mine_pin['icon'] == 'pin-food-malay-40' and img == {'w': 112, 'h': 132, 'pr': 2}, (mine_pin, img))
+    check('place with a photo gets a photo pin (frame in the score colour) and keeps its plain pin', mine_pin['photo'] is True and mine_pin['pic'].endswith('-40') and mine_pin['icon'] == 'pin-food-malay-40' and img == {'w': 136, 'h': 156, 'pr': 2}, (mine_pin, img))
     lays = page.evaluate('Object.fromEntries(window.__map.layers.filter(l => l.id === "pt-pin" || l.id === "pt-photo").map(l => [l.id, l]))')
     pid = mine_pin['id']
     ph_props = {'id': pid, 'photo': True, 'precision': 'exact'}
     ph_op, pin_op, ph_size = lays['pt-photo']['paint']['icon-opacity'], lays['pt-pin']['paint']['icon-opacity'], lays['pt-photo']['layout']['icon-size']
-    check('photo pins only when zoomed in: plain pin below 15, photo from 15', map_expr(ph_op, 14.9, ph_props) == 0 and map_expr(pin_op, 14.9, ph_props) == 1
-          and map_expr(ph_op, 15, ph_props) == 1 and map_expr(pin_op, 15, ph_props) == 0, [map_expr(x, z, ph_props) for x in (ph_op, pin_op) for z in (14.9, 15)])
-    sizes = [round(map_expr(ph_size, z, dict(ph_props, id='x')), 3) for z in (15, 15.5, 16, 17)]
-    check('zooming out shrinks the photo step by step to pin size before it turns into the pin', sizes == [0.55, 0.775, 1.0, 1.15], sizes)
-    check('area / city photos show from district / city zoom', map_expr(ph_op, 11.9, {'photo': True, 'precision': 'area'}) == 0 and map_expr(ph_op, 12, {'photo': True, 'precision': 'area'}) == 1
+    check('photo pins once zoomed in a bit: plain pin below 13, photo from 13', map_expr(ph_op, 12.9, ph_props) == 0 and map_expr(pin_op, 12.9, ph_props) == 1
+          and map_expr(ph_op, 13, ph_props) == 1 and map_expr(pin_op, 13, ph_props) == 0, [map_expr(x, z, ph_props) for x in (ph_op, pin_op) for z in (12.9, 13)])
+    sizes = [round(map_expr(ph_size, z, dict(ph_props, id='x')), 3) for z in (13, 13.5, 14, 15)]
+    check('zooming out shrinks the photo step by step to pin size before it turns into the pin', sizes == [0.6, 0.8, 1.0, 1.15], sizes)
+    check('area / city photos show from district / city zoom', map_expr(ph_op, 10.9, {'photo': True, 'precision': 'area'}) == 0 and map_expr(ph_op, 11, {'photo': True, 'precision': 'area'}) == 1
           and map_expr(ph_op, 7.9, {'photo': True, 'precision': 'city'}) == 0 and map_expr(ph_op, 8, {'photo': True, 'precision': 'city'}) == 1)
     check('places without photos keep their pin at every zoom', all(map_expr(pin_op, z, {'photo': False, 'precision': 'exact'}) == 1 for z in (3, 12, 15.5, 18)))
     check('opened photo pin drawn on top and a size bigger', lays['pt-photo']['layout']['symbol-sort-key'][1] == ['==', ['get', 'id'], pid] and lays['pt-photo']['layout']['symbol-sort-key'][2] == 2
-          and abs(map_expr(ph_size, 16, ph_props) - 1.2) < 0.01 and abs(map_expr(ph_size, 16, dict(ph_props, id='x')) - 1.0) < 0.01, lays['pt-photo']['layout'])
+          and abs(map_expr(ph_size, 14, ph_props) - 1.2) < 0.01 and abs(map_expr(ph_size, 14, dict(ph_props, id='x')) - 1.0) < 0.01, lays['pt-photo']['layout'])
     page.evaluate('window.__map.jumpTo({zoom: 12})')
     page.wait_for_timeout(200)
     check('zoomed out on its page: still no red pin', page.locator('#map .sel-pin').count() == 0)
@@ -799,7 +802,7 @@ with sync_playwright() as p:
     st2 = page.evaluate('({setStyle: window.__map.calls.filter(c=>c[0]==="setStyle").length, layers: window.__map.layers.map(l=>l.id).length, images: Object.keys(window.__map.images).length, proj: window.__map.projection})')
     st2['icons'] = page.evaluate('[...new Set(window.__map.getSource("places").data.features.concat(window.__map.getSource("homes").data.features).flatMap(f => [f.properties.icon, f.properties.pic]).filter(Boolean))].sort()')
     st2['imageIds'] = page.evaluate('Object.keys(window.__map.images).sort()')
-    check('base map switch re-adds layers + images', st2['setStyle'] == 1 and st2['layers'] == 10 and st2['icons'] == st2['imageIds'] and st2['proj'] == {'type': 'globe'}, st2)
+    check('base map switch re-adds layers + images', st2['setStyle'] == 1 and st2['layers'] == 9 and st2['icons'] == st2['imageIds'] and st2['proj'] == {'type': 'globe'}, st2)
     tab(page, 'explore')
     set_mode(page, 'food')
 
