@@ -7,6 +7,7 @@ import os
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 APP = 'file://' + os.path.join(ROOT, 'index.html')
 STUB = open(os.path.join(SCR, 'stub_maplibre.js'), encoding='utf-8').read()
+STUB_SB = open(os.path.join(SCR, 'stub_supabase.js'), encoding='utf-8').read()
 SHOTS = os.path.join(SCR, 'shots')
 os.makedirs(SHOTS, exist_ok=True)
 
@@ -29,9 +30,11 @@ def check(name, cond, extra=''):
     results.append((name, bool(cond), extra))
     print(('PASS ' if cond else 'FAIL ') + name + ('' if cond else '  -> ' + str(extra)))
 
-def route_all(ctx):
+def route_all(ctx, supabase=False):
     def handler(route):
         url = route.request.url
+        if supabase and '@supabase/supabase-js' in url:
+            return route.fulfill(status=200, body=STUB_SB, headers={'Content-Type': 'application/javascript', 'Access-Control-Allow-Origin': '*'})
         if 'maplibre-gl.js' in url:
             return route.fulfill(status=200, body=STUB, headers={'Content-Type': 'application/javascript', 'Access-Control-Allow-Origin': '*'})
         if 'maplibre-gl.css' in url or 'fonts.googleapis.com' in url:
@@ -492,6 +495,129 @@ with sync_playwright() as p:
     check('mode switch has room on 360px phone', tb[0] >= 140 and tb[1], tb)
     page4.screenshot(path=os.path.join(SHOTS, '12-mobile-360.png'))
     ctx4.close()
+
+    # ---------- 线上版（假的 Supabase） ----------
+    A, B = 'aaaaaaaa-0000-4000-8000-00000000000a', 'bbbbbbbb-0000-4000-8000-00000000000b'
+    sb_seed = {
+        'profiles': [{'id': B, 'name': '小B', 'country': '马来西亚', 'region': '', 'city': 'Klang', 'district': ''}],
+        'places': [
+            {'id': 'p-b-pub', 'mode': 'food', 'cat': 'cn', 'precision': 'exact', 'lat': 2.8335, 'lng': 101.7035, 'name': 'B 的公开店', 'alt_name': '', 'link': '', 'osm': '', 'created_by': B, 'created_at': '2026-10-01T00:00:00Z'},
+            {'id': 'p-b-priv', 'mode': 'food', 'cat': 'cn', 'precision': 'exact', 'lat': 2.8400, 'lng': 101.7100, 'name': 'B 的私密店', 'alt_name': '', 'link': '', 'osm': '', 'created_by': B, 'created_at': '2026-10-01T00:00:00Z'}],
+        'visits': [
+            {'id': 'v-b-pub', 'place_id': 'p-b-pub', 'user_id': B, 'rating': 5, 'price': '12.00', 'text': '好吃', 'photos': [], 'visibility': 'public', 'created_at': '2026-10-02T00:00:00Z'},
+            {'id': 'v-b-priv', 'place_id': 'p-b-priv', 'user_id': B, 'rating': 1, 'price': None, 'text': '秘密', 'photos': [], 'visibility': 'private', 'created_at': '2026-10-02T00:00:00Z'}]
+    }
+    ctx6 = browser.new_context(viewport={'width': 390, 'height': 844}, device_scale_factor=2, has_touch=True, accept_downloads=True)
+    route_all(ctx6, supabase=True)
+    ctx6.add_init_script('window.__sbSeed = ' + json.dumps(sb_seed) + ';')
+    # 这台设备上有本地版留下的旧记录
+    old_local = {'version': 2, 'seeded': True, 'profile': {'id': 'u-local', 'name': '本地'}, 'areas': [], 'wishlist': [{'placeId': 'p-old', 'createdAt': 1}],
+                 'places': [{'id': 'p-old', 'mode': 'travel', 'cat': 'city', 'precision': 'city', 'lat': 5.41, 'lng': 100.33, 'name': '槟城', 'altName': 'Penang', 'link': '', 'osm': '', 'createdBy': 'u-local', 'createdAt': 1, 'sample': False},
+                            {'id': 's-x', 'mode': 'food', 'cat': 'cn', 'precision': 'exact', 'lat': 3.1, 'lng': 101.7, 'name': '示例', 'altName': '', 'link': '', 'createdBy': 'sample', 'createdAt': 1, 'sample': True}],
+                 'reviews': [{'id': 'r-old', 'placeId': 'p-old', 'authorId': 'u-local', 'rating': 4, 'price': None, 'text': '壁画好看', 'photos': [], 'visibility': 'public', 'createdAt': 1},
+                             {'id': 'r-s', 'placeId': 's-x', 'authorId': 'sample', 'rating': None, 'price': None, 'text': '', 'photos': [], 'visibility': 'public', 'createdAt': 1, 'sample': True}]}
+    ctx6.add_init_script('if (!localStorage.getItem("xmum-chiwan-map:data:v1")) localStorage.setItem("xmum-chiwan-map:data:v1", ' + json.dumps(json.dumps(old_local)) + ');')
+    page6 = ctx6.new_page()
+    errors6 = []
+    page6.on('pageerror', lambda e: errors6.append('pageerror: ' + str(e)))
+    page6.goto(APP)
+    page6.wait_for_function('window.__map && window.__map.getSource("places")', timeout=8000)
+    page6.wait_for_timeout(400)
+    names6 = page6.evaluate('window.__map.getSource("places").data.features.map(f => f.properties.name)')
+    check('remote: uses Supabase with publishable key', page6.evaluate('window.__sb.key').startswith('sb_publishable_'))
+    check('remote: logged out sees public places only, no samples', names6 == ['B 的公开店'], names6)
+    check('remote: other people’s profile shown on review', page6.locator('.feed-item', has_text='小B').count() == 1 and page6.locator('.feed-item', has_text='来自 Klang').count() == 1)
+    (page6.click('#fab') if page6.locator('#fab').is_visible() else page6.click('.title-add'))
+    page6.wait_for_timeout(200)
+    check('remote: adding while logged out asks to log in', page6.locator('#login-form').count() == 1 and not page6.locator('#pick').is_visible())
+    page6.fill('#login-email', 'not-an-email')
+    page6.click('#login-send')
+    check('remote: bad email rejected', page6.get_attribute('#login-email', 'aria-invalid') == 'true')
+    page6.fill('#login-email', 'a@example.com')
+    page6.click('#login-send')
+    page6.wait_for_timeout(200)
+    otp = page6.evaluate('window.__sb.calls.filter(c => c[0] === "otp")')
+    check('remote: email login link requested', len(otp) == 1 and otp[0][1] == 'a@example.com' and otp[0][2].endswith('index.html'), otp)
+    page6.click('[data-action="login-google"]')
+    check('remote: google login requested', page6.evaluate('window.__sb.calls.some(c => c[0] === "oauth" && c[1] === "google")'))
+    page6.evaluate('window.__sbLogin("%s", "a@example.com")' % A)
+    page6.wait_for_timeout(300)
+    check('remote: login returns to feed with toast', page6.locator('.feed').count() == 1 and '登录了' in page6.inner_text('#toast'), page6.inner_text('#toast'))
+
+    # 登录后加一家店（带照片）
+    page6.evaluate('window.__map.center = {lng: 101.75, lat: 2.95}; window.__map.zoom = 17;')
+    (page6.click('#fab') if page6.locator('#fab').is_visible() else page6.click('.title-add'))
+    page6.click('[data-action="add-pin"]')
+    page6.click('[data-action="pick-confirm"]')
+    page6.wait_for_timeout(200)
+    page6.fill('#f-nick', '小A')
+    page6.fill('#f-name', '线上测试店')
+    page6.click('[data-action="f-cat"][data-cat="cafe"]')
+    page6.click('.score-input .sc[data-n="3"]')
+    page6.set_input_files('#f-file', photo)
+    page6.wait_for_function('document.querySelectorAll("#f-photos .ph-edit").length === 1', timeout=8000)
+    page6.click('#f-submit')
+    page6.wait_for_timeout(800)
+    db6 = page6.evaluate('window.__sb.db')
+    mine6 = [p_ for p_ in db6['places'] if p_['name'] == '线上测试店']
+    v6 = [v for v in db6['visits'] if v['user_id'] == A]
+    check('remote: place + visit written to Supabase', len(mine6) == 1 and mine6[0]['created_by'] == A and mine6[0]['cat'] == 'cafe' and len(v6) == 1 and v6[0]['rating'] == 3, (mine6, v6))
+    files6 = page6.evaluate('Object.keys(window.__sb.files)')
+    check('remote: photo uploaded to my folder', len(files6) == 1 and files6[0].startswith(A + '/') and v6 and v6[0]['photos'] == files6, (files6, v6))
+    check('remote: nickname saved to profile', [p_['name'] for p_ in db6['profiles'] if p_['id'] == A] == ['小A'], db6['profiles'])
+    check('remote: place view after publish', page6.inner_text('.place-head h2') == '线上测试店')
+    page6.wait_for_function('[...document.querySelectorAll(".ph img")].some(i => i.src.startsWith("blob:") && i.naturalWidth > 0)', timeout=5000)
+    check('remote: uploaded photo shows right away', True)
+
+    # 收藏别人的店
+    page6.click('[data-action="back"]')
+    page6.locator('.feed-item', has_text='B 的公开店').click()
+    page6.wait_for_timeout(200)
+    page6.click('[data-action="toggle-save"]')
+    page6.wait_for_timeout(200)
+    check('remote: wishlist row written', page6.evaluate('window.__sb.db.wishlist.length') == 1 and page6.evaluate('window.__sb.db.wishlist[0].user_id') == A)
+    page6.click('[data-action="toggle-save"]')
+    page6.wait_for_timeout(200)
+    check('remote: wishlist row removed', page6.evaluate('window.__sb.db.wishlist.length') == 0)
+    check('remote: cannot edit someone else’s review', page6.locator('[data-action="edit-review"]').count() == 0)
+
+    # 编辑自己的记录（换照片），再删掉：地点跟着删，照片也删
+    page6.click('[data-action="back"]')
+    page6.locator('.feed-item', has_text='线上测试店').click()
+    page6.wait_for_timeout(200)
+    page6.click('[data-action="edit-review"]')
+    page6.wait_for_timeout(200)
+    page6.click('.score-input .sc[data-n="0"]')
+    page6.click('[data-action="f-photo-del"]')
+    page6.click('#f-submit')
+    page6.wait_for_timeout(500)
+    v6 = page6.evaluate('window.__sb.db.visits.filter(v => v.user_id === "%s")' % A)
+    check('remote: edit saved, removed photo deleted from storage', v6[0]['rating'] == 0 and v6[0]['photos'] == [] and page6.evaluate('Object.keys(window.__sb.files).length') == 0, v6)
+    page6.click('[data-action="del-review"]')
+    page6.click('[data-modal="yes"]')
+    page6.wait_for_timeout(500)
+    db6 = page6.evaluate('window.__sb.db')
+    check('remote: deleting last visit removes the place', not any(p_['name'] == '线上测试店' for p_ in db6['places']) and page6.locator('.feed').count() == 1)
+
+    # 把本地旧记录传上去
+    page6.click('[data-action="profile"]')
+    page6.wait_for_timeout(200)
+    check('remote: profile shows account', 'a@example.com' in page6.inner_text('.account-row'))
+    page6.click('[data-action="upload-local"]')
+    page6.click('[data-modal="yes"]')
+    page6.wait_for_timeout(800)
+    db6 = page6.evaluate('window.__sb.db')
+    up = [p_ for p_ in db6['places'] if p_['name'] == '槟城']
+    check('remote: local entries uploaded (samples skipped, wishlist kept)', len(up) == 1 and up[0]['created_by'] == A and not any(p_['name'] == '示例' for p_ in db6['places']) and len(db6['wishlist']) == 1 and db6['wishlist'][0]['place_id'] == up[0]['id'], (up, db6['wishlist']))
+    check('remote: upload toast', '上传了 1 个地点' in page6.inner_text('#toast'), page6.inner_text('#toast'))
+
+    # 退出登录
+    page6.click('[data-action="logout"]')
+    page6.wait_for_timeout(400)
+    check('remote: logout clears my private data', '已退出登录' in page6.inner_text('#toast') and page6.locator('[data-action="login"]').count() == 1, page6.inner_text('#toast'))
+    check('remote: no page errors', not errors6, errors6)
+    page6.screenshot(path=os.path.join(SHOTS, '13-remote-profile.png'))
+    ctx6.close()
 
     browser.close()
 

@@ -392,6 +392,9 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
 .rv-actions { display: flex; gap: 16px; }
 .search-results .sec-title { margin: 16px 0 2px; }
 .search-results .sec-title:first-child { margin-top: 4px; }
+.or-line { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 12.5px; }
+.or-line::before, .or-line::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+.account-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 14px; overflow-wrap: anywhere; }
 .add-search { display: flex; gap: 8px; }
 .add-search .input { flex: 1; min-width: 0; }
 .add-search .add-pin { flex: none; height: 46px; padding: 0 12px; }
@@ -543,6 +546,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
 <noscript><p style="padding:24px">这个页面需要开启 JavaScript。</p></noscript>
 
 <script src="https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.3/dist/umd/supabase.js"></script>
 <script>
 (function () {
   'use strict';
@@ -553,6 +557,10 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
   /* 存储的键名沿用改名前的，改了会读不到已经存下的数据 */
   var LS_DATA = 'xmum-chiwan-map:data:v1';
   var LS_VIEW = 'xmum-chiwan-map:view:v1';
+  var LS_AREAS = 'xuetuan:areas';
+  /* Supabase 的地址和 publishable key 本来就是公开的，放在前端没问题；权限靠数据库的 RLS 规则 */
+  var SUPABASE_URL = 'https://pshxrwfjcbvqlixdxlzs.supabase.co';
+  var SUPABASE_KEY = 'sb_publishable_BhsWKzuwXJG2de1mg7kMkg_wL2Koj6C';
   var BACKUP_APP = 'xuetuan';
   var BACKUP_APPS = ['xuetuan', 'xmum-chiwan-map'];
   var STYLE_URLS = {
@@ -677,6 +685,13 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       you: '我', anon: '某同学', fromPrefix: '来自 ',
       del: '删除', delReviewQ: '删除这条点评？', delOk: '删除', deleted: '已删除',
       edit: '编辑', saveEdit: '保存修改', updated: '改好了',
+      login: '登录', loginTitle: '登录雪团', loginWhy: '浏览不用登录。加地点、写点评、收藏要先登录。',
+      loginGoogle: '用 Google 登录', loginOr: '或者用邮箱', loginEmailPh: '你的邮箱', loginSend: '发登录链接',
+      loginSent: '登录链接发到 {e} 了，去邮箱点一下就行。', loginFail: '没成功：{m}', loginFirst: '先登录一下',
+      loggedIn: '登录了', loggedOut: '已退出登录', logout: '退出登录', account: '账号', signedInAs: '已登录：{e}',
+      remoteNote: '记录存在雪团的服务器上，换手机也在。公开的大家都能看到，私密的只有你自己能看到。',
+      uploadLocal: '上传这台设备上的旧记录', uploadLocalQ: '把这个浏览器里以前存的记录（不含示例）上传到你的账号？', uploadLocalOk: '上传',
+      uploadedLocal: '上传了 {n} 个地点', loadFail: '数据没加载出来，检查网络后刷新页面。',
       profile: '我的资料', hometown: '来自哪', country: '国家 / 地区', region: '省 / 州', city: '城市', district: '区 / 县',
       countryPh: '中国、马来西亚、哈萨克斯坦…', regionPh: '广东、Selangor…', cityPh: '深圳、Klang…', districtPh: '南山、Sepang…',
       language: '语言', basemap: '底图', styleLight: '简洁', styleColor: '彩色', styleDark: '深色',
@@ -747,6 +762,13 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       you: 'Me', anon: 'A student', fromPrefix: 'from ',
       del: 'Delete', delReviewQ: 'Delete this review?', delOk: 'Delete', deleted: 'Deleted',
       edit: 'Edit', saveEdit: 'Save changes', updated: 'Updated',
+      login: 'Log in', loginTitle: 'Log in to XueTuan', loginWhy: 'Browsing is open to everyone. Log in to add places, write reviews and save spots.',
+      loginGoogle: 'Continue with Google', loginOr: 'or use your email', loginEmailPh: 'Your email', loginSend: 'Email me a login link',
+      loginSent: 'Login link sent to {e}. Open it to log in.', loginFail: 'That didn’t work: {m}', loginFirst: 'Log in first',
+      loggedIn: 'Logged in', loggedOut: 'Logged out', logout: 'Log out', account: 'Account', signedInAs: 'Logged in as {e}',
+      remoteNote: 'Your entries live on the XueTuan server, so they follow you across devices. Public ones are visible to everyone; private ones only to you.',
+      uploadLocal: 'Upload old entries from this device', uploadLocalQ: 'Upload the entries saved in this browser (not the samples) to your account?', uploadLocalOk: 'Upload',
+      uploadedLocal: 'Uploaded {n} places', loadFail: 'Couldn’t load the data. Check your connection and refresh.',
       profile: 'My profile', hometown: 'Where you’re from', country: 'Country / region', region: 'Province / state', city: 'City', district: 'District',
       countryPh: 'China, Malaysia, Kazakhstan…', regionPh: 'Guangdong, Selangor…', cityPh: 'Shenzhen, Klang…', districtPh: 'Nanshan, Sepang…',
       language: 'Language', basemap: 'Base map', styleLight: 'Clean', styleColor: 'Colour', styleDark: 'Dark',
@@ -777,6 +799,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     nav: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M21 3 3 10.5l7.2 2.3L12.5 20 21 3z"/></svg>',
     copy: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><rect x="8.5" y="8.5" width="11" height="11" rx="2.5"/><path d="M15.5 8.5V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v7.5a2 2 0 0 0 2 2h2.5"/></svg>',
     link: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M10 14a4.5 4.5 0 0 0 6.4 0l3-3a4.5 4.5 0 0 0-6.4-6.4l-1 1"/><path d="M14 10a4.5 4.5 0 0 0-6.4 0l-3 3a4.5 4.5 0 0 0 6.4 6.4l1-1"/></svg>',
+    google: '<svg viewBox="0 0 24 24" width="18" height="18"><path fill="#fff" d="M21.6 12.2c0-.7-.1-1.4-.2-2H12v3.8h5.4a4.6 4.6 0 0 1-2 3v2.5h3.2c1.9-1.7 3-4.3 3-7.3z"/><path fill="#fff" opacity=".85" d="M12 22c2.7 0 5-.9 6.6-2.4l-3.2-2.5c-.9.6-2 1-3.4 1-2.6 0-4.8-1.8-5.6-4.1H3.1v2.6A10 10 0 0 0 12 22z"/><path fill="#fff" opacity=".7" d="M6.4 14c-.2-.6-.3-1.3-.3-2s.1-1.4.3-2V7.4H3.1a10 10 0 0 0 0 9.2L6.4 14z"/><path fill="#fff" opacity=".85" d="M12 5.9c1.5 0 2.8.5 3.8 1.5l2.9-2.9A10 10 0 0 0 3.1 7.4L6.4 10C7.2 7.7 9.4 5.9 12 5.9z"/></svg>',
     pin: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 21.5c-3-4-7-7.6-7-12a7 7 0 0 1 14 0c0 4.4-4 8-7 12z"/><circle cx="12" cy="9.5" r="2.5"/></svg>',
     camera: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M4 8.5h3l1.6-2.5h6.8L17 8.5h3v10H4z"/><circle cx="12" cy="13.2" r="3.4"/></svg>'
   };
@@ -791,11 +814,11 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
   var lastRenderedView = null;
 
   /* ================= store =================
-   * 所有数据读写都走这里。界面只调用 store.xxx，不直接碰 localStorage / IndexedDB。
+   * 所有数据读写都走这里。界面只调用 store.xxx，不直接碰 localStorage / IndexedDB / Supabase。
    * 读：同步，从内存里的缓存读。写：返回 Promise。
-   * 第 2 步换成 Supabase 时只改这个对象的实现：init() 时把数据拉进缓存，写操作改成调接口。
+   * 有两个实现：localStore（数据存在这个浏览器里）和 remoteStore（Supabase），接口一样。
    */
-  var store = (function () {
+  function localStore() {
     var DATA_VERSION = 2;
     var data = emptyData();
     var canPersist = true;
@@ -860,6 +883,10 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     }
 
     return {
+      mode: 'local',
+      signedIn: function () { return true; },
+      email: function () { return ''; },
+      onAuthChange: function () {},
       init: function () {
         load();
         if (!data.profile || !data.profile.id) data.profile = { id: uid('u'), name: '', country: '', region: '', city: '', district: '' };
@@ -1006,6 +1033,298 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
         return Promise.all(jobs).then(function () { persist(); return added; });
       }
     };
+  }
+
+  /* ================= remote store (Supabase) =================
+   * 和 localStore 一样的接口。init() 把看得见的数据（RLS 已经过滤好）拉进内存缓存，
+   * 读还是同步的；写先调接口，成功后再改缓存。
+   * 没登录时只能看：me().id 是 null，所有写操作都会被拒绝，界面会先让人登录。
+   */
+  function remoteStore(client) {
+    var ANON = { id: null, name: '', country: '', region: '', city: '', district: '' };
+    var cache = { places: [], reviews: [], wishlist: [], profile: ANON };
+    var session = null, email = '';
+    var photoURLs = new Map();
+    var listeners = [];
+
+    function uidNow() { return session ? session.user.id : null; }
+    function ok(res) { if (res.error) throw res.error; return res.data; }
+    function find(list, id) { for (var i = 0; i < list.length; i++) if (list[i].id === id) return list[i]; return null; }
+    function needLogin() { return uidNow() ? null : Promise.reject(new Error('login required')); }
+
+    function placeFromRow(r) {
+      return {
+        id: r.id, mode: r.mode, cat: r.cat, precision: r.precision, lat: r.lat, lng: r.lng,
+        name: r.name, altName: r.alt_name, link: r.link, osm: r.osm, createdBy: r.created_by,
+        createdAt: Date.parse(r.created_at), sample: false
+      };
+    }
+    function placeToRow(p) {
+      var row = {};
+      [['mode', 'mode'], ['cat', 'cat'], ['precision', 'precision'], ['lat', 'lat'], ['lng', 'lng'], ['name', 'name'],
+        ['altName', 'alt_name'], ['link', 'link'], ['osm', 'osm']].forEach(function (k) { if (p[k[0]] !== undefined) row[k[1]] = p[k[0]]; });
+      return row;
+    }
+    function reviewFromRow(r, author) {
+      author = author || r.author || {};
+      return {
+        id: r.id, placeId: r.place_id, authorId: r.user_id, authorName: author.name || '', authorFrom: shortFrom(author),
+        rating: r.rating, price: r.price == null ? null : +r.price, text: r.text, photos: r.photos || [],
+        visibility: r.visibility, createdAt: Date.parse(r.created_at), sample: false
+      };
+    }
+    function photoPath(id) { return uidNow() + '/' + id + '.jpg'; }
+    /* 传照片，返回传成功的路径和是否全部成功 */
+    function uploadPhotos(photos) {
+      return Promise.all(photos.map(function (ph) {
+        var path = photoPath(ph.id);
+        return client.storage.from('photos').upload(path, ph.blob, { contentType: 'image/jpeg', upsert: false }).then(function (res) {
+          if (res.error) return null;
+          if (ph.url) photoURLs.set(path, ph.url);
+          return path;
+        }, function () { return null; });
+      })).then(function (paths) {
+        var good = paths.filter(Boolean);
+        return { paths: good, ok: good.length === photos.length };
+      });
+    }
+    function removePhotos(paths) {
+      if (!paths.length) return Promise.resolve();
+      paths.forEach(function (p) { photoURLs.delete(p); });
+      return client.storage.from('photos').remove(paths).then(function () {}, function () {});
+    }
+
+    function loadAll() {
+      var uid = uidNow();
+      return Promise.all([
+        client.from('places').select('*').limit(10000),
+        client.from('visits').select('*, author:profiles(name, country, region, city, district)').order('created_at', { ascending: false }).limit(10000),
+        uid ? client.from('profiles').select('*').eq('id', uid).maybeSingle() : Promise.resolve({ data: null }),
+        uid ? client.from('wishlist').select('*') : Promise.resolve({ data: [] })
+      ]).then(function (res) {
+        var places = ok(res[0]), visits = ok(res[1]), profile = ok(res[2]), wish = ok(res[3]);
+        cache.places = places.map(placeFromRow);
+        cache.reviews = visits.map(function (v) { return reviewFromRow(v); });
+        cache.profile = uid ? Object.assign({}, ANON, profile || {}, { id: uid }) : ANON;
+        cache.wishlist = (wish || []).map(function (w) { return { placeId: w.place_id, createdAt: Date.parse(w.created_at) }; });
+      });
+    }
+    function setSession(s) {
+      var before = uidNow();
+      session = s;
+      email = s && s.user ? s.user.email || '' : '';
+      return before !== uidNow();
+    }
+
+    var profileTimer = null, profilePatch = {};
+    function flushProfile() {
+      var patch = profilePatch, uid = uidNow();
+      profilePatch = {};
+      if (!uid || !Object.keys(patch).length) return Promise.resolve();
+      return client.from('profiles').update(patch).eq('id', uid).then(function (res) {
+        if (res.error) toast(t('saveFail'));
+      });
+    }
+
+    var areas = {
+      list: function () { try { return JSON.parse(localStorage.getItem(LS_AREAS) || '[]'); } catch (e) { return []; } },
+      save: function (list) { try { localStorage.setItem(LS_AREAS, JSON.stringify(list)); } catch (e) { /* 存不了就算了 */ } }
+    };
+    var areaCache = areas.list();
+
+    return {
+      mode: 'remote',
+      init: function () {
+        client.auth.onAuthStateChange(function (event, s) {
+          // 回调里不能直接再调 supabase，放到下一轮
+          setTimeout(function () {
+            if (!setSession(s)) return;
+            loadAll().then(function () { listeners.forEach(function (fn) { fn(); }); });
+          }, 0);
+        });
+        return client.auth.getSession().then(function (res) {
+          setSession(res.data && res.data.session);
+          return loadAll();
+        });
+      },
+
+      /* ---- 账号 ---- */
+      signedIn: function () { return !!uidNow(); },
+      email: function () { return email; },
+      onAuthChange: function (fn) { listeners.push(fn); },
+      signInWithEmail: function (addr) {
+        return client.auth.signInWithOtp({ email: addr, options: { emailRedirectTo: location.origin + location.pathname } }).then(ok);
+      },
+      signInWithGoogle: function () {
+        return client.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: location.origin + location.pathname } }).then(ok);
+      },
+      signOut: function () { return client.auth.signOut().then(ok); },
+
+      /* ---- 读 ---- */
+      me: function () { return cache.profile; },
+      places: function () { return cache.places; },
+      place: function (id) { return find(cache.places, id); },
+      reviews: function () { return cache.reviews; },
+      review: function (id) { return find(cache.reviews, id); },
+      reviewsOf: function (placeId) { return cache.reviews.filter(function (r) { return r.placeId === placeId; }); },
+      areas: function () { return areaCache; },
+      wishlist: function () { return cache.wishlist; },
+      isSaved: function (placeId) { return cache.wishlist.some(function (w) { return w.placeId === placeId; }); },
+      hasSamples: function () { return false; },
+      photoURL: function (id) {
+        if (photoURLs.has(id)) return Promise.resolve(photoURLs.get(id));
+        if (id.indexOf('/') === -1) return photoStore.get(id).then(function (b) { return b ? URL.createObjectURL(b) : null; });
+        var u = client.storage.from('photos').getPublicUrl(id).data.publicUrl;
+        photoURLs.set(id, u);
+        return Promise.resolve(u);
+      },
+      hasPhotoURL: function (id) { return photoURLs.has(id); },
+
+      /* ---- 写 ---- */
+      addPlace: function (f) {
+        return needLogin() || client.from('places').insert(placeToRow(f)).select().single().then(ok).then(function (row) {
+          var p = placeFromRow(row);
+          cache.places.push(p);
+          return p;
+        });
+      },
+      updatePlace: function (id, patch) {
+        var row = placeToRow(patch);
+        delete row.mode;
+        return needLogin() || client.from('places').update(row).eq('id', id).select().single().then(ok).then(function (r) {
+          var p = find(cache.places, id);
+          Object.assign(p, placeFromRow(r));
+          return p;
+        });
+      },
+      addReview: function (f, newPhotos) {
+        return needLogin() || uploadPhotos(newPhotos).then(function (up) {
+          var row = { place_id: f.placeId, rating: f.rating, price: f.price, text: f.text, visibility: f.visibility, photos: up.paths };
+          return client.from('visits').insert(row).select().single().then(ok).then(function (v) {
+            var r = reviewFromRow(v, cache.profile);
+            cache.reviews.unshift(r);
+            return { review: r, photosOk: up.ok };
+          });
+        });
+      },
+      updateReview: function (id, patch, keepPhotos, newPhotos) {
+        var r = find(cache.reviews, id);
+        if (!r) return Promise.reject(new Error('missing'));
+        return needLogin() || uploadPhotos(newPhotos).then(function (up) {
+          var dropped = (r.photos || []).filter(function (p) { return keepPhotos.indexOf(p) === -1; });
+          var row = { rating: patch.rating, price: patch.price, text: patch.text, visibility: patch.visibility, photos: keepPhotos.concat(up.paths) };
+          return client.from('visits').update(row).eq('id', id).select().single().then(ok).then(function (v) {
+            removePhotos(dropped);
+            Object.assign(r, reviewFromRow(v, cache.profile));
+            return { review: r, photosOk: up.ok };
+          });
+        });
+      },
+      /* 删最后一条记录时数据库会顺带删地点；删完查一下地点还在不在（或者我还看不看得见） */
+      deleteReview: function (id) {
+        var r = find(cache.reviews, id);
+        if (!r) return Promise.reject(new Error('missing'));
+        return needLogin() || client.from('visits').delete().eq('id', id).then(ok).then(function () {
+          removePhotos(r.photos || []);
+          cache.reviews = cache.reviews.filter(function (x) { return x.id !== id; });
+          return client.from('places').select('id').eq('id', r.placeId).then(ok);
+        }).then(function (rows) {
+          var gone = !rows.length;
+          if (gone) {
+            cache.places = cache.places.filter(function (p) { return p.id !== r.placeId; });
+            cache.wishlist = cache.wishlist.filter(function (w) { return w.placeId !== r.placeId; });
+          }
+          return { placeRemoved: gone };
+        });
+      },
+      setSaved: function (placeId, saved) {
+        var q = saved
+          ? client.from('wishlist').insert({ place_id: placeId })
+          : client.from('wishlist').delete().eq('place_id', placeId).eq('user_id', uidNow());
+        return needLogin() || q.then(ok).then(function () {
+          cache.wishlist = cache.wishlist.filter(function (w) { return w.placeId !== placeId; });
+          if (saved) cache.wishlist.push({ placeId: placeId, createdAt: Date.now() });
+          return saved;
+        });
+      },
+      updateProfile: function (patch) {
+        if (!uidNow()) return Promise.reject(new Error('login required'));
+        Object.keys(patch).forEach(function (k) { cache.profile[k] = patch[k]; profilePatch[k] = patch[k]; });
+        cache.reviews.forEach(function (r) {
+          if (r.authorId === uidNow()) { r.authorName = cache.profile.name || ''; r.authorFrom = shortFrom(cache.profile); }
+        });
+        clearTimeout(profileTimer);
+        profileTimer = setTimeout(flushProfile, 400);
+        return Promise.resolve(cache.profile);
+      },
+      addArea: function (a) {
+        var area = { id: uid('a'), name: a.name, lng: a.lng, lat: a.lat, zoom: a.zoom };
+        areaCache.push(area);
+        areas.save(areaCache);
+        return Promise.resolve(area);
+      },
+      deleteArea: function (id) {
+        areaCache = areaCache.filter(function (x) { return x.id !== id; });
+        areas.save(areaCache);
+        return Promise.resolve();
+      },
+      clearSamples: function () { return Promise.resolve(); },
+
+      /* ---- 备份 ----
+       * 导出：我自己的记录和它们的地点（照片是网址，不打包）。
+       * 导入：把备份里的记录当成我的，上传到账号。用来把本地版存的东西搬上来。
+       */
+      exportBackup: function () {
+        var mine = cache.reviews.filter(function (r) { return r.authorId === uidNow(); });
+        var ids = {};
+        mine.forEach(function (r) { ids[r.placeId] = 1; });
+        return Promise.resolve({
+          app: BACKUP_APP, version: 2, exportedAt: new Date().toISOString(), profile: cache.profile,
+          places: cache.places.filter(function (p) { return ids[p.id]; }), reviews: mine, wishlist: cache.wishlist, areas: areaCache, photos: {}
+        });
+      },
+      importBackup: function (obj) {
+        if (!obj || BACKUP_APPS.indexOf(obj.app) === -1 || !Array.isArray(obj.places) || !Array.isArray(obj.reviews)) return Promise.resolve(-1);
+        if (!uidNow()) return Promise.reject(new Error('login required'));
+        var self = this;
+        var srcPlaces = {}, newIds = {}, added = 0;
+        obj.places.forEach(function (p) { if (p && p.id && !p.sample && CATS[p.mode]) srcPlaces[p.id] = p; });
+        var reviews = obj.reviews.filter(function (r) { return r && !r.sample && srcPlaces[r.placeId]; });
+        var photos = obj.photos || {};
+        return reviews.reduce(function (chain, r) {
+          return chain.then(function () {
+            var src = srcPlaces[r.placeId];
+            var placeStep = newIds[src.id] ? Promise.resolve(self.place(newIds[src.id])) : self.addPlace({
+              mode: src.mode, cat: src.cat, precision: src.precision || 'exact', lat: src.lat, lng: src.lng,
+              name: String(src.name || src.altName || '?').slice(0, 60), altName: String(src.altName || '').slice(0, 60), link: src.link || '', osm: src.osm || ''
+            }).then(function (p) { newIds[src.id] = p.id; added++; return p; });
+            return placeStep.then(function (p) {
+              var blobs = (r.photos || []).filter(function (id) { return photos[id]; }).slice(0, MAX_PHOTOS).map(function (id) {
+                return dataURLToBlob(photos[id]).then(function (b) { return { id: uid('ph'), blob: b }; });
+              });
+              return Promise.all(blobs).then(function (list) {
+                return self.addReview({
+                  placeId: p.id, rating: r.rating == null ? null : clamp(Math.round(r.rating), 0, 5), price: r.price || null,
+                  text: String(r.text || '').slice(0, 1000), visibility: r.visibility === 'private' ? 'private' : 'public'
+                }, list);
+              });
+            });
+          });
+        }, Promise.resolve()).then(function () {
+          var wish = (obj.wishlist || []).map(function (w) { return newIds[w.placeId]; }).filter(Boolean);
+          return Promise.all(wish.map(function (id) { return self.isSaved(id) ? null : self.setSaved(id, true); }));
+        }).then(function () { return added; });
+      }
+    };
+  }
+
+  /* 有 Supabase 配置就用线上版；地址里加 ?local 或者 supabase 库没加载出来时用本地版 */
+  var store = (function () {
+    var forceLocal = /[?&]local(=|&|$)/.test(location.search) || window.XUETUAN_LOCAL;
+    if (!forceLocal && window.supabase && window.supabase.createClient && SUPABASE_URL) {
+      return remoteStore(window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY));
+    }
+    return localStore();
   })();
 
   function loadView() {
@@ -1657,6 +1976,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     else if (v === 'search') renderSearch();
     else if (v === 'add') renderAdd();
     else if (v === 'profile') renderProfile();
+    else if (v === 'login') renderLogin();
     if (lastRenderedView !== v) view.scrollTop = 0;
     lastRenderedView = v;
     hydratePhotos(view);
@@ -2052,6 +2372,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       if (adding && existing.mode === state.mode) startReview(existing.id); else openPlace(existing.id);
       return;
     }
+    if (!requireLogin()) return;
     var mode = adding ? state.mode : r.mode;
     if (mode !== state.mode) setMode(mode, { noFly: true });
     var precision = mode === 'food' ? 'exact' : r.precision;
@@ -2065,12 +2386,23 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     function inp(field, ph, label) {
       return '<input class="input" data-pf="' + field + '" maxlength="30" value="' + esc(pf[field]) + '" placeholder="' + esc(t(ph)) + '" aria-label="' + esc(t(label)) + '">';
     }
-    var areas = store.areas();
-    var h = '<div class="view-top"><button type="button" class="icon-btn flat" data-action="back" aria-label="' + esc(t('back')) + '">' + ICON.back + '</button><h2 class="view-title">' + esc(t('profile')) + '</h2></div>' +
-      '<div class="form">' +
+    var areas = store.areas(), remote = store.mode === 'remote', signedIn = store.signedIn();
+    var account = !remote ? '' : '<div class="field"><span class="f-label">' + esc(t('account')) + '</span>' + (signedIn
+      ? '<div class="account-row"><span>' + esc(t('signedInAs', { e: store.email() })) + '</span><button type="button" class="btn small ghost" data-action="logout">' + esc(t('logout')) + '</button></div>'
+      : '<p class="f-hint">' + esc(t('loginWhy')) + '</p><button type="button" class="btn primary" data-action="login">' + esc(t('login')) + '</button>') + '</div>';
+    var personal = !signedIn ? '' :
       '<div class="field"><label class="f-label" for="pf-name">' + esc(t('nickname')) + '</label><input id="pf-name" class="input" data-pf="name" maxlength="20" value="' + esc(pf.name) + '" placeholder="' + esc(t('nicknamePh')) + '"></div>' +
       '<div class="field"><span class="f-label">' + esc(t('hometown')) + '</span><div class="grid-2">' +
-      inp('country', 'countryPh', 'country') + inp('region', 'regionPh', 'region') + inp('city', 'cityPh', 'city') + inp('district', 'districtPh', 'district') + '</div></div>' +
+      inp('country', 'countryPh', 'country') + inp('region', 'regionPh', 'region') + inp('city', 'cityPh', 'city') + inp('district', 'districtPh', 'district') + '</div></div>';
+    var dataButtons = remote
+      ? (signedIn ? '<button type="button" class="btn small" data-action="export">' + esc(t('exportData')) + '</button>' +
+          '<button type="button" class="btn small" data-action="import">' + esc(t('importData')) + '</button>' +
+          (hasLegacyData() ? '<button type="button" class="btn small" data-action="upload-local">' + esc(t('uploadLocal')) + '</button>' : '') : '')
+      : '<button type="button" class="btn small" data-action="export">' + esc(t('exportData')) + '</button>' +
+        '<button type="button" class="btn small" data-action="import">' + esc(t('importData')) + '</button>' +
+        (store.hasSamples() ? '<button type="button" class="btn small ghost" data-action="clear-samples">' + esc(t('clearSamples')) + '</button>' : '');
+    var h = '<div class="view-top"><button type="button" class="icon-btn flat" data-action="back" aria-label="' + esc(t('back')) + '">' + ICON.back + '</button><h2 class="view-title">' + esc(t('profile')) + '</h2></div>' +
+      '<div class="form">' + account + personal +
       '<div class="field"><span class="f-label">' + esc(t('language')) + '</span><div class="seg">' +
       '<button type="button" data-action="set-lang" data-lang="zh" aria-pressed="' + (state.lang === 'zh') + '">中文</button>' +
       '<button type="button" data-action="set-lang" data-lang="en" aria-pressed="' + (state.lang === 'en') + '">English</button></div></div>' +
@@ -2080,13 +2412,63 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       (areas.length ? '<ul class="area-list">' + areas.map(function (a) {
         return '<li><span>' + esc(a.name) + '</span><button type="button" class="link-btn danger" data-action="del-area" data-id="' + esc(a.id) + '">' + esc(t('del')) + '</button></li>';
       }).join('') + '</ul>' : '<p class="f-hint">' + esc(t('noCustomAreas')) + '</p>') + '</div>' +
-      '<div class="field"><span class="f-label">' + esc(t('dataTitle')) + '</span><p class="note">' + esc(t('localNote')) + '</p>' +
-      '<div class="btn-row"><button type="button" class="btn small" data-action="export">' + esc(t('exportData')) + '</button>' +
-      '<button type="button" class="btn small" data-action="import">' + esc(t('importData')) + '</button>' +
-      (store.hasSamples() ? '<button type="button" class="btn small ghost" data-action="clear-samples">' + esc(t('clearSamples')) + '</button>' : '') +
-      '</div></div>' +
+      '<div class="field"><span class="f-label">' + esc(t('dataTitle')) + '</span><p class="note">' + esc(t(remote ? 'remoteNote' : 'localNote')) + '</p>' +
+      (dataButtons ? '<div class="btn-row">' + dataButtons + '</div>' : '') + '</div>' +
       '<p class="about">' + esc(t('about')) + '</p></div>';
     view.innerHTML = h;
+  }
+
+  function renderLogin() {
+    view.innerHTML = '<div class="view-top"><button type="button" class="icon-btn flat" data-action="back" aria-label="' + esc(t('back')) + '">' + ICON.back + '</button><h2 class="view-title">' + esc(t('loginTitle')) + '</h2></div>' +
+      '<div class="form"><p class="note">' + esc(t('loginWhy')) + '</p>' +
+      '<button type="button" class="btn primary block" data-action="login-google">' + ICON.google + esc(t('loginGoogle')) + '</button>' +
+      '<div class="or-line"><span>' + esc(t('loginOr')) + '</span></div>' +
+      '<form id="login-form" class="field" novalidate><input id="login-email" class="input" type="email" autocomplete="email" inputmode="email" placeholder="' + esc(t('loginEmailPh')) + '" aria-label="' + esc(t('loginEmailPh')) + '">' +
+      '<button type="submit" class="btn block" id="login-send">' + esc(t('loginSend')) + '</button></form>' +
+      '<p class="f-hint" id="login-msg" role="status"></p></div>';
+  }
+  function openLogin() {
+    if (state.view === 'feed') state.feedSnap = state.snap;
+    state.view = 'login'; state.form = null;
+    render(); setSnap('full');
+  }
+  /* 线上版没登录时，写操作先去登录页 */
+  function requireLogin() {
+    if (store.signedIn()) return true;
+    toast(t('loginFirst'));
+    openLogin();
+    return false;
+  }
+  function sendLoginLink() {
+    var input = $('#login-email'), msg = $('#login-msg'), btn = $('#login-send');
+    var addr = (input && input.value || '').trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(addr)) { input.setAttribute('aria-invalid', 'true'); input.focus(); return; }
+    input.removeAttribute('aria-invalid');
+    btn.disabled = true;
+    store.signInWithEmail(addr).then(function () {
+      msg.textContent = t('loginSent', { e: addr });
+    }, function (err) {
+      msg.textContent = t('loginFail', { m: (err && err.message) || '' });
+      btn.disabled = false;
+    });
+  }
+  function hasLegacyData() {
+    try {
+      var d = JSON.parse(localStorage.getItem(LS_DATA) || 'null');
+      return !!(d && Array.isArray(d.reviews) && d.reviews.some(function (r) { return !r.sample; }));
+    } catch (e) { return false; }
+  }
+  function uploadLegacy() {
+    confirmBox(t('uploadLocalQ'), t('uploadLocalOk')).then(function (yes) {
+      if (!yes) return;
+      var legacy = localStore();
+      legacy.init().then(function () { return legacy.exportBackup(); }).then(function (obj) {
+        return store.importBackup(obj);
+      }).then(function (n) {
+        refreshMap(); render();
+        toast(t('uploadedLocal', { n: n }));
+      }, function () { toast(t('saveFail')); });
+    });
   }
 
   /* ================= navigation ================= */
@@ -2532,7 +2914,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       case 'to-school': flyTo([XMUM.lng, XMUM.lat], 15.5); break;
       case 'to-globe': if (map) flyTo([map.getCenter().lng, Math.max(-40, Math.min(40, map.getCenter().lat))], 1.4); break;
       case 'locate': locate(); break;
-      case 'add': openAdd(); break;
+      case 'add': if (requireLogin()) openAdd(); break;
       case 'add-pin': startPick({}); break;
       case 'add-existing': startReview(d.id); break;
       case 'pick-cancel': cancelPick(); break;
@@ -2544,8 +2926,8 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       case 'clear-samples': clearSamples(); break;
       case 'open-place': openPlace(d.id); break;
       case 'back': back(); break;
-      case 'write-review': if (state.placeId) startReview(state.placeId); break;
-      case 'toggle-save': if (state.placeId) toggleSave(state.placeId); break;
+      case 'write-review': if (state.placeId && requireLogin()) startReview(state.placeId); break;
+      case 'toggle-save': if (state.placeId && requireLogin()) toggleSave(state.placeId); break;
       case 'copy-coords': copyCoords(d.c); break;
       case 'photo': openLightbox(d.id, d.group); break;
       case 'edit-review': startEdit(d.id); break;
@@ -2567,8 +2949,12 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       case 'near-pick': state.form.placeId = d.id; state.view = 'form'; render(); break;
       case 'near-new': state.view = 'form'; render(); break;
       case 'osm-pick': pickOsm(+d.i); break;
+      case 'login': openLogin(); break;
+      case 'login-google': store.signInWithGoogle().catch(function (err) { toast(t('loginFail', { m: (err && err.message) || '' })); }); break;
+      case 'logout': store.signOut().catch(function () {}); break;
+      case 'upload-local': uploadLegacy(); break;
       case 'export': exportData(); break;
-      case 'import': $('#import-file').click(); break;
+      case 'import': if (requireLogin()) $('#import-file').click(); break;
       case 'lb-close': closeLightbox(); break;
       case 'lb-prev': lb.i = (lb.i - 1 + lb.ids.length) % lb.ids.length; showLightbox(); break;
       case 'lb-next': lb.i = (lb.i + 1) % lb.ids.length; showLightbox(); break;
@@ -2578,6 +2964,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
   document.addEventListener('submit', function (e) {
     if (e.target.id === 'place-form') submitForm(e);
     else if (e.target.id === 'area-form') { e.preventDefault(); saveArea(); }
+    else if (e.target.id === 'login-form') { e.preventDefault(); sendLoginLink(); }
   });
   document.addEventListener('input', function (e) {
     var el = e.target;
@@ -2605,7 +2992,13 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
   if (mqDark.addEventListener) mqDark.addEventListener('change', repaintAccent);
 
   /* ================= boot ================= */
-  store.init().then(function () {
+  store.onAuthChange(function () {
+    toast(t(store.signedIn() ? 'loggedIn' : 'loggedOut'));
+    if (state.view === 'login' || state.view === 'form') goFeed(); else render();
+    renderChrome();
+    refreshMap();
+  });
+  store.init().catch(function () { toast(t('loadFail')); }).then(function () {
     var savedView = loadView();
     if (savedView) {
       if (savedView.lang === 'en' || savedView.lang === 'zh') state.lang = savedView.lang;
