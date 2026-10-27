@@ -80,7 +80,7 @@ html.kb-open { --tabbar: 0px; }
 html.kb-open .tabbar { display: none; }
 html.kb-open .panel { height: calc(var(--app-h, 100vh) - env(safe-area-inset-top, 0px) - 8px); }
 /* 面板拉满时，地图右上角的按钮会从面板顶上露出一截，干脆藏起来 */
-body[data-snap="full"] .map-ctrls { opacity: 0; pointer-events: none; }
+body[data-snap="full"] .map-ctrls, body[data-snap="full"] .map-chips { opacity: 0; pointer-events: none; }
 .stage { position: absolute; top: 0; right: 0; bottom: 0; left: 0; --sheet-visible: 0px; }
 /* 地球缩小时露出来的背景：飘雪的天空 */
 #map {
@@ -122,15 +122,31 @@ body[data-snap="full"] .map-ctrls { opacity: 0; pointer-events: none; }
 .map-ctrls .icon-btn { position: relative; width: 36px; height: 36px; border-radius: 50%; }
 .map-ctrls .icon-btn svg { width: 18px; height: 18px; }
 /* 全是蓝白：白底蓝图标；吃/玩切换用要切去的那张地图的蓝色（吃的地图上是深一点的蓝色飞机） */
-.map-ctrls .search-btn, .map-ctrls .filter-btn, .map-ctrls .globe-btn, .map-ctrls .home-btn { color: var(--accent); }
+.map-ctrls .search-btn, .map-ctrls .filter-btn, .map-ctrls .globe-btn { color: var(--accent); }
 .map-ctrls .mode-btn { color: #fff; background: linear-gradient(145deg, #7D8EF2, #4A5BD0); box-shadow: 0 5px 14px rgba(79, 99, 216, .35); }
 html.mode-travel .map-ctrls .mode-btn { background: linear-gradient(145deg, #5AA5EC, #2569B3); box-shadow: 0 5px 14px rgba(46, 125, 203, .35); }
-.map-ctrls .filter-btn[aria-pressed="true"], .map-ctrls .globe-btn[aria-pressed="true"], .map-ctrls .home-btn[aria-pressed="true"] { color: #fff; background: var(--accent); }
+.map-ctrls .filter-btn[aria-pressed="true"], .map-ctrls .globe-btn[aria-pressed="true"] { color: #fff; background: var(--accent); }
 .map-ctrls .icon-btn b {
   position: absolute; top: -4px; right: -4px; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 8px;
   background: var(--accent); color: var(--accent-ink); font-size: 10px; line-height: 16px; text-align: center;
 }
-.map-ctrls .filter-btn[aria-pressed="true"] b, .map-ctrls .globe-btn b, .map-ctrls .home-btn b { background: #fff; color: var(--accent); box-shadow: 0 1px 3px rgba(0, 0, 0, .2); }
+.map-ctrls .filter-btn[aria-pressed="true"] b, .map-ctrls .globe-btn b { background: #fff; color: var(--accent); box-shadow: 0 1px 3px rgba(0, 0, 0, .2); }
+/* 地图左上角的说明小签：旅行大地图上“红针 = 同学的家乡”，点一下收起 / 显示这些红针 */
+.map-chips {
+  position: absolute; z-index: 9; left: max(12px, env(safe-area-inset-left, 0px));
+  top: calc(env(safe-area-inset-top, 0px) + 12px);
+  display: flex; gap: 8px; max-width: calc(100% - 76px);
+}
+.map-chip {
+  display: inline-flex; align-items: center; gap: 5px; min-width: 0; height: 32px; padding: 0 11px 0 8px;
+  border: 0; border-radius: 16px; background: var(--surface); color: var(--ink); box-shadow: var(--shadow);
+  font: inherit; font-size: 13px; font-weight: 600; white-space: nowrap;
+}
+.map-chip svg { flex: none; width: 16px; height: 20px; }
+.map-chip span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.map-chip b { color: var(--muted); font-weight: 700; }
+.map-chip[aria-pressed="false"] { color: var(--muted); }
+.map-chip[aria-pressed="false"] svg { filter: grayscale(1); opacity: .5; }
 .icon-btn {
   flex: none; width: 38px; height: 38px; padding: 0; border: 0; border-radius: 12px;
   background: var(--surface); color: var(--ink); box-shadow: var(--shadow);
@@ -166,6 +182,15 @@ html.mode-travel .map-ctrls .mode-btn { background: linear-gradient(145deg, #5AA
   transition: bottom .34s cubic-bezier(.2, .8, .2, 1);
 }
 .locate-btn svg { width: 18px; height: 18px; }
+/* 回 XMUM：定位按钮左边一个一样的圆钮，学士帽 */
+.campus-btn {
+  position: absolute; z-index: 9;
+  right: calc(max(12px, env(safe-area-inset-right, 0px)) + 44px);
+  bottom: calc(var(--sheet-visible) + var(--tabbar) + 12px);
+  width: 36px; height: 36px; border-radius: 50%;
+  transition: bottom .34s cubic-bezier(.2, .8, .2, 1);
+}
+.campus-btn svg { width: 20px; height: 20px; }
 .tabbar {
   position: absolute; z-index: 30; left: 0; right: 0; bottom: 0;
   height: var(--tabbar); padding: 0 max(4px, env(safe-area-inset-right, 0px)) env(safe-area-inset-bottom, 0px) max(4px, env(safe-area-inset-left, 0px));
@@ -198,13 +223,13 @@ body[data-snap="full"] .add-fab { opacity: 0; pointer-events: none; }
   position: absolute; z-index: 8;
   left: max(8px, env(safe-area-inset-left, 0px));
   bottom: calc(var(--sheet-visible) + var(--tabbar) + 6px);
-  max-width: calc(100% - 80px); padding: 1px 6px; border-radius: 6px;
+  max-width: calc(100% - 104px); padding: 1px 6px; border-radius: 6px;
   background: rgba(255, 255, 255, .6); color: #5A6B7C; font-size: 10px; line-height: 1.45;
   transition: bottom .34s cubic-bezier(.2, .8, .2, 1);
 }
 .attrib a { color: inherit; text-decoration: none; }
 .attrib a:hover { text-decoration: underline; }
-body.picking .tabbar, body.picking .map-ctrls, body.picking .locate-btn, body.picking .add-fab { display: none; }
+body.picking .tabbar, body.picking .map-ctrls, body.picking .map-chips, body.picking .locate-btn, body.picking .campus-btn, body.picking .add-fab { display: none; }
 body.picking .attrib { bottom: calc(env(safe-area-inset-bottom, 0px) + 122px); }
 
 /* ---------- bottom sheets (filters, places) ---------- */
@@ -672,14 +697,14 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
   .tabbar { right: auto; width: 400px; border-right: 1px solid var(--line); }
     /* 桌面上顶部是一张浮在地图上的卡片 */
   .map-ctrls { top: 12px; }
-  .locate-btn { bottom: 24px; }
+  .locate-btn, .campus-btn { bottom: 24px; }
   .add-fab { bottom: 70px; }
   .attrib { bottom: 6px; }
   .feed-item { border-radius: 12px; padding: 14px 8px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .pick-pin, .drop-pulse { animation: none; }
-  .panel, .locate-btn, .add-fab, .attrib, .bsheet-card { transition: none; animation: none; }
+  .panel, .locate-btn, .campus-btn, .add-fab, .attrib, .bsheet-card { transition: none; animation: none; }
 }
 </style>
 </head>
@@ -702,9 +727,11 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     <div class="map-error" id="map-error" hidden></div>
 
     <div class="map-ctrls" id="map-ctrls"></div>
+    <div class="map-chips" id="map-chips"></div>
 
     <button type="button" class="add-fab" id="fab" data-action="add"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
     <button type="button" class="icon-btn locate-btn" data-action="locate" data-i18n-aria="locate" data-i18n-title="locate"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="12" cy="12" r="6.5"/><circle cx="12" cy="12" r="2.2" fill="currentColor" stroke="none"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3"/></svg></button>
+    <button type="button" class="icon-btn campus-btn" data-action="campus" data-i18n-aria="toCampus" data-i18n-title="toCampus"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 9.5 12 5l9.5 4.5L12 14z"/><path d="M6.5 11.8v4c1.5 1.4 3.4 2.2 5.5 2.2s4-.8 5.5-2.2v-4"/><path d="M21.5 9.5v5"/></svg></button>
 
     <div class="pick" id="pick" hidden>
       <div class="pick-hint" id="pick-hint"></div>
@@ -942,12 +969,12 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       nickname: '昵称', nicknamePh: '大家看到的名字',
       testAccounts: '测试账号（仅供测试）', testAccountsHint: '同一台手机上换着当不同的人：每个号的记录、收藏、家都分开，私密的只有自己看得到。',
       acctAdd: '＋ 再加一个', acctSwitched: '现在是：{n}', acctUnnamed: '没起名的号', acctDefault: '测试号 {c}',
-      myHome: '我的家', homeNone: '设了以后旅行地图上会有一个小房子，只到城市一级。', homeSet: '设置我的家', homeChange: '改', homeRemove: '不设了',
+      myHome: '我的家', homeNone: '设了以后足迹地图上有个小房子，公开后大地图上是一根红针。只到城市一级。', homeSet: '设置我的家', homeChange: '改', homeRemove: '不设了',
       homePublic: '公开到大地图', homePublicOn: '同学在旅行大地图上能看到，列表里显示“来自 {c}”', homePublicOff: '现在只有你自己看得到（足迹 · 旅行）',
       homeTitle: '设置我的家', homeSearchPh: '搜城市，比如 吉隆坡、深圳', homePick: '在地图上点', homeNote: '只存城市名和大概位置（约 10 公里），不存地址。',
       homeNoResult: '没找到这个城市，换个写法，或者在地图上点', homeSaved: '设好了：{c}', homeRemoved: '不设家了', homeLookup: '正在认是哪个城市…',
       homePickHint: '拖动地图，把十字对准你家所在的城市', homePickFail: '认不出这是哪个城市，换个位置，或者直接搜城市名',
-      homesBtn: '同学的家', homeOf: '{n}的家', homesN: '{n} 位同学的家', homeOnlyYou: '只有你自己看得到', homeEdit: '改我的家', homeSetCta: '你也放一个小房子',
+      homesBtn: '同学的家乡', homeOf: '{n}的家乡', homesN: '{n} 位同学的家乡', homeOnlyYou: '只有你自己看得到', homeEdit: '改我的家', homeSetCta: '你也标上家乡',
       publish: '发布',
       location: '位置', repick: '重新选',
       noRating: '暂无评分', myScore: '我的评分', avgOf: '{n} 人打分的平均', avgNoZero: '（不算 {n} 个 0 分）', perPerson: '人均', costLabel: '花费', reviewsLabel: '条点评', reviewsTitle: '点评',
@@ -988,7 +1015,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       photoFail: '有照片没存上，刷新后会丢', saveFail: '浏览器不让存数据，关掉页面就没了',
       mapFail: '地图没加载出来。检查网络后刷新页面。',
       justNow: '刚刚', minAgo: '{n} 分钟前', hourAgo: '{n} 小时前', dayAgo: '{n} 天前',
-      locate: '我的位置',
+      locate: '我的位置', toCampus: '回到 XMUM',
       tabsAria: '主菜单', tabHome: '首页', tabExplore: '探索', tabFoot: '足迹', tabMe: '我的',
       latest: '最新分享', latestEmpty: '还没有人分享。记下吃过、去过的地方，打开“分享到大地图”，就会出现在这里。', goRecord: '去记录',
       openMap: '探索地图', postPlace: '在地图上看', placeEmpty: '还没有人记录过这里。',
@@ -1044,12 +1071,12 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       nickname: 'Nickname', nicknamePh: 'The name others see',
       testAccounts: 'Test accounts (testing only)', testAccountsHint: 'Take turns being different people on one phone. Each account has its own records, saves and home; private ones stay private.',
       acctAdd: '+ Add one', acctSwitched: 'Now using: {n}', acctUnnamed: 'Unnamed account', acctDefault: 'Tester {c}',
-      myHome: 'My home', homeNone: 'Puts a little house on the travel map. City level only.', homeSet: 'Set my home', homeChange: 'Change', homeRemove: 'Remove',
+      myHome: 'My home', homeNone: 'Puts a little house on your Footprints map, and a red pin on the big map if public. City level only.', homeSet: 'Set my home', homeChange: 'Change', homeRemove: 'Remove',
       homePublic: 'Show on the big map', homePublicOn: 'Classmates see it on the travel map, and lists say “from {c}”', homePublicOff: 'Only you can see it now (Footprints · Travel)',
       homeTitle: 'Set my home', homeSearchPh: 'Search a city, e.g. Kuala Lumpur', homePick: 'Pick on the map', homeNote: 'Only the city name and a rough spot (about 10 km) are saved, never an address.',
       homeNoResult: 'No city found. Try another spelling or pick on the map', homeSaved: 'Home set: {c}', homeRemoved: 'Home removed', homeLookup: 'Finding the city…',
       homePickHint: 'Drag the map until the crosshair is on your home city', homePickFail: 'Couldn’t tell which city this is. Move a bit, or search the city name',
-      homesBtn: 'Classmates’ homes', homeOf: '{n}’s home', homesN: '{n} classmates’ homes', homeOnlyYou: 'Only you can see this', homeEdit: 'Change my home', homeSetCta: 'Add your own house',
+      homesBtn: 'Classmates’ hometowns', homeOf: '{n}’s hometown', homesN: '{n} classmates’ hometowns', homeOnlyYou: 'Only you can see this', homeEdit: 'Change my home', homeSetCta: 'Add your hometown',
       publish: 'Publish',
       location: 'Location', repick: 'Change',
       noRating: 'No score yet', myScore: 'My score', avgOf: 'Average of {n}', avgNoZero: ' ({n} zero scores left out)', perPerson: 'per person', costLabel: 'cost', reviewsLabel: 'reviews', reviewsTitle: 'Reviews',
@@ -1090,7 +1117,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       photoFail: 'Some photos weren’t saved and will be lost on refresh', saveFail: 'This browser won’t store data, so it will be lost when you close the page',
       mapFail: 'The map didn’t load. Check your connection and refresh.',
       justNow: 'just now', minAgo: '{n} min ago', hourAgo: '{n} h ago', dayAgo: '{n} d ago',
-      locate: 'My location',
+      locate: 'My location', toCampus: 'Back to XMUM',
       tabsAria: 'Main menu', tabHome: 'Home', tabExplore: 'Explore', tabFoot: 'Footprints', tabMe: 'Me',
       latest: 'Latest posts', latestEmpty: 'Nothing shared yet. Record a place you’ve been and switch on “Share on the big map” to see it here.', goRecord: 'Record one',
       openMap: 'Explore the map', postPlace: 'See on map', placeEmpty: 'Nobody has recorded this place yet.',
@@ -2413,11 +2440,11 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     };
   }
   /* ================= 我的家 =================
-   * 旅行大地图：大家公开的家画成小房子（右上角小房子按钮开关），离得近的合成一个带数字的；
-   * 我的地图 · 旅行：只画我自己的家，公不公开都画 */
+   * 旅行大地图：大家公开的家乡画成小红针（左上角“同学的家乡”小签说明，点它开关），离得近的合成一根带人数的；
+   * 我的地图 · 旅行：只画我自己的家，是小房子，公不公开都画（用户 2026-10-27） */
   var HOME_COLOR = '#4F63D8';
-  /* 小房子：白底蓝房子；我自己的是蓝底白房子。合在一起的右上角加个数字 */
-  function drawHome(mine, count) {
+  /* 小房子：白底蓝房子；我自己的是蓝底白房子 */
+  function drawHome(mine) {
     var s = 44, cx = 22, cy = 22, cv = document.createElement('canvas');
     cv.width = Math.round(s * DPR); cv.height = Math.round(s * DPR);
     var g = cv.getContext('2d');
@@ -2434,16 +2461,6 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     g.beginPath(); g.moveTo(cx - 4.7, cy - 1.5); g.lineTo(cx - 4.7, cy + 6.5); g.lineTo(cx + 4.7, cy + 6.5); g.lineTo(cx + 4.7, cy - 1.5); g.lineTo(cx, cy - 5.4); g.closePath(); g.fill();
     g.fillStyle = mine ? HOME_COLOR : '#ffffff';
     g.fillRect(cx - 1.4, cy + 1.6, 2.8, 4.9);
-    if (count) {
-      g.font = '700 10px ' + getComputedStyle(document.body).fontFamily;
-      var w = Math.max(15, g.measureText(count).width + 8), bx = Math.min(s - w / 2 - 1, cx + 12), by = 9;
-      g.beginPath();
-      g.moveTo(bx - w / 2 + 7.5, by - 7.5); g.arcTo(bx + w / 2, by - 7.5, bx + w / 2, by + 7.5, 7.5); g.arcTo(bx + w / 2, by + 7.5, bx - w / 2, by + 7.5, 7.5);
-      g.arcTo(bx - w / 2, by + 7.5, bx - w / 2, by - 7.5, 7.5); g.arcTo(bx - w / 2, by - 7.5, bx + w / 2, by - 7.5, 7.5); g.closePath();
-      g.fillStyle = HOME_COLOR; g.fill(); g.lineWidth = 1.5; g.strokeStyle = '#ffffff'; g.stroke();
-      g.fillStyle = '#ffffff'; g.textAlign = 'center'; g.textBaseline = 'middle';
-      g.fillText(count, bx, by + 0.5);
-    }
     return g.getImageData(0, 0, cv.width, cv.height);
   }
   function homeImage(mine) {
@@ -2451,10 +2468,45 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     if (map && !map.hasImage(id)) map.addImage(id, drawHome(mine), { pixelRatio: DPR });
     return id;
   }
-  /* 合在一起的小房子按数字要图片，地图要的时候再画 */
+  /* 家乡红针：比地点图钉小一圈，谷歌红、深红描边、针头一个白点（地点图钉是白描边、白圈里画表情）。
+     合在一起的针头大一点，里面写人数 */
+  var HOMETOWN_RED = '#EA4335';
+  var HOMETOWN_PIN = '<svg viewBox="0 0 22 28" aria-hidden="true"><path d="M11 26.4C8.8 22.2 3 18 3 11a8 8 0 0 1 16 0c0 7-5.8 11.2-8 15.4z" fill="' + HOMETOWN_RED + '" stroke="#B31412" stroke-width="1.2"/><circle cx="11" cy="11" r="2.9" fill="#fff"/></svg>';
+  function drawHometown(count) {
+    var r = count ? 10.5 : 8, w = Math.round(2 * r + 6), cx = w / 2, cy = r + 3, tip = cy + 1.93 * r, h = Math.ceil(tip + 3);
+    var cv = document.createElement('canvas');
+    cv.width = Math.round(w * DPR); cv.height = Math.round(h * DPR);
+    var g = cv.getContext('2d');
+    g.scale(DPR, DPR);
+    g.save();
+    g.shadowColor = 'rgba(0,0,0,.3)'; g.shadowBlur = 3; g.shadowOffsetY = 1;
+    g.beginPath();
+    g.moveTo(cx, tip);
+    g.bezierCurveTo(cx - 0.27 * r, cy + 1.4 * r, cx - r, cy + 0.87 * r, cx - r, cy);
+    g.arc(cx, cy, r, Math.PI, 0);
+    g.bezierCurveTo(cx + r, cy + 0.87 * r, cx + 0.27 * r, cy + 1.4 * r, cx, tip);
+    g.closePath();
+    g.fillStyle = HOMETOWN_RED; g.fill();
+    g.restore();
+    g.lineWidth = 1.2; g.strokeStyle = '#B31412'; g.stroke();
+    g.fillStyle = '#ffffff';
+    if (count) {
+      g.font = '700 ' + (count.length > 2 ? 8.5 : 10.5) + 'px ' + getComputedStyle(document.body).fontFamily;
+      g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.fillText(count, cx, cy + 0.5);
+    } else {
+      g.beginPath(); g.arc(cx, cy, 2.9, 0, Math.PI * 2); g.fill();
+    }
+    return g.getImageData(0, 0, cv.width, cv.height);
+  }
+  function hometownImage() {
+    if (map && !map.hasImage('hometown')) map.addImage('hometown', drawHometown(), { pixelRatio: DPR });
+    return 'hometown';
+  }
+  /* 合在一起的红针按人数要图片，地图要的时候再画 */
   function onImageMissing(e) {
-    var m = /^home-n-(.+)$/.exec(e.id || '');
-    if (m && !map.hasImage(e.id)) map.addImage(e.id, drawHome(false, m[1]), { pixelRatio: DPR });
+    var m = /^hometown-n-(.+)$/.exec(e.id || '');
+    if (m && !map.hasImage(e.id)) map.addImage(e.id, drawHometown(m[1]), { pixelRatio: DPR });
   }
   function homesShown() {
     if (state.scope === 'all') return state.mode === 'travel' && state.homesOn;
@@ -2469,8 +2521,8 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     return {
       type: 'FeatureCollection',
       features: homesOnMap().map(function (h) {
-        var mine = h.userId === me().id;
-        return { type: 'Feature', geometry: { type: 'Point', coordinates: [h.lng, h.lat] }, properties: { uid: h.userId, mine: mine, icon: homeImage(mine) } };
+        var mine = h.userId === me().id, pin = state.scope === 'all';
+        return { type: 'Feature', geometry: { type: 'Point', coordinates: [h.lng, h.lat] }, properties: { uid: h.userId, mine: mine, icon: pin ? hometownImage() : homeImage(mine), pin: pin } };
       })
     };
   }
@@ -2496,6 +2548,15 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       id: 'cl-halo', type: 'circle', source: 'places', filter: ['has', 'point_count'],
       paint: { 'circle-radius': ['step', ['get', 'point_count'], 22, 10, 26, 50, 31, 200, 37], 'circle-color': accent, 'circle-opacity': 0.2 }
     });
+    /* 大地图上的家乡红针垫在地点数字圈下面：缩小看全国时两者常叠在一起，针头露在圈上面，不挡住圈里的数字。
+       合在一起的只会是红针（我的地图只有自己一个家） */
+    map.addLayer({
+      id: 'hometown-pin', type: 'symbol', source: 'homes', filter: ['any', ['has', 'point_count'], ['==', ['get', 'pin'], true]],
+      layout: {
+        'icon-image': ['case', ['has', 'point_count'], ['concat', 'hometown-n-', ['get', 'point_count_abbreviated']], ['get', 'icon']],
+        'icon-anchor': 'bottom', 'icon-allow-overlap': true, 'icon-ignore-placement': true, 'icon-size': ['interpolate', ['linear'], ['zoom'], 2, 0.85, 10, 1]
+      }
+    });
     map.addLayer({
       id: 'cl-circle', type: 'circle', source: 'places', filter: ['has', 'point_count'],
       paint: { 'circle-radius': ['step', ['get', 'point_count'], 15, 10, 19, 50, 23, 200, 27], 'circle-color': accent, 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 2 }
@@ -2505,13 +2566,10 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       layout: { 'text-field': ['get', 'point_count_abbreviated'], 'text-font': fonts.bold, 'text-size': 12.5, 'text-allow-overlap': true, 'text-ignore-placement': true },
       paint: { 'text-color': '#ffffff' }
     });
-    /* 小房子盖在地点的数字圈上面（缩小看全国时两者常常叠在一起），但在单个地点图钉下面 */
+    /* 我的地图上自己的小房子盖在地点的数字圈上面（缩小看全国时两者常常叠在一起），但在单个地点图钉下面 */
     map.addLayer({
-      id: 'home-pin', type: 'symbol', source: 'homes',
-      layout: {
-        'icon-image': ['case', ['has', 'point_count'], ['concat', 'home-n-', ['get', 'point_count_abbreviated']], ['get', 'icon']],
-        'icon-allow-overlap': true, 'icon-ignore-placement': true, 'icon-size': ['interpolate', ['linear'], ['zoom'], 2, 0.8, 10, 1]
-      }
+      id: 'home-pin', type: 'symbol', source: 'homes', filter: ['all', ['!', ['has', 'point_count']], ['!=', ['get', 'pin'], true]],
+      layout: { 'icon-image': ['get', 'icon'], 'icon-allow-overlap': true, 'icon-ignore-placement': true, 'icon-size': ['interpolate', ['linear'], ['zoom'], 2, 0.8, 10, 1] }
     });
     map.addLayer({
       id: 'pt-pin', type: 'symbol', source: 'places', filter: ['!', ['has', 'point_count']],
@@ -2646,7 +2704,8 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       }
       return;
     }
-    var homes = map.getLayer('home-pin') ? map.queryRenderedFeatures([[e.point.x - 14, e.point.y - 14], [e.point.x + 14, e.point.y + 14]], { layers: ['home-pin'] }) : [];
+    var homeLayers = ['hometown-pin', 'home-pin'].filter(function (id) { return map.getLayer(id); });
+    var homes = homeLayers.length ? map.queryRenderedFeatures([[e.point.x - 14, e.point.y - 14], [e.point.x + 14, e.point.y + 14]], { layers: homeLayers }) : [];
     if (homes.length) { openHomesAt(homes); return; }
     /* 底图上自带的店名、景点名也能点：还不在雪团的先预览，打个分就能记进我的地图 */
     var poi = (state.view === 'feed' || state.view === 'place' || state.view === 'preview') && basePoiAt(e.point);
@@ -2968,10 +3027,9 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     food: '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z"/></svg>',
     filter: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h10M4 12h4M12 12h8M4 18h12"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg>',
     globe: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg>',
-    home: ICON.home,
     compass: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m15.5 8.5-2 5-5 2 2-5z"/></svg>'
   };
-  /* 地图右上角的按钮：吃/玩切换、筛选；我的地图缩小到国家级别再多一个“点亮国家” */
+  /* 地图右上角的按钮：吃/玩切换、筛选；我的地图缩小到国家级别再多一个“点亮国家”。左上角是家乡红针的说明小签 */
   function renderFilters() {
     var food = state.mode === 'food', n = activeFilterCount();
     var toKey = food ? 'modeToTravel' : 'modeToFood';
@@ -2982,11 +3040,10 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       var lit = state.countries && world.fc;
       h += '<button type="button" class="icon-btn globe-btn" data-action="countries" aria-pressed="' + state.countries + '" aria-label="' + esc(t('litCountries')) + '" title="' + esc(t('litCountries')) + '">' + CTRL_ICON.globe + (lit ? '<b>' + world.litCount + '</b>' : '') + '</button>';
     }
-    if (state.scope === 'all' && state.mode === 'travel') {
-      var nh = publicHomeCount();
-      h += '<button type="button" class="icon-btn home-btn" data-action="homes-toggle" aria-pressed="' + state.homesOn + '" aria-label="' + esc(t('homesBtn')) + '" title="' + esc(t('homesBtn')) + '">' + CTRL_ICON.home + (state.homesOn && nh ? '<b>' + nh + '</b>' : '') + '</button>';
-    }
     $('#map-ctrls').innerHTML = h;
+    /* 旅行大地图左上角：红针是什么、有几位，点一下收起 / 显示；没人公开家乡就不出 */
+    var nh = state.scope === 'all' && state.mode === 'travel' ? publicHomeCount() : 0;
+    $('#map-chips').innerHTML = nh ? '<button type="button" class="map-chip" data-action="homes-toggle" aria-pressed="' + state.homesOn + '">' + HOMETOWN_PIN + '<span>' + esc(t('homesBtn')) + '</span><b>' + nh + '</b></button>' : '';
   }
 
   /* 我的地图只分 美食 / 旅行 / 合并（在筛选里选） */
@@ -4223,6 +4280,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     } else goFeed();
   }
 
+  var TRAVEL_ZOOM = 11;
   function setMode(mode, opts) {
     opts = opts || {};
     if (mode === state.mode) return;
@@ -4234,10 +4292,10 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     saveView();
     if (state.view === 'feed') render();
     /* 换吃 / 玩时地图基本不动（用户 2026-10-27 嫌一换就飞到地球或一下放很大）：
-       玩时贴得太近就退到看得见整座城；吃时在看整个大洲以上，回到自己附近 */
+       玩时贴得太近就退到 TRAVEL_ZOOM（10 级用户嫌远，改 11）；吃时在看整个大洲以上，回到自己附近 */
     if (map && !opts.noFly) {
       var z = map.getZoom();
-      if (mode === 'travel' && z > 11) map.easeTo({ zoom: 10, duration: reduceMotion ? 0 : 500, padding: mapPadding() });
+      if (mode === 'travel' && z > TRAVEL_ZOOM) map.easeTo({ zoom: TRAVEL_ZOOM, duration: reduceMotion ? 0 : 500, padding: mapPadding() });
       if (mode === 'food' && z < 5) flyTo([(state.me || XMUM).lng, (state.me || XMUM).lat], 12);
     }
   }
@@ -5104,6 +5162,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       case 'search': rememberFeedSnap(); state.view = 'search'; render(); setSnap('full'); break;
       case 'set-lang': setLang(d.lang); break;
       case 'set-style': setBasemap(d.style); break;
+      case 'campus': closeBSheet(); if (state.view === 'search') { toMapTab(); goFeed(); } flyTo([XMUM.lng, XMUM.lat], state.mode === 'travel' ? TRAVEL_ZOOM : 14.6); break;
       case 'locate': closeBSheet(); if (state.view === 'search') { toMapTab(); goFeed(); } locate(); break;
       case 'add': if (requireLogin()) openAdd(); break;
       case 'add-pin': startPick({}); break;
