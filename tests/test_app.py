@@ -216,6 +216,12 @@ with sync_playwright() as p:
     check('pin images drawn on demand (one per category + score bucket)', st['images'] == want_imgs, (st['images'], want_imgs))
     pins = page.evaluate('window.__map.getSource("places").data.features.map(f => [f.properties.icon, f.properties.color])')
     check('pins coloured by score (0 grey, 5 red)', all(c.lower() == '#d7261e' for i, c in pins if i.endswith('-50')) and all(c.lower() == '#8e9893' for i, c in pins if i.endswith('-0')) and any(i.endswith('-0') for i, c in pins), pins)
+    icon_links = page.evaluate('[...document.querySelectorAll("link[rel=manifest],link[rel=icon],link[rel=apple-touch-icon]")].map(l => l.getAttribute("href"))')
+    man = json.load(open(os.path.join(ROOT, 'manifest.webmanifest'), encoding='utf-8'))
+    icon_files = icon_links[1:] + [i['src'] for i in man['icons']]
+    check('home-screen icon: manifest + icons linked and present', icon_links[0] == 'manifest.webmanifest' and len(icon_links) == 4
+          and man['short_name'] == '雪团' and any(i['purpose'] == 'maskable' for i in man['icons'])
+          and all(os.path.isfile(os.path.join(ROOT, f)) for f in icon_files), (icon_links, icon_files))
     check('renamed to 雪团', page.title() == '雪团 XueTuan' and '雪团' in page.evaluate('document.querySelector(".panel-brand .brand-name").textContent'), page.title())
     check('opens on the home tab', page.get_attribute('#tabbar [data-tab="home"]', 'aria-current') == 'page')
     check('no right-side tool column, locate button kept', page.locator('.tools, [data-action="zoom-in"], [data-action="to-globe"], [data-action="basemap"]').count() == 0 and page.locator('.locate-btn').is_visible())
