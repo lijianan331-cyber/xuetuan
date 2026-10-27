@@ -13,7 +13,8 @@
 <link rel="preconnect" href="https://tiles.openfreemap.org" crossorigin>
 <link rel="preconnect" href="https://pshxrwfjcbvqlixdxlzs.supabase.co" crossorigin>
 <link rel="preconnect" href="https://photon.komoot.io" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=ZCOOL+QingKe+HuangYou&display=swap">
+<!-- 网页字体不挡页面：先用手机自带字体画出来，字体到了再换（2026-10-27 提速） -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=ZCOOL+QingKe+HuangYou&display=swap" media="print" onload="this.media='all'">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.css">
 <style>
 /* Layout: full-bleed map with floating controls; one panel that is a bottom sheet on phones and a left column on desktop.
@@ -104,7 +105,9 @@ body[data-snap="full"] .map-ctrls, body[data-snap="full"] .map-chips { opacity: 
 html.gmap-on #map { background: #E8EEF3; }
 #map .gmap { position: absolute; top: 0; right: 0; bottom: 0; left: 0; }
 html.gmap-on #map .maplibregl-canvas-container, html.gmap-on #map .maplibregl-canvas { pointer-events: none; }
-html.gmap-on .attrib { display: none; }
+html.gmap-on .attrib, html.gmap-on .home-attrib { display: none; }
+/* 首页小地图：谷歌标志在左下角，“探索地图”挪到左上角，不挡标志 */
+html.gmap-on .home-map-btn { align-items: flex-start; }
 .map-error {
   position: absolute; top: 0; right: 0; bottom: 0; left: 0; z-index: 4; display: grid; place-items: center;
   padding: 24px; text-align: center; color: var(--ink); font-weight: 600; font-size: 15px;
@@ -2136,6 +2139,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
 
   /* ================= map ================= */
   var styleCache = {};
+  var GLOBE_PROJ = ['interpolate', ['linear'], ['zoom'], 5, 'vertical-perspective', 7, 'mercator'];
   /* 简洁底图调成雪白：陆地更白，水面浅蓝 */
   function snowTint(style) {
     style.layers.forEach(function (l) {
@@ -2145,17 +2149,29 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       else if (/water/.test(l.id) && l.type === 'line') l.paint['line-color'] = '#B9D6F0';
     });
   }
+  /* 样式只取一次（同时要两次也只发一个请求）。瓦片目录（TileJSON）也顺手取好写进样式，
+     地图就不用拿到样式后再等一个来回才开始下瓦片（2026-10-27 提速） */
   function loadStyle(key) {
-    if (styleCache[key]) return Promise.resolve(JSON.parse(JSON.stringify(styleCache[key])));
-    return fetch(STYLE_URLS[key]).then(function (res) {
-      if (!res.ok) throw new Error('style ' + res.status);
-      return res.json();
-    }).then(function (json) {
-      if (!json || !json.layers) throw new Error('bad style');
-      if (key === 'light') snowTint(json);
-      styleCache[key] = json;
-      return JSON.parse(JSON.stringify(json));
-    });
+    if (!styleCache[key]) {
+      styleCache[key] = fetch(STYLE_URLS[key]).then(function (res) {
+        if (!res.ok) throw new Error('style ' + res.status);
+        return res.json();
+      }).then(function (json) {
+        if (!json || !json.layers) throw new Error('bad style');
+        if (key === 'light') snowTint(json);
+        return Promise.all(Object.keys(json.sources || {}).map(function (id) {
+          var src = json.sources[id];
+          if (src.type !== 'vector' || !src.url || src.tiles) return null;
+          return fetch(src.url).then(function (res) { return res.ok ? res.json() : null; }).then(function (tj) {
+            if (!tj || !tj.tiles || !tj.tiles.length) return;
+            ['tiles', 'minzoom', 'maxzoom', 'bounds', 'attribution', 'scheme'].forEach(function (k) { if (tj[k] != null && src[k] == null) src[k] = tj[k]; });
+            delete src.url;
+          }).catch(function () { /* 取不到就让地图自己去取 */ });
+        })).then(function () { return json; });
+      });
+      styleCache[key].catch(function () { delete styleCache[key]; });
+    }
+    return styleCache[key].then(function (json) { return JSON.parse(JSON.stringify(json)); });
   }
 
   function showMapError() {
@@ -2219,7 +2235,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
    * 打开：页面出来、地图第一次画完（谷歌底图就是谷歌瓦片第一次加载完）各用了几秒
    * 瓦片：下载了几块、平均几毫秒、最慢一块几毫秒（从手机到瓦片服务器的真实速度）
    * 滑动：最近一次拖动、缩放时每秒几帧、卡顿（一帧超过 50 毫秒）几次、最长一帧几毫秒 */
-  var PERF = /[?&]perf\b/.test(location.search) ? { map: 0, n: 0, sum: 0, max: 0, frames: [], moving: 0, last: 0 } : null;
+  var PERF = /[?&]perf\b/.test(location.search) ? { map: 0, n: 0, sum: 0, max: 0, frames: [], jank: [], moving: 0, last: 0 } : null;
   function perfMark() { if (PERF && !PERF.map) PERF.map = performance.now(); }
   function perfMoved() { if (PERF) PERF.moving = performance.now(); }
   function perfStart() {
@@ -2239,8 +2255,11 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     /* 只记地图在动的那些帧；停下半秒以上再动算新的一次 */
     function frame(now) {
       if (PERF.last && now - PERF.moving < 120) {
-        if (now - (PERF.lastMove || 0) > 500) PERF.frames = [];
-        else PERF.frames.push(now - PERF.last);
+        if (now - (PERF.lastMove || 0) > 500) { PERF.frames = []; PERF.jank = []; }
+        else {
+          PERF.frames.push(now - PERF.last);
+          if (now - PERF.last > 50 && map && PERF.jank.length < 6) PERF.jank.push(map.getZoom().toFixed(1));
+        }
         PERF.lastMove = now;
       }
       PERF.last = now;
@@ -2256,7 +2275,9 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       if (f.length > 5) {
         var sorted = f.slice().sort(function (a, b) { return a - b; }), med = sorted[sorted.length >> 1];
         lines.push('滑动 ' + Math.round(1000 / med) + ' 帧/秒 · 卡顿 ' + f.filter(function (x) { return x > 50; }).length + ' 次 · 最长 ' + Math.round(sorted[sorted.length - 1]) + 'ms');
+        if (PERF.jank.length) lines.push('卡在缩放 ' + PERF.jank.join(' '));
       } else lines.push('滑动 拖一下地图再看');
+      if (map) lines.push('现在缩放 ' + map.getZoom().toFixed(1) + ' · ' + (GMAP ? '谷歌平面' : map.getZoom() < 7 ? '地球' : '平面'));
       box.textContent = lines.join('\n');
     }
     show();
@@ -2373,7 +2394,9 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     poiLayerIds = null;
     /* 谷歌底图下面是平的，MapLibre 也要平的才对得上 */
     if (!GMAP) {
-      try { map.setProjection({ type: 'globe' }); } catch (e) { /* older renderer: stay flat */ }
+      /* 地球只在看全世界、看几个国家时用，缩到国家以下（7 级）就是平面：PRD V2 说城市和餐厅用平面地图；
+         手机实测地球视图在城市级别会卡（原来的 'globe' 要到 12 级才变平面）（2026-10-27 提速） */
+      try { map.setProjection({ type: GLOBE_PROJ }); } catch (e) { /* older renderer: stay flat */ }
       try { if (map.setSky) map.setSky({ 'atmosphere-blend': ['interpolate', ['linear'], ['zoom'], 0, 1, 5, 1, 7, 0] }); } catch (e) { /* optional */ }
     }
     if (!map.getSource('places')) { addAppLayers(); world.litKey = null; syncCountries(); }
@@ -5618,6 +5641,8 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     renderChrome();
     refreshMap();
   });
+  /* 底图样式跟读数据同时去取，不用等数据回来（2026-10-27 提速） */
+  (function () { var v = loadView(); loadStyle(v && STYLE_URLS[v.styleKey] ? v.styleKey : state.styleKey).catch(function () {}); })();
   store.init().catch(function () { toast(t('loadFail')); }).then(function () {
     var savedView = loadView();
     if (savedView) {

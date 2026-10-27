@@ -15,7 +15,8 @@ os.makedirs(SHOTS, exist_ok=True)
 photo = os.path.join(SCR, 'test-photo.jpg')
 Image.new('RGB', (2400, 1600), (210, 120, 60)).save(photo, 'JPEG')
 
-STYLE = json.dumps({"version": 8, "sources": {}, "layers": [{"id": "background", "type": "background"}]})
+STYLE = json.dumps({"version": 8, "sources": {"openmaptiles": {"type": "vector", "url": "https://tiles.openfreemap.org/planet"}}, "layers": [{"id": "background", "type": "background"}]})
+TILEJSON = json.dumps({"tilejson": "3.0.0", "tiles": ["https://tiles.openfreemap.org/planet/20261022_001001_pt/{z}/{x}/{y}.pbf"], "minzoom": 0, "maxzoom": 14})
 # fake Photon (OpenStreetMap search) answers
 PHOTON = json.dumps({"type": "FeatureCollection", "features": [
     {"type": "Feature", "geometry": {"type": "Point", "coordinates": [101.7201, 2.8502]},
@@ -26,6 +27,7 @@ PHOTON = json.dumps({"type": "FeatureCollection", "features": [
      "properties": {"name": "Kafe Ujian", "osm_type": "N", "osm_id": 111, "osm_key": "amenity", "osm_value": "cafe", "type": "house"}}
 ]})
 photon_calls = []
+tilejson_calls = []
 # 城市 / 国家：Photon 给了边界中心点（新加坡落在岛中间）和城市点（市中心）
 PHOTON_SG = json.dumps({"type": "FeatureCollection", "features": [
     {"type": "Feature", "geometry": {"type": "Point", "coordinates": [103.8198, 1.3572]},
@@ -167,6 +169,9 @@ def route_all(ctx, supabase=False):
             return route.fulfill(status=200, body=STUB, headers={'Content-Type': 'application/javascript', 'Access-Control-Allow-Origin': '*'})
         if 'maplibre-gl.css' in url or 'fonts.googleapis.com' in url:
             return route.fulfill(status=200, body='', headers={'Content-Type': 'text/css'})
+        if url.endswith('tiles.openfreemap.org/planet'):
+            tilejson_calls.append(url)
+            return route.fulfill(status=200, body=TILEJSON, headers={'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'})
         if 'tiles.openfreemap.org/styles/' in url:
             if url.endswith('/dark'):
                 return route.fulfill(status=404, body='nope', headers={'Access-Control-Allow-Origin': '*'})
@@ -228,11 +233,14 @@ with sync_playwright() as p:
     ctl = page.evaluate('(() => { const c = document.querySelector("#map-ctrls").getBoundingClientRect(); return [c.top < 40, c.right <= innerWidth]; })()')
     check('map buttons sit in the top right corner', ctl == [True, True], ctl)
     check('switch button is coloured, not plain white', page.evaluate('getComputedStyle(document.querySelector(".mode-btn")).backgroundImage').startswith('linear-gradient'))
-    check('globe projection', st['proj'] == {'type': 'globe'}, st['proj'])
+    check('globe only for the world view, flat from country level down (zoom 7)', st['proj'] == {'type': ['interpolate', ['linear'], ['zoom'], 5, 'vertical-perspective', 7, 'mercator']}, st['proj'])
     check('labels patched to Chinese', 'name:zh' in json.dumps(st['label']), st['label'])
     check('shield labels untouched', st['shield'] == '{ref}', st['shield'])
     check('fonts picked from style', st['countFont'] == ['Noto Sans Bold'] and st['labelFont'] == ['Noto Sans Regular'], (st['countFont'], st['labelFont']))
     check('food mode shows all sample food places', st['feats'] == len(FOOD_S), (st['feats'], len(FOOD_S)))
+    src0 = page.evaluate('window.__map.opts.style.sources.openmaptiles')
+    check('tile directory fetched with the style and written into it (map starts tiles one round trip sooner)', src0.get('tiles') == json.loads(TILEJSON)['tiles'] and 'url' not in src0 and src0.get('maxzoom') == 14 and len(tilejson_calls) == 1, (src0, tilejson_calls))
+    check('web fonts do not block the page (loaded as print, switched on when ready)', page.get_attribute('link[href*="fonts.googleapis.com/css2"]', 'media') == 'all')
     check('first visit opens straight on campus, no long flight from the globe', len(st['intro']) >= 1 and st['intro'][0].get('center') == [101.7029, 2.8329] and st['intro'][0].get('zoom') == 14.6 and not any((c.get('duration') or 0) > 2000 for c in st['intro']), st['intro'])
     tabs0 = page.locator('#tabbar .tab').all_inner_texts()
     check('tab bar: home / explore / footprints / me, no + in it', tabs0 == ['首页', '探索', '足迹', '我的'] and page.locator('#tabbar #fab').count() == 0, tabs0)
@@ -815,7 +823,7 @@ with sync_playwright() as p:
     st2 = page.evaluate('({setStyle: window.__map.calls.filter(c=>c[0]==="setStyle").length, layers: window.__map.layers.map(l=>l.id).length, images: Object.keys(window.__map.images).length, proj: window.__map.projection})')
     st2['icons'] = page.evaluate('[...new Set(window.__map.getSource("places").data.features.concat(window.__map.getSource("homes").data.features).flatMap(f => [f.properties.icon, f.properties.pic]).filter(Boolean))].sort()')
     st2['imageIds'] = page.evaluate('Object.keys(window.__map.images).sort()')
-    check('base map switch re-adds layers + images', st2['setStyle'] == 1 and st2['layers'] == 10 and st2['icons'] == st2['imageIds'] and st2['proj'] == {'type': 'globe'}, st2)
+    check('base map switch re-adds layers + images', st2['setStyle'] == 1 and st2['layers'] == 10 and st2['icons'] == st2['imageIds'] and st2['proj'] == {'type': ['interpolate', ['linear'], ['zoom'], 5, 'vertical-perspective', 7, 'mercator']}, st2)
     tab(page, 'explore')
     set_mode(page, 'food')
 
