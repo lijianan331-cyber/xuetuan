@@ -444,12 +444,24 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
 .chips-wrap .chip[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
 .f-loc { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
 .form-place { display: flex; align-items: center; gap: 8px; font-size: 15px; }
-.score-input { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; }
-.score-input .sc {
-  height: 40px; padding: 0; border: 0; border-radius: 12px; background: var(--surface-2);
-  color: var(--ink); font-size: 16px; font-weight: 800; font-variant-numeric: tabular-nums;
+.stars-input {
+  display: flex; align-items: center; gap: 12px; padding: 4px 0; touch-action: none; user-select: none; -webkit-user-select: none;
+  cursor: pointer; outline: none; --c: #B9C1BD;
 }
-.score-input .sc[aria-pressed="true"] { background: var(--c); color: #fff; }
+.stars-input:focus-visible .stars-track { outline: 2px solid var(--accent); outline-offset: 4px; border-radius: 8px; }
+.stars-track { display: flex; gap: 4px; }
+.stars-track .st { position: relative; width: 36px; height: 36px; color: #DCE3EA; }
+.stars-track .st svg { display: block; width: 100%; height: 100%; }
+.stars-track .st-fill { position: absolute; inset: 0 auto 0 0; overflow: hidden; color: var(--c); }
+.stars-track .st-fill svg { width: 36px; }
+.stars-val { min-width: 2.2em; font-size: 22px; font-weight: 800; color: var(--c); font-variant-numeric: tabular-nums; }
+.stars-input:not([aria-valuenow]) .stars-val { color: var(--muted); font-size: 13px; font-weight: 600; }
+/* 列表、点评里的小星星（只看不改） */
+.stars-mini { display: inline-flex; align-items: center; gap: 1px; vertical-align: -2px; }
+.stars-mini .st { position: relative; width: 13px; height: 13px; color: #DCE3EA; }
+.stars-mini .st svg { display: block; width: 13px; height: 13px; }
+.stars-mini .st-fill { position: absolute; inset: 0 auto 0 0; overflow: hidden; color: var(--c); }
+.fi-place .score { margin-left: 6px; }
 .rv-actions { display: flex; gap: 16px; }
 .search-results .sec-title { margin: 16px 0 2px; }
 .search-results .sec-title:first-child { margin-top: 4px; }
@@ -782,7 +794,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       category: '分类（选填）', precision: '标到哪一级',
       precExact: '具体地点', precArea: '一片区域', precCity: '整个城市',
       precHint: '吃饭的店标到门口；旅行可以只标城市，放大时会显示成一个范围。',
-      rating: '评分（0–5）', ratingHint: '0 分踩雷，5 分强推。', errRating: '打个分再发布',
+      rating: '评分', ratingHint: '点或左右拖星星，可以打半颗；拖到最左是 0 分（踩雷）。', errRating: '打个分再发布', starsNone: '还没打分',
       priceFood: '人均（RM，选填）',
       review: '评论（选填）', reviewPhFood: '写评论', reviewPhTravel: '写评论',
       photos: '照片（选填）', photoLimit: '最多 {n} 张', addPhoto: '加照片', photoReadFail: '这张图读不了，换一张试试',
@@ -801,7 +813,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       homesBtn: '同学的家', homeOf: '{n}的家', homesN: '{n} 位同学的家', homeOnlyYou: '只有你自己看得到', homeEdit: '改我的家', homeSetCta: '你也放一个小房子',
       publish: '发布',
       location: '位置', repick: '重新选',
-      noRating: '暂无评分', myScore: '我的评分', avgOf: '{n} 人打分的平均', perPerson: '人均', costLabel: '花费', reviewsLabel: '条点评', reviewsTitle: '点评',
+      noRating: '暂无评分', myScore: '我的评分', avgOf: '{n} 人打分的平均', avgNoZero: '（不算 {n} 个 0 分）', perPerson: '人均', costLabel: '花费', reviewsLabel: '条点评', reviewsTitle: '点评',
       navGoogle: 'Google 地图', navWaze: 'Waze', viewGoogle: '在 Google 地图看', copyCoords: '复制坐标',
       copied: '坐标已复制', copyFail: '复制不了，坐标是 {c}', openLink: '相关链接',
       distFrom: '距 XMUM {d}',
@@ -872,7 +884,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       category: 'Category (optional)', precision: 'How precise',
       precExact: 'Exact spot', precArea: 'An area', precCity: 'Whole city',
       precHint: 'Pin restaurants at the door. Trips can be city-level and show as an area when zoomed in.',
-      rating: 'Score (0–5)', ratingHint: '0 = avoid, 5 = must go.', errRating: 'Give it a score first',
+      rating: 'Score', ratingHint: 'Tap or drag the stars; half stars work. All the way left is 0 (avoid).', errRating: 'Give it a score first', starsNone: 'Not scored yet',
       priceFood: 'Per person (RM, optional)',
       review: 'Review (optional)', reviewPhFood: 'Write a review', reviewPhTravel: 'Write a review',
       photos: 'Photos (optional)', photoLimit: 'up to {n}', addPhoto: 'Add photo', photoReadFail: 'Couldn’t read that image. Try another one',
@@ -891,7 +903,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       homesBtn: 'Classmates’ homes', homeOf: '{n}’s home', homesN: '{n} classmates’ homes', homeOnlyYou: 'Only you can see this', homeEdit: 'Change my home', homeSetCta: 'Add your own house',
       publish: 'Publish',
       location: 'Location', repick: 'Change',
-      noRating: 'No score yet', myScore: 'My score', avgOf: 'Average of {n}', perPerson: 'per person', costLabel: 'cost', reviewsLabel: 'reviews', reviewsTitle: 'Reviews',
+      noRating: 'No score yet', myScore: 'My score', avgOf: 'Average of {n}', avgNoZero: ' ({n} zero scores left out)', perPerson: 'per person', costLabel: 'cost', reviewsLabel: 'reviews', reviewsTitle: 'Reviews',
       navGoogle: 'Google Maps', navWaze: 'Waze', viewGoogle: 'Open in Google Maps', copyCoords: 'Copy coordinates',
       copied: 'Coordinates copied', copyFail: 'Couldn’t copy. Coordinates: {c}', openLink: 'Link',
       distFrom: '{d} from XMUM',
@@ -1284,7 +1296,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       author = author || r.author || {};
       return {
         id: r.id, placeId: r.place_id, authorId: r.user_id, authorName: author.name || '',
-        rating: r.rating, price: r.price == null ? null : +r.price, text: r.text, photos: r.photos || [],
+        rating: r.rating == null ? null : +r.rating, price: r.price == null ? null : +r.price, text: r.text, photos: r.photos || [],
         visibility: r.visibility, createdAt: Date.parse(r.created_at), sample: false
       };
     }
@@ -1550,7 +1562,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
               });
               return Promise.all(blobs).then(function (list) {
                 return self.addReview({
-                  placeId: p.id, rating: r.rating == null ? null : clamp(Math.round(r.rating), 0, 5), price: r.price || null,
+                  placeId: p.id, rating: r.rating == null ? null : clamp(Math.round(r.rating * 2) / 2, 0, 5), price: r.price || null,
                   text: String(r.text || '').slice(0, 1000), visibility: r.visibility === 'private' ? 'private' : 'public'
                 }, list);
               });
@@ -1722,15 +1734,17 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
   function avgOf(list, key) {
     return list.length ? list.reduce(function (s, r) { return s + r[key]; }, 0) / list.length : null;
   }
-  /* score：我的地图用我自己的分，探索和收藏用公开记录的平均分；没人打分是 null */
+  /* score：我的地图用我自己的分，探索和收藏用公开记录的平均分；没人打分是 null。
+     平均分不算 0 分（防恶意差评，用户 2026-10-27）；只有 0 分时才显示 0 */
   function stats(p) {
     var rs = scopedReviews(p.id);
     var scored = (state.scope === 'mine' ? rs : rs.filter(function (r) { return r.visibility === 'public'; }))
       .filter(function (r) { return r.rating != null; });
     var priced = rs.filter(function (r) { return r.price > 0; });
-    var score = avgOf(scored, 'rating');
+    var positive = scored.filter(function (r) { return r.rating > 0; });
+    var score = positive.length ? avgOf(positive, 'rating') : scored.length ? 0 : null;
     return {
-      rs: rs, count: rs.length, raters: scored.length,
+      rs: rs, count: rs.length, raters: positive.length || scored.length, zeros: positive.length ? scored.length - positive.length : 0,
       score: score == null ? null : Math.round(score * 10) / 10,
       avgPrice: avgOf(priced, 'price') || 0
     };
@@ -1751,6 +1765,95 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     if (s == null) return '';
     return '<span class="score" style="--c:' + scoreColor(s) + '" role="img" aria-label="' + esc(t('scoreAria', { n: fmtScore(s) })) + '">' + fmtScore(s) + '</span>';
   }
+
+  /* ================= 星星 =================
+   * 五颗星，可以半颗（0.5 一档）。打分时点或左右拖，拖到最左边是 0 分；颜色跟着分数变（和地图图钉一样） */
+  var STAR_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="m12 2.6 2.9 6 6.5.8-4.8 4.5 1.2 6.5L12 17.2l-5.8 3.2 1.2-6.5-4.8-4.5 6.5-.8z"/></svg>';
+  function starCells(v) {
+    var h = '';
+    for (var i = 0; i < 5; i++) {
+      var f = v == null ? 0 : clamp(v - i, 0, 1);
+      h += '<span class="st">' + STAR_SVG + '<span class="st-fill" style="width:' + (f * 100) + '%">' + STAR_SVG + '</span></span>';
+    }
+    return h;
+  }
+  /* 只看的小星星：每条点评自己的分 */
+  function starsMiniHTML(v) {
+    if (v == null) return '';
+    return '<span class="stars-mini" style="--c:' + scoreColor(v) + '" role="img" aria-label="' + esc(t('scoreAria', { n: fmtScore(v) })) + '">' + starCells(v) + '</span>';
+  }
+  /* 打分用的：commit 是松手后要做的事（表单里直接记下分数；地点卡片上带着分数进表单） */
+  function starsInputHTML(id, v, commit, labelId) {
+    return '<div class="stars-input" id="' + id + '" role="slider" tabindex="0" data-commit="' + commit + '" aria-labelledby="' + labelId + '" aria-valuemin="0" aria-valuemax="5"' +
+      (v == null ? '' : ' aria-valuenow="' + v + '" aria-valuetext="' + esc(t('scoreAria', { n: fmtScore(v) })) + '"') + ' style="--c:' + scoreColor(v) + '">' +
+      '<span class="stars-track">' + starCells(v) + '</span><b class="stars-val">' + (v == null ? esc(t('starsNone')) : fmtScore(v)) + '</b></div>';
+  }
+  function setStars(el, v) {
+    el.style.setProperty('--c', scoreColor(v));
+    $$('.st-fill', el).forEach(function (f, i) { f.style.width = (clamp(v - i, 0, 1) * 100) + '%'; });
+    el.setAttribute('aria-valuenow', v);
+    el.setAttribute('aria-valuetext', t('scoreAria', { n: fmtScore(v) }));
+    $('.stars-val', el).textContent = fmtScore(v);
+  }
+  /* 手指在第几颗星的哪一半：左半颗 = x.5，右半颗 = 整颗；比第一颗还左 = 0 */
+  function starsValueAt(el, x) {
+    var cells = $$('.stars-track .st', el);
+    for (var i = 0; i < cells.length; i++) {
+      var r = cells[i].getBoundingClientRect();
+      if (i === 0 && x < r.left) return 0;
+      /* 星星之间的空隙算前一颗的满星 */
+      var next = cells[i + 1] ? cells[i + 1].getBoundingClientRect().left : Infinity;
+      if (x < next) return i + (x < r.left + r.width / 2 ? 0.5 : 1);
+    }
+    return 5;
+  }
+  function commitStars(el, v) {
+    var c = el.dataset.commit;
+    if (c === 'form') { if (state.form) { state.form.rating = v; var e = $('#err-rating'); if (e) e.hidden = true; } }
+    else if (c === 'place-score') { if (state.placeId && requireLogin()) startReview(state.placeId, v); }
+    else if (c === 'preview-score') { if (state.preview) addFromResult(state.preview, false, v); }
+  }
+  (function setupStars() {
+    var active = null;
+    document.addEventListener('pointerdown', function (e) {
+      var el = e.target.closest && e.target.closest('.stars-input');
+      if (!el || (e.pointerType === 'mouse' && e.button !== 0)) return;
+      e.preventDefault();
+      active = { el: el, id: e.pointerId, v: starsValueAt(el, e.clientX) };
+      try { el.setPointerCapture(e.pointerId); } catch (err) { /* 不支持也能用 */ }
+      setStars(el, active.v);
+    });
+    document.addEventListener('pointermove', function (e) {
+      if (!active || e.pointerId !== active.id) return;
+      var v = starsValueAt(active.el, e.clientX);
+      if (v !== active.v) { active.v = v; setStars(active.el, v); }
+    });
+    function finish(e) {
+      if (!active || e.pointerId !== active.id) return;
+      var a = active;
+      active = null;
+      if (e.type === 'pointerup') commitStars(a.el, a.v);
+      else if (a.el.dataset.commit === 'form' && state.form && state.form.rating != null) setStars(a.el, state.form.rating);
+    }
+    document.addEventListener('pointerup', finish);
+    document.addEventListener('pointercancel', finish);
+    /* 键盘：左右键半颗半颗地调，Home 0 分，End 5 分；卡片上按回车确认 */
+    document.addEventListener('keydown', function (e) {
+      var el = e.target.closest && e.target.closest('.stars-input');
+      if (!el) return;
+      var cur = el.hasAttribute('aria-valuenow') ? +el.getAttribute('aria-valuenow') : 0;
+      var step = { ArrowRight: 0.5, ArrowUp: 0.5, ArrowLeft: -0.5, ArrowDown: -0.5 }[e.key];
+      var v = step != null ? clamp(cur + step, 0, 5) : e.key === 'Home' ? 0 : e.key === 'End' ? 5 : null;
+      if (v != null) {
+        e.preventDefault();
+        setStars(el, v);
+        if (el.dataset.commit === 'form') commitStars(el, v);
+      } else if ((e.key === 'Enter' || e.key === ' ') && el.dataset.commit !== 'form' && el.hasAttribute('aria-valuenow')) {
+        e.preventDefault();
+        commitStars(el, cur);
+      }
+    });
+  })();
 
   /* 美食按出行范围分四层（PRD 第九节），按到 XMUM 的直线距离算 */
   var DIST_TIERS = [
@@ -2645,7 +2748,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
 
     panel.addEventListener('touchstart', function (e) {
       touch = null;
-      if (!isMobile() || drag || e.touches.length !== 1 || e.target.closest('#grip, input, textarea, select')) return;
+      if (!isMobile() || drag || e.touches.length !== 1 || e.target.closest('#grip, input, textarea, select, .stars-input')) return;
       touch = { x: e.touches[0].clientX, y: e.touches[0].clientY, sheet: null };
     }, { passive: true });
     panel.addEventListener('touchmove', function (e) {
@@ -3003,7 +3106,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
 
   function metaHTML(r) {
     var parts = [];
-    if (r.rating != null) parts.push(scoreHTML(r.rating));
+    if (r.rating != null) parts.push(starsMiniHTML(r.rating));
     if (r.price) parts.push('<span>RM ' + fmtPrice(r.price) + '</span>');
     if (r.visibility === 'private') parts.push('<span class="pill">' + esc(t('visPrivateShort')) + '</span>');
     return parts.join('<span class="sep">·</span>');
@@ -3020,7 +3123,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       lead +
       '<span class="fi-main">' +
       '<span class="fi-who"><b>' + esc(name) + '</b>' + (from ? '<span class="muted">' + esc(t('fromPrefix') + from) + '</span>' : '') + '<span class="fi-time">' + esc(timeAgo(r.createdAt)) + '</span></span>' +
-      '<span class="fi-place">' + catIconHTML(c) + '<span>' + esc(placeTitle(p)) + '</span>' + (p.sample ? '<span class="badge">' + esc(t('sample')) + '</span>' : '') + '</span>' +
+      '<span class="fi-place">' + catIconHTML(c) + '<span>' + esc(placeTitle(p)) + '</span>' + scoreHTML(stats(p).score) + (p.sample ? '<span class="badge">' + esc(t('sample')) + '</span>' : '') + '</span>' +
       (meta ? '<span class="fi-meta">' + meta + '</span>' : '') +
       (text ? '<span class="fi-text">' + esc(text) + '</span>' : '') +
       '</span></button></li>';
@@ -3056,7 +3159,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
 
   function scoreLabel(s) {
     if (state.scope === 'mine') return s.score != null ? t('myScore') : t('noRating');
-    return s.raters ? t('avgOf', { n: s.raters }) : t('noRating');
+    return s.raters ? t('avgOf', { n: s.raters }) + (s.zeros ? t('avgNoZero', { n: s.zeros }) : '') : t('noRating');
   }
 
   function renderPlace() {
@@ -3148,10 +3251,8 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
         }).join('') + '</div></div>';
     }
     /* 只有评分必填，其余都是选填 */
-    h += '<div class="field"><span class="f-label" id="lbl-rating">' + esc(t('rating')) + ' *</span><div class="score-input" role="group" aria-labelledby="lbl-rating">' +
-      [0, 1, 2, 3, 4, 5].map(function (n) {
-        return '<button type="button" class="sc" data-action="f-score" data-n="' + n + '" style="--c:' + scoreColor(n) + '" aria-label="' + esc(t('scoreAria', { n: n })) + '" aria-pressed="' + (f.rating === n) + '">' + n + '</button>';
-      }).join('') + '</div><p class="f-hint">' + esc(t('ratingHint')) + '</p><div class="f-err" id="err-rating" hidden></div></div>';
+    h += '<div class="field"><span class="f-label" id="lbl-rating">' + esc(t('rating')) + ' *</span>' + starsInputHTML('f-rating', f.rating, 'form', 'lbl-rating') +
+      '<p class="f-hint">' + esc(t('ratingHint')) + '</p><div class="f-err" id="err-rating" hidden></div></div>';
     h += fieldHTML('f-text', esc(t('review')), '<textarea id="f-text" class="input" rows="3" maxlength="1000" placeholder="' + esc(t(isFood ? 'reviewPhFood' : 'reviewPhTravel')) + '"></textarea>');
     h += '<div class="field"><span class="f-label">' + esc(t('photos')) + ' <small>· ' + esc(t('photoLimit', { n: MAX_PHOTOS })) + '</small></span><div class="photo-grid" id="f-photos"></div></div>';
     /* 人均只问吃的（筛选按人均）；旅行不问花费（用户 2026-10-26） */
@@ -3490,12 +3591,10 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     flyTo([r.lng, r.lat], (mode === r.mode && r.zoom) || (precision === 'city' ? 10 : precision === 'area' ? 14 : 16.5));
     startNewPlace({ lng: r.lng, lat: r.lat }, precision, NEAR_RADIUS[precision], { name: r.name, alt: r.alt, cat: cat, osm: r.osm, rating: rating });
   }
-  /* 0–5 分一排按钮：点一下就带着分数进表单（地图卡片、地点页都用） */
+  /* 五颗星：点或拖完松手，就带着分数进表单（地图卡片、地点页都用） */
   function quickRateHTML(action, mode, hint) {
-    return '<div class="field quick-rate"><span class="f-label" id="lbl-qr">' + esc(t(mode === 'food' ? 'quickRateFood' : 'quickRate')) + '</span><div class="score-input" role="group" aria-labelledby="lbl-qr">' +
-      [0, 1, 2, 3, 4, 5].map(function (n) {
-        return '<button type="button" class="sc" data-action="' + action + '" data-n="' + n + '" style="--c:' + scoreColor(n) + '" aria-label="' + esc(t('scoreAria', { n: n })) + '">' + n + '</button>';
-      }).join('') + '</div>' + (hint ? '<p class="f-hint">' + esc(t('quickRateHint')) + '</p>' : '') + '</div>';
+    return '<div class="field quick-rate"><span class="f-label" id="lbl-qr">' + esc(t(mode === 'food' ? 'quickRateFood' : 'quickRate')) + '</span>' +
+      starsInputHTML('qr-stars', null, action, 'lbl-qr') + (hint ? '<p class="f-hint">' + esc(t('quickRateHint')) + '</p>' : '') + '</div>';
   }
   function renderPreview() {
     var r = state.preview;
@@ -3995,7 +4094,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     var p0 = f.placeId ? placeById(f.placeId) : null;
     var placeFields = formHasPlaceFields(f, p0);
     var bad = null;
-    if (f.rating == null) { showErr('rating', t('errRating')); bad = bad || $('.score-input .sc'); }
+    if (f.rating == null) { showErr('rating', t('errRating')); bad = bad || $('#f-rating'); }
     if (bad) { bad.focus({ preventScroll: true }); centerInPanel(bad, !reduceMotion); return; }
 
     var btn = $('#f-submit');
@@ -4251,7 +4350,6 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       case 'open-place': openPlace(d.id); break;
       case 'back': back(); break;
       case 'write-review': if (state.placeId && requireLogin()) startReview(state.placeId); break;
-      case 'place-score': if (state.placeId && requireLogin()) startReview(state.placeId, +d.n); break;
       case 'toggle-save': if (state.placeId && requireLogin()) toggleSave(state.placeId); break;
       case 'copy-coords': copyCoords(d.c); break;
       case 'photo': openLightbox(d.id, d.group); break;
@@ -4267,7 +4365,6 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
         if ($('#nick-field')) $('#nick-field').hidden = state.form.visibility !== 'public';
         lsSet(LS_SHARE, state.form.visibility === 'public' ? '1' : '0');
         break;
-      case 'f-score': state.form.rating = +d.n; setPressed('[data-action="f-score"]', 'n', d.n); $('#err-rating').hidden = true; break;
       case 'f-photo-add': $('#f-file').click(); break;
       case 'f-photo-del':
         state.form.photos = state.form.photos.filter(function (ph) {
@@ -4279,7 +4376,6 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       case 'near-pick': state.form.placeId = d.id; state.view = 'form'; render(); break;
       case 'near-new': state.view = 'form'; render(); break;
       case 'osm-pick': pickOsm(+d.i); break;
-      case 'preview-score': if (state.preview) addFromResult(state.preview, false, +d.n); break;
       case 'login': openLogin(); break;
       case 'login-google': store.signInWithGoogle().catch(function (err) { toast(t('loginFail', { m: (err && err.message) || '' })); }); break;
       case 'logout': store.signOut().catch(function () {}); break;

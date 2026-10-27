@@ -71,7 +71,7 @@
       if (this.table === 'places' && !('created_by' in row)) row.created_by = uid();
       if (this.table !== 'wishlist' && !row.id) row.id = newId();
       row.created_at = row.created_at || now;
-      if (this.table === 'visits') { row.photos = row.photos || []; if (row.rating != null && (row.rating < 0 || row.rating > 5)) return err('rating out of range'); }
+      if (this.table === 'visits') { row.photos = row.photos || []; if (row.rating != null && (row.rating < 0 || row.rating > 5 || row.rating * 2 % 1)) return err('rating out of range'); }
       if (!canWrite(this.table, row)) return err('new row violates row-level security policy');
       t.push(row);
       rows = [row];
