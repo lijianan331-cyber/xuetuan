@@ -14,7 +14,8 @@
     return { layers: [
       { id: 'background', type: 'background' },
       { id: 'place-city', type: 'symbol', layout: { 'text-field': ['coalesce', ['get', 'name:en'], ['get', 'name']], 'text-font': ['Noto Sans Regular'] } },
-      { id: 'road-shield', type: 'symbol', layout: { 'text-field': '{ref}', 'text-font': ['Noto Sans Bold'] } }
+      { id: 'road-shield', type: 'symbol', layout: { 'text-field': '{ref}', 'text-font': ['Noto Sans Bold'] } },
+      { id: 'poi_r1', type: 'symbol', source: 'openmaptiles', 'source-layer': 'poi', layout: { 'text-field': '{name}', 'text-font': ['Noto Sans Regular'] } }
     ] };
   }
   function Map(opts) {
@@ -40,7 +41,8 @@
   Map.prototype.setStyle = function (s, o) { var self = this; this.calls.push(['setStyle', o]); this.sources = {}; this.layers = []; this.images = {}; this.style = baseStyle(); setTimeout(function () { self.fire('style.load'); }, 30); };
   Map.prototype.addSource = function (id, s) {
     if (this.sources[id]) throw new Error('source exists ' + id);
-    this.sources[id] = { spec: s, data: s.data, setData: function (d) { this.data = d; }, getClusterExpansionZoom: function () { return Promise.resolve(12); } };
+    this.sources[id] = { spec: s, data: s.data, setData: function (d) { this.data = d; }, getClusterExpansionZoom: function () { return Promise.resolve(12); },
+      getClusterLeaves: function () { return Promise.resolve(((this.data && this.data.features) || []).slice()); } };
   };
   Map.prototype.getSource = function (id) { return this.sources[id]; };
   Map.prototype._find = function (id) { return this.style.layers.concat(this.layers).filter(function (l) { return l.id === id; })[0]; };
@@ -75,7 +77,11 @@
   Map.prototype.getContainer = function () { return this.container; };
   Map.prototype.getCanvas = function () { return this.canvas; };
   Map.prototype.unproject = function () { return this._ll(); };
-  Map.prototype.queryRenderedFeatures = function () { return window.__qrf || []; };
+  /* window.__qrf 里的要素带 layer.id 时，只在查询那一层时返回 */
+  Map.prototype.queryRenderedFeatures = function (pt, o) {
+    var want = o && o.layers;
+    return (window.__qrf || []).filter(function (f) { return !want || !f.layer || want.indexOf(f.layer.id) !== -1; });
+  };
   Map.prototype.resize = function () {};
   function Marker(o) { this.el = (o && o.element) || document.createElement('div'); }
   Marker.prototype.setLngLat = function (ll) { this.ll = ll; return this; };

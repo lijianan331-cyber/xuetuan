@@ -6,7 +6,8 @@
     profiles: (seed.profiles || []).slice(),
     places: (seed.places || []).slice(),
     visits: (seed.visits || []).slice(),
-    wishlist: (seed.wishlist || []).slice()
+    wishlist: (seed.wishlist || []).slice(),
+    homes: (seed.homes || []).slice()
   };
   var files = {};
   var session = null, listeners = [], calls = [];
@@ -19,11 +20,12 @@
     if (table === 'visits') return visibleVisit(row);
     if (table === 'places') return row.created_by === uid() || db.visits.some(function (v) { return v.place_id === row.id && visibleVisit(v); });
     if (table === 'wishlist') return row.user_id === uid();
+    if (table === 'homes') return row.is_public || row.user_id === uid();
     return true;
   }
   function canWrite(table, row) {
     if (!uid()) return false;
-    if (table === 'visits' || table === 'wishlist') return row.user_id === uid();
+    if (table === 'visits' || table === 'wishlist' || table === 'homes') return row.user_id === uid();
     if (table === 'places') return row.created_by === uid();
     if (table === 'profiles') return row.id === uid();
     return false;
@@ -42,6 +44,7 @@
     return this;
   };
   Query.prototype.insert = function (row) { this.op = 'insert'; this.payload = row; this.wantRows = false; return this; };
+  Query.prototype.upsert = function (row) { this.op = 'upsert'; this.payload = row; this.wantRows = false; return this; };
   Query.prototype.update = function (row) { this.op = 'update'; this.payload = row; this.wantRows = false; return this; };
   Query.prototype.delete = function () { this.op = 'delete'; this.wantRows = false; return this; };
   Query.prototype.eq = function (k, v) { this.filters.push([k, v]); return this; };
@@ -53,13 +56,22 @@
   Query.prototype.run = function () {
     var self = this, t = db[this.table], rows, now = new Date().toISOString();
     calls.push([this.table, this.op]);
-    if (this.op === 'insert') {
+    if (this.op === 'upsert') {
+      // 只有 homes 用：按 user_id 覆盖；和数据库触发器一样把位置取整到 0.1 度
+      var up = Object.assign({}, this.payload, { updated_at: now });
+      up.lat = Math.round(up.lat * 10) / 10; up.lng = Math.round(up.lng * 10) / 10;
+      if (!canWrite(this.table, up)) return err('new row violates row-level security policy');
+      db[this.table] = t.filter(function (r) { return r.user_id !== up.user_id; });
+      db[this.table].push(up);
+      window.__sb.db = db;
+      rows = [up];
+    } else if (this.op === 'insert') {
       var row = Object.assign({}, this.payload);
       if (this.table !== 'profiles' && !('user_id' in row) && this.table !== 'places') row.user_id = uid();
       if (this.table === 'places' && !('created_by' in row)) row.created_by = uid();
       if (this.table !== 'wishlist' && !row.id) row.id = newId();
       row.created_at = row.created_at || now;
-      if (this.table === 'visits') { row.photos = row.photos || []; if (row.rating != null && (row.rating < 0 || row.rating > 5)) return err('rating out of range'); }
+      if (this.table === 'visits') { row.photos = row.photos || []; if (row.rating != null && (row.rating < 0 || row.rating > 5 || row.rating * 2 % 1)) return err('rating out of range'); }
       if (!canWrite(this.table, row)) return err('new row violates row-level security policy');
       t.push(row);
       rows = [row];
