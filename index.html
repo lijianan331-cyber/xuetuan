@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>XMUM 吃玩地图</title>
-<meta name="description" content="厦马同学自己写的吃喝玩乐地图：美食点评、去过的地方、照片和价位。">
+<title>雪团 XueTuan</title>
+<meta name="description" content="雪团：厦马同学自己的吃喝玩乐地图。记录去过的地方、打分、拍照，收藏想去的地方。">
 <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#151a18" media="(prefers-color-scheme: dark)">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -24,7 +24,6 @@
   --ink: #17201B;
   --muted: #5D6A63;
   --line: #E0E6E2;
-  --star: #F0A20B;
   --danger: #C4302B;
   --shadow: 0 6px 22px rgba(15, 30, 22, .14), 0 1px 3px rgba(15, 30, 22, .12);
   --font-ui: "Plus Jakarta Sans", "Noto Sans SC", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", system-ui, sans-serif;
@@ -153,8 +152,6 @@ html.mode-travel .mode-switch::before { transform: translateX(100%); }
   box-shadow: 0 1px 3px rgba(15, 30, 22, .1);
 }
 .chip[aria-pressed="true"] { background: var(--ink); color: var(--surface); border-color: transparent; }
-.dot { display: inline-block; flex: none; width: 9px; height: 9px; border-radius: 50%; background: var(--c, var(--muted)); }
-.chip[aria-pressed="true"] .dot { box-shadow: 0 0 0 2px var(--surface); }
 .seg { display: inline-flex; gap: 2px; padding: 3px; border-radius: 12px; background: var(--surface-2); border: 1px solid var(--line); }
 .seg button { height: 36px; padding: 0 14px; border: 0; border-radius: 9px; background: none; color: var(--muted); font-size: 14px; font-weight: 600; white-space: nowrap; }
 .seg button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 3px rgba(15, 30, 22, .15); }
@@ -257,7 +254,7 @@ body.picking .attrib { bottom: calc(env(safe-area-inset-bottom, 0px) + 122px); }
 .grip span { width: 40px; height: 5px; border-radius: 3px; background: var(--line); }
 .panel-brand { display: none; align-items: center; gap: 12px; padding: 18px 20px 12px; }
 .brand-name { font-weight: 800; font-size: 17px; letter-spacing: -.01em; line-height: 1.2; }
-.brand-name span { font-family: var(--font-display); font-weight: 400; font-size: 20px; margin-left: 3px; }
+.brand-name span { font-family: var(--font-display); font-weight: 400; font-size: 22px; margin-right: 2px; }
 .brand-tag { font-size: 12.5px; color: var(--muted); }
 .panel-body {
   flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain;
@@ -311,9 +308,19 @@ body.picking .attrib { bottom: calc(env(safe-area-inset-bottom, 0px) + 122px); }
   font-size: 11px; font-weight: 700; letter-spacing: .02em;
 }
 .pill { display: inline-flex; align-items: center; height: 20px; padding: 0 8px; border-radius: 999px; background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent); font-size: 11.5px; font-weight: 700; }
-.stars { display: inline-flex; gap: 1px; font-size: 13px; line-height: 1; letter-spacing: 0; }
-.stars i { font-style: normal; color: var(--line); }
-.stars i.on { color: var(--star); }
+.score {
+  flex: none; display: inline-flex; align-items: center; justify-content: center; min-width: 30px; height: 20px; padding: 0 6px;
+  border-radius: 6px; background: var(--c); color: #fff; font-size: 12px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums;
+}
+.score-big { font-size: 26px; }
+.cat-ic { flex: none; font-style: normal; font-size: 15px; line-height: 1; }
+.near-item > .cat-ic { width: 22px; text-align: center; font-size: 18px; }
+.legend {
+  display: inline-flex; align-items: center; gap: 5px; height: 26px; padding: 0 10px; border-radius: 999px;
+  background: var(--surface); color: var(--muted); font-size: 11.5px; font-weight: 700; box-shadow: 0 1px 3px rgba(15, 30, 22, .1);
+}
+.legend b { font-weight: 700; }
+.legend i { width: 54px; height: 8px; border-radius: 4px; background: linear-gradient(90deg, #8E9893, #F08C00, #D7261E); }
 .empty { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; padding: 20px 4px; }
 .empty p { margin: 0; max-width: 34ch; color: var(--muted); font-size: 14.5px; }
 .empty.small { padding: 16px 4px; color: var(--muted); font-size: 14px; }
@@ -375,10 +382,22 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
 .chips-wrap .chip[aria-pressed="true"] { background: var(--ink); color: var(--surface); }
 .f-loc { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
 .form-place { display: flex; align-items: center; gap: 8px; font-size: 16px; }
-.star-input { display: flex; align-items: center; flex-wrap: wrap; gap: 2px; }
-.star-input .st { padding: 2px 3px; border: 0; background: none; color: var(--line); font-size: 32px; line-height: 1; }
-.star-input .st[aria-pressed="true"] { color: var(--star); }
-.star-input .link-btn { margin-left: 10px; color: var(--muted); }
+.score-input { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; }
+.score-input .sc {
+  height: 46px; padding: 0; border: 2px solid var(--line); border-radius: 12px; background: var(--surface-2);
+  color: var(--ink); font-size: 18px; font-weight: 800; font-variant-numeric: tabular-nums;
+}
+.score-input .sc[aria-pressed="true"] { background: var(--c); border-color: var(--c); color: #fff; }
+.save-btn[aria-pressed="true"] { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 45%, transparent); }
+.rv-actions { display: flex; gap: 16px; }
+.search-results .sec-title { margin: 16px 0 2px; }
+.search-results .sec-title:first-child { margin-top: 4px; }
+.add-search { display: flex; gap: 8px; }
+.add-search .input { flex: 1; min-width: 0; }
+.add-search .add-pin { flex: none; height: 46px; padding: 0 12px; }
+.add-hint { margin: 8px 0 4px; }
+.add-pin-bottom { margin-top: 14px; }
+.osm-credit { padding: 12px 4px 4px; color: var(--muted); font-size: 11.5px; }
 .photo-grid { display: flex; flex-wrap: wrap; gap: 8px; }
 .ph-edit { position: relative; width: 76px; height: 76px; border-radius: 12px; overflow: hidden; background: var(--surface-2); }
 .ph-edit img { width: 100%; height: 100%; object-fit: cover; }
@@ -454,10 +473,10 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
   <aside class="panel" id="panel" data-snap="peek">
     <div class="grip" id="grip"><span></span></div>
     <div class="panel-brand">
-      <div class="brand-badge" aria-hidden="true">吃玩</div>
+      <div class="brand-badge" aria-hidden="true">雪团</div>
       <div>
-        <div class="brand-name">XMUM<span data-i18n="brandWord">吃玩地图</span></div>
-        <div class="brand-tag" data-i18n="tagline">厦马同学自己写的吃喝玩乐地图</div>
+        <div class="brand-name"><span>雪团</span> XueTuan</div>
+        <div class="brand-tag" data-i18n="tagline">中国有美团，雪邦有雪团</div>
       </div>
     </div>
     <div class="panel-body" id="view"></div>
@@ -468,7 +487,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     <div class="map-error" id="map-error" hidden></div>
 
     <header class="topbar">
-      <div class="brand-badge brand-top" aria-hidden="true">吃玩</div>
+      <div class="brand-badge brand-top" aria-hidden="true">雪团</div>
       <div class="mode-switch" role="tablist">
         <button type="button" role="tab" data-action="mode" data-mode="food" aria-selected="true" data-i18n-aria="foodAria"><b>吃</b><small>Makan</small></button>
         <button type="button" role="tab" data-action="mode" data-mode="travel" aria-selected="false" data-i18n-aria="travelAria"><b>玩</b><small>Jalan</small></button>
@@ -531,8 +550,11 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
   /* ================= constants ================= */
   var XMUM = { lng: 101.7029, lat: 2.8329 };
   var MAX_PHOTOS = 6;
+  /* 存储的键名沿用改名前的，改了会读不到已经存下的数据 */
   var LS_DATA = 'xmum-chiwan-map:data:v1';
   var LS_VIEW = 'xmum-chiwan-map:view:v1';
+  var BACKUP_APP = 'xuetuan';
+  var BACKUP_APPS = ['xuetuan', 'xmum-chiwan-map'];
   var STYLE_URLS = {
     light: 'https://tiles.openfreemap.org/styles/positron',
     color: 'https://tiles.openfreemap.org/styles/liberty',
@@ -609,12 +631,18 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
 
   var I18N = {
     zh: {
-      brandWord: '吃玩地图', tagline: '厦马同学自己写的吃喝玩乐地图',
+      tagline: '中国有美团，雪邦有雪团',
       foodAria: '吃：美食地图', travelAria: '玩：旅行地图',
       food: '吃', travel: '玩',
-      scopeAll: '大家的', scopeMine: '我的', catAll: '全部',
+      scopeAll: '探索', scopeMine: '我的', scopeSaved: '收藏', mapsAria: '地图：探索 / 我的 / 收藏', catAll: '全部',
       priceAny: '价位不限', priceMax: '人均 ≤ RM{n}',
+      scoreAny: '评分不限', scoreMin: '{n} 分以上', scoreAria: '{n} 分', legend: '评分',
+      distAny: '距离不限', dist_walk: '步行 · 1.5km 内', dist_short: '短途打车 · 1.5–10km', dist_mid: '中距离 · 10–40km', dist_far: '更远 · 40km 以上',
+      tier_walk: '步行可达', tier_short: '短途打车', tier_mid: '中距离', tier_far: '吉隆坡及更远',
       feedFoodAll: '大家最近在吃', feedTravelAll: '大家最近去了', feedFoodMine: '我吃过的', feedTravelMine: '我去过的',
+      feedSavedFood: '想去吃的', feedSavedTravel: '想去的地方',
+      emptySaved: '还没收藏过。在探索地图里看到想去的，点地点页上的“收藏”。', goExplore: '去探索',
+      wish: '收藏', wished: '已收藏', wishAdded: '收藏了，在“收藏”地图里能找到', wishRemoved: '取消收藏了',
       emptyFoodAll: '这片还没人写过。加第一家，后面的同学就有参考了。',
       emptyTravelAll: '还没人分享去处。把你去过的地方标上去。',
       emptyMine: '你还没加过地方。', emptyFiltered: '没有符合筛选的地方。', clearFilters: '清除筛选',
@@ -623,13 +651,13 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       pickHintFood: '拖动地图，让针尖对准店门口', pickHintTravel: '拖动地图对准位置。只标城市的话，缩小一点再确认',
       pickPrecision: '会标成：{p}', confirmSpot: '就是这里', cancel: '取消', back: '返回', close: '关闭',
       nearbyTitle: '附近已经有这些，是同一个地方吗？', nearbyThis: '是这家', nearbyNone: '都不是，新建一个',
-      formNewFood: '加一家店', formNewTravel: '打卡新地方', formReview: '写点评',
+      formNewFood: '加一家店', formNewTravel: '打卡新地方', formReview: '写点评', formEdit: '编辑记录',
       name: '名称', namePhFood: '用大家平时叫的名字', namePhTravel: '比如：Nusa Penida',
       altName: '原名 / 英文名（选填）', altNamePh: '招牌上的英文或马来文名字',
       category: '分类', precision: '标到哪一级',
       precExact: '具体地点', precArea: '一片区域', precCity: '整个城市',
       precHint: '吃饭的店标到门口；旅行可以只标城市，放大时会显示成一个范围。',
-      rating: '评分', ratingSkip: '先不打分', starsAria: '{n} 星',
+      rating: '评分（0–5）', ratingHint: '0 分踩雷，5 分强推。', errRating: '打个分再发布',
       priceFood: '人均（RM）', priceTravel: '大概花费（RM，选填）',
       review: '说两句', reviewPhFood: '推荐点什么？要排队吗？几点去人少？', reviewPhTravel: '怎么去，玩多久，有什么坑？',
       photos: '照片', photoLimit: '最多 {n} 张', addPhoto: '加照片', photoReadFail: '这张图读不了，换一张试试',
@@ -639,7 +667,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       nickname: '昵称', nicknamePh: '大家看到的名字',
       publish: '发布', errName: '先写个名字', errCat: '选一个分类',
       location: '位置', repick: '重新选',
-      noRating: '暂无评分', perPerson: '人均', costLabel: '花费', reviewsLabel: '条点评', reviewsTitle: '点评',
+      noRating: '暂无评分', myScore: '我的评分', avgOf: '{n} 人打分的平均', perPerson: '人均', costLabel: '花费', reviewsLabel: '条点评', reviewsTitle: '点评',
       navGoogle: 'Google 地图', navWaze: 'Waze', viewGoogle: '在 Google 地图看', copyCoords: '复制坐标',
       copied: '坐标已复制', copyFail: '复制不了，坐标是 {c}', openLink: '相关链接',
       distFrom: '距 XMUM {d}',
@@ -648,6 +676,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       clearSamples: '清空示例', clearSamplesQ: '删掉所有示例地点和点评？你自己加的不会动。', clearSamplesOk: '清空', samplesCleared: '示例已清空',
       you: '我', anon: '某同学', fromPrefix: '来自 ',
       del: '删除', delReviewQ: '删除这条点评？', delOk: '删除', deleted: '已删除',
+      edit: '编辑', saveEdit: '保存修改', updated: '改好了',
       profile: '我的资料', hometown: '来自哪', country: '国家 / 地区', region: '省 / 州', city: '城市', district: '区 / 县',
       countryPh: '中国、马来西亚、哈萨克斯坦…', regionPh: '广东、Selangor…', cityPh: '深圳、Klang…', districtPh: '南山、Sepang…',
       language: '语言', basemap: '底图', styleLight: '简洁', styleColor: '彩色', styleDark: '深色',
@@ -658,6 +687,11 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       localNote: '现在是本地版：数据只存在这个浏览器里，换设备或清浏览器数据就没了，记得导出备份。上线后会改成大家共用的数据库。',
       about: '地图数据 © OpenStreetMap 贡献者，底图来自 OpenFreeMap。',
       searchBtn: '搜索', searchPh: '搜店名、地名', noResults: '没找到。可以自己加上去。',
+      addSearchPhFood: '输入店名搜索', addSearchPhTravel: '输入地名搜索', addPin: '地图选点',
+      addPinLong: '搜不到？在地图上选点', addHint: '先搜名字。学校附近的小店搜不到的话，点“地图选点”自己标。',
+      addNoResult: '地图上没搜到这个名字。',
+      searchLocal: '雪团里的', searchOsm: '地图上搜到的', osmMin: '再多打一个字，就会去地图上搜', osmLoading: '正在搜…',
+      osmFail: '地图搜索暂时用不了，可以自己插针添加', osmCredit: '地点搜索：Photon · 数据 © OpenStreetMap 贡献者', osmAdd: '添加', osmOpen: '已在雪团',
       published: '发布了', savedPrivate: '存好了，只在“我的”里能看到',
       locating: '正在定位…', locateFail: '定位失败，检查一下浏览器的定位权限',
       photoFail: '有照片没存上，刷新后会丢', saveFail: '浏览器不让存数据，关掉页面就没了',
@@ -667,12 +701,18 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       langBtn: 'EN'
     },
     en: {
-      brandWord: 'Makan & Jalan', tagline: 'A food and travel map written by XMUM students',
+      tagline: 'A food & travel map by XMUM students',
       foodAria: 'Food map', travelAria: 'Travel map',
       food: 'Food', travel: 'Travel',
-      scopeAll: 'Everyone', scopeMine: 'Mine', catAll: 'All',
+      scopeAll: 'Explore', scopeMine: 'Mine', scopeSaved: 'Saved', mapsAria: 'Map: explore / mine / saved', catAll: 'All',
       priceAny: 'Any price', priceMax: '≤ RM{n} / person',
+      scoreAny: 'Any score', scoreMin: '{n}+ score', scoreAria: 'Score {n}', legend: 'Score',
+      distAny: 'Any distance', dist_walk: 'Walk · under 1.5 km', dist_short: 'Short ride · 1.5–10 km', dist_mid: 'Mid trip · 10–40 km', dist_far: 'Further · 40 km+',
+      tier_walk: 'Walkable', tier_short: 'Short ride', tier_mid: 'Mid-distance', tier_far: 'KL & beyond',
       feedFoodAll: 'What people are eating', feedTravelAll: 'Where people went', feedFoodMine: 'Places I’ve eaten', feedTravelMine: 'Places I’ve been',
+      feedSavedFood: 'Food spots I saved', feedSavedTravel: 'Places I saved',
+      emptySaved: 'Nothing saved yet. When you spot somewhere on the Explore map, tap “Save” on its page.', goExplore: 'Explore',
+      wish: 'Save', wished: 'Saved', wishAdded: 'Saved. Find it on the Saved map', wishRemoved: 'Removed from saved',
       emptyFoodAll: 'Nobody has written about this area yet. Add the first spot so the next person has something to go on.',
       emptyTravelAll: 'No trips shared yet. Pin the places you’ve been.',
       emptyMine: 'You haven’t added any places yet.', emptyFiltered: 'Nothing matches these filters.', clearFilters: 'Clear filters',
@@ -681,13 +721,13 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       pickHintFood: 'Drag the map until the pin points at the entrance', pickHintTravel: 'Drag the map to the spot. For a whole city, zoom out before confirming',
       pickPrecision: 'Will be saved as: {p}', confirmSpot: 'Use this spot', cancel: 'Cancel', back: 'Back', close: 'Close',
       nearbyTitle: 'These are already nearby. Same place?', nearbyThis: 'That’s it', nearbyNone: 'None of these, create new',
-      formNewFood: 'Add a food spot', formNewTravel: 'Pin a new place', formReview: 'Write a review',
+      formNewFood: 'Add a food spot', formNewTravel: 'Pin a new place', formReview: 'Write a review', formEdit: 'Edit entry',
       name: 'Name', namePhFood: 'The name people actually use', namePhTravel: 'e.g. Nusa Penida',
       altName: 'Original / other name (optional)', altNamePh: 'The name on the signboard',
       category: 'Category', precision: 'How precise',
       precExact: 'Exact spot', precArea: 'An area', precCity: 'Whole city',
       precHint: 'Pin restaurants at the door. Trips can be city-level and show as an area when zoomed in.',
-      rating: 'Rating', ratingSkip: 'No rating', starsAria: '{n} stars',
+      rating: 'Score (0–5)', ratingHint: '0 = avoid, 5 = must go.', errRating: 'Give it a score first',
       priceFood: 'Per person (RM)', priceTravel: 'Rough cost (RM, optional)',
       review: 'Your notes', reviewPhFood: 'What to order? Is there a queue? When is it quiet?', reviewPhTravel: 'How to get there, how long to stay, what to watch out for',
       photos: 'Photos', photoLimit: 'up to {n}', addPhoto: 'Add photo', photoReadFail: 'Couldn’t read that image. Try another one',
@@ -697,7 +737,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       nickname: 'Nickname', nicknamePh: 'The name others see',
       publish: 'Publish', errName: 'Add a name first', errCat: 'Pick a category',
       location: 'Location', repick: 'Change',
-      noRating: 'No ratings yet', perPerson: 'per person', costLabel: 'cost', reviewsLabel: 'reviews', reviewsTitle: 'Reviews',
+      noRating: 'No score yet', myScore: 'My score', avgOf: 'Average of {n}', perPerson: 'per person', costLabel: 'cost', reviewsLabel: 'reviews', reviewsTitle: 'Reviews',
       navGoogle: 'Google Maps', navWaze: 'Waze', viewGoogle: 'Open in Google Maps', copyCoords: 'Copy coordinates',
       copied: 'Coordinates copied', copyFail: 'Couldn’t copy. Coordinates: {c}', openLink: 'Link',
       distFrom: '{d} from XMUM',
@@ -706,6 +746,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       clearSamples: 'Remove samples', clearSamplesQ: 'Remove all sample places and reviews? Your own entries stay.', clearSamplesOk: 'Remove', samplesCleared: 'Samples removed',
       you: 'Me', anon: 'A student', fromPrefix: 'from ',
       del: 'Delete', delReviewQ: 'Delete this review?', delOk: 'Delete', deleted: 'Deleted',
+      edit: 'Edit', saveEdit: 'Save changes', updated: 'Updated',
       profile: 'My profile', hometown: 'Where you’re from', country: 'Country / region', region: 'Province / state', city: 'City', district: 'District',
       countryPh: 'China, Malaysia, Kazakhstan…', regionPh: 'Guangdong, Selangor…', cityPh: 'Shenzhen, Klang…', districtPh: 'Nanshan, Sepang…',
       language: 'Language', basemap: 'Base map', styleLight: 'Clean', styleColor: 'Colour', styleDark: 'Dark',
@@ -716,6 +757,11 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       localNote: 'This is the local version: data lives only in this browser and disappears if you switch devices or clear browser data. Export a backup. The online version will use a shared database.',
       about: 'Map data © OpenStreetMap contributors. Base map by OpenFreeMap.',
       searchBtn: 'Search', searchPh: 'Search places', noResults: 'Nothing found. You can add it yourself.',
+      addSearchPhFood: 'Search by name', addSearchPhTravel: 'Search a place', addPin: 'Pick on map',
+      addPinLong: 'Can’t find it? Pick it on the map', addHint: 'Search by name first. If a small stall doesn’t show up, use “Pick on map”.',
+      addNoResult: 'Nothing on the map with that name.',
+      searchLocal: 'On XueTuan', searchOsm: 'From the map', osmMin: 'Type one more character to search the map', osmLoading: 'Searching…',
+      osmFail: 'Map search isn’t available right now. You can still drop a pin.', osmCredit: 'Place search by Photon · data © OpenStreetMap contributors', osmAdd: 'Add', osmOpen: 'On XueTuan',
       published: 'Published', savedPrivate: 'Saved. Only you can see it, under “Mine”',
       locating: 'Finding you…', locateFail: 'Couldn’t get your location. Check the browser’s location permission',
       photoFail: 'Some photos weren’t saved and will be lost on refresh', saveFail: 'This browser won’t store data, so it will be lost when you close the page',
@@ -731,41 +777,236 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     nav: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M21 3 3 10.5l7.2 2.3L12.5 20 21 3z"/></svg>',
     copy: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><rect x="8.5" y="8.5" width="11" height="11" rx="2.5"/><path d="M15.5 8.5V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v7.5a2 2 0 0 0 2 2h2.5"/></svg>',
     link: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M10 14a4.5 4.5 0 0 0 6.4 0l3-3a4.5 4.5 0 0 0-6.4-6.4l-1 1"/><path d="M14 10a4.5 4.5 0 0 0-6.4 0l-3 3a4.5 4.5 0 0 0 6.4 6.4l1-1"/></svg>',
+    pin: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 21.5c-3-4-7-7.6-7-12a7 7 0 0 1 14 0c0 4.4-4 8-7 12z"/><circle cx="12" cy="9.5" r="2.5"/></svg>',
     camera: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M4 8.5h3l1.6-2.5h6.8L17 8.5h3v10H4z"/><circle cx="12" cy="13.2" r="3.4"/></svg>'
   };
 
-  /* ================= state + storage ================= */
+  /* ================= state ================= */
   var state = {
-    lang: 'zh', mode: 'food', scope: 'all', cat: 'all', priceMax: 0,
+    lang: 'zh', mode: 'food', scope: 'all', cat: 'all', priceMax: 0, minScore: 0, dist: 'any',
     view: 'feed', placeId: null, form: null, nearby: null, query: '',
     snap: 'peek', feedSnap: 'peek', picking: null, me: null, styleKey: 'light'
   };
-  var data = emptyData();
-  var canPersist = true;
   var map = null;
   var lastRenderedView = null;
 
-  function emptyData() { return { places: [], reviews: [], profile: null, areas: [], seeded: false }; }
+  /* ================= store =================
+   * 所有数据读写都走这里。界面只调用 store.xxx，不直接碰 localStorage / IndexedDB。
+   * 读：同步，从内存里的缓存读。写：返回 Promise。
+   * 第 2 步换成 Supabase 时只改这个对象的实现：init() 时把数据拉进缓存，写操作改成调接口。
+   */
+  var store = (function () {
+    var DATA_VERSION = 2;
+    var data = emptyData();
+    var canPersist = true;
+    var photoURLs = new Map();
 
-  function loadData() {
-    try {
-      var raw = localStorage.getItem(LS_DATA);
-      if (raw) {
-        var d = JSON.parse(raw);
-        data = Object.assign(emptyData(), d);
-        if (!Array.isArray(data.places)) data.places = [];
-        if (!Array.isArray(data.reviews)) data.reviews = [];
-        if (!Array.isArray(data.areas)) data.areas = [];
+    function emptyData() { return { version: DATA_VERSION, places: [], reviews: [], wishlist: [], profile: null, areas: [], seeded: false }; }
+
+    /* v1 把“没打分”存成 0；v2 里 0 是合法分数，没打分改成 null */
+    function migrate(d) {
+      if ((d.version || 1) < 2) {
+        (d.reviews || []).forEach(function (r) { if (!r.rating) r.rating = null; });
+        d.version = 2;
       }
-    } catch (e) { canPersist = false; }
-  }
-  function saveData() {
-    if (!canPersist) return;
-    try { localStorage.setItem(LS_DATA, JSON.stringify(data)); }
-    catch (e) { canPersist = false; toast(t('saveFail')); }
-  }
-  var saveTimer = null;
-  function saveDataSoon() { clearTimeout(saveTimer); saveTimer = setTimeout(saveData, 400); }
+      return d;
+    }
+    function load() {
+      try {
+        var raw = localStorage.getItem(LS_DATA);
+        if (raw) {
+          var d = JSON.parse(raw);
+          d.version = d.version || 1;
+          data = migrate(Object.assign(emptyData(), d));
+          ['places', 'reviews', 'wishlist', 'areas'].forEach(function (k) { if (!Array.isArray(data[k])) data[k] = []; });
+        }
+      } catch (e) { canPersist = false; }
+    }
+    function persist() {
+      if (!canPersist) return false;
+      try { localStorage.setItem(LS_DATA, JSON.stringify(data)); return true; }
+      catch (e) { canPersist = false; toast(t('saveFail')); return false; }
+    }
+    var persistTimer = null;
+    function persistSoon() { clearTimeout(persistTimer); persistTimer = setTimeout(persist, 400); }
+    function done(v) { persist(); return Promise.resolve(v); }
+
+    function seedSamples() {
+      var base = Date.now() - 1000 * 60 * 60 * 24 * 12;
+      SAMPLES.forEach(function (s, i) {
+        var ts = base + i * 1000 * 60 * 60 * 11;
+        data.places.push({ id: s[0], mode: s[1], cat: s[2], precision: s[3], lat: s[4], lng: s[5], name: s[6], altName: s[7], link: '', osm: '', createdBy: 'sample', createdAt: ts, sample: true });
+        data.reviews.push({ id: 'r-' + s[0], placeId: s[0], authorId: 'sample', authorName: '', authorFrom: '', rating: null, price: null, text: s[8], textEn: s[9], photos: [], visibility: 'public', createdAt: ts, sample: true });
+      });
+    }
+    function find(list, id) { for (var i = 0; i < list.length; i++) if (list[i].id === id) return list[i]; return null; }
+    function forgetPhoto(id) {
+      photoStore.del(id);
+      var u = photoURLs.get(id);
+      if (u) { URL.revokeObjectURL(u); photoURLs.delete(id); }
+    }
+    /* photos: [{ id, blob, url }]，返回是否全部存进了 IndexedDB */
+    function putPhotos(photos) {
+      return Promise.all(photos.map(function (ph) {
+        if (ph.url) photoURLs.set(ph.id, ph.url);
+        return photoStore.put(ph.id, ph.blob);
+      })).then(function (oks) { return oks.every(Boolean); });
+    }
+    function dropPlaceIfEmpty(placeId) {
+      if (data.reviews.some(function (r) { return r.placeId === placeId; })) return false;
+      data.places = data.places.filter(function (p) { return p.id !== placeId; });
+      data.wishlist = data.wishlist.filter(function (w) { return w.placeId !== placeId; });
+      return true;
+    }
+
+    return {
+      init: function () {
+        load();
+        if (!data.profile || !data.profile.id) data.profile = { id: uid('u'), name: '', country: '', region: '', city: '', district: '' };
+        if (!data.seeded) { seedSamples(); data.seeded = true; }
+        persist();
+        return Promise.resolve();
+      },
+
+      /* ---- 读 ---- */
+      me: function () { return data.profile; },
+      places: function () { return data.places; },
+      place: function (id) { return find(data.places, id); },
+      reviews: function () { return data.reviews; },
+      review: function (id) { return find(data.reviews, id); },
+      reviewsOf: function (placeId) { return data.reviews.filter(function (r) { return r.placeId === placeId; }); },
+      areas: function () { return data.areas; },
+      wishlist: function () { return data.wishlist; },
+      isSaved: function (placeId) { return data.wishlist.some(function (w) { return w.placeId === placeId; }); },
+      hasSamples: function () { return data.reviews.some(function (r) { return r.sample; }); },
+      photoURL: function (id) {
+        if (photoURLs.has(id)) return Promise.resolve(photoURLs.get(id));
+        return photoStore.get(id).then(function (blob) {
+          if (!blob) return null;
+          var u = URL.createObjectURL(blob);
+          photoURLs.set(id, u);
+          return u;
+        });
+      },
+      hasPhotoURL: function (id) { return photoURLs.has(id); },
+
+      /* ---- 写 ---- */
+      addPlace: function (f) {
+        var p = {
+          id: uid('p'), mode: f.mode, cat: f.cat, precision: f.precision, lat: f.lat, lng: f.lng,
+          name: f.name, altName: f.altName || '', link: f.link || '', osm: f.osm || '',
+          createdBy: data.profile.id, createdAt: Date.now(), sample: false
+        };
+        data.places.push(p);
+        return done(p);
+      },
+      updatePlace: function (id, patch) {
+        var p = find(data.places, id);
+        if (!p || p.createdBy !== data.profile.id) return Promise.reject(new Error('not yours'));
+        ['cat', 'precision', 'lat', 'lng', 'name', 'altName', 'link'].forEach(function (k) { if (patch[k] !== undefined) p[k] = patch[k]; });
+        p.updatedAt = Date.now();
+        return done(p);
+      },
+      /* f: { placeId, rating, price, text, visibility }，newPhotos: [{ id, blob, url }] */
+      addReview: function (f, newPhotos) {
+        var me = data.profile;
+        var r = {
+          id: uid('r'), placeId: f.placeId, authorId: me.id, authorName: me.name || '', authorFrom: shortFrom(me),
+          rating: f.rating, price: f.price, text: f.text, photos: newPhotos.map(function (ph) { return ph.id; }),
+          visibility: f.visibility, createdAt: Date.now(), sample: false
+        };
+        return putPhotos(newPhotos).then(function (photosOk) {
+          data.reviews.push(r);
+          persist();
+          return { review: r, photosOk: photosOk };
+        });
+      },
+      /* patch 同 addReview；keepPhotos 是保留的旧照片 id，newPhotos 是新加的 */
+      updateReview: function (id, patch, keepPhotos, newPhotos) {
+        var r = find(data.reviews, id);
+        if (!r || r.authorId !== data.profile.id) return Promise.reject(new Error('not yours'));
+        return putPhotos(newPhotos).then(function (photosOk) {
+          (r.photos || []).forEach(function (pid) { if (keepPhotos.indexOf(pid) === -1) forgetPhoto(pid); });
+          ['rating', 'price', 'text', 'visibility'].forEach(function (k) { if (patch[k] !== undefined) r[k] = patch[k]; });
+          r.photos = keepPhotos.concat(newPhotos.map(function (ph) { return ph.id; }));
+          r.authorName = data.profile.name || '';
+          r.authorFrom = shortFrom(data.profile);
+          r.updatedAt = Date.now();
+          persist();
+          return { review: r, photosOk: photosOk };
+        });
+      },
+      /* 删掉最后一条记录时地点也一起删，返回 { placeRemoved } */
+      deleteReview: function (id) {
+        var r = find(data.reviews, id);
+        if (!r || r.authorId !== data.profile.id) return Promise.reject(new Error('not yours'));
+        data.reviews = data.reviews.filter(function (x) { return x.id !== id; });
+        (r.photos || []).forEach(forgetPhoto);
+        return done({ placeRemoved: dropPlaceIfEmpty(r.placeId) });
+      },
+      setSaved: function (placeId, saved) {
+        data.wishlist = data.wishlist.filter(function (w) { return w.placeId !== placeId; });
+        if (saved) data.wishlist.push({ placeId: placeId, createdAt: Date.now() });
+        return done(saved);
+      },
+      updateProfile: function (patch) {
+        Object.keys(patch).forEach(function (k) { data.profile[k] = patch[k]; });
+        persistSoon();
+        return Promise.resolve(data.profile);
+      },
+      addArea: function (a) {
+        var area = { id: uid('a'), name: a.name, lng: a.lng, lat: a.lat, zoom: a.zoom };
+        data.areas.push(area);
+        return done(area);
+      },
+      deleteArea: function (id) {
+        data.areas = data.areas.filter(function (x) { return x.id !== id; });
+        return done();
+      },
+      clearSamples: function () {
+        data.reviews = data.reviews.filter(function (r) { return !r.sample; });
+        data.places = data.places.filter(function (p) { return !p.sample; });
+        data.wishlist = data.wishlist.filter(function (w) { return find(data.places, w.placeId); });
+        data.seeded = true;
+        return done();
+      },
+
+      /* ---- 备份 ---- */
+      exportBackup: function () {
+        var ids = [], photos = {};
+        data.reviews.forEach(function (r) { (r.photos || []).forEach(function (id) { ids.push(id); }); });
+        return ids.reduce(function (chain, id) {
+          return chain.then(function () {
+            return photoStore.get(id).then(function (b) { return b ? blobToDataURL(b) : null; }).then(function (u) { if (u) photos[id] = u; });
+          });
+        }, Promise.resolve()).then(function () {
+          return {
+            app: BACKUP_APP, version: DATA_VERSION, exportedAt: new Date().toISOString(),
+            profile: data.profile, places: data.places, reviews: data.reviews, wishlist: data.wishlist, areas: data.areas, photos: photos
+          };
+        });
+      },
+      /* 合并导入，已有的 id 不覆盖。返回新增地点数；格式不对返回 -1 */
+      importBackup: function (obj) {
+        if (!obj || BACKUP_APPS.indexOf(obj.app) === -1 || !Array.isArray(obj.places) || !Array.isArray(obj.reviews)) return Promise.resolve(-1);
+        migrate(obj);
+        var placeIds = {}, reviewIds = {}, areaIds = {}, added = 0;
+        data.places.forEach(function (p) { placeIds[p.id] = 1; });
+        data.reviews.forEach(function (r) { reviewIds[r.id] = 1; });
+        data.areas.forEach(function (a) { areaIds[a.id] = 1; });
+        obj.places.forEach(function (p) { if (p && p.id && !placeIds[p.id] && isFinite(p.lat) && isFinite(p.lng) && CATS[p.mode]) { data.places.push(p); added++; } });
+        obj.reviews.forEach(function (r) { if (r && r.id && !reviewIds[r.id] && r.placeId) data.reviews.push(r); });
+        (obj.areas || []).forEach(function (a) { if (a && a.id && !areaIds[a.id]) data.areas.push(a); });
+        (obj.wishlist || []).forEach(function (w) { if (w && w.placeId && !data.wishlist.some(function (x) { return x.placeId === w.placeId; })) data.wishlist.push(w); });
+        var me = data.profile;
+        if (obj.profile && obj.profile.id && !me.name && !data.reviews.some(function (r) { return r.authorId === me.id; })) data.profile = obj.profile;
+        var jobs = Object.keys(obj.photos || {}).map(function (id) {
+          return dataURLToBlob(obj.photos[id]).then(function (b) { return photoStore.put(id, b); }).catch(function () { return false; });
+        });
+        return Promise.all(jobs).then(function () { persist(); return added; });
+      }
+    };
+  })();
 
   function loadView() {
     try { var raw = localStorage.getItem(LS_VIEW); return raw ? JSON.parse(raw) : null; } catch (e) { return null; }
@@ -834,16 +1075,6 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       });
     }
   };
-  var photoURLs = new Map();
-  function photoURL(id) {
-    if (photoURLs.has(id)) return Promise.resolve(photoURLs.get(id));
-    return photoStore.get(id).then(function (blob) {
-      if (!blob) return null;
-      var u = URL.createObjectURL(blob);
-      photoURLs.set(id, u);
-      return u;
-    });
-  }
 
   /* ================= helpers ================= */
   function $(sel, root) { return (root || document).querySelector(sel); }
@@ -893,27 +1124,81 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     } catch (e) { return ''; }
   }
 
-  function me() { return data.profile; }
-  function placeById(id) { for (var i = 0; i < data.places.length; i++) if (data.places[i].id === id) return data.places[i]; return null; }
-  function reviewsOf(placeId) { return data.reviews.filter(function (r) { return r.placeId === placeId; }); }
-  function scopedReviews(placeId) {
-    var rs = reviewsOf(placeId), myId = me().id;
-    return state.scope === 'mine'
-      ? rs.filter(function (r) { return r.authorId === myId; })
-      : rs.filter(function (r) { return r.visibility === 'public'; });
+  function me() { return store.me(); }
+  function placeById(id) { return store.place(id); }
+  function reviewsOf(placeId) { return store.reviewsOf(placeId); }
+  function isMine(r) { return r.authorId === me().id; }
+  /* 三种地图：all = 探索（公开记录），mine = 我的足迹，saved = 收藏（公开记录 + 我自己的） */
+  function scopedReviews(placeId, scope) {
+    scope = scope || state.scope;
+    return reviewsOf(placeId).filter(function (r) {
+      if (scope === 'mine') return isMine(r);
+      if (scope === 'saved') return r.visibility === 'public' || isMine(r);
+      return r.visibility === 'public';
+    });
   }
   function visibleToMe(p) {
-    var myId = me().id;
-    return data.reviews.some(function (r) { return r.placeId === p.id && (r.visibility === 'public' || r.authorId === myId); });
+    return reviewsOf(p.id).some(function (r) { return r.visibility === 'public' || isMine(r); });
   }
+  function inScope(p) {
+    if (state.scope === 'saved') return store.isSaved(p.id) && visibleToMe(p);
+    return scopedReviews(p.id).length > 0;
+  }
+  function avgOf(list, key) {
+    return list.length ? list.reduce(function (s, r) { return s + r[key]; }, 0) / list.length : null;
+  }
+  /* score：我的地图用我自己的分，探索和收藏用公开记录的平均分；没人打分是 null */
   function stats(p) {
     var rs = scopedReviews(p.id);
-    var rated = rs.filter(function (r) { return r.rating > 0; });
+    var scored = (state.scope === 'mine' ? rs : rs.filter(function (r) { return r.visibility === 'public'; }))
+      .filter(function (r) { return r.rating != null; });
     var priced = rs.filter(function (r) { return r.price > 0; });
-    var avg = rated.length ? rated.reduce(function (s, r) { return s + r.rating; }, 0) / rated.length : 0;
-    var avgPrice = priced.length ? priced.reduce(function (s, r) { return s + r.price; }, 0) / priced.length : 0;
-    return { rs: rs, count: rs.length, avg: Math.round(avg * 10) / 10, avgPrice: avgPrice };
+    var score = avgOf(scored, 'rating');
+    return {
+      rs: rs, count: rs.length, raters: scored.length,
+      score: score == null ? null : Math.round(score * 10) / 10,
+      avgPrice: avgOf(priced, 'price') || 0
+    };
   }
+
+  /* 评分颜色：0 灰 → 2.5 橙 → 5 红；没分是浅灰 */
+  var SCORE_STOPS = [[0, [142, 152, 147]], [2.5, [240, 140, 0]], [5, [215, 38, 30]]];
+  var NO_SCORE_COLOR = '#B9C1BD';
+  function scoreColor(s) {
+    if (s == null) return NO_SCORE_COLOR;
+    s = clamp(s, 0, 5);
+    var i = s <= 2.5 ? 0 : 1, a = SCORE_STOPS[i], b = SCORE_STOPS[i + 1];
+    var k = (s - a[0]) / (b[0] - a[0]);
+    return '#' + a[1].map(function (v, j) { return Math.round(v + (b[1][j] - v) * k).toString(16).padStart(2, '0'); }).join('');
+  }
+  function fmtScore(s) { return s % 1 === 0 ? String(s) : s.toFixed(1); }
+  function scoreHTML(s) {
+    if (s == null) return '';
+    return '<span class="score" style="--c:' + scoreColor(s) + '" role="img" aria-label="' + esc(t('scoreAria', { n: fmtScore(s) })) + '">' + fmtScore(s) + '</span>';
+  }
+
+  /* 美食按出行范围分四层（PRD 第九节），按到 XMUM 的直线距离算 */
+  var DIST_TIERS = [
+    { id: 'walk', max: 1500 },
+    { id: 'short', max: 10000 },
+    { id: 'mid', max: 40000 },
+    { id: 'far', max: Infinity }
+  ];
+  function distTier(p) {
+    var d = haversine(XMUM, p);
+    for (var i = 0; i < DIST_TIERS.length; i++) if (d <= DIST_TIERS[i].max) return DIST_TIERS[i].id;
+    return 'far';
+  }
+  function passesFilters(p, s) {
+    if (p.mode !== state.mode) return false;
+    if (state.cat !== 'all' && p.cat !== state.cat) return false;
+    s = s || stats(p);
+    if (state.priceMax && !(s.avgPrice && s.avgPrice <= state.priceMax)) return false;
+    if (state.minScore && !(s.score != null && s.score >= state.minScore)) return false;
+    if (state.mode === 'food' && state.dist !== 'any' && distTier(p) !== state.dist) return false;
+    return true;
+  }
+  function filtersActive() { return state.cat !== 'all' || !!state.priceMax || !!state.minScore || state.dist !== 'any'; }
   function catOf(p) {
     var list = CATS[p.mode] || CATS.food;
     for (var i = 0; i < list.length; i++) if (list[i].id === p.cat) return list[i];
@@ -938,33 +1223,14 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
   }
   function authorFrom(r) { return r.authorId === me().id ? shortFrom(me()) : (r.authorFrom || ''); }
   function reviewText(r) { return state.lang === 'en' && r.textEn ? r.textEn : (r.text || ''); }
-  function starsHTML(n) {
-    if (!n) return '';
-    var s = '<span class="stars" role="img" aria-label="' + esc(t('starsAria', { n: n })) + '">';
-    for (var i = 1; i <= 5; i++) s += '<i class="' + (i <= Math.round(n) ? 'on' : '') + '">★</i>';
-    return s + '</span>';
-  }
   function avatarHTML(name) {
     var str = String(name || '?').trim();
     var ch = Array.from(str)[0] || '?', h = 0;
     for (var i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) % 360;
     return '<span class="avatar" style="--h:' + h + '" aria-hidden="true">' + esc(ch.toUpperCase()) + '</span>';
   }
-  function dotHTML(color) { return '<i class="dot" style="--c:' + color + '"></i>'; }
+  function catIconHTML(c) { return '<i class="cat-ic" aria-hidden="true">' + c.emoji + '</i>'; }
   function accentColor() { return getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#D9432B'; }
-
-  /* ================= data setup ================= */
-  function ensureProfile() {
-    if (!data.profile || !data.profile.id) data.profile = { id: uid('u'), name: '', country: '', region: '', city: '', district: '' };
-  }
-  function seedSamples() {
-    var base = Date.now() - 1000 * 60 * 60 * 24 * 12;
-    SAMPLES.forEach(function (s, i) {
-      var ts = base + i * 1000 * 60 * 60 * 11;
-      data.places.push({ id: s[0], mode: s[1], cat: s[2], precision: s[3], lat: s[4], lng: s[5], name: s[6], altName: s[7], link: '', createdBy: 'sample', createdAt: ts, sample: true });
-      data.reviews.push({ id: 'r-' + s[0], placeId: s[0], authorId: 'sample', authorName: '', authorFrom: '', rating: 0, price: null, text: s[8], textEn: s[9], photos: [], visibility: 'public', createdAt: ts, sample: true });
-    });
-  }
 
   /* ================= map ================= */
   var styleCache = {};
@@ -1025,7 +1291,6 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
   function onStyleLoad() {
     try { map.setProjection({ type: 'globe' }); } catch (e) { /* older renderer: stay flat */ }
     try { if (map.setSky) map.setSky({ 'atmosphere-blend': ['interpolate', ['linear'], ['zoom'], 0, 1, 5, 1, 7, 0] }); } catch (e) { /* optional */ }
-    addPinImages();
     if (!map.getSource('places')) addAppLayers();
     if (!hoverBound) {
       hoverBound = true;
@@ -1094,13 +1359,12 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     g.fillText(emoji, 20, 19);
     return g.getImageData(0, 0, cv.width, cv.height);
   }
-  function addPinImages() {
-    ['food', 'travel'].forEach(function (mode) {
-      CATS[mode].forEach(function (c) {
-        var id = 'pin-' + mode + '-' + c.id;
-        if (!map.hasImage(id)) map.addImage(id, drawPin(c.color, c.emoji), { pixelRatio: DPR });
-      });
-    });
+  /* 图钉颜色按 0.5 分一档，图钉图片用到哪个画哪个 */
+  function pinImage(p, score) {
+    var bucket = score == null ? null : Math.round(score * 2) / 2;
+    var id = 'pin-' + p.mode + '-' + catOf(p).id + '-' + (bucket == null ? 'none' : bucket * 10);
+    if (map && !map.hasImage(id)) map.addImage(id, drawPin(scoreColor(bucket), catOf(p).emoji), { pixelRatio: DPR });
+    return id;
   }
 
   function radiusAtZoom0(p) {
@@ -1109,23 +1373,17 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
   }
 
   function placesInView() {
-    return data.places.filter(function (p) {
-      if (p.mode !== state.mode) return false;
-      if (state.cat !== 'all' && p.cat !== state.cat) return false;
-      var s = stats(p);
-      if (!s.count) return false;
-      if (state.priceMax && !(s.avgPrice && s.avgPrice <= state.priceMax)) return false;
-      return true;
-    });
+    return store.places().filter(function (p) { return p.mode === state.mode && inScope(p) && passesFilters(p); });
   }
   function placesGeoJSON() {
     return {
       type: 'FeatureCollection',
       features: placesInView().map(function (p) {
+        var s = stats(p);
         return {
           type: 'Feature',
           geometry: { type: 'Point', coordinates: [p.lng, p.lat] },
-          properties: { id: p.id, name: placeTitle(p), icon: 'pin-' + p.mode + '-' + catOf(p).id, color: catOf(p).color, precision: p.precision, r0: radiusAtZoom0(p) }
+          properties: { id: p.id, name: placeTitle(p), icon: pinImage(p, s.score), color: scoreColor(s.score), precision: p.precision, r0: radiusAtZoom0(p) }
         };
       })
     };
@@ -1356,23 +1614,33 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     updateFabHint();
     if (state.picking) updatePickUI();
   }
+  var SCOPE_KEYS = { all: 'scopeAll', mine: 'scopeMine', saved: 'scopeSaved' };
+  var SCORE_STEPS = [0, 3, 4];
+  var DIST_STEPS = ['any'].concat(DIST_TIERS.map(function (x) { return x.id; }));
+  function chipHTML(action, on, label) {
+    return '<button type="button" class="chip" data-action="' + action + '" aria-pressed="' + on + '">' + esc(label) + '</button>';
+  }
   function renderFilters() {
-    var html = '<div class="seg" role="group" aria-label="' + esc(t('scopeAll') + ' / ' + t('scopeMine')) + '">' +
-      '<button type="button" data-action="scope" data-scope="all" aria-pressed="' + (state.scope === 'all') + '">' + esc(t('scopeAll')) + '</button>' +
-      '<button type="button" data-action="scope" data-scope="mine" aria-pressed="' + (state.scope === 'mine') + '">' + esc(t('scopeMine')) + '</button></div>';
+    var html = '<div class="seg" role="group" aria-label="' + esc(t('mapsAria')) + '">' +
+      ['all', 'mine', 'saved'].map(function (s) {
+        return '<button type="button" data-action="scope" data-scope="' + s + '" aria-pressed="' + (state.scope === s) + '">' + esc(t(SCOPE_KEYS[s])) + '</button>';
+      }).join('') + '</div>';
+    html += chipHTML('score', !!state.minScore, state.minScore ? t('scoreMin', { n: state.minScore }) : t('scoreAny'));
     if (state.mode === 'food') {
-      html += '<button type="button" class="chip" data-action="price" aria-pressed="' + (!!state.priceMax) + '">' + esc(state.priceMax ? t('priceMax', { n: state.priceMax }) : t('priceAny')) + '</button>';
+      html += chipHTML('dist', state.dist !== 'any', t(state.dist === 'any' ? 'distAny' : 'dist_' + state.dist));
+      html += chipHTML('price', !!state.priceMax, state.priceMax ? t('priceMax', { n: state.priceMax }) : t('priceAny'));
     }
     html += '<button type="button" class="chip" data-action="cat" data-cat="all" aria-pressed="' + (state.cat === 'all') + '">' + esc(t('catAll')) + '</button>';
     CATS[state.mode].forEach(function (c) {
-      html += '<button type="button" class="chip" data-action="cat" data-cat="' + c.id + '" aria-pressed="' + (state.cat === c.id) + '">' + dotHTML(c.color) + esc(catName(c)) + '</button>';
+      html += '<button type="button" class="chip" data-action="cat" data-cat="' + c.id + '" aria-pressed="' + (state.cat === c.id) + '">' + catIconHTML(c) + esc(catName(c)) + '</button>';
     });
+    html += '<span class="legend" aria-hidden="true">' + esc(t('legend')) + ' <b>0</b><i></i><b>5</b></span>';
     $('#filters').innerHTML = html;
   }
   function updateFabHint() {
     var el = $('#fab-hint');
-    if (!el || !data.profile) return;
-    var empty = state.mode === 'food' && !data.places.some(function (p) {
+    if (!el || !me()) return;
+    var empty = state.mode === 'food' && !store.places().some(function (p) {
       return p.mode === 'food' && visibleToMe(p) && haversine(XMUM, p) < 8000;
     });
     el.textContent = t('fabHint');
@@ -1387,6 +1655,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     else if (v === 'form') renderForm();
     else if (v === 'nearby') renderNearby();
     else if (v === 'search') renderSearch();
+    else if (v === 'add') renderAdd();
     else if (v === 'profile') renderProfile();
     if (lastRenderedView !== v) view.scrollTop = 0;
     lastRenderedView = v;
@@ -1395,7 +1664,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
 
   function hydratePhotos(root) {
     $$('img[data-photo]', root).forEach(function (img) {
-      photoURL(img.dataset.photo).then(function (u) {
+      store.photoURL(img.dataset.photo).then(function (u) {
         if (u) img.src = u;
         else if (img.parentElement) img.parentElement.classList.add('missing');
       });
@@ -1403,39 +1672,45 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
   }
 
   function feedReviews() {
-    var myId = me().id;
-    return data.reviews.filter(function (r) {
+    return store.reviews().filter(function (r) {
       var p = placeById(r.placeId);
       if (!p || p.mode !== state.mode) return false;
-      if (state.scope === 'mine' ? r.authorId !== myId : r.visibility !== 'public') return false;
-      if (state.cat !== 'all' && p.cat !== state.cat) return false;
-      if (state.priceMax) { var s = stats(p); if (!(s.avgPrice && s.avgPrice <= state.priceMax)) return false; }
-      return true;
+      if (state.scope === 'mine' ? !isMine(r) : r.visibility !== 'public') return false;
+      return passesFilters(p);
     }).sort(function (a, b) { return b.createdAt - a.createdAt; }).slice(0, 80);
+  }
+  function savedPlaces() {
+    return store.wishlist().slice().sort(function (a, b) { return b.createdAt - a.createdAt; })
+      .map(function (w) { return placeById(w.placeId); })
+      .filter(function (p) { return p && p.mode === state.mode && visibleToMe(p) && passesFilters(p); });
   }
 
   function renderFeed() {
-    var items = feedReviews();
-    var key = state.mode === 'food'
-      ? (state.scope === 'all' ? 'feedFoodAll' : 'feedFoodMine')
-      : (state.scope === 'all' ? 'feedTravelAll' : 'feedTravelMine');
+    var saved = state.scope === 'saved';
+    var items = saved ? savedPlaces() : feedReviews();
+    var key = {
+      food: { all: 'feedFoodAll', mine: 'feedFoodMine', saved: 'feedSavedFood' },
+      travel: { all: 'feedTravelAll', mine: 'feedTravelMine', saved: 'feedSavedTravel' }
+    }[state.mode][state.scope];
     var areas = PRESET_AREAS.map(function (a) { return { id: a.id, name: state.lang === 'en' ? a.en : a.zh }; })
-      .concat(data.areas.map(function (a) { return { id: a.id, name: a.name }; }));
+      .concat(store.areas().map(function (a) { return { id: a.id, name: a.name }; }));
     var h = '<div class="view-head"><div class="title-row"><h2 class="view-title" data-action="expand">' + esc(t(key)) + '</h2><span class="count">' + items.length + '</span>' +
       '<button type="button" class="btn small primary title-add" data-action="add">＋ ' + esc(t(state.mode === 'food' ? 'fabFood' : 'fabTravel')) + '</button></div>' +
       '<div class="area-row" role="group" aria-label="' + esc(t('areas')) + '">' +
       areas.map(function (a) { return '<button type="button" class="area-chip" data-action="goto-area" data-id="' + esc(a.id) + '">' + esc(a.name) + '</button>'; }).join('') +
       '<button type="button" class="area-chip add" data-action="save-area">＋ ' + esc(t('saveArea')) + '</button></div></div>';
-    if (data.reviews.some(function (r) { return r.sample; })) {
+    if (store.hasSamples()) {
       h += '<div class="sample-note"><span>' + esc(t('samplesShown')) + '</span><button type="button" class="link-btn" data-action="clear-samples">' + esc(t('clearSamples')) + '</button></div>';
     }
-    h += items.length ? '<ul class="feed">' + items.map(feedItemHTML).join('') + '</ul>' : emptyHTML();
+    if (!items.length) h += emptyHTML();
+    else if (saved) h += '<ul class="near-list">' + items.map(savedItemHTML).join('') + '</ul>';
+    else h += '<ul class="feed">' + items.map(feedItemHTML).join('') + '</ul>';
     view.innerHTML = h;
   }
 
   function metaHTML(r) {
     var parts = [];
-    if (r.rating) parts.push(starsHTML(r.rating));
+    if (r.rating != null) parts.push(scoreHTML(r.rating));
     if (r.price) parts.push('<span>RM ' + fmtPrice(r.price) + '</span>');
     if (r.visibility === 'private') parts.push('<span class="pill">' + esc(t('visPrivateShort')) + '</span>');
     return parts.join('<span class="sep">·</span>');
@@ -1449,19 +1724,40 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       avatarHTML(name) +
       '<span class="fi-main">' +
       '<span class="fi-who"><b>' + esc(name) + '</b>' + (from ? '<span class="muted">' + esc(t('fromPrefix') + from) + '</span>' : '') + '<span class="fi-time">' + esc(timeAgo(r.createdAt)) + '</span></span>' +
-      '<span class="fi-place">' + dotHTML(c.color) + '<span>' + esc(placeTitle(p)) + '</span>' + (p.sample ? '<span class="badge">' + esc(t('sample')) + '</span>' : '') + '</span>' +
+      '<span class="fi-place">' + catIconHTML(c) + '<span>' + esc(placeTitle(p)) + '</span>' + (p.sample ? '<span class="badge">' + esc(t('sample')) + '</span>' : '') + '</span>' +
       (meta ? '<span class="fi-meta">' + meta + '</span>' : '') +
       (text ? '<span class="fi-text">' + esc(text) + '</span>' : '') +
       '</span>' + thumb + '</button></li>';
   }
 
+  /* 地点一行：搜索结果、附近已有、收藏列表都用这个。sub 和 right 是已经转义好的 HTML */
+  function placeRowHTML(p, action, sub, right) {
+    return '<li><button type="button" class="near-item" data-action="' + action + '" data-id="' + esc(p.id) + '">' + catIconHTML(catOf(p)) +
+      '<span class="near-text"><b>' + esc(placeTitle(p)) + '</b><small>' + sub + '</small></span>' + (right || '') + '</button></li>';
+  }
+  function savedItemHTML(p) {
+    var s = stats(p);
+    var sub = esc(catName(catOf(p))) + ' · ' + esc(t('distFrom', { d: fmtDist(haversine(XMUM, p)) }));
+    return placeRowHTML(p, 'open-place', sub, s.score != null ? scoreHTML(s.score) : '<span class="near-cta muted">' + esc(t('noRating')) + '</span>');
+  }
+
   function emptyHTML() {
-    var filtered = state.cat !== 'all' || !!state.priceMax;
-    var msg = filtered ? t('emptyFiltered') : state.scope === 'mine' ? t('emptyMine') : t(state.mode === 'food' ? 'emptyFoodAll' : 'emptyTravelAll');
+    var filtered = filtersActive();
+    var msg = filtered ? t('emptyFiltered')
+      : state.scope === 'mine' ? t('emptyMine')
+      : state.scope === 'saved' ? t('emptySaved')
+      : t(state.mode === 'food' ? 'emptyFoodAll' : 'emptyTravelAll');
     var btn = filtered
       ? '<button type="button" class="btn small" data-action="clear-filters">' + esc(t('clearFilters')) + '</button>'
-      : '<button type="button" class="btn primary" data-action="add">' + esc(t(state.mode === 'food' ? 'addFood' : 'addTravel')) + '</button>';
+      : state.scope === 'saved'
+        ? '<button type="button" class="btn small" data-action="scope" data-scope="all">' + esc(t('goExplore')) + '</button>'
+        : '<button type="button" class="btn primary" data-action="add">' + esc(t(state.mode === 'food' ? 'addFood' : 'addTravel')) + '</button>';
     return '<div class="empty"><p>' + esc(msg) + '</p>' + btn + '</div>';
+  }
+
+  function scoreLabel(s) {
+    if (state.scope === 'mine') return s.score != null ? t('myScore') : t('noRating');
+    return s.raters ? t('avgOf', { n: s.raters }) : t('noRating');
   }
 
   function renderPlace() {
@@ -1471,6 +1767,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     var link = safeURL(p.link);
     var coords = p.lat.toFixed(6) + ',' + p.lng.toFixed(6);
     var far = dist > 300000;
+    var saved = store.isSaved(p.id);
     var actions = far
       ? '<a class="btn" href="https://www.google.com/maps/search/?api=1&query=' + coords + '" target="_blank" rel="noopener">' + ICON.nav + esc(t('viewGoogle')) + '</a>'
       : '<a class="btn primary" href="https://www.google.com/maps/dir/?api=1&destination=' + coords + '" target="_blank" rel="noopener">' + ICON.nav + esc(t('navGoogle')) + '</a>' +
@@ -1481,15 +1778,19 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     s.rs.forEach(function (r) { (r.photos || []).forEach(function (id) { photos.push(id); }); });
     photos = photos.slice(0, 12);
     var reviews = s.rs.slice().sort(function (a, b) { return b.createdAt - a.createdAt; });
+    var tags = '<span class="tag">' + catIconHTML(c) + esc(catName(c)) + '</span><span class="tag">' + esc(precLabel(p.precision)) + '</span>' +
+      (p.mode === 'food' ? '<span class="tag">' + esc(t('tier_' + distTier(p))) + '</span>' : '') +
+      '<span class="tag">' + esc(t('distFrom', { d: fmtDist(dist) })) + '</span>';
 
     var h = '<div class="view-top"><button type="button" class="icon-btn flat" data-action="back" aria-label="' + esc(t('back')) + '">' + ICON.back + '</button>' +
       (p.sample ? '<span class="badge">' + esc(t('sample')) + '</span>' : '') +
-      '<button type="button" class="btn small primary top-cta" data-action="write-review">' + esc(t(p.mode === 'food' ? 'writeReview' : 'beenHere')) + '</button></div>' +
+      '<button type="button" class="btn small ghost save-btn top-cta" data-action="toggle-save" aria-pressed="' + saved + '">' + (saved ? '★ ' + esc(t('wished')) : '☆ ' + esc(t('wish'))) + '</button>' +
+      '<button type="button" class="btn small primary" data-action="write-review">' + esc(t(p.mode === 'food' ? 'writeReview' : 'beenHere')) + '</button></div>' +
       '<div class="place-head"><h2>' + esc(placeTitle(p)) + '</h2>' +
       (placeSub(p) ? '<div class="alt">' + esc(placeSub(p)) + '</div>' : '') +
-      '<div class="tags"><span class="tag">' + dotHTML(c.color) + esc(catName(c)) + '</span><span class="tag">' + esc(precLabel(p.precision)) + '</span><span class="tag">' + esc(t('distFrom', { d: fmtDist(dist) })) + '</span></div></div>' +
+      '<div class="tags">' + tags + '</div></div>' +
       '<div class="stats">' +
-      '<div class="stat"><b>' + (s.avg ? s.avg.toFixed(1) : '—') + '</b>' + (s.avg ? starsHTML(s.avg) : '<small>' + esc(t('noRating')) + '</small>') + '</div>' +
+      '<div class="stat"><b>' + (s.score != null ? '<span class="score-big" style="color:' + scoreColor(s.score) + '">' + fmtScore(s.score) + '</span>' : '—') + '</b><small>' + esc(scoreLabel(s)) + '</small></div>' +
       '<div class="stat"><b>' + (s.avgPrice ? 'RM ' + fmtPrice(s.avgPrice) : '—') + '</b><small>' + esc(t(p.mode === 'food' ? 'perPerson' : 'costLabel')) + '</small></div>' +
       '<div class="stat"><b>' + s.count + '</b><small>' + esc(t('reviewsLabel')) + '</small></div></div>' +
       '<div class="actions">' + actions + '</div>';
@@ -1504,7 +1805,6 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
 
   function reviewHTML(r) {
     var name = authorLabel(r), from = authorFrom(r), meta = metaHTML(r), text = reviewText(r);
-    var mine = r.authorId === me().id;
     return '<li class="review">' + avatarHTML(name) + '<div class="rv-main">' +
       '<div class="rv-who"><b>' + esc(name) + '</b>' + (from ? '<span class="muted">' + esc(t('fromPrefix') + from) + '</span>' : '') + '<span class="fi-time">' + esc(timeAgo(r.createdAt)) + '</span></div>' +
       (meta ? '<div class="rv-meta">' + meta + '</div>' : '') +
@@ -1512,7 +1812,8 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       (r.photos && r.photos.length ? '<div class="rv-photos">' + r.photos.map(function (id) {
         return '<button type="button" class="ph sm" data-action="photo" data-id="' + esc(id) + '" data-group="rv-' + esc(r.id) + '"><img data-photo="' + esc(id) + '" alt=""></button>';
       }).join('') + '</div>' : '') +
-      (mine ? '<button type="button" class="link-btn danger" data-action="del-review" data-id="' + esc(r.id) + '">' + esc(t('del')) + '</button>' : '') +
+      (isMine(r) ? '<div class="rv-actions"><button type="button" class="link-btn" data-action="edit-review" data-id="' + esc(r.id) + '">' + esc(t('edit')) + '</button>' +
+        '<button type="button" class="link-btn danger" data-action="del-review" data-id="' + esc(r.id) + '">' + esc(t('del')) + '</button></div>' : '') +
       '</div></li>';
   }
 
@@ -1520,22 +1821,28 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     return '<div class="field"><label class="f-label" for="' + id + '">' + label + '</label>' + control + '<div class="f-err" id="err-' + id + '" hidden></div></div>';
   }
 
+  /* 新建地点，或者编辑自己建的地点时，表单里才有名称、分类、位置这些字段 */
+  function formHasPlaceFields(f, p) {
+    return !p || (!!f.editId && p.createdBy === me().id && !p.sample);
+  }
+
   function renderForm() {
     var f = state.form;
     if (!f) { goFeed(); return; }
     var isFood = state.mode === 'food';
     var p = f.placeId ? placeById(f.placeId) : null;
-    var title = p ? t('formReview') : t(isFood ? 'formNewFood' : 'formNewTravel');
+    var placeFields = formHasPlaceFields(f, p);
+    var title = f.editId ? t('formEdit') : p ? t('formReview') : t(isFood ? 'formNewFood' : 'formNewTravel');
     var h = '<div class="view-top"><button type="button" class="icon-btn flat" data-action="form-cancel" aria-label="' + esc(t('back')) + '">' + ICON.back + '</button><h2 class="view-title">' + esc(title) + '</h2></div>' +
       '<form id="place-form" class="form" novalidate>';
-    if (p) h += '<div class="form-place">' + dotHTML(catOf(p).color) + '<b>' + esc(placeTitle(p)) + '</b></div>';
+    if (p && !placeFields) h += '<div class="form-place">' + catIconHTML(catOf(p)) + '<b>' + esc(placeTitle(p)) + '</b></div>';
     if (!me().name) h += fieldHTML('f-nick', esc(t('nickname')), '<input id="f-nick" class="input" maxlength="20" autocomplete="nickname" placeholder="' + esc(t('nicknamePh')) + '">');
-    if (!p) {
+    if (placeFields) {
       h += fieldHTML('f-name', esc(t('name')) + ' *', '<input id="f-name" class="input" maxlength="60" placeholder="' + esc(t(isFood ? 'namePhFood' : 'namePhTravel')) + '">');
       h += fieldHTML('f-alt', esc(t('altName')), '<input id="f-alt" class="input" maxlength="60" placeholder="' + esc(t('altNamePh')) + '">');
       h += '<div class="field"><span class="f-label" id="lbl-cat">' + esc(t('category')) + ' *</span><div class="chips-wrap" role="group" aria-labelledby="lbl-cat">' +
         CATS[state.mode].map(function (c) {
-          return '<button type="button" class="chip" data-action="f-cat" data-cat="' + c.id + '" aria-pressed="' + (f.cat === c.id) + '">' + dotHTML(c.color) + esc(catName(c)) + '</button>';
+          return '<button type="button" class="chip" data-action="f-cat" data-cat="' + c.id + '" aria-pressed="' + (f.cat === c.id) + '">' + catIconHTML(c) + esc(catName(c)) + '</button>';
         }).join('') + '</div><div class="f-err" id="err-cat" hidden></div></div>';
       h += '<div class="field"><span class="f-label" id="lbl-prec">' + esc(t('precision')) + '</span><div class="seg" role="group" aria-labelledby="lbl-prec">' +
         ['exact', 'area', 'city'].map(function (k) {
@@ -1543,30 +1850,33 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
         }).join('') + '</div><p class="f-hint">' + esc(t('precHint')) + '</p></div>';
       h += '<div class="f-loc"><span>' + esc(t('location')) + '：' + f.loc.lat.toFixed(5) + ', ' + f.loc.lng.toFixed(5) + '</span><button type="button" class="link-btn" data-action="repick">' + esc(t('repick')) + '</button></div>';
     }
-    h += '<div class="field"><span class="f-label" id="lbl-rating">' + esc(t('rating')) + '</span><div class="star-input" role="group" aria-labelledby="lbl-rating">' +
-      [1, 2, 3, 4, 5].map(function (n) {
-        return '<button type="button" class="st" data-action="f-star" data-n="' + n + '" aria-label="' + esc(t('starsAria', { n: n })) + '" aria-pressed="' + (f.rating >= n) + '">★</button>';
-      }).join('') + '<button type="button" class="link-btn" data-action="f-star" data-n="0">' + esc(t('ratingSkip')) + '</button></div></div>';
+    h += '<div class="field"><span class="f-label" id="lbl-rating">' + esc(t('rating')) + ' *</span><div class="score-input" role="group" aria-labelledby="lbl-rating">' +
+      [0, 1, 2, 3, 4, 5].map(function (n) {
+        return '<button type="button" class="sc" data-action="f-score" data-n="' + n + '" style="--c:' + scoreColor(n) + '" aria-label="' + esc(t('scoreAria', { n: n })) + '" aria-pressed="' + (f.rating === n) + '">' + n + '</button>';
+      }).join('') + '</div><p class="f-hint">' + esc(t('ratingHint')) + '</p><div class="f-err" id="err-rating" hidden></div></div>';
     h += fieldHTML('f-price', esc(t(isFood ? 'priceFood' : 'priceTravel')), '<input id="f-price" class="input" type="number" inputmode="decimal" min="0" step="0.5"' + (isFood ? ' placeholder="12"' : '') + '>');
     h += fieldHTML('f-text', esc(t('review')), '<textarea id="f-text" class="input" rows="4" maxlength="1000" placeholder="' + esc(t(isFood ? 'reviewPhFood' : 'reviewPhTravel')) + '"></textarea>');
     h += '<div class="field"><span class="f-label">' + esc(t('photos')) + ' <small>· ' + esc(t('photoLimit', { n: MAX_PHOTOS })) + '</small></span><div class="photo-grid" id="f-photos"></div></div>';
-    if (!p) h += fieldHTML('f-link', esc(t('link')), '<input id="f-link" class="input" type="url" inputmode="url" placeholder="' + esc(t('linkPh')) + '">');
+    if (placeFields) h += fieldHTML('f-link', esc(t('link')), '<input id="f-link" class="input" type="url" inputmode="url" placeholder="' + esc(t('linkPh')) + '">');
     h += '<div class="field"><span class="f-label" id="lbl-vis">' + esc(t('visibility')) + '</span><div class="seg" role="group" aria-labelledby="lbl-vis">' +
       '<button type="button" data-action="f-vis" data-vis="public" aria-pressed="' + (f.visibility === 'public') + '">' + esc(t('visPublic')) + '</button>' +
       '<button type="button" data-action="f-vis" data-vis="private" aria-pressed="' + (f.visibility === 'private') + '">' + esc(t('visPrivate')) + '</button></div>' +
       '<p class="f-hint">' + esc(t('visHint')) + '</p></div>';
-    h += '<div class="sticky-cta"><button type="submit" class="btn primary block" id="f-submit">' + esc(t('publish')) + '</button></div></form>';
+    h += '<div class="sticky-cta"><button type="submit" class="btn primary block" id="f-submit">' + esc(t(f.editId ? 'saveEdit' : 'publish')) + '</button></div></form>';
     view.innerHTML = h;
     renderFormPhotos();
     restoreFormDraft();
   }
 
+  /* 表单里的照片：existing 是这条记录原来就有的（存在 IndexedDB），其余是刚选的 */
   function renderFormPhotos() {
     var box = $('#f-photos'), f = state.form;
     if (!box || !f) return;
     box.innerHTML = f.photos.map(function (ph) {
-      return '<div class="ph-edit"><img src="' + ph.url + '" alt=""><button type="button" class="ph-del" data-action="f-photo-del" data-id="' + ph.id + '" aria-label="' + esc(t('del')) + '">×</button></div>';
+      var img = ph.existing ? '<img data-photo="' + esc(ph.id) + '" alt="">' : '<img src="' + ph.url + '" alt="">';
+      return '<div class="ph-edit">' + img + '<button type="button" class="ph-del" data-action="f-photo-del" data-id="' + ph.id + '" aria-label="' + esc(t('del')) + '">×</button></div>';
     }).join('') + (f.photos.length < MAX_PHOTOS ? '<button type="button" class="ph-add" data-action="f-photo-add">' + ICON.camera + '<span>' + esc(t('addPhoto')) + '</span></button>' : '');
+    hydratePhotos(box);
   }
   var DRAFT_FIELDS = [['f-nick', 'nick'], ['f-name', 'name'], ['f-alt', 'alt'], ['f-price', 'price'], ['f-text', 'text'], ['f-link', 'link']];
   function captureFormDraft() {
@@ -1585,10 +1895,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
   function renderNearby() {
     var h = '<div class="view-top"><button type="button" class="icon-btn flat" data-action="nearby-back" aria-label="' + esc(t('back')) + '">' + ICON.back + '</button><h2 class="view-title">' + esc(t('nearbyTitle')) + '</h2></div>' +
       '<ul class="near-list">' + state.nearby.map(function (x) {
-        var c = catOf(x.p);
-        return '<li><button type="button" class="near-item" data-action="near-pick" data-id="' + esc(x.p.id) + '">' + dotHTML(c.color) +
-          '<span class="near-text"><b>' + esc(placeTitle(x.p)) + '</b><small>' + esc(catName(c)) + ' · ' + esc(fmtDist(x.d)) + '</small></span>' +
-          '<span class="near-cta">' + esc(t('nearbyThis')) + '</span></button></li>';
+        return placeRowHTML(x.p, 'near-pick', esc(catName(catOf(x.p))) + ' · ' + esc(fmtDist(x.d)), '<span class="near-cta">' + esc(t('nearbyThis')) + '</span>');
       }).join('') + '</ul>' +
       '<div style="margin-top:16px"><button type="button" class="btn block" data-action="near-new">' + esc(t('nearbyNone')) + '</button></div>';
     view.innerHTML = h;
@@ -1598,22 +1905,159 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     view.innerHTML = '<div class="view-top"><button type="button" class="icon-btn flat" data-action="back" aria-label="' + esc(t('back')) + '">' + ICON.back + '</button>' +
       '<div class="search-box"><input id="q" class="input" type="search" autocomplete="off" placeholder="' + esc(t('searchPh')) + '" aria-label="' + esc(t('searchBtn')) + '" value="' + esc(state.query) + '"></div></div>' +
       '<ul class="search-results" id="search-results"></ul>';
+    queueOsmSearch();
     renderSearchResults();
     setTimeout(function () { var q = $('#q'); if (q) q.focus(); }, 60);
   }
+  /* 加地点：先按名字搜（雪团里已有的 + 地图上的），搜不到再去地图上选点 */
+  function renderAdd() {
+    var isFood = state.mode === 'food';
+    view.innerHTML = '<div class="view-top"><button type="button" class="icon-btn flat" data-action="back" aria-label="' + esc(t('back')) + '">' + ICON.back + '</button><h2 class="view-title">' + esc(t(isFood ? 'formNewFood' : 'formNewTravel')) + '</h2></div>' +
+      '<div class="add-search"><input id="q" class="input" type="search" autocomplete="off" placeholder="' + esc(t(isFood ? 'addSearchPhFood' : 'addSearchPhTravel')) + '" aria-label="' + esc(t('searchBtn')) + '" value="' + esc(state.query) + '">' +
+      '<button type="button" class="btn add-pin" data-action="add-pin">' + ICON.pin + esc(t('addPin')) + '</button></div>' +
+      '<p class="f-hint add-hint">' + esc(t('addHint')) + '</p>' +
+      '<ul class="search-results" id="search-results"></ul>';
+    queueOsmSearch();
+    renderSearchResults();
+    setTimeout(function () { var q = $('#q'); if (q) q.focus(); }, 60);
+  }
+  function openAdd() {
+    if (state.view === 'feed') state.feedSnap = state.snap;
+    state.view = 'add'; state.query = ''; state.form = null;
+    render();
+    setSnap('full');
+  }
+
   function renderSearchResults() {
     var box = $('#search-results');
     if (!box) return;
+    var adding = state.view === 'add';
     var q = state.query.trim().toLowerCase();
     if (!q) { box.innerHTML = ''; return; }
-    var res = data.places.filter(function (p) {
+    var res = store.places().filter(function (p) {
+      if (adding && p.mode !== state.mode) return false;
       return visibleToMe(p) && ((p.name || '').toLowerCase().indexOf(q) !== -1 || (p.altName || '').toLowerCase().indexOf(q) !== -1);
     }).slice(0, 30);
-    box.innerHTML = res.length ? res.map(function (p) {
-      var c = catOf(p), sub = placeSub(p);
-      return '<li><button type="button" class="near-item" data-action="open-place" data-id="' + esc(p.id) + '">' + dotHTML(c.color) +
-        '<span class="near-text"><b>' + esc(placeTitle(p)) + '</b><small>' + esc(t(p.mode)) + ' · ' + esc(catName(c)) + (sub ? ' · ' + esc(sub) : '') + '</small></span></button></li>';
-    }).join('') : '<li class="empty small">' + esc(t('noResults')) + '</li>';
+    var h = '';
+    if (res.length) {
+      h += '<li class="sec-title">' + esc(t('searchLocal')) + '</li>' + res.map(function (p) {
+        var sub = placeSub(p);
+        var info = esc(t(p.mode)) + ' · ' + esc(catName(catOf(p))) + (sub ? ' · ' + esc(sub) : '');
+        return adding
+          ? placeRowHTML(p, 'add-existing', info, '<span class="near-cta">' + esc(t(p.mode === 'food' ? 'writeReview' : 'beenHere')) + '</span>')
+          : placeRowHTML(p, 'open-place', info);
+      }).join('');
+    }
+    h += '<li class="sec-title">' + esc(t('searchOsm')) + '</li>';
+    if (q.length < 2) h += '<li class="empty small">' + esc(t('osmMin')) + '</li>';
+    else if (osm.q !== q || osm.status === 'loading') h += '<li class="empty small">' + esc(t('osmLoading')) + '</li>';
+    else if (osm.status === 'fail') h += '<li class="empty small">' + esc(t('osmFail')) + '</li>';
+    else if (!osm.results.length) h += '<li class="empty small">' + esc(t(adding ? 'addNoResult' : 'noResults')) + '</li>';
+    else h += osm.results.map(osmRowHTML).join('');
+    if (adding && q.length >= 2) h += '<li><button type="button" class="btn ghost block add-pin-bottom" data-action="add-pin">' + ICON.pin + esc(t('addPinLong')) + '</button></li>';
+    h += '<li class="osm-credit">' + esc(t('osmCredit')) + '</li>';
+    box.innerHTML = h;
+  }
+
+  /* ================= place search (OpenStreetMap via Photon) [建议] =================
+   * Photon 是基于 OSM 的免费地点搜索，支持边打字边搜、不需要 key。
+   * 同一个 OSM 编号算同一个地点，避免大家重复建同一家店。
+   */
+  var PHOTON_URL = 'https://photon.komoot.io/api/';
+  var osm = { q: '', status: 'idle', results: [], timer: null, seq: 0 };
+  function queueOsmSearch() {
+    var q = state.query.trim(), key = q.toLowerCase();
+    clearTimeout(osm.timer);
+    if (key.length < 2) { osm.q = key; osm.status = 'idle'; osm.results = []; osm.seq++; return; }
+    if (osm.q === key && osm.status === 'done') return;
+    osm.q = key; osm.status = 'loading';
+    var seq = ++osm.seq;
+    osm.timer = setTimeout(function () {
+      var c = map ? map.getCenter() : XMUM;
+      var url = PHOTON_URL + '?q=' + encodeURIComponent(q) + '&limit=8&lat=' + c.lat.toFixed(4) + '&lon=' + c.lng.toFixed(4) + (state.lang === 'en' ? '&lang=en' : '');
+      fetch(url).then(function (res) {
+        if (!res.ok) throw new Error('photon ' + res.status);
+        return res.json();
+      }).then(function (json) {
+        if (seq !== osm.seq) return;
+        osm.results = parsePhoton(json);
+        osm.status = 'done';
+        renderSearchResults();
+      }).catch(function () {
+        if (seq !== osm.seq) return;
+        osm.status = 'fail';
+        renderSearchResults();
+      });
+    }, 350);
+  }
+  function parsePhoton(json) {
+    var seen = {};
+    return ((json && json.features) || []).map(function (f) {
+      var pr = f.properties || {}, co = f.geometry && f.geometry.coordinates;
+      if (!pr.name || !co || pr.osm_id == null) return null;
+      var key = ({ N: 'node', W: 'way', R: 'relation' }[pr.osm_type] || pr.osm_type) + '/' + pr.osm_id;
+      if (seen[key]) return null;
+      seen[key] = 1;
+      var g = guessFromOsm(pr);
+      var where = [];
+      [pr.city || pr.county, pr.state, pr.country].forEach(function (x) { if (x && where.indexOf(x) === -1 && x !== pr.name) where.push(x); });
+      return { osm: key, name: pr.name, lng: round6(co[0]), lat: round6(co[1]), mode: g.mode, cat: g.cat, precision: g.precision, where: where.join(', ') };
+    }).filter(Boolean);
+  }
+  var OSM_FOOD = {
+    amenity: ['restaurant', 'fast_food', 'cafe', 'food_court', 'bar', 'pub', 'ice_cream', 'biergarten', 'bbq'],
+    shop: ['bakery', 'deli', 'coffee', 'tea', 'beverages', 'confectionery', 'pastry', 'ice_cream']
+  };
+  function guessFromOsm(pr) {
+    var k = pr.osm_key, v = pr.osm_value, type = pr.type;
+    var food = !!(OSM_FOOD[k] && OSM_FOOD[k].indexOf(v) !== -1);
+    var precision = 'exact';
+    if (!food) {
+      if (['city', 'country', 'state', 'county'].indexOf(type) !== -1 || (k === 'place' && ['city', 'town', 'country', 'state', 'province', 'region'].indexOf(v) !== -1)) precision = 'city';
+      else if (['district', 'locality'].indexOf(type) !== -1 || k === 'boundary' || (k === 'place' && ['suburb', 'neighbourhood', 'quarter', 'village', 'hamlet', 'island', 'islet'].indexOf(v) !== -1)) precision = 'area';
+    }
+    var cat = null;
+    if (food) {
+      if (['cafe', 'coffee', 'tea', 'beverages'].indexOf(v) !== -1) cat = 'cafe';
+      else if (['ice_cream', 'confectionery', 'pastry', 'bakery'].indexOf(v) !== -1) cat = 'sweet';
+      else if (v === 'food_court') cat = 'street';
+    } else if (precision === 'city') cat = 'city';
+    else if (v === 'beach' || v === 'island' || v === 'islet') cat = 'island';
+    else if (k === 'natural' || ['park', 'nature_reserve', 'national_park', 'garden'].indexOf(v) !== -1 || v === 'viewpoint') cat = 'nature';
+    else if (k === 'shop' && ['mall', 'department_store'].indexOf(v) !== -1) cat = 'mall';
+    else if (k === 'tourism' && ['hotel', 'hostel', 'guest_house', 'motel', 'resort', 'apartment'].indexOf(v) !== -1) cat = 'stay';
+    else if (['theme_park', 'zoo', 'aquarium', 'water_park', 'amusement_arcade'].indexOf(v) !== -1) cat = 'fun';
+    else if (k === 'historic' || v === 'place_of_worship' || ['museum', 'attraction', 'artwork', 'gallery'].indexOf(v) !== -1) cat = 'culture';
+    return { mode: food ? 'food' : 'travel', cat: cat, precision: precision };
+  }
+  function osmExisting(r) {
+    return store.places().filter(function (p) { return p.osm === r.osm && visibleToMe(p); })[0] || null;
+  }
+  function osmRowHTML(r, i) {
+    var mode = CATS[r.mode], c = null;
+    mode.forEach(function (x) { if (x.id === r.cat) c = x; });
+    c = c || mode[mode.length - 1];
+    var sub = [t(r.mode), r.where, fmtDist(haversine(XMUM, r))].filter(Boolean).map(esc).join(' · ');
+    var cta = osmExisting(r) ? t('osmOpen') : t('osmAdd');
+    return '<li><button type="button" class="near-item" data-action="osm-pick" data-i="' + i + '">' + catIconHTML(c) +
+      '<span class="near-text"><b>' + esc(r.name) + '</b><small>' + sub + '</small></span><span class="near-cta">' + esc(cta) + '</span></button></li>';
+  }
+  /* 从“加地点”进来时，用户已经选了吃还是玩，就不按搜索结果的类型切换 */
+  function pickOsm(i) {
+    var r = osm.results[i];
+    if (!r) return;
+    var existing = osmExisting(r);
+    var adding = state.view === 'add';
+    if (existing) {
+      if (adding && existing.mode === state.mode) startReview(existing.id); else openPlace(existing.id);
+      return;
+    }
+    var mode = adding ? state.mode : r.mode;
+    if (mode !== state.mode) setMode(mode, { noFly: true });
+    var precision = mode === 'food' ? 'exact' : r.precision;
+    var cat = mode === r.mode ? r.cat : null;
+    flyTo([r.lng, r.lat], precision === 'city' ? 10 : precision === 'area' ? 14 : 16.5);
+    startNewPlace({ lng: r.lng, lat: r.lat }, precision, NEAR_RADIUS[precision], { name: r.name, cat: cat, osm: r.osm });
   }
 
   function renderProfile() {
@@ -1621,6 +2065,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     function inp(field, ph, label) {
       return '<input class="input" data-pf="' + field + '" maxlength="30" value="' + esc(pf[field]) + '" placeholder="' + esc(t(ph)) + '" aria-label="' + esc(t(label)) + '">';
     }
+    var areas = store.areas();
     var h = '<div class="view-top"><button type="button" class="icon-btn flat" data-action="back" aria-label="' + esc(t('back')) + '">' + ICON.back + '</button><h2 class="view-title">' + esc(t('profile')) + '</h2></div>' +
       '<div class="form">' +
       '<div class="field"><label class="f-label" for="pf-name">' + esc(t('nickname')) + '</label><input id="pf-name" class="input" data-pf="name" maxlength="20" value="' + esc(pf.name) + '" placeholder="' + esc(t('nicknamePh')) + '"></div>' +
@@ -1632,13 +2077,13 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       '<div class="field"><span class="f-label">' + esc(t('basemap')) + '</span><div class="seg">' +
       STYLE_ORDER.map(function (k) { return '<button type="button" data-action="set-style" data-style="' + k + '" aria-pressed="' + (state.styleKey === k) + '">' + esc(t(styleLabelKey(k))) + '</button>'; }).join('') + '</div></div>' +
       '<div class="field"><span class="f-label">' + esc(t('areas')) + '</span>' +
-      (data.areas.length ? '<ul class="area-list">' + data.areas.map(function (a) {
+      (areas.length ? '<ul class="area-list">' + areas.map(function (a) {
         return '<li><span>' + esc(a.name) + '</span><button type="button" class="link-btn danger" data-action="del-area" data-id="' + esc(a.id) + '">' + esc(t('del')) + '</button></li>';
       }).join('') + '</ul>' : '<p class="f-hint">' + esc(t('noCustomAreas')) + '</p>') + '</div>' +
       '<div class="field"><span class="f-label">' + esc(t('dataTitle')) + '</span><p class="note">' + esc(t('localNote')) + '</p>' +
       '<div class="btn-row"><button type="button" class="btn small" data-action="export">' + esc(t('exportData')) + '</button>' +
       '<button type="button" class="btn small" data-action="import">' + esc(t('importData')) + '</button>' +
-      (data.reviews.some(function (r) { return r.sample; }) ? '<button type="button" class="btn small ghost" data-action="clear-samples">' + esc(t('clearSamples')) + '</button>' : '') +
+      (store.hasSamples() ? '<button type="button" class="btn small ghost" data-action="clear-samples">' + esc(t('clearSamples')) + '</button>' : '') +
       '</div></div>' +
       '<p class="about">' + esc(t('about')) + '</p></div>';
     view.innerHTML = h;
@@ -1656,7 +2101,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     var p = placeById(id);
     if (!p) return;
     if (p.mode !== state.mode) setMode(p.mode, { noFly: true });
-    if (!scopedReviews(p.id).length && reviewsOf(p.id).some(function (r) { return r.authorId === me().id; })) {
+    if (!scopedReviews(p.id).length && reviewsOf(p.id).some(isMine)) {
       state.scope = 'mine'; renderFilters(); refreshMap();
     }
     if (state.view === 'feed') state.feedSnap = state.snap;
@@ -1680,7 +2125,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
   }
   function formCancel() {
     var f = state.form, pid = f && f.placeId;
-    if (f) f.photos.forEach(function (ph) { if (!photoURLs.has(ph.id)) URL.revokeObjectURL(ph.url); });
+    if (f) f.photos.forEach(function (ph) { if (!ph.existing && !store.hasPhotoURL(ph.id)) URL.revokeObjectURL(ph.url); });
     state.form = null;
     if (pid && placeById(pid)) {
       state.view = 'place'; state.placeId = pid; render(); setSnap('half'); updateSelection();
@@ -1691,7 +2136,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     opts = opts || {};
     if (mode === state.mode) return;
     state.mode = mode; state.cat = 'all';
-    if (mode === 'travel') state.priceMax = 0;
+    if (mode === 'travel') { state.priceMax = 0; state.dist = 'any'; }
     renderChrome();
     refreshMap();
     repaintAccent();
@@ -1717,6 +2162,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
   }
 
   /* ================= pick a location ================= */
+  var NEAR_RADIUS = { exact: 60, area: 800, city: 15000 };
   function defaultPrecision(z) {
     if (state.mode === 'food') return 'exact';
     return z >= 14 ? 'exact' : z >= 9 ? 'area' : 'city';
@@ -1768,19 +2214,40 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       state.view = 'form'; render(); setSnap('full');
       return;
     }
-    var radius = z >= 14 ? 60 : z >= 10 ? 800 : 15000;
-    var near = data.places.filter(function (p) { return p.mode === state.mode && visibleToMe(p); })
+    startNewPlace(loc, defaultPrecision(z), z >= 14 ? 60 : z >= 10 ? 800 : 15000);
+  }
+  function newForm(o) {
+    return Object.assign({ placeId: null, editId: null, loc: null, cat: null, precision: 'exact', rating: null, visibility: 'public', photos: [], draft: null, osm: '' }, o);
+  }
+  /* 新地点：先看附近有没有已经存在的同类地点，有就让用户先确认是不是同一个 */
+  function startNewPlace(loc, precision, radius, prefill) {
+    prefill = prefill || {};
+    var near = store.places().filter(function (p) { return p.mode === state.mode && visibleToMe(p); })
       .map(function (p) { return { p: p, d: haversine(loc, p) }; })
       .filter(function (x) { return x.d <= radius; })
       .sort(function (a, b) { return a.d - b.d; })
       .slice(0, 4);
-    state.form = { placeId: null, loc: loc, cat: null, precision: defaultPrecision(z), rating: 0, visibility: 'public', photos: [], draft: null };
+    state.form = newForm({ loc: loc, cat: prefill.cat || null, precision: precision, osm: prefill.osm || '', draft: prefill.name ? { name: prefill.name } : null });
     if (near.length) { state.nearby = near; state.view = 'nearby'; } else state.view = 'form';
     render();
     setSnap('full');
   }
   function startReview(placeId) {
-    state.form = { placeId: placeId, loc: null, cat: null, precision: 'exact', rating: 0, visibility: 'public', photos: [], draft: null };
+    state.form = newForm({ placeId: placeId });
+    state.view = 'form';
+    render();
+    setSnap('full');
+  }
+  function startEdit(reviewId) {
+    var r = store.review(reviewId);
+    if (!r || !isMine(r)) return;
+    var p = placeById(r.placeId);
+    state.form = newForm({
+      placeId: p.id, editId: r.id, loc: { lng: p.lng, lat: p.lat }, cat: p.cat, precision: p.precision,
+      rating: r.rating, visibility: r.visibility,
+      photos: (r.photos || []).map(function (id) { return { id: id, existing: true }; }),
+      draft: { name: p.name, alt: p.altName, link: p.link, price: r.price ? String(r.price) : '', text: r.text }
+    });
     state.view = 'form';
     render();
     setSnap('full');
@@ -1845,44 +2312,45 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     captureFormDraft();
     clearErrs();
     var d = f.draft || {};
-    var isNew = !f.placeId;
+    var p0 = f.placeId ? placeById(f.placeId) : null;
+    var placeFields = formHasPlaceFields(f, p0);
     var bad = null;
-    if (isNew && !(d.name || '').trim()) { showErr('f-name', t('errName')); bad = bad || $('#f-name'); }
-    if (isNew && !f.cat) { showErr('cat', t('errCat')); bad = bad || $('.chips-wrap .chip'); }
+    if (placeFields && !(d.name || '').trim()) { showErr('f-name', t('errName')); bad = bad || $('#f-name'); }
+    if (placeFields && !f.cat) { showErr('cat', t('errCat')); bad = bad || $('.chips-wrap .chip'); }
+    if (f.rating == null) { showErr('rating', t('errRating')); bad = bad || $('.score-input .sc'); }
     if (bad) { bad.focus(); bad.scrollIntoView({ block: 'center', behavior: reduceMotion ? 'auto' : 'smooth' }); return; }
 
     var btn = $('#f-submit');
     if (btn) btn.disabled = true;
-    if ((d.nick || '').trim()) me().name = d.nick.trim().slice(0, 20);
-    var now = Date.now();
-    var place = f.placeId ? placeById(f.placeId) : null;
-    if (!place) {
-      place = {
-        id: uid('p'), mode: state.mode, cat: f.cat, precision: f.precision,
-        lat: f.loc.lat, lng: f.loc.lng, name: d.name.trim().slice(0, 60), altName: (d.alt || '').trim().slice(0, 60),
-        link: safeURL(d.link), createdBy: me().id, createdAt: now, sample: false
-      };
-      data.places.push(place);
-    }
+    if ((d.nick || '').trim()) store.updateProfile({ name: d.nick.trim().slice(0, 20) });
+    var placeData = placeFields ? {
+      mode: p0 ? p0.mode : state.mode, cat: f.cat, precision: f.precision, lat: f.loc.lat, lng: f.loc.lng,
+      name: d.name.trim().slice(0, 60), altName: (d.alt || '').trim().slice(0, 60), link: safeURL(d.link), osm: f.osm
+    } : null;
     var price = parseFloat(d.price);
-    var review = {
-      id: uid('r'), placeId: place.id, authorId: me().id, authorName: me().name || '', authorFrom: shortFrom(me()),
-      rating: f.rating || 0, price: isFinite(price) && price > 0 ? Math.round(price * 100) / 100 : null,
-      text: (d.text || '').trim().slice(0, 1000), photos: f.photos.map(function (ph) { return ph.id; }),
-      visibility: f.visibility, createdAt: now, sample: false
+    var rv = {
+      rating: f.rating, price: isFinite(price) && price > 0 ? Math.round(price * 100) / 100 : null,
+      text: (d.text || '').trim().slice(0, 1000), visibility: f.visibility
     };
-    var saves = f.photos.map(function (ph) { photoURLs.set(ph.id, ph.url); return photoStore.put(ph.id, ph.blob); });
-    Promise.all(saves).then(function (results) {
-      data.reviews.push(review);
-      saveData();
+    var newPhotos = f.photos.filter(function (ph) { return !ph.existing; });
+    var keepPhotos = f.photos.filter(function (ph) { return ph.existing; }).map(function (ph) { return ph.id; });
+    var placeStep = !placeData ? Promise.resolve(p0) : p0 ? store.updatePlace(p0.id, placeData) : store.addPlace(placeData);
+    placeStep.then(function (place) {
+      rv.placeId = place.id;
+      var save = f.editId ? store.updateReview(f.editId, rv, keepPhotos, newPhotos) : store.addReview(rv, newPhotos);
+      return save.then(function (res) { return { place: place, res: res }; });
+    }).then(function (x) {
       state.form = null;
-      if (review.visibility === 'private' && state.scope !== 'mine') {
+      if (x.res.review.visibility === 'private' && state.scope === 'all') {
         state.scope = 'mine'; renderFilters();
         toast(t('savedPrivate'));
-      } else toast(t('published'));
-      if (results.some(function (ok) { return !ok; })) setTimeout(function () { toast(t('photoFail')); }, 2600);
+      } else toast(t(f.editId ? 'updated' : 'published'));
+      if (!x.res.photosOk) setTimeout(function () { toast(t('photoFail')); }, 2600);
       refreshMap();
-      openPlace(place.id, { drop: true });
+      openPlace(x.place.id, { drop: !f.editId });
+    }).catch(function () {
+      if (btn) btn.disabled = false;
+      toast(t('saveFail'));
     });
   }
 
@@ -1924,49 +2392,48 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     var name = ($('#area-name') && $('#area-name').value || '').trim();
     if (!name) { $('#area-name').focus(); return; }
     var c = map.getCenter();
-    data.areas.push({ id: uid('a'), name: name.slice(0, 20), lng: round6(c.lng), lat: round6(c.lat), zoom: Math.round(map.getZoom() * 100) / 100 });
-    saveData();
-    closeModal(false);
-    toast(t('areaSaved'));
-    if (state.view === 'feed' || state.view === 'profile') render();
+    store.addArea({ name: name.slice(0, 20), lng: round6(c.lng), lat: round6(c.lat), zoom: Math.round(map.getZoom() * 100) / 100 }).then(function () {
+      closeModal(false);
+      toast(t('areaSaved'));
+      if (state.view === 'feed' || state.view === 'profile') render();
+    });
   }
   function gotoArea(id) {
     var a = null;
-    PRESET_AREAS.concat(data.areas).forEach(function (x) { if (x.id === id) a = x; });
+    PRESET_AREAS.concat(store.areas()).forEach(function (x) { if (x.id === id) a = x; });
     if (a) flyTo([a.lng, a.lat], a.zoom);
   }
 
   function clearSamples() {
     confirmBox(t('clearSamplesQ'), t('clearSamplesOk')).then(function (ok) {
       if (!ok) return;
-      data.reviews = data.reviews.filter(function (r) { return !r.sample; });
-      data.places = data.places.filter(function (p) { return !p.sample; });
-      data.seeded = true;
-      saveData();
-      refreshMap();
-      if (state.view === 'place' && !placeById(state.placeId)) goFeed(); else render();
-      toast(t('samplesCleared'));
+      store.clearSamples().then(function () {
+        refreshMap();
+        if (state.view === 'place' && !placeById(state.placeId)) goFeed(); else render();
+        toast(t('samplesCleared'));
+      });
     });
   }
 
   function deleteReview(id) {
-    var r = null;
-    data.reviews.forEach(function (x) { if (x.id === id) r = x; });
-    if (!r || r.authorId !== me().id) return;
+    var r = store.review(id);
+    if (!r || !isMine(r)) return;
     confirmBox(t('delReviewQ'), t('delOk')).then(function (ok) {
       if (!ok) return;
-      data.reviews = data.reviews.filter(function (x) { return x.id !== id; });
-      (r.photos || []).forEach(function (pid) {
-        photoStore.del(pid);
-        var u = photoURLs.get(pid);
-        if (u) { URL.revokeObjectURL(u); photoURLs.delete(pid); }
+      store.deleteReview(id).then(function (res) {
+        refreshMap();
+        toast(t('deleted'));
+        if (res.placeRemoved) goFeed(); else render();
       });
-      var left = reviewsOf(r.placeId).length;
-      if (!left) data.places = data.places.filter(function (p) { return p.id !== r.placeId; });
-      saveData();
+    });
+  }
+
+  function toggleSave(placeId) {
+    var on = !store.isSaved(placeId);
+    store.setSaved(placeId, on).then(function () {
+      toast(t(on ? 'wishAdded' : 'wishRemoved'));
       refreshMap();
-      toast(t('deleted'));
-      if (!left) goFeed(); else render();
+      render();
     });
   }
 
@@ -1985,20 +2452,12 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
   function dataURLToBlob(u) { return fetch(u).then(function (r) { return r.blob(); }); }
 
   function exportData() {
-    var ids = [];
-    data.reviews.forEach(function (r) { (r.photos || []).forEach(function (id) { ids.push(id); }); });
-    var photos = {};
-    ids.reduce(function (chain, id) {
-      return chain.then(function () {
-        return photoStore.get(id).then(function (b) { return b ? blobToDataURL(b) : null; }).then(function (u) { if (u) photos[id] = u; });
-      });
-    }, Promise.resolve()).then(function () {
-      var out = { app: 'xmum-chiwan-map', version: 1, exportedAt: new Date().toISOString(), profile: data.profile, places: data.places, reviews: data.reviews, areas: data.areas, photos: photos };
+    store.exportBackup().then(function (out) {
       var blob = new Blob([JSON.stringify(out)], { type: 'application/json' });
       var a = document.createElement('a');
       var d = new Date();
       a.href = URL.createObjectURL(blob);
-      a.download = 'xmum-map-backup-' + d.getFullYear() + String(d.getMonth() + 1).padStart(2, '0') + String(d.getDate()).padStart(2, '0') + '.json';
+      a.download = 'xuetuan-backup-' + d.getFullYear() + String(d.getMonth() + 1).padStart(2, '0') + String(d.getDate()).padStart(2, '0') + '.json';
       document.body.appendChild(a);
       a.click();
       setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
@@ -2011,20 +2470,8 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     fr.onload = function () {
       var obj;
       try { obj = JSON.parse(fr.result); } catch (e) { toast(t('importFail')); return; }
-      if (!obj || obj.app !== 'xmum-chiwan-map' || !Array.isArray(obj.places) || !Array.isArray(obj.reviews)) { toast(t('importFail')); return; }
-      var placeIds = {}, reviewIds = {}, areaIds = {}, added = 0;
-      data.places.forEach(function (p) { placeIds[p.id] = 1; });
-      data.reviews.forEach(function (r) { reviewIds[r.id] = 1; });
-      data.areas.forEach(function (a) { areaIds[a.id] = 1; });
-      obj.places.forEach(function (p) { if (p && p.id && !placeIds[p.id] && isFinite(p.lat) && isFinite(p.lng) && CATS[p.mode]) { data.places.push(p); added++; } });
-      obj.reviews.forEach(function (r) { if (r && r.id && !reviewIds[r.id] && r.placeId) data.reviews.push(r); });
-      (obj.areas || []).forEach(function (a) { if (a && a.id && !areaIds[a.id]) data.areas.push(a); });
-      if (obj.profile && obj.profile.id && !me().name && !data.reviews.some(function (r) { return r.authorId === me().id; })) data.profile = obj.profile;
-      var jobs = Object.keys(obj.photos || {}).map(function (id) {
-        return dataURLToBlob(obj.photos[id]).then(function (b) { return photoStore.put(id, b); }).catch(function () { return false; });
-      });
-      Promise.all(jobs).then(function () {
-        saveData();
+      store.importBackup(obj).then(function (added) {
+        if (added < 0) { toast(t('importFail')); return; }
         refreshMap();
         render();
         toast(t('imported', { n: added }));
@@ -2045,11 +2492,15 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     var multi = lb.ids.length > 1;
     $('#lb-prev').hidden = !multi; $('#lb-next').hidden = !multi;
     $('#lb-count').textContent = multi ? (lb.i + 1) + ' / ' + lb.ids.length : '';
-    photoURL(lb.ids[lb.i]).then(function (u) { $('#lb-img').src = u || ''; });
+    store.photoURL(lb.ids[lb.i]).then(function (u) { $('#lb-img').src = u || ''; });
   }
   function closeLightbox() { $('#lightbox').hidden = true; $('#lb-img').removeAttribute('src'); }
 
   /* ================= events ================= */
+  function refilter() {
+    renderFilters(); refreshMap();
+    if (state.view === 'feed') render();
+  }
   document.addEventListener('click', function (e) {
     var mb = e.target.closest('[data-modal]');
     if (mb) { closeModal(mb.dataset.modal === 'yes'); return; }
@@ -2065,11 +2516,11 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
         if (state.view === 'place' && !scopedReviews(state.placeId).length) goFeed();
         else if (state.view === 'feed' || state.view === 'place') render();
         break;
-      case 'cat': state.cat = d.cat; renderFilters(); refreshMap(); if (state.view === 'feed') render(); break;
-      case 'price':
-        state.priceMax = PRICE_STEPS[(PRICE_STEPS.indexOf(state.priceMax) + 1) % PRICE_STEPS.length];
-        renderFilters(); refreshMap(); if (state.view === 'feed') render(); break;
-      case 'clear-filters': state.cat = 'all'; state.priceMax = 0; renderFilters(); refreshMap(); render(); break;
+      case 'cat': state.cat = d.cat; refilter(); break;
+      case 'price': state.priceMax = PRICE_STEPS[(PRICE_STEPS.indexOf(state.priceMax) + 1) % PRICE_STEPS.length]; refilter(); break;
+      case 'score': state.minScore = SCORE_STEPS[(SCORE_STEPS.indexOf(state.minScore) + 1) % SCORE_STEPS.length]; refilter(); break;
+      case 'dist': state.dist = DIST_STEPS[(DIST_STEPS.indexOf(state.dist) + 1) % DIST_STEPS.length]; refilter(); break;
+      case 'clear-filters': state.cat = 'all'; state.priceMax = 0; state.minScore = 0; state.dist = 'any'; renderFilters(); refreshMap(); render(); break;
       case 'search': if (state.view === 'feed') state.feedSnap = state.snap; state.view = 'search'; render(); setSnap('full'); break;
       case 'profile': if (state.view === 'feed') state.feedSnap = state.snap; state.view = 'profile'; render(); setSnap('full'); break;
       case 'lang': setLang(state.lang === 'zh' ? 'en' : 'zh'); break;
@@ -2081,36 +2532,41 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       case 'to-school': flyTo([XMUM.lng, XMUM.lat], 15.5); break;
       case 'to-globe': if (map) flyTo([map.getCenter().lng, Math.max(-40, Math.min(40, map.getCenter().lat))], 1.4); break;
       case 'locate': locate(); break;
-      case 'add': startPick({}); break;
+      case 'add': openAdd(); break;
+      case 'add-pin': startPick({}); break;
+      case 'add-existing': startReview(d.id); break;
       case 'pick-cancel': cancelPick(); break;
       case 'pick-confirm': confirmPick(); break;
       case 'expand': if (isMobile()) setSnap(state.snap === 'peek' ? 'half' : state.snap === 'half' ? 'full' : 'half'); break;
       case 'goto-area': gotoArea(d.id); break;
       case 'save-area': openAreaDialog(); break;
-      case 'del-area': data.areas = data.areas.filter(function (x) { return x.id !== d.id; }); saveData(); render(); break;
+      case 'del-area': store.deleteArea(d.id).then(render); break;
       case 'clear-samples': clearSamples(); break;
       case 'open-place': openPlace(d.id); break;
       case 'back': back(); break;
       case 'write-review': if (state.placeId) startReview(state.placeId); break;
+      case 'toggle-save': if (state.placeId) toggleSave(state.placeId); break;
       case 'copy-coords': copyCoords(d.c); break;
       case 'photo': openLightbox(d.id, d.group); break;
+      case 'edit-review': startEdit(d.id); break;
       case 'del-review': deleteReview(d.id); break;
       case 'form-cancel': formCancel(); break;
       case 'repick': captureFormDraft(); startPick({ repick: true }); break;
       case 'f-cat': state.form.cat = d.cat; setPressed('[data-action="f-cat"]', 'cat', d.cat); $('#err-cat').hidden = true; break;
       case 'f-prec': state.form.precision = d.prec; setPressed('[data-action="f-prec"]', 'prec', d.prec); break;
       case 'f-vis': state.form.visibility = d.vis; setPressed('[data-action="f-vis"]', 'vis', d.vis); break;
-      case 'f-star':
-        state.form.rating = +d.n;
-        $$('.star-input .st').forEach(function (b) { b.setAttribute('aria-pressed', String(+b.dataset.n <= state.form.rating)); });
-        break;
+      case 'f-score': state.form.rating = +d.n; setPressed('[data-action="f-score"]', 'n', d.n); $('#err-rating').hidden = true; break;
       case 'f-photo-add': $('#f-file').click(); break;
       case 'f-photo-del':
-        state.form.photos = state.form.photos.filter(function (ph) { if (ph.id === d.id) URL.revokeObjectURL(ph.url); return ph.id !== d.id; });
+        state.form.photos = state.form.photos.filter(function (ph) {
+          if (ph.id === d.id && !ph.existing) URL.revokeObjectURL(ph.url);
+          return ph.id !== d.id;
+        });
         renderFormPhotos(); break;
       case 'nearby-back': state.form = null; goFeed(); break;
       case 'near-pick': state.form.placeId = d.id; state.view = 'form'; render(); break;
       case 'near-new': state.view = 'form'; render(); break;
+      case 'osm-pick': pickOsm(+d.i); break;
       case 'export': exportData(); break;
       case 'import': $('#import-file').click(); break;
       case 'lb-close': closeLightbox(); break;
@@ -2125,8 +2581,8 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
   });
   document.addEventListener('input', function (e) {
     var el = e.target;
-    if (el.id === 'q') { state.query = el.value; renderSearchResults(); }
-    else if (el.dataset && el.dataset.pf) { me()[el.dataset.pf] = el.value.trim(); saveDataSoon(); }
+    if (el.id === 'q') { state.query = el.value; queueOsmSearch(); renderSearchResults(); }
+    else if (el.dataset && el.dataset.pf) { var patch = {}; patch[el.dataset.pf] = el.value.trim(); store.updateProfile(patch); }
   });
   document.addEventListener('change', function (e) {
     if (e.target.id === 'f-file') { addFormPhotos(e.target.files); e.target.value = ''; }
@@ -2149,21 +2605,19 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
   if (mqDark.addEventListener) mqDark.addEventListener('change', repaintAccent);
 
   /* ================= boot ================= */
-  loadData();
-  ensureProfile();
-  if (!data.seeded) { seedSamples(); data.seeded = true; }
-  saveData();
-  var savedView = loadView();
-  if (savedView) {
-    if (savedView.lang === 'en' || savedView.lang === 'zh') state.lang = savedView.lang;
-    if (savedView.mode === 'travel' || savedView.mode === 'food') state.mode = savedView.mode;
-    if (STYLE_URLS[savedView.styleKey]) state.styleKey = savedView.styleKey;
-  }
-  applyStaticI18n();
-  renderChrome();
-  render();
-  setSnap('peek');
-  initMap();
+  store.init().then(function () {
+    var savedView = loadView();
+    if (savedView) {
+      if (savedView.lang === 'en' || savedView.lang === 'zh') state.lang = savedView.lang;
+      if (savedView.mode === 'travel' || savedView.mode === 'food') state.mode = savedView.mode;
+      if (STYLE_URLS[savedView.styleKey]) state.styleKey = savedView.styleKey;
+    }
+    applyStaticI18n();
+    renderChrome();
+    render();
+    setSnap('peek');
+    initMap();
+  });
 })();
 </script>
 </body>
