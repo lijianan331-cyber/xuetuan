@@ -73,6 +73,11 @@ def rate(pg, v, sel='.stars-input'):
     pg.wait_for_timeout(150)
 def stars_val(pg, sel='#f-rating'):
     return pg.get_attribute(sel, 'aria-valuenow')
+def add(pg):
+    # 加一笔只在我的地图上（地图右下角蓝色 +）：不在我的地图就先切过去
+    if 'scope-my' not in (pg.get_attribute('html', 'class') or ''):
+        pg.click('#tabbar [data-scope="mine"]'); pg.wait_for_timeout(200)
+    pg.dispatch_event('#fab', 'click')
 def set_mode(pg, mode):
     # 地图右上角的切换按钮：吃的地图上显示飞机（切去旅行），旅行地图上显示餐具
     if pg.evaluate('document.documentElement.classList.contains("mode-travel")') != (mode == 'travel'):
@@ -198,8 +203,6 @@ with sync_playwright() as p:
     pins = page.evaluate('window.__map.getSource("places").data.features.map(f => [f.properties.icon, f.properties.color])')
     check('pins coloured by score (0 grey, 5 red)', all(c.lower() == '#d7261e' for i, c in pins if i.endswith('-50')) and all(c.lower() == '#8e9893' for i, c in pins if i.endswith('-0')) and any(i.endswith('-0') for i, c in pins), pins)
     check('renamed to 雪团', page.title() == '雪团 XueTuan' and '雪团' in page.evaluate('document.querySelector(".panel-brand .brand-name").textContent'), page.title())
-    tabs = page.locator('#tabbar .tab').all_inner_texts()
-    check('bottom tab bar: explore / my map / add / me (saved lives inside my map)', [x.strip() for x in tabs] == ['探索', '我的地图', '加一家', '我'], tabs)
     check('explore tab is current', page.get_attribute('#tabbar [data-scope="all"]', 'aria-current') == 'page')
     check('no right-side tool column, locate button kept', page.locator('.tools, [data-action="zoom-in"], [data-action="to-globe"], [data-action="basemap"]').count() == 0 and page.locator('.locate-btn').is_visible())
     acts = page.eval_on_selector_all('#map-ctrls button', 'els => els.map(e => e.dataset.action)')
@@ -223,9 +226,21 @@ with sync_playwright() as p:
     check('fonts picked from style', st['countFont'] == ['Noto Sans Bold'] and st['labelFont'] == ['Noto Sans Regular'], (st['countFont'], st['labelFont']))
     check('food mode shows all sample food places', st['feats'] == len(FOOD_S), (st['feats'], len(FOOD_S)))
     check('intro flight to campus', st['intro'] >= 1, st['intro'])
-    feed_n = page.locator('.feed-item').count()
-    check('feed lists the food samples', feed_n == min(80, len(FOOD_S)), feed_n)
-    check('sample reviews carry scores', page.locator('.feed-item .score').count() == len([x for x in FOOD_S if x['rating'] is not None]))
+    feed_n = page.locator('.near-list .near-item').count()
+    check('explore lists each food sample place once', feed_n == min(80, len(FOOD_S)) and page.inner_text('.view-title') == '大家吃过的店', (feed_n, page.inner_text('.view-title')))
+    check('explore places carry their scores', page.locator('.near-item .score').count() == len([x for x in FOOD_S if x['rating'] is not None]))
+    sc_ex = [float(x) for x in page.locator('.near-item .score').all_inner_texts()]
+    check('explore places: best score first', sc_ex == sorted(sc_ex, reverse=True), sc_ex)
+    tabs0 = page.locator('#tabbar .tab').all_inner_texts()
+    check('tab bar: explore / community / my map / me, no + in it', tabs0 == ['探索', '社区', '我的地图', '我'] and page.locator('#tabbar #fab').count() == 0, tabs0)
+    check('no add button on explore', not page.locator('#fab').is_visible())
+    page.click('#tabbar [data-scope="community"]'); page.wait_for_timeout(400)
+    check('community: tab current, sheet full, recent reviews', page.get_attribute('#tabbar [data-scope="community"]', 'aria-current') == 'page' and page.get_attribute('#panel', 'data-snap') == 'full' and page.inner_text('.view-title') == '大家最近在吃' and page.locator('.feed-item').count() == min(80, len(FOOD_S)))
+    check('community: no add button', not page.locator('#fab').is_visible())
+    page.click('#tabbar [data-scope="mine"]'); page.wait_for_timeout(300)
+    check('my map: the + add button shows', page.locator('#fab').is_visible() and page.get_attribute('#fab', 'aria-label') == '加一家店')
+    page.click('#tabbar [data-scope="all"]'); page.wait_for_timeout(300)
+    check('back to explore: sheet as low as before, places again', page.get_attribute('#panel', 'data-snap') == 'peek' and page.locator('.near-list').count() == 1)
     check('no add hint bubble any more', page.locator('#fab-hint, .fab-hint').count() == 0)
     ov = page.evaluate('document.documentElement.scrollWidth <= document.documentElement.clientWidth')
     check('no horizontal overflow (mobile)', ov)
@@ -237,13 +252,12 @@ with sync_playwright() as p:
     tf = page.evaluate('window.__map.getSource("places").data.features.length')
     check('travel mode shows all travel samples', tf == len(TRAVEL_S), (tf, len(TRAVEL_S)))
     check('accent repainted', page.evaluate('window.__map.layers.find(l=>l.id==="cl-circle").paint["circle-color"]').lower() == '#4f63d8', page.evaluate('window.__map.layers.find(l=>l.id==="cl-circle").paint["circle-color"]'))
-    check('fab label switches', page.inner_text('#fab-label') == '打卡', page.inner_text('#fab-label'))
+    check('add button label follows the mode', page.get_attribute('#fab', 'aria-label') == '打卡一个地方', page.get_attribute('#fab', 'aria-label'))
     # expand sheet by tapping title
     page.click('.title-row .view-title')
     page.wait_for_timeout(400)
     check('sheet expands to half', page.get_attribute('#panel', 'data-snap') == 'half')
-    check('add button stays in the tab bar at half', page.locator('#fab').is_visible())
-    vis = page.evaluate('''(() => { const body = document.querySelector('.panel-body'); body.scrollTop = body.scrollHeight; const r = document.querySelector('.feed li:last-child').getBoundingClientRect(); return r.bottom <= document.querySelector('#tabbar').getBoundingClientRect().top + 1; })()''')
+    vis = page.evaluate('''(() => { const body = document.querySelector('.panel-body'); body.scrollTop = body.scrollHeight; const r = document.querySelector('.near-list li:last-child').getBoundingClientRect(); return r.bottom <= document.querySelector('#tabbar').getBoundingClientRect().top + 1; })()''')
     check('last feed item reachable in half sheet', vis)
     page.screenshot(path=os.path.join(SHOTS, '02-mobile-travel-half.png'))
     # 像谷歌地图那样直接拖内容：列表滚到中间时往下拖是滚列表；在最上面往下拖是收面板，收起后往上拖是拉开
@@ -268,13 +282,13 @@ with sync_playwright() as p:
     g0 = page.evaluate('(() => { const r = document.querySelector("#grip").getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; })()')
     page.mouse.move(g0[0], g0[1]); page.mouse.down(); page.mouse.move(g0[0], g0[1] + 200, steps=6); page.mouse.move(g0[0], 830, steps=6); page.mouse.up()
     page.wait_for_timeout(450)
-    pk = page.evaluate('(() => { const t = document.querySelector(".title-row").getBoundingClientRect(), tb = document.querySelector("#tabbar").getBoundingClientRect(), it = document.querySelector(".feed-item .fi-main").getBoundingClientRect(); return [document.querySelector("#panel").dataset.snap, document.querySelector(".panel-body").scrollTop, t.bottom <= tb.top, it.top >= tb.top]; })()')
+    pk = page.evaluate('(() => { const t = document.querySelector(".title-row").getBoundingClientRect(), tb = document.querySelector("#tabbar").getBoundingClientRect(), it = document.querySelector(".near-item .near-text").getBoundingClientRect(); return [document.querySelector("#panel").dataset.snap, document.querySelector(".panel-body").scrollTop, t.bottom <= tb.top, it.top >= tb.top]; })()')
     check('collapsed sheet shows its title, not half a list', pk == ['peek', 0, True, True], pk)
     page.click('.title-row .view-title')
     page.wait_for_timeout(400)
 
     # open a sample place
-    page.locator('.feed-item', has_text='金门大桥').click()
+    page.locator('.near-item', has_text='金门大桥').click()
     page.wait_for_timeout(300)
     check('place view title', page.inner_text('.place-head h2') == '金门大桥', page.inner_text('.place-head h2') if page.locator('.place-head h2').count() else 'none')
     check('far place offers google view only', page.locator('a.btn', has_text='在 Google 地图看').count() == 1 and page.locator('a.btn', has_text='Waze').count() == 0)
@@ -292,13 +306,13 @@ with sync_playwright() as p:
     check('back from that form returns to the place', page.locator('.place-head h2').count() == 1 and page.inner_text('.place-head h2') == '金门大桥')
     page.click('[data-action="back"]')
     page.wait_for_timeout(200)
-    check('back to feed', page.locator('.feed').count() == 1)
+    check('back to feed', page.locator('.near-list').count() == 1)
     check('red pin removed on the feed', page.locator('#map .sel-pin').count() == 0)
 
     # back to food, add a place at XMUM
     set_mode(page, 'food')
     page.evaluate('window.__map.center = {lng: 101.7031, lat: 2.8331}; window.__map.zoom = 17;')
-    (page.click('#fab') if page.locator('#fab').is_visible() else page.click('.title-add'))
+    add(page)
     page.wait_for_timeout(200)
     check('add opens name search first', page.locator('#q').count() == 1 and page.get_attribute('#q', 'placeholder').startswith('输入店名') and page.locator('[data-action="add-pin"]').is_visible())
     page.screenshot(path=os.path.join(SHOTS, '04a-mobile-add-search.png'))
@@ -490,7 +504,7 @@ with sync_playwright() as p:
     # nearby duplicate check
     page.click('[data-action="back"]')
     page.evaluate('window.__map.center = {lng: 101.70315, lat: 2.83305}; window.__map.zoom = 17;')
-    (page.click('#fab') if page.locator('#fab').is_visible() else page.click('.title-add'))
+    add(page)
     page.click('[data-action="add-pin"]')
     page.click('[data-action="pick-confirm"]')
     page.wait_for_timeout(200)
@@ -505,7 +519,7 @@ with sync_playwright() as p:
 
     # repick keeps the draft
     page.evaluate('window.__map.center = {lng: 101.75, lat: 2.90}; window.__map.zoom = 17;')
-    (page.click('#fab') if page.locator('#fab').is_visible() else page.click('.title-add'))
+    add(page)
     page.click('[data-action="add-pin"]')
     page.click('[data-action="pick-confirm"]')
     page.fill('#f-name', '草稿测试')
@@ -530,7 +544,7 @@ with sync_playwright() as p:
     page.wait_for_timeout(200)
 
     # wishlist
-    page.locator('.feed-item', has_text='亚罗街').click()
+    page.locator('.near-item', has_text='亚罗街').click()
     page.wait_for_timeout(200)
     page.click('[data-action="toggle-save"]')
     page.wait_for_timeout(200)
@@ -594,7 +608,7 @@ with sync_playwright() as p:
     page.click('[data-action="sheet-close"]')
     page.wait_for_timeout(100)
     check('filter button shows 1 active filter', not page.locator('#bsheet').is_visible() and page.inner_text('[data-action="filters"]').endswith('1'), page.inner_text('[data-action="filters"]'))
-    check('feed follows distance filter', page.locator('.feed-item').count() == len(want_mid), page.locator('.feed-item').count())
+    check('feed follows distance filter', page.locator('.near-list .near-item').count() == len(want_mid), page.locator('.near-list .near-item').count())
     page.click('[data-action="filters"]')
     page.click('#bsheet [data-action="clear-filters"]')
     page.click('#bsheet', position={'x': 10, 'y': 10})
@@ -652,7 +666,7 @@ with sync_playwright() as p:
     page.click('[data-action="back"]')
 
     # add flow: search by name first
-    (page.click('#fab') if page.locator('#fab').is_visible() else page.click('.title-add'))
+    add(page)
     page.fill('#q', 'kafe')
     page.wait_for_selector('[data-action="osm-pick"]', timeout=5000)
     page.wait_for_timeout(100)
@@ -664,7 +678,7 @@ with sync_playwright() as p:
     page.click('[data-action="form-cancel"]')
     page.wait_for_timeout(200)
     page.click('[data-action="back"]')
-    (page.click('#fab') if page.locator('#fab').is_visible() else page.click('.title-add'))
+    add(page)
     page.fill('#q', 'george')
     page.wait_for_selector('[data-action="osm-pick"]', timeout=5000)
     page.locator('[data-action="osm-pick"]', has_text='George Town').click()
@@ -800,7 +814,7 @@ with sync_playwright() as p:
     page.click('[data-action="set-lang"][data-lang="en"]')
     page.click('[data-action="scope"][data-scope="all"]')
     page.wait_for_timeout(200)
-    check('UI in English', page.inner_text('.view-title') == 'What people are eating', page.inner_text('.view-title'))
+    check('UI in English', page.inner_text('.view-title') == 'Places people ate at', page.inner_text('.view-title'))
     lab = page.evaluate('window.__map.style.layers.find(l => l.id === "place-city").layout["text-field"]')
     check('map labels English', 'name:en' in json.dumps(lab), lab)
     names = page.evaluate('window.__map.getSource("places").data.features.map(f => f.properties.name)')
@@ -835,7 +849,7 @@ with sync_playwright() as p:
     page.wait_for_timeout(500)
     check('after reload: own places still on map', page.evaluate('window.__map.getSource("places").data.features.length') == 2)
     check('no sample re-seed after clearing', page.locator('.sample-note').count() == 0)
-    page.locator('.feed-item', has_text='测试椰浆饭').first.click()
+    page.locator('.near-item', has_text='测试椰浆饭').first.click()
     page.wait_for_function('[...document.querySelectorAll(".ph img")].some(i => i.src.startsWith("blob:") && i.naturalWidth > 0)', timeout=5000)
     check('photo restored from IndexedDB', True)
 
@@ -860,7 +874,7 @@ with sync_playwright() as p:
     # adding: tapping an existing place or a basemap shop while picking opens its card (score there), no search needed
     page.click('[data-action="scope"][data-scope="all"]')
     page.wait_for_timeout(200)
-    (page.click('#fab') if page.locator('#fab').is_visible() else page.click('.title-add'))
+    add(page)
     page.wait_for_timeout(200)
     page.click('[data-action="add-pin"]')
     page.wait_for_timeout(300)
@@ -873,7 +887,7 @@ with sync_playwright() as p:
         page.keyboard.press('Escape')
     page.click('[data-action="back"]')
     page.wait_for_timeout(200)
-    (page.click('#fab') if page.locator('#fab').is_visible() else page.click('.title-add'))
+    add(page)
     page.wait_for_timeout(200)
     page.click('[data-action="add-pin"]')
     page.wait_for_timeout(300)
@@ -963,7 +977,7 @@ with sync_playwright() as p:
     st3 = page2.evaluate('JSON.parse(localStorage.getItem("xmum-chiwan-map:data:v1"))')
     check('import merges places and adopts profile', any(p_['name'] == '测试椰浆饭' for p_ in st3['places']) and st3['profile']['name'] == '小测', (len(st3['places']), st3['profile']))
     page2.click('[data-action="back"]')
-    page2.locator('.feed-item', has_text='测试椰浆饭').first.click()
+    page2.locator('.near-item', has_text='测试椰浆饭').first.click()
     page2.wait_for_function('[...document.querySelectorAll(".ph img")].some(i => i.src.startsWith("blob:") && i.naturalWidth > 0)', timeout=5000)
     check('imported photo displays', True)
     page2.screenshot(path=os.path.join(SHOTS, '10-desktop-place.png'))
@@ -983,7 +997,7 @@ with sync_playwright() as p:
     page5.wait_for_timeout(300)
     st5 = page5.evaluate('JSON.parse(localStorage.getItem("xmum-chiwan-map:data:v1"))')
     check('v1 data migrated (0 -> not rated)', st5['version'] == 2 and [r['rating'] for r in st5['reviews']] == [None, 3] and st5['wishlist'] == [], st5)
-    page5.locator('.feed-item').first.click()
+    page5.locator('.near-item').first.click()
     page5.wait_for_timeout(200)
     check('migrated average ignores unrated', page5.inner_text('.score-big') == '3', page5.inner_text('.stats'))
     ctx5.close()
@@ -1141,7 +1155,7 @@ with sync_playwright() as p:
     page7.wait_for_timeout(300)
     def add7(name, share, score):
         page7.evaluate('window.__map.center = {lng: 101.7055, lat: 2.8402}; window.__map.zoom = 17;')
-        page7.click('#fab'); page7.wait_for_timeout(150)
+        add(page7); page7.wait_for_timeout(150)
         page7.click('[data-action="add-pin"]'); page7.click('[data-action="pick-confirm"]'); page7.wait_for_timeout(200)
         if page7.locator('[data-action="near-new"]').count(): page7.click('[data-action="near-new"]'); page7.wait_for_timeout(150)
         if share != (page7.get_attribute('[data-action="f-share"]', 'aria-checked') == 'true'): page7.click('[data-action="f-share"]')
@@ -1165,7 +1179,7 @@ with sync_playwright() as p:
     page7.click('[data-action="back"]')
     page7.click('#tabbar [data-scope="mine"]'); page7.wait_for_timeout(200)
     check('test accounts: B’s own map is empty', page7.inner_text('.view-head .count') == '0', page7.inner_text('.view-head'))
-    page7.click('#tabbar [data-scope="all"]'); page7.wait_for_timeout(200)
+    page7.click('#tabbar [data-scope="community"]'); page7.wait_for_timeout(200)
     names7 = page7.evaluate('window.__map.getSource("places").data.features.map(f => f.properties.name)')
     check('test accounts: B sees A’s public place, not the private one', '甲的公开店' in names7 and '甲的私密店' not in names7, names7)
     page7.locator('.feed-item', has_text='甲的公开店').click(); page7.wait_for_timeout(250)
@@ -1194,7 +1208,7 @@ with sync_playwright() as p:
     check('test accounts: back as A, my own map has both of mine (private too)', page7.inner_text('.view-head .count') == '2', page7.inner_text('.view-head'))
     page7.click('[data-action="mine-sub"][data-v="saved"]'); page7.wait_for_timeout(200)
     check('test accounts: A did not get B’s save', page7.inner_text('.view-head .count') == '0')
-    page7.click('#tabbar [data-scope="all"]'); page7.wait_for_timeout(200)
+    page7.click('#tabbar [data-scope="community"]'); page7.wait_for_timeout(200)
     page7.locator('.feed-item', has_text='乙也来过').first.click(); page7.wait_for_timeout(250)
     check('test accounts: A sees B’s review on the shared place', '测试号 B' in page7.inner_text('#view') and '乙也来过' in page7.inner_text('#view'))
     page7.click('[data-action="back"]')
@@ -1208,7 +1222,7 @@ with sync_playwright() as p:
     page7.fill('#f-text', '丙打零分'); page7.click('#f-submit'); page7.wait_for_timeout(400)
     check('stars: dragging off the first star gives 0', zero7 == '0', zero7)
     page7.click('[data-action="back"]'); page7.wait_for_timeout(200)
-    page7.click('#tabbar [data-scope="all"]'); page7.wait_for_timeout(200)
+    page7.click('#tabbar [data-scope="community"]'); page7.wait_for_timeout(200)
     fi7 = page7.locator('.feed-item', has_text='乙也来过').first
     check('feed: place score is the average without 0s, with a decimal (4 and 3.5 → 3.8)', fi7.locator('.fi-place .score').inner_text() == '3.8', fi7.inner_text())
     check('feed: each review shows its own stars (3.5 = three and a half)', fi7.locator('.stars-mini').get_attribute('aria-label') == '3.5 分' and fi7.evaluate('e => [...e.querySelectorAll(".stars-mini .st-fill")].map(f => f.style.width).join()') == '100%,100%,100%,50%,0%')
@@ -1255,8 +1269,9 @@ with sync_playwright() as p:
     names6 = page6.evaluate('window.__map.getSource("places").data.features.map(f => f.properties.name)')
     check('remote: uses Supabase with publishable key', page6.evaluate('window.__sb.key').startswith('sb_publishable_'))
     check('remote: logged out sees public places only, no samples', names6 == ['B 的公开店'], names6)
+    page6.click('#tabbar [data-scope="community"]'); page6.wait_for_timeout(300)
     check('remote: other people’s profile shown on review', page6.locator('.feed-item', has_text='小B').count() == 1 and page6.locator('.feed-item', has_text='来自 Klang').count() == 1)
-    (page6.click('#fab') if page6.locator('#fab').is_visible() else page6.click('.title-add'))
+    add(page6)
     page6.wait_for_timeout(200)
     check('remote: adding while logged out asks to log in', page6.locator('#login-form').count() == 1 and not page6.locator('#pick').is_visible())
     page6.fill('#login-email', 'not-an-email')
@@ -1271,10 +1286,10 @@ with sync_playwright() as p:
     check('remote: google login requested', page6.evaluate('window.__sb.calls.some(c => c[0] === "oauth" && c[1] === "google")'))
     page6.evaluate('window.__sbLogin("%s", "a@example.com")' % A)
     page6.wait_for_timeout(300)
-    check('remote: login returns to feed with toast', page6.locator('.feed').count() == 1 and '登录了' in page6.inner_text('#toast'), page6.inner_text('#toast'))
+    check('remote: login returns to feed with toast', page6.locator('.view-head .view-title').count() == 1 and '登录了' in page6.inner_text('#toast'), page6.inner_text('#toast'))
 
     # 店名搜索：先查地点库，Photon 的同一家店不重复列出
-    (page6.click('#fab') if page6.locator('#fab').is_visible() else page6.click('.title-add'))
+    add(page6)
     page6.fill('#q', 'kafe')
     page6.wait_for_selector('[data-action="osm-pick"]', timeout=5000)
     page6.wait_for_timeout(100)
@@ -1291,7 +1306,7 @@ with sync_playwright() as p:
 
     # 登录后加一家店（带照片）
     page6.evaluate('window.__map.center = {lng: 101.75, lat: 2.95}; window.__map.zoom = 17;')
-    (page6.click('#fab') if page6.locator('#fab').is_visible() else page6.click('.title-add'))
+    add(page6)
     page6.click('[data-action="add-pin"]')
     page6.click('[data-action="pick-confirm"]')
     page6.wait_for_timeout(200)
@@ -1320,7 +1335,7 @@ with sync_playwright() as p:
     page6.click('[data-action="back"]')
     page6.click('[data-action="scope"][data-scope="all"]')
     page6.wait_for_timeout(200)
-    page6.locator('.feed-item', has_text='B 的公开店').click()
+    page6.locator('.near-item', has_text='B 的公开店').click()
     page6.wait_for_timeout(200)
     page6.click('[data-action="toggle-save"]')
     page6.wait_for_timeout(200)
@@ -1332,7 +1347,7 @@ with sync_playwright() as p:
 
     # 编辑自己的记录（换照片），再删掉：地点跟着删，照片也删
     page6.click('[data-action="back"]')
-    page6.locator('.feed-item', has_text='线上测试店').click()
+    page6.locator('.near-item', has_text='线上测试店').click()
     page6.wait_for_timeout(200)
     page6.click('[data-action="edit-review"]')
     page6.wait_for_timeout(200)
@@ -1346,7 +1361,7 @@ with sync_playwright() as p:
     page6.click('[data-modal="yes"]')
     page6.wait_for_timeout(500)
     db6 = page6.evaluate('window.__sb.db')
-    check('remote: deleting last visit removes the place', not any(p_['name'] == '线上测试店' for p_ in db6['places']) and page6.locator('.feed').count() == 1)
+    check('remote: deleting last visit removes the place', not any(p_['name'] == '线上测试店' for p_ in db6['places']) and page6.locator('.view-head .view-title').count() == 1)
 
     # 把本地旧记录传上去
     page6.click('[data-action="profile"]')
