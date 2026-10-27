@@ -54,7 +54,10 @@ Supabase 自带的发信服务**只能发给项目团队成员的邮箱**（就�
 
 搜店名时先查 Supabase 里的 `poi` 表，再用 Photon（OpenStreetMap）补城市和国外的地方。
 
-- 数据：马来西亚的 [Overture Maps](https://overturemaps.org) 开放地点数据（release 2026-10-21.0，许可 CDLA-Permissive-2.0），约 26.6 万个餐厅、咖啡店、景点、商场、住宿。
-- 文件放在仓库的 `poi-data` 分支（`data/my-*.tsv`），生成脚本的筛选条件写在那个分支的 README 里。
+- 数据：[Overture Maps](https://overturemaps.org) 开放地点数据（release 2026-10-21.0，许可 CDLA-Permissive-2.0），共约 54 万个地点：
+  - 马来西亚全国、新加坡全国：餐厅、咖啡店、景点、商场、住宿；
+  - 东京、大阪、京都、曼谷、清迈、普吉：只有吃的店。
+  - 其他地方（比如美国）靠 Photon。
+- 文件放在仓库的 `poi-data` 分支（`data/*.tsv`），筛选条件写在那个分支的 README 里，新加坡、日本、泰国这批的生成脚本在 `scripts/`。
 - 表结构和搜索函数 `search_poi` 在 `supabase/migrations/20261025121500_poi_search.sql`。表只读，谁都能查，不能写。
-- 重新导入：临时开启 `http` 扩展，用 `extensions.http_get('https://raw.githubusercontent.com/<owner>/xuetuan/poi-data/data/my-000.tsv')` 读文件，按 `\t` 拆列后 `insert ... on conflict (id) do nothing`，导完删掉 `http` 扩展。
+- 导入：在 SQL Editor 里运行 `poi-data` 分支的 `scripts/import.sql`。它临时开启 `http` 扩展，用 `extensions.http_get` 从 raw.githubusercontent.com 读文件，按 `\t` 拆列后 `insert ... on conflict (id) do nothing`，导完删掉 `http` 扩展。要导别的文件就改脚本里的文件名列表。

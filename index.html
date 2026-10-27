@@ -3628,7 +3628,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
 
   /* ================= place search [建议] =================
    * 两个来源一起搜：
-   * 1. 雪团自己的地点库（Supabase 里的 poi 表，马来西亚的 Overture 开放数据，店铺最全），按名字和距离排序；
+   * 1. 雪团自己的地点库（Supabase 里的 poi 表，马来西亚、新加坡和日泰热门城市的 Overture 开放数据），按名字和距离排序；
    * 2. Photon（OpenStreetMap），补上城市、景点和国外的地方。
    * 同一个外部编号（ovt/… 或 node/…）算同一个地点，避免大家重复建同一家店。
    */
@@ -4480,7 +4480,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
   /* ================= 从照片批量加 [建议，用户 2026-10-27 要先把自己去过的全加上] =================
    * 一次选很多张照片，读照片里的拍摄地点和时间（只在手机上读，exifr），分成一个个地方：
    * 和这一组第一张相距 150 米内、和上一张相隔不到 3 小时的算同一次。
-   * 每个地方在附近找名字：雪团里已有的 → 地点库（马来西亚）→ Photon。打了分的才存，
+   * 每个地方在附近找名字：雪团里已有的 → 地点库 → Photon。打了分的才存，
    * 照片一起带上，记录日期用拍摄时间。默认不分享（一次加很多旧记录，不想一下子全公开）。 */
   var EXIFR_URL = 'https://cdn.jsdelivr.net/npm/exifr@7.1.3/dist/lite.umd.js';
   var BULK_NEAR = 150, BULK_GAP = 3 * 3600 * 1000;
