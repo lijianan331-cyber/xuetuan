@@ -49,3 +49,12 @@ Supabase 自带的发信服务**只能发给项目团队成员的邮箱**（就�
 - 直接打开 `index.html` 用的就是线上数据库。
 - 地址后面加 `?local`（比如 `index.html?local`）用本地版：数据只存在这个浏览器里，带示例数据，不需要登录。
 - 以前在本地版存的记录：登录后在“我的资料 → 数据”里点“上传这台设备上的旧记录”。
+
+## 店名搜索的地点库（poi 表）
+
+搜店名时先查 Supabase 里的 `poi` 表，再用 Photon（OpenStreetMap）补城市和国外的地方。
+
+- 数据：马来西亚的 [Overture Maps](https://overturemaps.org) 开放地点数据（release 2026-10-21.0，许可 CDLA-Permissive-2.0），约 26.6 万个餐厅、咖啡店、景点、商场、住宿。
+- 文件放在仓库的 `poi-data` 分支（`data/my-*.tsv`），生成脚本的筛选条件写在那个分支的 README 里。
+- 表结构和搜索函数 `search_poi` 在 `supabase/migrations/20261025121500_poi_search.sql`。表只读，谁都能查，不能写。
+- 重新导入：临时开启 `http` 扩展，用 `extensions.http_get('https://raw.githubusercontent.com/<owner>/xuetuan/poi-data/data/my-000.tsv')` 读文件，按 `\t` 拆列后 `insert ... on conflict (id) do nothing`，导完删掉 `http` 扩展。

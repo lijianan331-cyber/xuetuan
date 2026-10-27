@@ -110,17 +110,21 @@ img { max-width: 100%; display: block; }
   padding: 24px; text-align: center; color: var(--ink); font-weight: 600; font-size: 15px;
 }
 
-/* ---------- top bar: one frosted bar on phones ---------- */
+/* ---------- header: place name + 吃/玩, search bar, category row (like Grab / Meituan) ---------- */
 .topbar {
-  position: absolute; z-index: 10;
-  top: calc(env(safe-area-inset-top, 0px) + 10px);
-  left: max(12px, env(safe-area-inset-left, 0px));
-  right: max(12px, env(safe-area-inset-right, 0px));
-  height: 50px; padding: 5px; border-radius: 18px;
-  display: flex; align-items: center; gap: 6px;
+  position: absolute; z-index: 10; top: 0; left: 0; right: 0;
+  padding: calc(env(safe-area-inset-top, 0px) + 8px) max(12px, env(safe-area-inset-right, 0px)) 8px max(12px, env(safe-area-inset-left, 0px));
+  border-radius: 0 0 22px 22px;
+  display: flex; flex-direction: column; gap: 8px;
 }
-.top-actions { display: flex; align-items: center; gap: 2px; margin-left: auto; }
-/* 雪团 = 雪球：一颗带点蓝的小雪球 */
+.top-row { display: flex; align-items: center; gap: 10px; min-height: 38px; }
+.loc-btn {
+  flex: 1; min-width: 0; height: 38px; padding: 0 4px; border: 0; background: none; border-radius: 10px;
+  display: flex; align-items: center; gap: 5px; color: var(--ink); text-align: left;
+}
+.loc-btn > svg:first-child { flex: none; width: 19px; height: 19px; color: var(--accent); }
+.loc-btn > svg:last-child { flex: none; width: 16px; height: 16px; color: var(--muted); }
+#loc-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 17px; font-weight: 800; letter-spacing: -.01em; }
 .brand-badge {
   flex: none; width: 40px; height: 40px; border-radius: 50%;
   background: radial-gradient(circle at 34% 28%, #FFFFFF 0%, #EAF4FE 45%, #BCD9F5 100%);
@@ -129,45 +133,42 @@ img { max-width: 100%; display: block; }
   font-family: var(--font-display); font-size: 14px; line-height: 1; letter-spacing: .02em;
 }
 .mode-switch {
-  position: relative; flex: 1; max-width: 220px; min-width: 0; height: 40px; padding: 3px;
-  display: flex; border-radius: 13px; background: var(--surface-2);
+  position: relative; flex: none; width: 128px; height: 36px; padding: 3px;
+  display: flex; border-radius: 12px; background: var(--surface-2);
 }
 .mode-switch::before {
   content: ""; position: absolute; top: 3px; bottom: 3px; left: 3px; width: calc(50% - 3px);
-  border-radius: 10px; background: var(--accent);
+  border-radius: 9px; background: var(--accent);
   box-shadow: 0 2px 8px color-mix(in srgb, var(--accent) 35%, transparent);
   transition: transform .3s cubic-bezier(.2, .8, .2, 1), background-color .3s;
 }
 html.mode-travel .mode-switch::before { transform: translateX(100%); }
 .mode-switch button {
-  position: relative; z-index: 1; flex: 1; min-width: 0; border: 0; background: none; border-radius: 10px;
-  display: flex; align-items: center; justify-content: center; gap: 6px; color: var(--muted); transition: color .2s;
+  position: relative; z-index: 1; flex: 1; min-width: 0; border: 0; background: none; border-radius: 9px;
+  display: flex; align-items: center; justify-content: center; gap: 4px; color: var(--muted); transition: color .2s;
 }
 .mode-switch button[aria-selected="true"] { color: var(--accent-ink); }
-.mode-switch b { font-family: var(--font-display); font-weight: 400; font-size: 20px; line-height: 1; }
-.mode-switch small { font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
-@media (max-width: 374px) { .mode-switch small { display: none; } }
-.topbar-spacer { display: none; flex: 1 1 0; min-width: 0; pointer-events: none; }
+.mode-switch b { font-family: var(--font-display); font-weight: 400; font-size: 18px; line-height: 1; }
+.mode-switch small { display: none; }
+.search-bar {
+  height: 42px; padding: 0 14px; border: 0; border-radius: 999px; background: var(--surface-2);
+  display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 15px; text-align: left;
+}
+.search-bar svg { flex: none; width: 19px; height: 19px; color: var(--ink); }
 .icon-btn {
   flex: none; width: 44px; height: 44px; padding: 0; border: 0; border-radius: 14px;
   background: var(--surface); color: var(--ink); box-shadow: var(--shadow);
   display: grid; place-items: center;
 }
 .icon-btn svg { width: 22px; height: 22px; }
-.topbar .icon-btn { width: 38px; height: 38px; border-radius: 12px; background: none; box-shadow: none; color: var(--ink); }
-.topbar .icon-btn svg { width: 21px; height: 21px; }
-.topbar .icon-btn:hover { background: var(--surface-2); }
 .icon-btn.flat { width: 36px; height: 36px; margin-left: -6px; border-radius: 50%; background: none; box-shadow: none; }
 .icon-btn.flat:hover { background: var(--surface-2); }
-.lang-btn { font-weight: 800; font-size: 13px; letter-spacing: .03em; }
 
-/* ---------- filters: one frosted strip ---------- */
+/* ---------- category row + filter button ---------- */
 .filters {
-  position: absolute; z-index: 9;
-  left: max(12px, env(safe-area-inset-left, 0px)); right: max(12px, env(safe-area-inset-right, 0px));
-  top: calc(env(safe-area-inset-top, 0px) + 68px);
   display: flex; align-items: center; gap: 2px; overflow-x: auto;
-  padding: 4px; border-radius: 14px;
+  margin: 0 calc(-1 * max(12px, env(safe-area-inset-right, 0px))) 0 calc(-1 * max(12px, env(safe-area-inset-left, 0px)));
+  padding: 0 max(12px, env(safe-area-inset-right, 0px)) 0 max(12px, env(safe-area-inset-left, 0px));
   scrollbar-width: none;
 }
 .filters::-webkit-scrollbar { display: none; }
@@ -179,68 +180,91 @@ html.mode-travel .mode-switch::before { transform: translateX(100%); }
 }
 .chip:hover { background: var(--surface-2); }
 .chip[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); }
-.filters .seg + .chip { margin-left: 4px; }
+.chip svg { width: 16px; height: 16px; }
+.filter-btn { margin-right: 4px; background: var(--surface-2); }
+.filter-btn b { min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--accent); color: var(--accent-ink); font-size: 11px; line-height: 18px; text-align: center; }
 .seg { display: inline-flex; gap: 2px; padding: 3px; border-radius: 12px; background: var(--surface-2); }
 .seg button { height: 36px; padding: 0 14px; border: 0; border-radius: 9px; background: none; color: var(--muted); font-size: 14px; font-weight: 600; white-space: nowrap; }
 .seg button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 3px rgba(40, 90, 140, .16); }
 .form .seg { display: flex; }
 .form .seg button { flex: 1; min-width: 0; padding: 0 8px; }
-.filters .seg { padding: 2px; border-radius: 10px; }
-.filters .seg button { height: 28px; padding: 0 11px; font-size: 13px; border-radius: 8px; }
-.filters .seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); box-shadow: none; }
 
-/* ---------- map tools (one grouped column) + add button ---------- */
-.tools {
+/* ---------- locate button + bottom tab bar ---------- */
+:root { --tabbar: calc(58px + env(safe-area-inset-bottom, 0px)); }
+.locate-btn {
   position: absolute; z-index: 9;
   right: max(12px, env(safe-area-inset-right, 0px));
-  top: calc(env(safe-area-inset-top, 0px) + 122px);
-  display: flex; flex-direction: column; padding: 3px; border-radius: 14px;
+  bottom: calc(var(--sheet-visible) + var(--tabbar) + 12px);
+  width: 42px; height: 42px; border-radius: 50%;
+  transition: bottom .34s cubic-bezier(.2, .8, .2, 1);
 }
-.tools .icon-btn { width: 38px; height: 38px; border-radius: 11px; background: none; box-shadow: none; color: var(--ink); }
-.tools .icon-btn:hover { background: var(--surface-2); }
-.tools .icon-btn svg { width: 20px; height: 20px; }
-.desk-only { display: none !important; }
-.fab {
-  position: absolute; z-index: 11;
-  right: max(14px, env(safe-area-inset-right, 0px));
-  bottom: calc(var(--sheet-visible) + 16px);
-  height: 52px; padding: 0 22px 0 17px; border: 0; border-radius: 999px;
-  background: var(--accent); color: var(--accent-ink); font-weight: 800; font-size: 16px;
-  display: flex; align-items: center; gap: 7px;
-  box-shadow: 0 10px 24px color-mix(in srgb, var(--accent) 35%, transparent), 0 1px 3px rgba(40, 90, 140, .2);
-  transition: bottom .34s cubic-bezier(.2, .8, .2, 1), transform .15s, background-color .3s;
+.locate-btn svg { width: 21px; height: 21px; }
+.tabbar {
+  position: fixed; z-index: 30; left: 0; right: 0; bottom: 0;
+  height: var(--tabbar); padding: 0 max(4px, env(safe-area-inset-right, 0px)) env(safe-area-inset-bottom, 0px) max(4px, env(safe-area-inset-left, 0px));
+  display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); align-items: stretch;
+  background: var(--surface); box-shadow: 0 -1px 0 var(--line), 0 -6px 20px rgba(40, 90, 140, .06);
 }
-.fab:active { transform: scale(.96); }
-.fab svg { width: 22px; height: 22px; }
+.tab {
+  min-width: 0; border: 0; background: none; padding: 6px 2px 4px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+  color: var(--muted); font-size: 11px; font-weight: 600; line-height: 1.1;
+}
+.tab svg { width: 23px; height: 23px; }
+.tab span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tab[aria-current="page"] { color: var(--accent); }
+.tab-add { color: var(--ink); }
+.tab-add-ic {
+  width: 46px; height: 32px; border-radius: 12px; display: grid; place-items: center;
+  background: var(--accent); color: var(--accent-ink);
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--accent) 35%, transparent);
+  transition: background-color .3s, transform .15s;
+}
+.tab-add:active .tab-add-ic { transform: scale(.94); }
+.tab-add-ic svg { width: 22px; height: 22px; }
 .fab-hint {
-  position: absolute; z-index: 11;
-  right: max(14px, env(safe-area-inset-right, 0px));
-  bottom: calc(var(--sheet-visible) + 80px);
-  max-width: 220px; padding: 7px 11px; border-radius: 12px;
-  background: var(--surface); color: var(--ink); font-size: 12.5px; font-weight: 600; line-height: 1.35;
-  box-shadow: var(--shadow); transition: bottom .34s cubic-bezier(.2, .8, .2, 1);
+  position: fixed; z-index: 31; left: 50%; transform: translateX(-50%);
+  bottom: calc(var(--tabbar) + 8px);
+  width: max-content; max-width: 240px; padding: 7px 11px; border-radius: 12px;
+  background: var(--ink); color: var(--surface); font-size: 12.5px; font-weight: 600; line-height: 1.35;
+  box-shadow: var(--shadow);
 }
-.fab-hint::after { content: ""; position: absolute; right: 30px; bottom: -5px; width: 10px; height: 10px; background: inherit; transform: rotate(45deg); }
+.fab-hint::after { content: ""; position: absolute; left: calc(50% - 5px); bottom: -5px; width: 10px; height: 10px; background: inherit; transform: rotate(45deg); }
 .attrib {
   position: absolute; z-index: 8;
   left: max(8px, env(safe-area-inset-left, 0px));
-  bottom: calc(var(--sheet-visible) + 6px);
-  max-width: calc(100% - 150px); padding: 1px 6px; border-radius: 6px;
+  bottom: calc(var(--sheet-visible) + var(--tabbar) + 6px);
+  max-width: calc(100% - 80px); padding: 1px 6px; border-radius: 6px;
   background: rgba(255, 255, 255, .6); color: #5A6B7C; font-size: 10px; line-height: 1.45;
   transition: bottom .34s cubic-bezier(.2, .8, .2, 1);
 }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .attrib { background: rgba(18, 27, 37, .6); color: #93A4B5; } }
 .attrib a { color: inherit; text-decoration: none; }
 .attrib a:hover { text-decoration: underline; }
-body.picking .fab, body.picking .fab-hint, body.picking .filters { display: none; }
-body.picking .mode-switch { pointer-events: none; opacity: .6; }
+body.picking .tabbar, body.picking .fab-hint, body.picking .filters, body.picking .search-bar, body.picking .locate-btn { display: none; }
+body.picking .mode-switch, body.picking .loc-btn { pointer-events: none; opacity: .6; }
 body.picking .attrib { bottom: calc(env(safe-area-inset-bottom, 0px) + 122px); }
-.btn.title-add { display: none; margin-left: auto; }
-@media (max-width: 959px) {
-  body[data-snap="half"] .fab, body[data-snap="full"] .fab,
-  body[data-snap="half"] .fab-hint, body[data-snap="full"] .fab-hint { display: none; }
-  body[data-snap="half"] .title-add, body[data-snap="full"] .title-add { display: inline-flex; }
+
+/* ---------- bottom sheets (filters, places) ---------- */
+.bsheet { position: fixed; inset: 0; z-index: 65; display: flex; align-items: flex-end; justify-content: center; background: rgba(20, 40, 60, .32); }
+.bsheet-card {
+  width: min(560px, 100%); max-height: 82vh; overflow-y: auto; overscroll-behavior: contain;
+  padding: 10px max(18px, env(safe-area-inset-right, 0px)) calc(16px + env(safe-area-inset-bottom, 0px)) max(18px, env(safe-area-inset-left, 0px));
+  border-radius: 24px 24px 0 0; background: var(--surface); color: var(--ink); box-shadow: var(--shadow);
+  animation: sheet-up .26s cubic-bezier(.2, .8, .2, 1);
 }
+@keyframes sheet-up { from { transform: translateY(40px); opacity: .4; } to { transform: none; opacity: 1; } }
+.bsheet-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 6px 0 4px; }
+.bsheet-head h3 { margin: 0; font-size: 18px; font-weight: 800; }
+.bsheet .field { margin-top: 14px; }
+.bsheet-foot { position: sticky; bottom: -16px; display: grid; grid-template-columns: 1fr 2fr; gap: 8px; margin-top: 20px; padding: 10px 0 0; background: var(--surface); }
+.area-opt {
+  width: 100%; display: flex; align-items: center; gap: 12px; padding: 13px 4px; border: 0; border-bottom: 1px solid var(--line);
+  background: none; text-align: left; font-size: 15px; font-weight: 600; color: var(--ink);
+}
+.area-opt svg { flex: none; width: 20px; height: 20px; color: var(--accent); }
+.area-opt.muted { color: var(--muted); font-weight: 500; }
+.area-opt:last-child { border-bottom: 0; }
 
 /* ---------- pick mode ---------- */
 .pick { position: absolute; inset: 0; z-index: 12; pointer-events: none; }
@@ -269,9 +293,9 @@ body.picking .attrib { bottom: calc(env(safe-area-inset-bottom, 0px) + 122px); }
 
 /* ---------- panel (sheet on phones) ---------- */
 .panel {
-  position: fixed; z-index: 20; left: 0; right: 0; bottom: 0;
-  height: calc(100vh - 66px);
-  height: calc(100dvh - env(safe-area-inset-top, 0px) - 66px);
+  position: fixed; z-index: 20; left: 0; right: 0; bottom: var(--tabbar);
+  height: calc(100vh - var(--tabbar) - 112px);
+  height: calc(100dvh - var(--tabbar) - env(safe-area-inset-top, 0px) - 112px);
   display: flex; flex-direction: column;
   background: var(--surface); border-radius: 24px 24px 0 0;
   box-shadow: 0 -8px 30px rgba(40, 90, 140, .16);
@@ -288,7 +312,7 @@ body.picking .attrib { bottom: calc(env(safe-area-inset-bottom, 0px) + 122px); }
 .brand-tag { font-size: 12.5px; color: var(--muted); }
 .panel-body {
   flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain;
-  padding: 0 max(18px, env(safe-area-inset-right, 0px)) calc(20px + env(safe-area-inset-bottom, 0px)) max(18px, env(safe-area-inset-left, 0px));
+  padding: 0 max(18px, env(safe-area-inset-right, 0px)) 20px max(18px, env(safe-area-inset-left, 0px));
 }
 
 /* ---------- views ---------- */
@@ -296,15 +320,6 @@ body.picking .attrib { bottom: calc(env(safe-area-inset-bottom, 0px) + 122px); }
 .view-title { margin: 0; font-size: 19px; font-weight: 800; line-height: 1.25; letter-spacing: -.01em; text-wrap: balance; }
 .title-row .view-title { cursor: pointer; }
 .count { font-size: 13px; font-weight: 700; color: var(--muted); font-variant-numeric: tabular-nums; }
-/* 常去的地方：一行文字链接，不加框 */
-.area-row { display: flex; align-items: center; gap: 4px; overflow-x: auto; margin: 0 -8px; padding: 0 0 8px; scrollbar-width: none; }
-.area-row::-webkit-scrollbar { display: none; }
-.area-chip {
-  flex: none; height: 30px; padding: 0 8px; border: 0; border-radius: 8px;
-  background: none; color: var(--accent); font-size: 13px; font-weight: 600; white-space: nowrap;
-}
-.area-chip:hover { background: var(--accent-soft); }
-.area-chip.add { color: var(--muted); font-weight: 500; }
 .sample-note {
   display: flex; align-items: center; justify-content: space-between; gap: 10px;
   margin: 0; padding: 2px 0 6px; font-size: 12.5px; color: var(--muted);
@@ -444,6 +459,9 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
 .add-search .add-pin { flex: none; height: 46px; padding: 0 14px; background: var(--accent-soft); color: var(--accent); }
 .add-hint { margin: 8px 0 4px; }
 .add-pin-bottom { margin-top: 14px; }
+.sel-pin { width: 30px; height: 43px; pointer-events: none; filter: drop-shadow(0 2px 3px rgba(0, 0, 0, .35)); }
+.sel-pin svg { display: block; }
+.preview-hint { margin: 14px 0 12px; }
 .osm-credit { padding: 12px 4px 4px; color: var(--muted); font-size: 11.5px; }
 .photo-grid { display: flex; flex-wrap: wrap; gap: 8px; }
 .ph-edit { position: relative; width: 76px; height: 76px; border-radius: 14px; overflow: hidden; background: var(--surface-2); }
@@ -471,7 +489,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
 
 /* ---------- overlays ---------- */
 .toast {
-  position: fixed; z-index: 60; left: 50%; top: calc(env(safe-area-inset-top, 0px) + 122px); transform: translateX(-50%);
+  position: fixed; z-index: 60; left: 50%; top: calc(env(safe-area-inset-top, 0px) + 158px); transform: translateX(-50%);
   width: max-content; max-width: calc(100% - 128px); padding: 10px 16px; border-radius: 999px; text-align: center;
   background: var(--ink); color: var(--surface); font-size: 14px; font-weight: 600; box-shadow: var(--shadow);
 }
@@ -498,27 +516,25 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
   .app { display: grid; grid-template-columns: 400px minmax(0, 1fr); }
   .stage { position: relative; }
   .panel {
-    position: relative; z-index: 5; height: auto; transform: none !important; transition: none;
+    position: relative; z-index: 5; bottom: auto; height: auto; transform: none !important; transition: none;
     border-radius: 0; box-shadow: 0 0 30px rgba(40, 90, 140, .08); border-right: 1px solid var(--line);
+    padding-bottom: var(--tabbar);
   }
-  .grip, .brand-top, .panel::after { display: none; }
+  .grip, .panel::after { display: none; }
   .panel-brand { display: flex; }
   .panel-body { padding: 0 22px 24px; }
-  .desk-only { display: grid !important; }
-  /* 桌面上顶栏不铺满，左边吃/玩，右边一组图标 */
-  .topbar { height: auto; padding: 0; border-radius: 0; background: none; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; pointer-events: none; }
-  .topbar > * { pointer-events: auto; }
-  .mode-switch { flex: none; width: 230px; height: 46px; padding: 4px; border-radius: 15px; background: var(--frost); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); box-shadow: var(--shadow); }
-  .mode-switch::before { top: 4px; bottom: 4px; left: 4px; width: calc(50% - 4px); border-radius: 11px; }
-  .top-actions { padding: 4px; border-radius: 15px; background: var(--frost); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); box-shadow: var(--shadow); }
-  .topbar-spacer { display: block; }
-  .filters { top: calc(env(safe-area-inset-top, 0px) + 66px); right: auto; max-width: calc(100% - 24px); }
-  .tools { top: calc(env(safe-area-inset-top, 0px) + 120px); }
+  .tabbar { right: auto; width: 400px; border-right: 1px solid var(--line); }
+  .fab-hint { left: 200px; }
+  /* 桌面上顶部是一张浮在地图上的卡片 */
+  .topbar { top: 12px; left: 12px; right: auto; width: min(560px, calc(100% - 24px)); padding: 10px 12px; border-radius: 20px; }
+  .filters { margin: 0 -12px; padding: 0 12px; }
+  .locate-btn { bottom: 24px; }
+  .attrib { bottom: 6px; }
   .feed-item { border-radius: 12px; padding: 14px 8px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .pick-pin, .drop-pulse { animation: none; }
-  .panel, .fab, .fab-hint, .attrib, .mode-switch::before { transition: none; }
+  .panel, .locate-btn, .attrib, .mode-switch::before, .bsheet-card { transition: none; animation: none; }
 }
 </style>
 </head>
@@ -540,33 +556,23 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     <div class="map" id="map"></div>
     <div class="map-error" id="map-error" hidden></div>
 
-    <header class="topbar frost">
-      <div class="brand-badge brand-top" aria-hidden="true">雪团</div>
-      <div class="mode-switch" role="tablist">
-        <button type="button" role="tab" data-action="mode" data-mode="food" aria-selected="true" data-i18n-aria="foodAria"><b>吃</b><small>Makan</small></button>
-        <button type="button" role="tab" data-action="mode" data-mode="travel" aria-selected="false" data-i18n-aria="travelAria"><b>玩</b><small>Jalan</small></button>
+    <header class="topbar frost" id="topbar">
+      <div class="top-row">
+        <button type="button" class="loc-btn" data-action="areas" data-i18n-aria="areas">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 22c-.4 0-7-6.6-7-12a7 7 0 0 1 14 0c0 5.4-6.6 12-7 12zm0-9.2a2.8 2.8 0 1 0 0-5.6 2.8 2.8 0 0 0 0 5.6z"/></svg>
+          <span id="loc-name">XMUM</span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+        </button>
+        <div class="mode-switch" role="tablist">
+          <button type="button" role="tab" data-action="mode" data-mode="food" aria-selected="true" data-i18n-aria="foodAria"><b>吃</b><small>Makan</small></button>
+          <button type="button" role="tab" data-action="mode" data-mode="travel" aria-selected="false" data-i18n-aria="travelAria"><b>玩</b><small>Jalan</small></button>
+        </div>
       </div>
-      <div class="topbar-spacer"></div>
-      <div class="top-actions">
-      <button type="button" class="icon-btn" data-action="search" data-i18n-aria="searchBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg></button>
-      <button type="button" class="icon-btn lang-btn" data-action="lang" id="lang-btn">EN</button>
-      <button type="button" class="icon-btn" data-action="profile" data-i18n-aria="profile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="12" cy="8.5" r="3.8"/><path d="M4.5 20c1.4-3.6 4.2-5.4 7.5-5.4s6.1 1.8 7.5 5.4"/></svg></button>
-      </div>
+      <button type="button" class="search-bar" data-action="search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg><span data-i18n="searchBarPh">搜店名、地方</span></button>
+      <div class="filters" id="filters"></div>
     </header>
 
-    <div class="filters frost" id="filters"></div>
-
-    <div class="tools frost">
-      <button type="button" class="icon-btn desk-only" data-action="zoom-in" data-i18n-aria="zoomIn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
-      <button type="button" class="icon-btn desk-only" data-action="zoom-out" data-i18n-aria="zoomOut"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M5 12h14"/></svg></button>
-      <button type="button" class="icon-btn" data-action="to-school" data-i18n-aria="toSchool" data-i18n-title="toSchool"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3.5 1.8 8.6 12 13.7l8.2-4.1v5.6h2V8.6L12 3.5z"/><path d="M5.6 12.4v3.7c0 1.9 2.9 3.5 6.4 3.5s6.4-1.6 6.4-3.5v-3.7L12 15.6l-6.4-3.2z"/></svg></button>
-      <button type="button" class="icon-btn" data-action="to-globe" data-i18n-aria="toGlobe" data-i18n-title="toGlobe"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.4 2.6 3.7 5.6 3.7 9s-1.3 6.4-3.7 9c-2.4-2.6-3.7-5.6-3.7-9S9.6 5.6 12 3z"/></svg></button>
-      <button type="button" class="icon-btn" data-action="locate" data-i18n-aria="locate" data-i18n-title="locate"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="12" cy="12" r="6.5"/><circle cx="12" cy="12" r="2.2" fill="currentColor" stroke="none"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3"/></svg></button>
-      <button type="button" class="icon-btn" data-action="basemap" data-i18n-aria="basemapBtn" data-i18n-title="basemapBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M12 3.5 2.5 8.5 12 13.5l9.5-5L12 3.5z"/><path d="m2.5 12.5 9.5 5 9.5-5"/><path d="m2.5 16.5 9.5 5 9.5-5" opacity=".5"/></svg></button>
-    </div>
-
-    <div class="fab-hint" id="fab-hint" hidden></div>
-    <button type="button" class="fab" id="fab" data-action="add"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg><span id="fab-label">加一家</span></button>
+    <button type="button" class="icon-btn locate-btn" data-action="locate" data-i18n-aria="locate" data-i18n-title="locate"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="12" cy="12" r="6.5"/><circle cx="12" cy="12" r="2.2" fill="currentColor" stroke="none"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3"/></svg></button>
 
     <div class="pick" id="pick" hidden>
       <div class="pick-hint" id="pick-hint"></div>
@@ -583,7 +589,18 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
 
     <div class="attrib"><a href="https://openfreemap.org" target="_blank" rel="noopener">OpenFreeMap</a> © <a href="https://www.openmaptiles.org/" target="_blank" rel="noopener">OpenMapTiles</a> © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a></div>
   </main>
+
+  <nav class="tabbar" id="tabbar" data-i18n-aria="tabsAria">
+    <button type="button" class="tab" data-action="scope" data-scope="all"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m15.5 8.5-2 5-5 2 2-5z"/></svg><span data-i18n="tabExplore">探索</span></button>
+    <button type="button" class="tab" data-action="scope" data-scope="saved"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" aria-hidden="true"><path d="m12 3.5 2.6 5.4 5.9.8-4.3 4.1 1 5.9-5.2-2.8-5.2 2.8 1-5.9-4.3-4.1 5.9-.8z"/></svg><span data-i18n="tabSaved">收藏</span></button>
+    <button type="button" class="tab tab-add" id="fab" data-action="add"><span class="tab-add-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></span><span id="fab-label">加一家</span></button>
+    <button type="button" class="tab" data-action="scope" data-scope="mine"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" aria-hidden="true"><path d="m3.5 6.5 5.5-2.5 6 2.5 5.5-2.5v13.5l-5.5 2.5-6-2.5-5.5 2.5z"/><path d="M9 4v13.5M15 6.5V20"/></svg><span data-i18n="tabMine">我的地图</span></button>
+    <button type="button" class="tab" data-action="profile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="8.5" r="3.8"/><path d="M4.5 20c1.4-3.6 4.2-5.4 7.5-5.4s6.1 1.8 7.5 5.4"/></svg><span data-i18n="tabMe">我</span></button>
+  </nav>
+  <div class="fab-hint" id="fab-hint" hidden></div>
 </div>
+
+<div class="bsheet" id="bsheet" hidden><div class="bsheet-card" id="bsheet-card" role="dialog" aria-modal="true"></div></div>
 
 <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 <div class="modal" id="modal" hidden></div>
@@ -744,10 +761,9 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       tagline: '中国有美团，雪邦有雪团',
       foodAria: '吃：美食地图', travelAria: '玩：旅行地图',
       food: '吃', travel: '玩',
-      scopeAll: '探索', scopeMine: '我的', scopeSaved: '收藏', mapsAria: '地图：探索 / 我的 / 收藏', catAll: '全部',
-      priceAny: '价位不限', priceMax: '人均 ≤ RM{n}',
-      scoreAny: '评分不限', scoreMin: '{n} 分以上', scoreAria: '{n} 分', legend: '评分',
-      distAny: '距离不限', dist_walk: '步行 · 1.5km 内', dist_short: '短途打车 · 1.5–10km', dist_mid: '中距离 · 10–40km', dist_far: '更远 · 40km 以上',
+      catAll: '全部',
+      scoreAria: '{n} 分', legend: '评分',
+      dist_walk: '步行 · 1.5km 内', dist_short: '短途打车 · 1.5–10km', dist_mid: '中距离 · 10–40km', dist_far: '更远 · 40km 以上',
       tier_walk: '步行可达', tier_short: '短途打车', tier_mid: '中距离', tier_far: '吉隆坡及更远',
       feedFoodAll: '大家最近在吃', feedTravelAll: '大家最近去了', feedFoodMine: '我吃过的', feedTravelMine: '我去过的',
       feedSavedFood: '想去吃的', feedSavedTravel: '想去的地方',
@@ -807,24 +823,27 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       addSearchPhFood: '输入店名搜索', addSearchPhTravel: '输入地名搜索', addPin: '地图选点',
       addPinLong: '搜不到？在地图上选点', addHint: '先搜名字。学校附近的小店搜不到的话，点“地图选点”自己标。',
       addNoResult: '地图上没搜到这个名字。',
-      searchLocal: '雪团里的', searchOsm: '地图上搜到的', osmMin: '再多打一个字，就会去地图上搜', osmLoading: '正在搜…',
-      osmFail: '地图搜索暂时用不了，可以自己插针添加', osmCredit: '地点搜索：Photon · 数据 © OpenStreetMap 贡献者', osmAdd: '添加', osmOpen: '已在雪团',
+      previewHint: '雪团里还没人写过这里。', previewAddFood: '加到雪团，写点评', previewAddTravel: '加到雪团，打卡',
+      searchLocal: '雪团里的', searchOsm: '地图上的地点', osmMin: '再多打一个字，就会去地图上搜', osmLoading: '正在搜…',
+      osmFail: '地图搜索暂时用不了，可以自己插针添加', osmCredit: '地点数据：Overture Maps Foundation · © OpenStreetMap 贡献者（Photon）', osmAdd: '添加', osmOpen: '已在雪团',
       published: '发布了', savedPrivate: '存好了，只在“我的”里能看到',
       locating: '正在定位…', locateFail: '定位失败，检查一下浏览器的定位权限',
       photoFail: '有照片没存上，刷新后会丢', saveFail: '浏览器不让存数据，关掉页面就没了',
       mapFail: '地图没加载出来。检查网络后刷新页面。',
       justNow: '刚刚', minAgo: '{n} 分钟前', hourAgo: '{n} 小时前', dayAgo: '{n} 天前',
-      toSchool: '回学校', toGlobe: '看地球', locate: '我的位置', basemapBtn: '换底图', zoomIn: '放大', zoomOut: '缩小',
-      langBtn: 'EN'
+      locate: '我的位置',
+      searchBarPh: '搜店名、地方', tabsAria: '主菜单', tabExplore: '探索', tabSaved: '收藏', tabMine: '我的地图', tabMe: '我',
+      filterBtn: '筛选', filtersTitle: '筛选', filterScore: '评分', filterDist: '离学校多远', filterPrice: '人均价位', anyOpt: '不限',
+      scoreOpt: '{n} 分以上', priceOpt: 'RM{n} 以内', filterReset: '重置', filterShow: '看 {n} 个地方',
+      areasTitle: '去哪儿看', locWorld: '全球', locHere: '这附近', saveHere: '记住现在这片'
     },
     en: {
       tagline: 'A food & travel map by XMUM students',
       foodAria: 'Food map', travelAria: 'Travel map',
       food: 'Food', travel: 'Travel',
-      scopeAll: 'Explore', scopeMine: 'Mine', scopeSaved: 'Saved', mapsAria: 'Map: explore / mine / saved', catAll: 'All',
-      priceAny: 'Any price', priceMax: '≤ RM{n} / person',
-      scoreAny: 'Any score', scoreMin: '{n}+ score', scoreAria: 'Score {n}', legend: 'Score',
-      distAny: 'Any distance', dist_walk: 'Walk · under 1.5 km', dist_short: 'Short ride · 1.5–10 km', dist_mid: 'Mid trip · 10–40 km', dist_far: 'Further · 40 km+',
+      catAll: 'All',
+      scoreAria: 'Score {n}', legend: 'Score',
+      dist_walk: 'Walk · under 1.5 km', dist_short: 'Short ride · 1.5–10 km', dist_mid: 'Mid trip · 10–40 km', dist_far: 'Further · 40 km+',
       tier_walk: 'Walkable', tier_short: 'Short ride', tier_mid: 'Mid-distance', tier_far: 'KL & beyond',
       feedFoodAll: 'What people are eating', feedTravelAll: 'Where people went', feedFoodMine: 'Places I’ve eaten', feedTravelMine: 'Places I’ve been',
       feedSavedFood: 'Food spots I saved', feedSavedTravel: 'Places I saved',
@@ -884,15 +903,19 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       addSearchPhFood: 'Search by name', addSearchPhTravel: 'Search a place', addPin: 'Pick on map',
       addPinLong: 'Can’t find it? Pick it on the map', addHint: 'Search by name first. If a small stall doesn’t show up, use “Pick on map”.',
       addNoResult: 'Nothing on the map with that name.',
-      searchLocal: 'On XueTuan', searchOsm: 'From the map', osmMin: 'Type one more character to search the map', osmLoading: 'Searching…',
-      osmFail: 'Map search isn’t available right now. You can still drop a pin.', osmCredit: 'Place search by Photon · data © OpenStreetMap contributors', osmAdd: 'Add', osmOpen: 'On XueTuan',
+      previewHint: 'Nobody on XueTuan has written about this place yet.', previewAddFood: 'Add to XueTuan and review', previewAddTravel: 'Add to XueTuan and check in',
+      searchLocal: 'On XueTuan', searchOsm: 'Places on the map', osmMin: 'Type one more character to search the map', osmLoading: 'Searching…',
+      osmFail: 'Map search isn’t available right now. You can still drop a pin.', osmCredit: 'Place data: Overture Maps Foundation · © OpenStreetMap contributors (via Photon)', osmAdd: 'Add', osmOpen: 'On XueTuan',
       published: 'Published', savedPrivate: 'Saved. Only you can see it, under “Mine”',
       locating: 'Finding you…', locateFail: 'Couldn’t get your location. Check the browser’s location permission',
       photoFail: 'Some photos weren’t saved and will be lost on refresh', saveFail: 'This browser won’t store data, so it will be lost when you close the page',
       mapFail: 'The map didn’t load. Check your connection and refresh.',
       justNow: 'just now', minAgo: '{n} min ago', hourAgo: '{n} h ago', dayAgo: '{n} d ago',
-      toSchool: 'Back to campus', toGlobe: 'Whole globe', locate: 'My location', basemapBtn: 'Change base map', zoomIn: 'Zoom in', zoomOut: 'Zoom out',
-      langBtn: '中'
+      locate: 'My location',
+      searchBarPh: 'Search places', tabsAria: 'Main menu', tabExplore: 'Explore', tabSaved: 'Saved', tabMine: 'My map', tabMe: 'Me',
+      filterBtn: 'Filters', filtersTitle: 'Filters', filterScore: 'Score', filterDist: 'Distance from campus', filterPrice: 'Price per person', anyOpt: 'Any',
+      scoreOpt: '{n}+', priceOpt: 'Up to RM{n}', filterReset: 'Reset', filterShow: 'Show {n} places',
+      areasTitle: 'Go to', locWorld: 'The world', locHere: 'Around here', saveHere: 'Save this area'
     }
   };
 
@@ -910,7 +933,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
   var state = {
     lang: 'zh', mode: 'food', scope: 'all', cat: 'all', priceMax: 0, minScore: 0, dist: 'any',
     view: 'feed', placeId: null, form: null, nearby: null, query: '',
-    snap: 'peek', feedSnap: 'peek', picking: null, me: null, styleKey: 'light'
+    snap: 'peek', feedSnap: 'peek', picking: null, preview: null, bsheet: null, me: null, styleKey: 'light'
   };
   var map = null;
   var lastRenderedView = null;
@@ -1433,11 +1456,11 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
   }
 
   /* 有 Supabase 配置就用线上版；地址里加 ?local 或者 supabase 库没加载出来时用本地版 */
+  /* 店名搜索查的是 Supabase 里的公共地点库，本地版也能用 */
+  var sbClient = window.supabase && window.supabase.createClient && SUPABASE_URL ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
   var store = (function () {
     var forceLocal = /[?&]local(=|&|$)/.test(location.search) || window.XUETUAN_LOCAL;
-    if (!forceLocal && window.supabase && window.supabase.createClient && SUPABASE_URL) {
-      return remoteStore(window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY));
-    }
+    if (!forceLocal && sbClient) return remoteStore(sbClient);
     return localStore();
   })();
 
@@ -1724,7 +1747,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
         }, 700);
       });
       map.on('click', onMapClick);
-      map.on('moveend', function () { clearTimeout(viewTimer); viewTimer = setTimeout(saveView, 400); });
+      map.on('moveend', function () { clearTimeout(viewTimer); viewTimer = setTimeout(saveView, 400); updateLocName(); });
       map.on('zoom', function () { if (state.picking) updatePickUI(); });
       map.on('error', function (e) { if (window.console) console.warn('map:', e && e.error ? e.error.message : e); });
     }).catch(function () { showMapError(); });
@@ -1895,14 +1918,36 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     ['cl-circle', 'cl-halo', 'pt-sel'].forEach(function (id) { try { map.setPaintProperty(id, 'circle-color', a); } catch (e) { /* ignore */ } });
     try { map.setPaintProperty('pt-sel', 'circle-stroke-color', a); } catch (e) { /* ignore */ }
   }
+  /* 选中的地点上插一根谷歌地图那样的红针：地点页、搜索结果预览、正在加的新地点 */
+  var selPin = null;
+  function selPinLoc() {
+    var v = state.view, f = state.form;
+    if (v === 'place') return placeById(state.placeId);
+    if (v === 'preview') return state.preview;
+    if ((v === 'form' || v === 'nearby') && f) return f.placeId ? placeById(f.placeId) : f.loc;
+    return null;
+  }
+  function updateSelPin() {
+    if (!map || !window.maplibregl || !maplibregl.Marker) return;
+    var loc = selPinLoc();
+    if (!loc) { if (selPin) selPin.remove(); return; }
+    if (!selPin) {
+      var el = document.createElement('div');
+      el.className = 'sel-pin';
+      el.innerHTML = '<svg viewBox="0 0 30 43" width="30" height="43" aria-hidden="true"><path d="M15 42c-1.4-6-5-9.6-8.6-14A14 14 0 1 1 23.6 28c-3.6 4.4-7.2 8-8.6 14z" fill="#EA4335" stroke="#B31412" stroke-width="1.5"/><circle cx="15" cy="15" r="5" fill="#7A0C0C"/></svg>';
+      selPin = new maplibregl.Marker({ element: el, anchor: 'bottom' });
+    }
+    selPin.setLngLat([loc.lng, loc.lat]).addTo(map);
+  }
   function updateSelection() {
     if (!map || !map.getLayer('pt-sel')) return;
     map.setFilter('pt-sel', ['==', ['get', 'id'], state.view === 'place' && state.placeId ? state.placeId : '__none__']);
   }
 
   function mapPadding() {
-    if (!isMobile()) return { top: 90, bottom: 40, left: 40, right: 70 };
-    return { top: 110, bottom: snapVisible(state.snap) + 12, left: 20, right: 64 };
+    var top = ($('#topbar') ? $('#topbar').offsetHeight : 120) + 16;
+    if (!isMobile()) return { top: top + 12, bottom: 40, left: 40, right: 70 };
+    return { top: top, bottom: snapVisible(state.snap) + tabbarH() + 12, left: 20, right: 64 };
   }
   function flyTo(center, zoom, instant) {
     if (!map) return;
@@ -1979,19 +2024,16 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
 
   /* ================= sheet ================= */
   var panel = $('#panel'), stage = $('#stage'), view = $('#view');
-  var safeProbe = document.createElement('div');
-  safeProbe.style.cssText = 'position:fixed;visibility:hidden;pointer-events:none;padding-bottom:env(safe-area-inset-bottom,0px)';
-  document.body.appendChild(safeProbe);
-  function safeBottom() { return parseFloat(getComputedStyle(safeProbe).paddingBottom) || 0; }
 
   function snapVisible(snap) {
     if (!isMobile()) return 0;
     var H = window.innerHeight;
     if (snap === 'hidden') return 0;
-    if (snap === 'peek') return 138 + safeBottom();
-    if (snap === 'half') return Math.round(H * 0.56);
+    if (snap === 'peek') return 112;
+    if (snap === 'half') return Math.round((H - tabbarH()) * 0.5);
     return panel.offsetHeight || H;
   }
+  function tabbarH() { var tb = $('#tabbar'); return tb && isMobile() ? tb.offsetHeight : 0; }
   function setSnap(snap) {
     state.snap = snap;
     panel.dataset.snap = snap;
@@ -2000,10 +2042,11 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
   }
   function applySnap() {
     var v = snapVisible(state.snap);
-    panel.style.setProperty('--visible', v + 'px');
+    /* 收起时连标签栏的高度也一起移出屏幕 */
+    panel.style.setProperty('--visible', (state.snap === 'hidden' && isMobile() ? -(parseFloat(getComputedStyle(panel).bottom) || 0) : v) + 'px');
     panel.style.setProperty('--hidden', (isMobile() ? Math.max(0, panel.offsetHeight - v) : 0) + 'px');
     document.body.dataset.snap = isMobile() ? state.snap : '';
-    stage.style.setProperty('--sheet-visible', (isMobile() ? Math.min(v, Math.round(window.innerHeight * 0.56)) : 0) + 'px');
+    stage.style.setProperty('--sheet-visible', (isMobile() ? Math.min(v, Math.round(window.innerHeight * 0.5)) : 0) + 'px');
   }
 
   (function setupDrag() {
@@ -2045,8 +2088,6 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     $$('[data-i18n]').forEach(function (el) { el.textContent = t(el.dataset.i18n); });
     $$('[data-i18n-aria]').forEach(function (el) { el.setAttribute('aria-label', t(el.dataset.i18nAria)); });
     $$('[data-i18n-title]').forEach(function (el) { el.setAttribute('title', t(el.dataset.i18nTitle)); });
-    $('#lang-btn').textContent = t('langBtn');
-    $('#lang-btn').setAttribute('aria-label', state.lang === 'zh' ? 'Switch to English' : '切换到中文');
     document.documentElement.lang = state.lang === 'zh' ? 'zh-CN' : 'en';
   }
   function renderChrome() {
@@ -2054,31 +2095,106 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     $$('.mode-switch button').forEach(function (b) { b.setAttribute('aria-selected', String(b.dataset.mode === state.mode)); });
     $('#fab-label').textContent = t(state.mode === 'food' ? 'fabFood' : 'fabTravel');
     renderFilters();
+    renderTabs();
     updateFabHint();
     if (state.picking) updatePickUI();
+    if (state.bsheet) renderBSheet();
   }
-  var SCOPE_KEYS = { all: 'scopeAll', mine: 'scopeMine', saved: 'scopeSaved' };
+  /* 底部标签栏：探索 / 收藏 / 我的地图 对应三张地图，“我”是资料页 */
+  function renderTabs() {
+    $$('#tabbar [data-scope]').forEach(function (b) {
+      if (state.view !== 'profile' && b.dataset.scope === state.scope) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
+    });
+    var meTab = $('#tabbar [data-action="profile"]');
+    if (state.view === 'profile') meTab.setAttribute('aria-current', 'page'); else meTab.removeAttribute('aria-current');
+  }
   var SCORE_STEPS = [0, 3, 4];
   var DIST_STEPS = ['any'].concat(DIST_TIERS.map(function (x) { return x.id; }));
-  function chipHTML(action, on, label) {
-    return '<button type="button" class="chip" data-action="' + action + '" aria-pressed="' + on + '">' + esc(label) + '</button>';
+  function activeFilterCount() {
+    return (state.minScore ? 1 : 0) + (state.dist !== 'any' ? 1 : 0) + (state.priceMax ? 1 : 0);
   }
+  /* 顶部一行：筛选按钮（评分、距离、价位都在里面）+ 分类 */
   function renderFilters() {
-    var html = '<div class="seg" role="group" aria-label="' + esc(t('mapsAria')) + '">' +
-      ['all', 'mine', 'saved'].map(function (s) {
-        return '<button type="button" data-action="scope" data-scope="' + s + '" aria-pressed="' + (state.scope === s) + '">' + esc(t(SCOPE_KEYS[s])) + '</button>';
-      }).join('') + '</div>';
-    html += chipHTML('score', !!state.minScore, state.minScore ? t('scoreMin', { n: state.minScore }) : t('scoreAny'));
-    if (state.mode === 'food') {
-      html += chipHTML('dist', state.dist !== 'any', t(state.dist === 'any' ? 'distAny' : 'dist_' + state.dist));
-      html += chipHTML('price', !!state.priceMax, state.priceMax ? t('priceMax', { n: state.priceMax }) : t('priceAny'));
-    }
+    var n = activeFilterCount();
+    var html = '<button type="button" class="chip filter-btn" data-action="filters" aria-pressed="' + (n > 0) + '">' +
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h10M4 12h4M12 12h8M4 18h12"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg>' +
+      esc(t('filterBtn')) + (n ? '<b>' + n + '</b>' : '') + '</button>';
     html += '<button type="button" class="chip" data-action="cat" data-cat="all" aria-pressed="' + (state.cat === 'all') + '">' + esc(t('catAll')) + '</button>';
     CATS[state.mode].forEach(function (c) {
       html += '<button type="button" class="chip" data-action="cat" data-cat="' + c.id + '" aria-pressed="' + (state.cat === c.id) + '">' + catIconHTML(c) + esc(catName(c)) + '</button>';
     });
     html += '<span class="legend" aria-hidden="true">' + esc(t('legend')) + ' <b>0</b><i></i><b>5</b></span>';
     $('#filters').innerHTML = html;
+  }
+
+  /* ================= bottom sheets: 筛选、去哪儿看 ================= */
+  function openBSheet(kind) { state.bsheet = kind; renderBSheet(); $('#bsheet').hidden = false; }
+  function closeBSheet() { state.bsheet = null; $('#bsheet').hidden = true; $('#bsheet-card').innerHTML = ''; }
+  function optHTML(action, v, on, label) {
+    return '<button type="button" class="chip" data-action="' + action + '" data-v="' + v + '" aria-pressed="' + on + '">' + esc(label) + '</button>';
+  }
+  function renderBSheet() {
+    var card = $('#bsheet-card'), h = '';
+    if (state.bsheet === 'filters') {
+      var food = state.mode === 'food';
+      var shown = store.places().filter(function (p) { return inScope(p) && passesFilters(p); }).length;
+      h += '<div class="bsheet-head"><h3>' + esc(t('filtersTitle')) + '</h3></div>';
+      h += '<div class="field"><span class="f-label">' + esc(t('filterScore')) + '</span><div class="chips-wrap">' +
+        SCORE_STEPS.map(function (n) { return optHTML('set-score', n, state.minScore === n, n ? t('scoreOpt', { n: n }) : t('anyOpt')); }).join('') + '</div></div>';
+      if (food) {
+        h += '<div class="field"><span class="f-label">' + esc(t('filterDist')) + '</span><div class="chips-wrap">' +
+          DIST_STEPS.map(function (d) { return optHTML('set-dist', d, state.dist === d, d === 'any' ? t('anyOpt') : t('dist_' + d)); }).join('') + '</div></div>';
+        h += '<div class="field"><span class="f-label">' + esc(t('filterPrice')) + '</span><div class="chips-wrap">' +
+          PRICE_STEPS.map(function (n) { return optHTML('set-price', n, state.priceMax === n, n ? t('priceOpt', { n: n }) : t('anyOpt')); }).join('') + '</div></div>';
+      }
+      h += '<div class="bsheet-foot"><button type="button" class="btn ghost" data-action="clear-filters">' + esc(t('filterReset')) + '</button>' +
+        '<button type="button" class="btn primary" data-action="sheet-close">' + esc(t('filterShow', { n: shown })) + '</button></div>';
+    } else if (state.bsheet === 'areas') {
+      var pin = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 22c-.4 0-7-6.6-7-12a7 7 0 0 1 14 0c0 5.4-6.6 12-7 12zm0-9.2a2.8 2.8 0 1 0 0-5.6 2.8 2.8 0 0 0 0 5.6z"/></svg>';
+      h += '<div class="bsheet-head"><h3>' + esc(t('areasTitle')) + '</h3></div>';
+      h += '<button type="button" class="area-opt" data-action="locate">' + ICON.nav + esc(t('locate')) + '</button>';
+      PRESET_AREAS.forEach(function (a) { h += '<button type="button" class="area-opt" data-action="goto-area" data-id="' + esc(a.id) + '">' + pin + esc(state.lang === 'en' ? a.en : a.zh) + '</button>'; });
+      store.areas().forEach(function (a) { h += '<button type="button" class="area-opt" data-action="goto-area" data-id="' + esc(a.id) + '">' + pin + esc(a.name) + '</button>'; });
+      h += '<button type="button" class="area-opt muted" data-action="save-area">＋ ' + esc(t('saveHere')) + '</button>';
+    }
+    card.innerHTML = h;
+  }
+
+  /* 顶部显示地图中心大概是哪儿：先看是不是在常去的地方附近，不是就问 Photon */
+  var PHOTON_REVERSE = 'https://photon.komoot.io/reverse';
+  var locName = { timer: null, seq: 0 };
+  function setLocName(name) { $('#loc-name').textContent = name; }
+  function nearestArea(c, maxM) {
+    var best = null;
+    PRESET_AREAS.map(function (a) { return { name: state.lang === 'en' ? a.en : a.zh, lng: a.lng, lat: a.lat }; })
+      .concat(store.areas()).forEach(function (a) {
+        var d = haversine(c, a);
+        if (d <= maxM && (!best || d < best.d)) best = { name: a.name, d: d };
+      });
+    return best;
+  }
+  function updateLocName() {
+    clearTimeout(locName.timer);
+    locName.timer = setTimeout(function () {
+      if (!map) return;
+      var c = map.getCenter(), z = map.getZoom(), seq = ++locName.seq;
+      if (z < 4) { setLocName(t('locWorld')); return; }
+      var near = z >= 11 ? nearestArea(c, 2500) : null;
+      if (near) { setLocName(near.name); return; }
+      fetch(PHOTON_REVERSE + '?lat=' + c.lat.toFixed(4) + '&lon=' + c.lng.toFixed(4) + (state.lang === 'en' ? '&lang=en' : '')).then(function (res) {
+        if (!res.ok) throw new Error('reverse ' + res.status);
+        return res.json();
+      }).then(function (json) {
+        if (seq !== locName.seq) return;
+        var pr = (json && json.features && json.features[0] && json.features[0].properties) || {};
+        var name = z >= 11 ? (pr.district || pr.locality || pr.city || pr.county || pr.state) : z >= 7 ? (pr.city || pr.county || pr.state || pr.country) : (pr.country || pr.state);
+        setLocName(name || t('locHere'));
+      }).catch(function () {
+        if (seq !== locName.seq) return;
+        var n = nearestArea(c, 30000);
+        setLocName(n ? n.name : t('locHere'));
+      });
+    }, 500);
   }
   function updateFabHint() {
     var el = $('#fab-hint');
@@ -2099,10 +2215,13 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     else if (v === 'nearby') renderNearby();
     else if (v === 'search') renderSearch();
     else if (v === 'add') renderAdd();
+    else if (v === 'preview') renderPreview();
     else if (v === 'profile') renderProfile();
     else if (v === 'login') renderLogin();
     if (lastRenderedView !== v) view.scrollTop = 0;
     lastRenderedView = v;
+    updateSelPin();
+    renderTabs();
     hydratePhotos(view);
   }
 
@@ -2136,13 +2255,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       food: { all: 'feedFoodAll', mine: 'feedFoodMine', saved: 'feedSavedFood' },
       travel: { all: 'feedTravelAll', mine: 'feedTravelMine', saved: 'feedSavedTravel' }
     }[state.mode][state.scope];
-    var areas = PRESET_AREAS.map(function (a) { return { id: a.id, name: state.lang === 'en' ? a.en : a.zh }; })
-      .concat(store.areas().map(function (a) { return { id: a.id, name: a.name }; }));
-    var h = '<div class="view-head"><div class="title-row"><h2 class="view-title" data-action="expand">' + esc(t(key)) + '</h2><span class="count">' + items.length + '</span>' +
-      '<button type="button" class="btn small primary title-add" data-action="add">＋ ' + esc(t(state.mode === 'food' ? 'fabFood' : 'fabTravel')) + '</button></div>' +
-      '<div class="area-row" role="group" aria-label="' + esc(t('areas')) + '">' +
-      areas.map(function (a) { return '<button type="button" class="area-chip" data-action="goto-area" data-id="' + esc(a.id) + '">' + esc(a.name) + '</button>'; }).join('') +
-      '<button type="button" class="area-chip add" data-action="save-area">＋ ' + esc(t('saveArea')) + '</button></div></div>';
+    var h = '<div class="view-head"><div class="title-row"><h2 class="view-title" data-action="expand">' + esc(t(key)) + '</h2><span class="count">' + items.length + '</span></div></div>';
     if (store.hasSamples()) {
       h += '<div class="sample-note"><span>' + esc(t('samplesShown')) + '</span><button type="button" class="link-btn" data-action="clear-samples">' + esc(t('clearSamples')) + '</button></div>';
     }
@@ -2403,12 +2516,44 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     box.innerHTML = h;
   }
 
-  /* ================= place search (OpenStreetMap via Photon) [建议] =================
-   * Photon 是基于 OSM 的免费地点搜索，支持边打字边搜、不需要 key。
-   * 同一个 OSM 编号算同一个地点，避免大家重复建同一家店。
+  /* ================= place search [建议] =================
+   * 两个来源一起搜：
+   * 1. 雪团自己的地点库（Supabase 里的 poi 表，马来西亚的 Overture 开放数据，店铺最全），按名字和距离排序；
+   * 2. Photon（OpenStreetMap），补上城市、景点和国外的地方。
+   * 同一个外部编号（ovt/… 或 node/…）算同一个地点，避免大家重复建同一家店。
    */
   var PHOTON_URL = 'https://photon.komoot.io/api/';
   var osm = { q: '', status: 'idle', results: [], timer: null, seq: 0 };
+  function searchCenter() {
+    if (state.me) return state.me;
+    var c = map ? map.getCenter() : XMUM;
+    return { lng: c.lng, lat: c.lat };
+  }
+  function poiSearch(q, c) {
+    if (!sbClient || !sbClient.rpc) return Promise.reject(new Error('no poi'));
+    return sbClient.rpc('search_poi', { q: q, near_lat: c.lat, near_lng: c.lng, lim: 15 }).then(function (r) {
+      if (r.error) throw r.error;
+      return (r.data || []).map(function (x) {
+        return { osm: 'ovt/' + x.id, name: x.name, alt: x.alt_name || '', lng: round6(x.lng), lat: round6(x.lat), mode: x.mode, cat: x.cat, precision: 'exact', where: x.locality || '' };
+      });
+    });
+  }
+  function photonSearch(q, c) {
+    var url = PHOTON_URL + '?q=' + encodeURIComponent(q) + '&limit=8&lat=' + c.lat.toFixed(4) + '&lon=' + c.lng.toFixed(4) + (state.lang === 'en' ? '&lang=en' : '');
+    return fetch(url).then(function (res) {
+      if (!res.ok) throw new Error('photon ' + res.status);
+      return res.json();
+    }).then(parsePhoton);
+  }
+  /* 地点库在前；Photon 里名字一样、又在 150 米内的算重复 */
+  function mergeResults(a, b) {
+    var out = a.slice();
+    b.forEach(function (r) {
+      var dup = out.some(function (x) { return x.name.toLowerCase() === r.name.toLowerCase() && haversine(x, r) < 150; });
+      if (!dup) out.push(r);
+    });
+    return out;
+  }
   function queueOsmSearch() {
     var q = state.query.trim(), key = q.toLowerCase();
     clearTimeout(osm.timer);
@@ -2417,22 +2562,15 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     osm.q = key; osm.status = 'loading';
     var seq = ++osm.seq;
     osm.timer = setTimeout(function () {
-      var c = map ? map.getCenter() : XMUM;
-      var url = PHOTON_URL + '?q=' + encodeURIComponent(q) + '&limit=8&lat=' + c.lat.toFixed(4) + '&lon=' + c.lng.toFixed(4) + (state.lang === 'en' ? '&lang=en' : '');
-      fetch(url).then(function (res) {
-        if (!res.ok) throw new Error('photon ' + res.status);
-        return res.json();
-      }).then(function (json) {
+      var c = searchCenter();
+      var fail = function () { return null; };
+      Promise.all([poiSearch(q, c).catch(fail), photonSearch(q, c).catch(fail)]).then(function (rs) {
         if (seq !== osm.seq) return;
-        osm.results = parsePhoton(json);
-        osm.status = 'done';
-        renderSearchResults();
-      }).catch(function () {
-        if (seq !== osm.seq) return;
-        osm.status = 'fail';
+        if (!rs[0] && !rs[1]) osm.status = 'fail';
+        else { osm.results = mergeResults(rs[0] || [], rs[1] || []); osm.status = 'done'; }
         renderSearchResults();
       });
-    }, 350);
+    }, 300);
   }
   function parsePhoton(json) {
     var seen = {};
@@ -2481,12 +2619,14 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     var mode = CATS[r.mode], c = null;
     mode.forEach(function (x) { if (x.id === r.cat) c = x; });
     c = c || mode[mode.length - 1];
-    var sub = [t(r.mode), r.where, fmtDist(haversine(XMUM, r))].filter(Boolean).map(esc).join(' · ');
+    var sub = [t(r.mode), catName(c), r.where, fmtDist(haversine(searchCenter(), r))].filter(Boolean).map(esc).join(' · ');
     var cta = osmExisting(r) ? t('osmOpen') : t('osmAdd');
     return '<li><button type="button" class="near-item" data-action="osm-pick" data-i="' + i + '">' + catIconHTML(c) +
-      '<span class="near-text"><b>' + esc(r.name) + '</b><small>' + sub + '</small></span><span class="near-cta">' + esc(cta) + '</span></button></li>';
+      '<span class="near-text"><b>' + esc(r.name) + (r.alt ? ' <span class="muted">' + esc(r.alt) + '</span>' : '') + '</b><small>' + sub + '</small></span><span class="near-cta">' + esc(cta) + '</span></button></li>';
   }
   /* 从“加地点”进来时，用户已经选了吃还是玩，就不按搜索结果的类型切换 */
+  /* 搜索里选中一个还不在雪团的地点：先像谷歌地图那样插一根红针、显示地点卡片，
+     确认要加再进表单。从“加地点”进来的直接进表单 */
   function pickOsm(i) {
     var r = osm.results[i];
     if (!r) return;
@@ -2496,13 +2636,38 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       if (adding && existing.mode === state.mode) startReview(existing.id); else openPlace(existing.id);
       return;
     }
+    if (adding) { addFromResult(r, true); return; }
+    state.preview = r;
+    state.view = 'preview';
+    render();
+    setSnap('half');
+    flyTo([r.lng, r.lat], r.precision === 'city' ? 10 : r.precision === 'area' ? 14 : 16.5);
+  }
+  function addFromResult(r, keepMode) {
     if (!requireLogin()) return;
-    var mode = adding ? state.mode : r.mode;
+    var mode = keepMode ? state.mode : r.mode;
     if (mode !== state.mode) setMode(mode, { noFly: true });
     var precision = mode === 'food' ? 'exact' : r.precision;
     var cat = mode === r.mode ? r.cat : null;
     flyTo([r.lng, r.lat], precision === 'city' ? 10 : precision === 'area' ? 14 : 16.5);
     startNewPlace({ lng: r.lng, lat: r.lat }, precision, NEAR_RADIUS[precision], { name: r.name, cat: cat, osm: r.osm });
+  }
+  function renderPreview() {
+    var r = state.preview;
+    if (!r) { goFeed(); return; }
+    var c = null;
+    CATS[r.mode].forEach(function (x) { if (x.id === r.cat) c = x; });
+    c = c || CATS[r.mode][CATS[r.mode].length - 1];
+    var coords = r.lat.toFixed(6) + ',' + r.lng.toFixed(6);
+    var tags = '<span class="tag">' + catIconHTML(c) + esc(catName(c)) + '</span>' +
+      (r.where ? '<span class="tag">' + esc(r.where) + '</span>' : '') +
+      '<span class="tag">' + esc(t('distFrom', { d: fmtDist(haversine(XMUM, r)) })) + '</span>';
+    view.innerHTML = '<div class="view-top"><button type="button" class="icon-btn flat" data-action="back" aria-label="' + esc(t('back')) + '">' + ICON.back + '</button></div>' +
+      '<div class="place-head"><h2>' + esc(r.name) + '</h2>' + (r.alt ? '<div class="alt">' + esc(r.alt) + '</div>' : '') +
+      '<div class="tags">' + tags + '</div></div>' +
+      '<p class="f-hint preview-hint">' + esc(t('previewHint')) + '</p>' +
+      '<div class="actions"><button type="button" class="btn primary" data-action="preview-add">' + esc(t(r.mode === 'food' ? 'previewAddFood' : 'previewAddTravel')) + '</button>' +
+      '<a class="btn" href="https://www.google.com/maps/dir/?api=1&destination=' + coords + '" target="_blank" rel="noopener">' + ICON.nav + esc(t('navGoogle')) + '</a></div>';
   }
 
   function renderProfile() {
@@ -2625,6 +2790,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     if (opts.drop) setTimeout(function () { dropMarker(p); }, reduceMotion ? 0 : 900);
   }
   function back() {
+    if (state.view === 'preview') { state.preview = null; state.view = 'search'; render(); setSnap('full'); return; }
     if (state.view === 'form') formCancel();
     else if (state.view === 'nearby') { state.form = null; goFeed(); }
     else goFeed();
@@ -3006,12 +3172,14 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
   function refilter() {
     renderFilters(); refreshMap();
     if (state.view === 'feed') render();
+    if (state.bsheet) renderBSheet();
   }
   document.addEventListener('click', function (e) {
     var mb = e.target.closest('[data-modal]');
     if (mb) { closeModal(mb.dataset.modal === 'yes'); return; }
     if (e.target.id === 'modal') { closeModal(false); return; }
     if (e.target.id === 'lightbox') { closeLightbox(); return; }
+    if (e.target.id === 'bsheet') { closeBSheet(); return; }
     var el = e.target.closest('[data-action]');
     if (!el) return;
     var a = el.dataset.action, d = el.dataset;
@@ -3019,33 +3187,31 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       case 'mode': if (state.view !== 'feed') goFeed(); setMode(d.mode); break;
       case 'scope':
         state.scope = d.scope; renderFilters(); refreshMap();
-        if (state.view === 'place' && !scopedReviews(state.placeId).length) goFeed();
-        else if (state.view === 'feed' || state.view === 'place') render();
+        if (state.view === 'place' && scopedReviews(state.placeId).length) render();
+        else if (state.view === 'feed') render();
+        else goFeed(state.snap === 'peek' ? 'half' : null);
         break;
       case 'cat': state.cat = d.cat; refilter(); break;
-      case 'price': state.priceMax = PRICE_STEPS[(PRICE_STEPS.indexOf(state.priceMax) + 1) % PRICE_STEPS.length]; refilter(); break;
-      case 'score': state.minScore = SCORE_STEPS[(SCORE_STEPS.indexOf(state.minScore) + 1) % SCORE_STEPS.length]; refilter(); break;
-      case 'dist': state.dist = DIST_STEPS[(DIST_STEPS.indexOf(state.dist) + 1) % DIST_STEPS.length]; refilter(); break;
-      case 'clear-filters': state.cat = 'all'; state.priceMax = 0; state.minScore = 0; state.dist = 'any'; renderFilters(); refreshMap(); render(); break;
+      case 'filters': openBSheet('filters'); break;
+      case 'areas': openBSheet('areas'); break;
+      case 'sheet-close': closeBSheet(); break;
+      case 'set-price': state.priceMax = +d.v; refilter(); break;
+      case 'set-score': state.minScore = +d.v; refilter(); break;
+      case 'set-dist': state.dist = d.v; refilter(); break;
+      case 'clear-filters': state.cat = 'all'; state.priceMax = 0; state.minScore = 0; state.dist = 'any'; renderFilters(); refreshMap(); render(); if (state.bsheet) renderBSheet(); break;
       case 'search': if (state.view === 'feed') state.feedSnap = state.snap; state.view = 'search'; render(); setSnap('full'); break;
-      case 'profile': if (state.view === 'feed') state.feedSnap = state.snap; state.view = 'profile'; render(); setSnap('full'); break;
-      case 'lang': setLang(state.lang === 'zh' ? 'en' : 'zh'); break;
+      case 'profile': if (state.view === 'feed') state.feedSnap = state.snap; closeBSheet(); state.view = 'profile'; render(); setSnap('full'); break;
       case 'set-lang': setLang(d.lang); break;
       case 'set-style': setBasemap(d.style); break;
-      case 'basemap': setBasemap(STYLE_ORDER[(STYLE_ORDER.indexOf(state.styleKey) + 1) % STYLE_ORDER.length]); break;
-      case 'zoom-in': if (map) map.zoomIn(); break;
-      case 'zoom-out': if (map) map.zoomOut(); break;
-      case 'to-school': flyTo([XMUM.lng, XMUM.lat], 15.5); break;
-      case 'to-globe': if (map) flyTo([map.getCenter().lng, Math.max(-40, Math.min(40, map.getCenter().lat))], 1.4); break;
-      case 'locate': locate(); break;
+      case 'locate': closeBSheet(); locate(); break;
       case 'add': if (requireLogin()) openAdd(); break;
       case 'add-pin': startPick({}); break;
       case 'add-existing': startReview(d.id); break;
       case 'pick-cancel': cancelPick(); break;
       case 'pick-confirm': confirmPick(); break;
       case 'expand': if (isMobile()) setSnap(state.snap === 'peek' ? 'half' : state.snap === 'half' ? 'full' : 'half'); break;
-      case 'goto-area': gotoArea(d.id); break;
-      case 'save-area': openAreaDialog(); break;
+      case 'goto-area': closeBSheet(); gotoArea(d.id); break;
+      case 'save-area': closeBSheet(); openAreaDialog(); break;
       case 'del-area': store.deleteArea(d.id).then(render); break;
       case 'clear-samples': clearSamples(); break;
       case 'open-place': openPlace(d.id); break;
@@ -3073,6 +3239,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       case 'near-pick': state.form.placeId = d.id; state.view = 'form'; render(); break;
       case 'near-new': state.view = 'form'; render(); break;
       case 'osm-pick': pickOsm(+d.i); break;
+      case 'preview-add': if (state.preview) addFromResult(state.preview, false); break;
       case 'login': openLogin(); break;
       case 'login-google': store.signInWithGoogle().catch(function (err) { toast(t('loginFail', { m: (err && err.message) || '' })); }); break;
       case 'logout': store.signOut().catch(function () {}); break;
