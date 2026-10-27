@@ -7,7 +7,8 @@
     places: (seed.places || []).slice(),
     visits: (seed.visits || []).slice(),
     wishlist: (seed.wishlist || []).slice(),
-    homes: (seed.homes || []).slice()
+    homes: (seed.homes || []).slice(),
+    poi: (seed.poi || window.__poi || []).slice()
   };
   var files = {};
   var session = null, listeners = [], calls = [];
@@ -50,12 +51,16 @@
   Query.prototype.upsert = function (row) { this.op = 'upsert'; this.payload = row; this.wantRows = false; return this; };
   Query.prototype.update = function (row) { this.op = 'update'; this.payload = row; this.wantRows = false; return this; };
   Query.prototype.delete = function () { this.op = 'delete'; this.wantRows = false; return this; };
-  Query.prototype.eq = function (k, v) { this.filters.push([k, v]); return this; };
+  Query.prototype.eq = function (k, v) { this.filters.push([k, v, 'eq']); return this; };
+  Query.prototype.gte = function (k, v) { this.filters.push([k, v, 'gte']); return this; };
+  Query.prototype.lte = function (k, v) { this.filters.push([k, v, 'lte']); return this; };
   Query.prototype.order = function () { return this; };
   Query.prototype.limit = function () { return this; };
   Query.prototype.single = function () { this.one = 'single'; this.wantRows = true; return this; };
   Query.prototype.maybeSingle = function () { this.one = 'maybe'; this.wantRows = true; return this; };
-  Query.prototype.match = function (row) { return this.filters.every(function (f) { return row[f[0]] === f[1]; }); };
+  Query.prototype.match = function (row) {
+    return this.filters.every(function (f) { return f[2] === 'gte' ? row[f[0]] >= f[1] : f[2] === 'lte' ? row[f[0]] <= f[1] : row[f[0]] === f[1]; });
+  };
   Query.prototype.run = function () {
     var self = this, t = db[this.table], rows, now = new Date().toISOString();
     calls.push([this.table, this.op]);

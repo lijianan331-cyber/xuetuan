@@ -491,6 +491,26 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
 .add-search .add-pin { flex: none; height: 42px; padding: 0 14px; background: var(--accent-soft); color: var(--accent); }
 .add-hint { margin: 8px 0 4px; }
 .add-pin-bottom { margin-top: 14px; }
+/* 从照片批量加 */
+.bulk-btn { margin: 10px 0 2px; }
+.bk-sum { margin: 0 0 12px; }
+.bk-nick { margin-top: 12px; }
+.bk-list { list-style: none; margin: 14px 0 0; padding: 0 0 48px; display: flex; flex-direction: column; gap: 12px; }
+.bk-card { min-width: 0; display: flex; flex-direction: column; gap: 9px; padding: 12px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); }
+.bk-photos { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; margin: 0 -12px; padding: 0 12px; }
+.bk-photos::-webkit-scrollbar { display: none; }
+.bk-ph { flex: none; position: relative; width: 64px; height: 64px; padding: 0; border: 0; border-radius: 10px; overflow: hidden; background: var(--surface-2); }
+.bk-ph img { display: block; width: 100%; height: 100%; object-fit: cover; transition: opacity .15s; }
+.bk-ph[aria-pressed="false"] img { opacity: .35; }
+.bk-ph[aria-pressed="true"]::after { content: ""; position: absolute; inset: 0; border-radius: 10px; box-shadow: inset 0 0 0 2px var(--accent); }
+.bk-meta { color: var(--muted); font-size: 12px; font-weight: 600; }
+.bk-names .chip { max-width: 100%; }
+.bk-names .chip b { min-width: 0; overflow: hidden; text-overflow: ellipsis; font-weight: inherit; }
+.bk-names .chip small { flex: none; font-size: 11px; font-weight: 600; opacity: .7; }
+.bk-own { display: flex; gap: 8px; align-items: center; }
+.bk-own .input { flex: 1; min-width: 0; }
+.bk-own .seg { flex: none; }
+.bk-card .stars-input { padding: 0; }
 .sel-pin { width: 26px; height: 37px; pointer-events: none; filter: drop-shadow(0 2px 3px rgba(0, 0, 0, .35)); }
 .sel-pin svg { display: block; }
 .quick-rate { margin: 12px 0 10px; }
@@ -718,6 +738,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
   <div class="lb-count" id="lb-count"></div>
 </div>
 <input type="file" id="f-file" accept="image/*" multiple hidden>
+<input type="file" id="bulk-file" accept="image/*" multiple hidden>
 <input type="file" id="import-file" accept="application/json,.json" hidden>
 <noscript><p style="padding:24px">这个页面需要开启 JavaScript。</p></noscript>
 
@@ -903,6 +924,13 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       visPrivateShort: '仅自己',
       shareBig: '分享到大地图', shareHint: '不分享也会存进“足迹”', formMore: '更多：精度、原名、链接',
       unnamedFood: '没起名的店', unnamedTravel: '没起名的地方',
+      bulkBtn: '从照片批量加', bulkTitle: '从照片批量加', bulkReading: '正在读照片 {n}/{m}…',
+      bulkSum: '{n} 张照片，分成 {g} 个地方。给想记的打分，没打分的不保存。', bulkNoGps: '{n} 张没有拍摄地点，没算进来。',
+      bulkNone: '选的照片里都没有拍摄地点。相机设置里打开“地理位置”，以后拍的就有了。',
+      bulkSave: '保存 {n}', bulkSaving: '保存中 {n}/{m}', bulkDone: '存进足迹 {n} 个', bulkFailSome: '{n} 个没存上，过会儿再试',
+      bulkPhotos: '{n} 张', bulkLooking: '正在找附近的店…', bulkOwn: '自己写', bulkBeen: '记过',
+      bulkLeaveQ: '打了分的还没保存，确定离开？', bulkLeave: '离开', bulkPhotoMax: '每个地方最多 {n} 张',
+      bulkLoadFail: '读照片的工具没加载出来，检查网络后再试。',
       link: '相关链接', linkPh: '官网、订位、门票页面…',
       nickname: '昵称', nicknamePh: '大家看到的名字',
       testAccounts: '测试账号（仅供测试）', testAccountsHint: '同一台手机上换着当不同的人：每个号的记录、收藏、家都分开，私密的只有自己看得到。',
@@ -996,6 +1024,13 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       visPrivateShort: 'Private',
       shareBig: 'Share on the big map', shareHint: 'Either way it’s saved to Footprints', formMore: 'More: precision, other name, link',
       unnamedFood: 'Unnamed spot', unnamedTravel: 'Unnamed place',
+      bulkBtn: 'Add many from photos', bulkTitle: 'Add from photos', bulkReading: 'Reading photos {n}/{m}…',
+      bulkSum: '{n} photos in {g} places. Score the ones to keep; unscored ones are skipped.', bulkNoGps: '{n} without a location were left out.',
+      bulkNone: 'None of these photos has a location. Turn on location tags in your camera settings for new photos.',
+      bulkSave: 'Save {n}', bulkSaving: 'Saving {n}/{m}', bulkDone: '{n} saved to Footprints', bulkFailSome: '{n} couldn’t be saved, try again later',
+      bulkPhotos: '{n} photos', bulkLooking: 'Looking for nearby places…', bulkOwn: 'Type a name', bulkBeen: 'recorded',
+      bulkLeaveQ: 'Your scores aren’t saved yet. Leave anyway?', bulkLeave: 'Leave', bulkPhotoMax: 'Up to {n} photos per place',
+      bulkLoadFail: 'Couldn’t load the photo reader. Check your connection and try again.',
       link: 'Link', linkPh: 'Website, booking or ticket page',
       nickname: 'Nickname', nicknamePh: 'The name others see',
       testAccounts: 'Test accounts (testing only)', testAccountsHint: 'Take turns being different people on one phone. Each account has its own records, saves and home; private ones stay private.',
@@ -1077,7 +1112,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     lang: 'zh', mode: 'food', tab: 'home', scope: 'all', cat: 'all', priceMax: 0, minScore: 0, dist: 'any',
     view: 'feed', placeId: null, postId: null, placeBack: null, form: null, nearby: null, query: '',
     snap: 'peek', feedSnap: 'peek', picking: null, preview: null, bsheet: null, me: null, styleKey: 'light',
-    mineBoth: false, countries: false, savedWant: false, mineSub: 'mine', homesOn: true, homes: null, homeBack: null
+    mineBoth: false, countries: false, savedWant: false, mineSub: 'mine', homesOn: true, homes: null, homeBack: null, bulk: null
   };
   var map = null;
   var lastRenderedView = null;
@@ -1243,13 +1278,13 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
         p.updatedAt = Date.now();
         return done(p);
       },
-      /* f: { placeId, rating, price, text, visibility }，newPhotos: [{ id, blob, url }] */
+      /* f: { placeId, rating, price, text, visibility, createdAt? }，newPhotos: [{ id, blob, url }]；createdAt 是从照片批量加时的拍摄时间 */
       addReview: function (f, newPhotos) {
         var me = data.profile;
         var r = {
           id: uid('r'), placeId: f.placeId, authorId: me.id, authorName: me.name || '',
           rating: f.rating, price: f.price, text: f.text, photos: newPhotos.map(function (ph) { return ph.id; }),
-          visibility: f.visibility, createdAt: Date.now(), sample: false
+          visibility: f.visibility, createdAt: f.createdAt || Date.now(), sample: false
         };
         return putPhotos(newPhotos).then(function (photosOk) {
           data.reviews.push(r);
@@ -1555,6 +1590,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       addReview: function (f, newPhotos) {
         return needLogin() || uploadPhotos(newPhotos).then(function (up) {
           var row = { place_id: f.placeId, rating: f.rating, price: f.price, text: f.text, visibility: f.visibility, photos: up.paths };
+          if (f.createdAt) row.created_at = new Date(f.createdAt).toISOString();
           return client.from('visits').insert(row).select().single().then(ok).then(function (v) {
             var r = reviewFromRow(v, cache.profile);
             cache.reviews.unshift(r);
@@ -1932,6 +1968,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     if (c === 'form') { if (state.form) { state.form.rating = v; var e = $('#err-rating'); if (e) e.hidden = true; } }
     else if (c === 'place-score') { if (state.placeId && requireLogin()) startReview(state.placeId, v); }
     else if (c === 'preview-score') { if (state.preview) addFromResult(state.preview, false, v); }
+    else if (c === 'bulk') bulkRate(el, v);
   }
   (function setupStars() {
     var active = null;
@@ -1954,6 +1991,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       active = null;
       if (e.type === 'pointerup') commitStars(a.el, a.v);
       else if (a.el.dataset.commit === 'form' && state.form && state.form.rating != null) setStars(a.el, state.form.rating);
+      else if (a.el.dataset.commit === 'bulk') { var g = bulkGroupOf(a.el); if (g && g.rating != null) setStars(a.el, g.rating); }
     }
     document.addEventListener('pointerup', finish);
     document.addEventListener('pointercancel', finish);
@@ -1967,8 +2005,8 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       if (v != null) {
         e.preventDefault();
         setStars(el, v);
-        if (el.dataset.commit === 'form') commitStars(el, v);
-      } else if ((e.key === 'Enter' || e.key === ' ') && el.dataset.commit !== 'form' && el.hasAttribute('aria-valuenow')) {
+        if (el.dataset.commit === 'form' || el.dataset.commit === 'bulk') commitStars(el, v);
+      } else if ((e.key === 'Enter' || e.key === ' ') && el.dataset.commit !== 'form' && el.dataset.commit !== 'bulk' && el.hasAttribute('aria-valuenow')) {
         e.preventDefault();
         commitStars(el, cur);
       }
@@ -3182,6 +3220,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     else if (v === 'nearby') renderNearby();
     else if (v === 'search') renderSearch();
     else if (v === 'add') renderAdd();
+    else if (v === 'bulk') renderBulk();
     else if (v === 'preview') renderPreview();
     else if (v === 'login') renderLogin();
     else if (v === 'homes') renderHomes();
@@ -3542,6 +3581,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       '<div class="add-search"><input id="q" class="input" type="search" autocomplete="off" placeholder="' + esc(t(isFood ? 'addSearchPhFood' : 'addSearchPhTravel')) + '" aria-label="' + esc(t('searchBtn')) + '" value="' + esc(state.query) + '">' +
       '<button type="button" class="btn add-pin" data-action="add-pin">' + ICON.pin + esc(t('addPin')) + '</button></div>' +
       '<p class="f-hint add-hint">' + esc(t('addHint')) + '</p>' +
+      '<button type="button" class="btn ghost block bulk-btn" data-action="bulk-start">' + ICON.camera + esc(t('bulkBtn')) + '</button>' +
       '<ul class="search-results" id="search-results"></ul>';
     queueOsmSearch();
     renderSearchResults();
@@ -3640,10 +3680,11 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     if (!sbClient || !sbClient.rpc) return Promise.reject(new Error('no poi'));
     return sbClient.rpc('search_poi', { q: q, near_lat: c.lat, near_lng: c.lng, lim: 15 }).then(function (r) {
       if (r.error) throw r.error;
-      return (r.data || []).map(function (x) {
-        return { osm: 'ovt/' + x.id, name: x.name, alt: x.alt_name || '', lng: round6(x.lng), lat: round6(x.lat), mode: x.mode, cat: x.cat, precision: 'exact', where: x.locality || '' };
-      });
+      return (r.data || []).map(poiRow);
     });
+  }
+  function poiRow(x) {
+    return { osm: 'ovt/' + x.id, name: x.name, alt: x.alt_name || '', lng: round6(x.lng), lat: round6(x.lat), mode: x.mode, cat: x.cat, precision: 'exact', where: x.locality || '' };
   }
   function photonSearch(q, c) {
     var url = PHOTON_URL + '?q=' + encodeURIComponent(q) + '&limit=8&lat=' + c.lat.toFixed(4) + '&lon=' + c.lng.toFixed(4) + (state.lang === 'en' ? '&lang=en' : '');
@@ -4097,6 +4138,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
   }
   function goFeed(snap) {
     state.view = 'feed'; state.placeId = null; state.postId = null; state.placeBack = null; state.form = null; state.nearby = null;
+    if (state.bulk && !state.bulk.saving) dropBulk();
     render();
     setSnap(feedSnapNow(snap));
     updateSelection();
@@ -4177,6 +4219,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       state.view = 'search'; render(); setSnap('full'); return;
     }
     if (state.view === 'form') formCancel();
+    else if (state.view === 'bulk') leaveBulk();
     else if (state.view === 'nearby') { state.form = null; goFeed(); }
     else if (state.view === 'home') leaveHomeSet();
     else goFeed();
@@ -4431,6 +4474,297 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       if (window.console) console.warn('save:', e);
       if (btn) btn.disabled = false;
       toast(t('saveFail'));
+    });
+  }
+
+  /* ================= 从照片批量加 [建议，用户 2026-10-27 要先把自己去过的全加上] =================
+   * 一次选很多张照片，读照片里的拍摄地点和时间（只在手机上读，exifr），分成一个个地方：
+   * 和这一组第一张相距 150 米内、和上一张相隔不到 3 小时的算同一次。
+   * 每个地方在附近找名字：雪团里已有的 → 地点库（马来西亚）→ Photon。打了分的才存，
+   * 照片一起带上，记录日期用拍摄时间。默认不分享（一次加很多旧记录，不想一下子全公开）。 */
+  var EXIFR_URL = 'https://cdn.jsdelivr.net/npm/exifr@7.1.3/dist/lite.umd.js';
+  var BULK_NEAR = 150, BULK_GAP = 3 * 3600 * 1000;
+  var PHOTON_SKIP = ['highway', 'place', 'boundary', 'building', 'landuse', 'railway', 'waterway', 'power', 'route', 'junction'];
+  function startBulk(files) {
+    var list = Array.prototype.slice.call(files || []).filter(function (f) { return /^image\//.test(f.type) || /\.(jpe?g|heic|heif)$/i.test(f.name); });
+    if (!list.length) return;
+    dropBulk();
+    var b = state.bulk = { total: list.length, read: 0, items: [], groups: null, noGps: 0, share: false, saving: null, error: false, urls: [] };
+    rememberFeedSnap();
+    state.view = 'bulk'; state.form = null;
+    render();
+    setSnap('full');
+    (window.exifr ? Promise.resolve() : loadScript(EXIFR_URL)).then(function () {
+      return list.reduce(function (chain, file) {
+        return chain.then(function () {
+          if (state.bulk !== b) return;
+          return readPhotoMeta(file, b).then(function (it) {
+            b.items.push(it); b.read++;
+            var el = $('#bk-progress');
+            if (el) el.textContent = t('bulkReading', { n: b.read, m: b.total });
+          });
+        });
+      }, Promise.resolve());
+    }).then(function () {
+      if (state.bulk !== b) return;
+      b.groups = groupPhotos(b);
+      render();
+      findNames(b);
+    }, function () {
+      if (state.bulk !== b) return;
+      b.error = true;
+      render();
+    });
+  }
+  /* 照片里存的小图（EXIF 缩略图）当预览，比解码整张原图省内存；小图没按拍摄方向转，自己转 */
+  function readPhotoMeta(file, b) {
+    var meta = window.exifr.parse(file).catch(function () { return null; });
+    var thumb = window.exifr.thumbnailUrl ? window.exifr.thumbnailUrl(file).catch(function () { return null; }) : Promise.resolve(null);
+    return Promise.all([meta, thumb]).then(function (r) {
+      var x = r[0] || {}, t0 = x.DateTimeOriginal || x.CreateDate || x.ModifyDate;
+      var time = t0 instanceof Date && !isNaN(t0) ? t0.getTime() : (file.lastModified || Date.now());
+      var url = r[1] || URL.createObjectURL(file);
+      b.urls.push(url);
+      var it = { file: file, time: Math.min(time, Date.now()), url: url, rot: r[1] ? rotOf(x.Orientation) : 0, on: false };
+      if (typeof x.latitude === 'number' && typeof x.longitude === 'number' && isFinite(x.latitude) && isFinite(x.longitude) && (x.latitude || x.longitude)) {
+        it.lat = x.latitude; it.lng = x.longitude;
+      }
+      return it;
+    });
+  }
+  function rotOf(o) {
+    var s = String(o == null ? '' : o);
+    return s === '6' || /rotate 90/i.test(s) ? 90 : s === '8' || /rotate 270/i.test(s) ? 270 : s === '3' || /rotate 180/i.test(s) ? 180 : 0;
+  }
+  /* 新拍的排前面 */
+  function groupPhotos(b) {
+    var geo = b.items.filter(function (it) { return it.lat != null; }).sort(function (a, c) { return a.time - c.time; });
+    b.noGps = b.items.length - geo.length;
+    var groups = [], g = null;
+    geo.forEach(function (it) {
+      if (g && haversine(g.photos[0], it) <= BULK_NEAR && it.time - g.photos[g.photos.length - 1].time <= BULK_GAP) g.photos.push(it);
+      else { g = { photos: [it], cands: null, pick: -1, touched: false, name: '', mode: state.mode, rating: null }; groups.push(g); }
+    });
+    groups.reverse();
+    groups.forEach(function (g, i) {
+      g.i = i;
+      g.time = g.photos[0].time;
+      g.lat = g.photos.reduce(function (s, p) { return s + p.lat; }, 0) / g.photos.length;
+      g.lng = g.photos.reduce(function (s, p) { return s + p.lng; }, 0) / g.photos.length;
+      g.photos.forEach(function (p, j) { p.on = j < MAX_PHOTOS; });
+    });
+    return groups;
+  }
+  /* 两个两个地找，找到一个更新一张卡片 */
+  function findNames(b) {
+    var queue = b.groups.slice();
+    function next() {
+      var g = queue.shift();
+      if (!g || state.bulk !== b) return;
+      nearbyNames(g).catch(function () { return []; }).then(function (cands) {
+        if (state.bulk !== b) return;
+        g.cands = cands;
+        if (!g.touched) bulkChoose(g, cands.length ? 0 : -1);
+        updateBulkCard(g);
+        next();
+      });
+    }
+    next(); next();
+  }
+  /* 按距离排；雪团里已有的地点算近 40 米（多半就是它，也免得重复建），但不会压过紧挨着的店 */
+  function nearbyNames(g) {
+    var c = { lat: g.lat, lng: g.lng };
+    var byD = function (a, z) { return (a.place ? a.d - 40 : a.d) - (z.place ? z.d - 40 : z.d); };
+    var known = store.places().filter(function (p) { return knownToMe(p) && haversine(p, c) <= BULK_NEAR; }).map(function (p) {
+      return { place: p.id, name: placeTitle(p), mode: p.mode, cat: p.cat, lat: p.lat, lng: p.lng, osm: p.osm, d: haversine(p, c), been: beenThere(p) };
+    });
+    var jobs = [withTimeout(photonNear(c), SEARCH_TIMEOUT).catch(function () { return []; })];
+    if (sbClient && sbClient.from) jobs.push(withTimeout(poiNear(c), SEARCH_TIMEOUT).catch(function () { return []; }));
+    return Promise.all(jobs).then(function (r) {
+      var ext = mergeResults(r[1] || [], r[0]).filter(function (x) {
+        return !known.some(function (k) { return (x.osm && k.osm === x.osm) || (k.name.toLowerCase() === x.name.toLowerCase() && haversine(k, x) < BULK_NEAR); });
+      });
+      ext.forEach(function (x) { x.d = haversine(x, c); });
+      return known.concat(ext).sort(byD).slice(0, 6);
+    });
+  }
+  function poiNear(c) {
+    var dLat = BULK_NEAR / 111320, dLng = dLat / Math.max(0.2, Math.cos(c.lat * Math.PI / 180));
+    return sbClient.from('poi').select('id, name, alt_name, mode, cat, lat, lng, locality')
+      .gte('lat', c.lat - dLat).lte('lat', c.lat + dLat).gte('lng', c.lng - dLng).lte('lng', c.lng + dLng).limit(80)
+      .then(function (r) { if (r.error) throw r.error; return (r.data || []).map(poiRow); });
+  }
+  /* Photon 反查附近：路、门牌、城市这些不要，只要店和景点 */
+  function photonNear(c) {
+    var url = PHOTON_URL.replace(/api\/$/, 'reverse') + '?lat=' + c.lat.toFixed(5) + '&lon=' + c.lng.toFixed(5) + '&radius=' + (BULK_NEAR / 1000) + '&limit=20' + (state.lang === 'en' ? '&lang=en' : '');
+    return fetch(url).then(function (res) {
+      if (!res.ok) throw new Error('photon ' + res.status);
+      return res.json();
+    }).then(function (json) {
+      var keep = ((json && json.features) || []).filter(function (f) { var pr = f.properties || {}; return PHOTON_SKIP.indexOf(pr.osm_key) === -1 && pr.type !== 'street'; });
+      return parsePhoton({ features: keep }).filter(function (r) { return r.precision === 'exact'; });
+    });
+  }
+  function bulkChoose(g, k) {
+    var c = k >= 0 && g.cands ? g.cands[k] : null;
+    g.pick = c ? k : -1;
+    if (c) g.mode = c.mode;
+  }
+  function bulkDate(ts) {
+    var d = new Date(ts), sameYear = d.getFullYear() === new Date().getFullYear();
+    return d.toLocaleDateString(state.lang === 'en' ? 'en-MY' : 'zh-CN', sameYear ? { month: 'short', day: 'numeric', weekday: 'short' } : { year: 'numeric', month: 'short', day: 'numeric' });
+  }
+  function bulkCardHTML(g) {
+    var h = '<li class="bk-card" id="bk-' + g.i + '"><div class="bk-photos">' + g.photos.map(function (p, j) {
+      return '<button type="button" class="bk-ph" data-action="bulk-ph" data-i="' + g.i + '" data-j="' + j + '" aria-pressed="' + p.on + '">' +
+        '<img src="' + esc(p.url) + '" alt="" loading="lazy" decoding="async"' + (p.rot ? ' style="transform:rotate(' + p.rot + 'deg)"' : '') + '></button>';
+    }).join('') + '</div>';
+    h += '<div class="bk-meta" id="bk-meta-' + g.i + '">' + esc(bulkDate(g.time)) + ' · ' + esc(t('bulkPhotos', { n: g.photos.length })) + '</div>';
+    h += '<div class="chips-wrap bk-names">';
+    if (!g.cands) h += '<span class="f-hint">' + esc(t('bulkLooking')) + '</span>';
+    else {
+      h += g.cands.map(function (c, k) {
+        return '<button type="button" class="chip" data-action="bulk-pick" data-i="' + g.i + '" data-k="' + k + '" aria-pressed="' + (g.pick === k) + '"><b>' + esc(c.name) + '</b><small>' + esc(c.been ? t('bulkBeen') : fmtDist(c.d)) + '</small></button>';
+      }).join('');
+      h += '<button type="button" class="chip" data-action="bulk-pick" data-i="' + g.i + '" data-k="-1" aria-pressed="' + (g.pick === -1) + '">' + ICON.pen + esc(t('bulkOwn')) + '</button>';
+    }
+    h += '</div>';
+    if (g.cands && g.pick === -1) {
+      h += '<div class="bk-own"><input class="input" data-bk-name="' + g.i + '" maxlength="60" autocomplete="off" placeholder="' + esc(t(g.mode === 'food' ? 'namePhFood' : 'namePhTravel')) + '" value="' + esc(g.name) + '">' +
+        '<div class="seg">' + ['food', 'travel'].map(function (m) {
+          return '<button type="button" data-action="bulk-mode" data-i="' + g.i + '" data-v="' + m + '" aria-pressed="' + (g.mode === m) + '">' + esc(t(m)) + '</button>';
+        }).join('') + '</div></div>';
+    }
+    return h + starsInputHTML('bk-rate-' + g.i, g.rating, 'bulk', 'bk-meta-' + g.i) + '</li>';
+  }
+  function renderBulk() {
+    var b = state.bulk;
+    if (!b) { goFeed(); return; }
+    var h = '<div class="view-top"><button type="button" class="icon-btn flat" data-action="back" aria-label="' + esc(t('back')) + '">' + ICON.back + '</button><h2 class="view-title">' + esc(t('bulkTitle')) + '</h2>' +
+      (b.groups && b.groups.length ? '<button type="button" class="btn primary small" id="bk-save" data-action="bulk-save"></button>' : '') + '</div>';
+    if (b.error) h += '<p class="empty small">' + esc(t('bulkLoadFail')) + '</p>';
+    else if (!b.groups) h += '<p class="empty small" id="bk-progress">' + esc(t('bulkReading', { n: b.read, m: b.total })) + '</p>';
+    else if (!b.groups.length) h += '<p class="empty small">' + esc(t('bulkNone')) + '</p>';
+    else {
+      h += '<p class="f-hint bk-sum">' + esc(t('bulkSum', { n: b.total - b.noGps, g: b.groups.length })) + (b.noGps ? ' ' + esc(t('bulkNoGps', { n: b.noGps })) : '') + '</p>';
+      h += '<button type="button" class="switch-row" role="switch" data-action="bulk-share" aria-checked="' + b.share + '">' +
+        '<span class="sw-text"><b>' + esc(t('shareBig')) + '</b><small>' + esc(t('shareHint')) + '</small></span><span class="switch" aria-hidden="true"></span></button>';
+      if (!me().name) h += '<div class="field bk-nick" id="bk-nick-field"' + (b.share ? '' : ' hidden') + '><label class="f-label" for="bk-nick">' + esc(t('nickname')) + '</label><input id="bk-nick" class="input" maxlength="20" autocomplete="nickname" placeholder="' + esc(t('nicknamePh')) + '"></div>';
+      h += '<ul class="bk-list">' + b.groups.map(bulkCardHTML).join('') + '</ul>';
+    }
+    view.innerHTML = h;
+    updateBulkSave();
+  }
+  function updateBulkSave() {
+    var b = state.bulk, btn = $('#bk-save');
+    if (!b || !btn) return;
+    var n = b.groups.filter(function (g) { return g.rating != null; }).length;
+    btn.textContent = b.saving ? t('bulkSaving', { n: b.saving.done, m: b.saving.total }) : t('bulkSave', { n: n });
+    btn.disabled = !n || !!b.saving;
+  }
+  /* 只换这一张卡片，不重画整页（列表不跳、图不闪） */
+  function updateBulkCard(g) {
+    var el = $('#bk-' + g.i);
+    if (el) el.outerHTML = bulkCardHTML(g);
+  }
+  function bulkGroupOf(el) {
+    var b = state.bulk, i = +String(el.id).replace('bk-rate-', '');
+    return b && b.groups ? b.groups[i] : null;
+  }
+  function bulkRate(el, v) {
+    var g = bulkGroupOf(el);
+    if (!g || state.bulk.saving) return;
+    g.rating = v;
+    updateBulkSave();
+  }
+  function bulkTogglePhoto(i, j, el) {
+    var g = state.bulk && state.bulk.groups && state.bulk.groups[i], p = g && g.photos[j];
+    if (!p) return;
+    if (!p.on && g.photos.filter(function (x) { return x.on; }).length >= MAX_PHOTOS) { toast(t('bulkPhotoMax', { n: MAX_PHOTOS })); return; }
+    p.on = !p.on;
+    el.setAttribute('aria-pressed', String(p.on));
+  }
+  function bulkPick(i, k) {
+    var g = state.bulk && state.bulk.groups && state.bulk.groups[i];
+    if (!g) return;
+    g.touched = true;
+    bulkChoose(g, k);
+    updateBulkCard(g);
+    if (k === -1) { var inp = $('[data-bk-name="' + i + '"]'); if (inp) inp.focus(); }
+  }
+  function bulkSetMode(i, m) {
+    var g = state.bulk && state.bulk.groups && state.bulk.groups[i];
+    if (!g) return;
+    g.mode = m === 'travel' ? 'travel' : 'food';
+    updateBulkCard(g);
+  }
+  function leaveBulk() {
+    var b = state.bulk;
+    if (b && b.saving) return;
+    var dirty = b && b.groups && b.groups.some(function (g) { return g.rating != null; });
+    (dirty ? confirmBox(t('bulkLeaveQ'), t('bulkLeave')) : Promise.resolve(true)).then(function (ok) {
+      if (!ok || state.bulk !== b) return;
+      dropBulk();
+      state.view = 'add';
+      render();
+      setSnap('full');
+    });
+  }
+  function dropBulk() {
+    var b = state.bulk;
+    if (!b) return;
+    b.urls.forEach(function (u) { URL.revokeObjectURL(u); });
+    state.bulk = null;
+  }
+  /* 一个一个存：地点（已有的就用已有的，这一批里选了同一家的也只建一次）→ 压缩照片 → 记录 */
+  function bulkSave() {
+    var b = state.bulk;
+    if (!b || !b.groups || b.saving || !requireLogin()) return;
+    var todo = b.groups.filter(function (g) { return g.rating != null; });
+    if (!todo.length) return;
+    var nick = $('#bk-nick');
+    if (b.share && nick && nick.value.trim()) store.updateProfile({ name: nick.value.trim().slice(0, 20) });
+    b.saving = { done: 0, total: todo.length, ok: 0, fail: 0 };
+    updateBulkSave();
+    var made = {};
+    todo.reduce(function (chain, g) {
+      return chain.then(function () {
+        return saveBulkGroup(g, b, made).then(function () { b.saving.ok++; }, function (e) {
+          if (window.console) console.warn('bulk save:', e);
+          b.saving.fail++;
+        }).then(function () { b.saving.done++; updateBulkSave(); });
+      });
+    }, Promise.resolve()).then(function () {
+      var s = b.saving;
+      dropBulk();
+      state.tab = 'foot'; state.scope = state.mineSub = 'mine'; renderFilters(); renderTabs();
+      refreshMap();
+      goFeed();
+      toast(t('bulkDone', { n: s.ok }));
+      if (s.fail) setTimeout(function () { toast(t('bulkFailSome', { n: s.fail })); }, 2600);
+    });
+  }
+  function saveBulkGroup(g, b, made) {
+    var c = g.pick >= 0 && g.cands ? g.cands[g.pick] : null;
+    var mode = c ? c.mode : g.mode, key = c ? (c.place || c.osm || '') : '';
+    var p0 = c && c.place ? placeById(c.place) : key && made[key] ? placeById(made[key]) : null;
+    var name = (c ? c.name : g.name.trim()) || t(mode === 'food' ? 'unnamedFood' : 'unnamedTravel');
+    var step = p0 ? Promise.resolve(p0) : store.addPlace({
+      mode: mode, cat: (c && c.cat) || 'other', precision: 'exact', lat: round6(c ? c.lat : g.lat), lng: round6(c ? c.lng : g.lng),
+      name: name.slice(0, 60), altName: String((c && c.alt) || '').slice(0, 60), link: '', osm: (c && c.osm) || ''
+    });
+    return step.then(function (p) {
+      if (key) made[key] = p.id;
+      var photos = [];
+      return g.photos.filter(function (ph) { return ph.on; }).reduce(function (chain, ph) {
+        return chain.then(function () {
+          return compressImage(ph.file).then(function (out) {
+            if (out.blob) photos.push({ id: uid('ph'), blob: out.blob, thumb: out.thumb, url: URL.createObjectURL(out.blob) });
+          }, function () { /* 读不了的照片跳过，记录照样存 */ });
+        });
+      }, Promise.resolve()).then(function () {
+        return store.addReview({ placeId: p.id, rating: g.rating, price: null, text: '', visibility: b.share ? 'public' : 'private', createdAt: g.time }, photos);
+      });
     });
   }
 
@@ -4699,6 +5033,16 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
         lsSet(LS_SHARE, state.form.visibility === 'public' ? '1' : '0');
         break;
       case 'f-photo-add': $('#f-file').click(); break;
+      case 'bulk-start': if (requireLogin()) $('#bulk-file').click(); break;
+      case 'bulk-ph': bulkTogglePhoto(+d.i, +d.j, el); break;
+      case 'bulk-pick': bulkPick(+d.i, +d.k); break;
+      case 'bulk-mode': bulkSetMode(+d.i, d.v); break;
+      case 'bulk-share':
+        state.bulk.share = !state.bulk.share;
+        el.setAttribute('aria-checked', String(state.bulk.share));
+        if ($('#bk-nick-field')) $('#bk-nick-field').hidden = !state.bulk.share;
+        break;
+      case 'bulk-save': bulkSave(); break;
       case 'f-photo-del':
         state.form.photos = state.form.photos.filter(function (ph) {
           if (ph.id === d.id && !ph.existing) URL.revokeObjectURL(ph.url);
@@ -4730,6 +5074,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     var el = e.target;
     if (el.id === 'q') { state.query = el.value; queueOsmSearch(); renderSearchResults(); }
     else if (el.id === 'home-q') { homeQ.q = el.value; queueHomeSearch(); renderHomeResults(); }
+    else if (el.dataset && el.dataset.bkName != null) { var bg = state.bulk && state.bulk.groups && state.bulk.groups[+el.dataset.bkName]; if (bg) bg.name = el.value; }
     else if (el.dataset && el.dataset.pf) {
       var patch = {}; patch[el.dataset.pf] = el.value.trim(); store.updateProfile(patch);
       var nm = $('#me-name');
@@ -4738,6 +5083,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
   });
   document.addEventListener('change', function (e) {
     if (e.target.id === 'f-file') { addFormPhotos(e.target.files); e.target.value = ''; }
+    else if (e.target.id === 'bulk-file') { startBulk(e.target.files); e.target.value = ''; }
     else if (e.target.id === 'import-file') { importData(e.target.files[0]); e.target.value = ''; }
   });
   /* 关掉最上面那一层：大图 → 弹窗 → 底部弹层 → 选点 → 子页面 */

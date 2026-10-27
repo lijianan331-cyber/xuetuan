@@ -8,6 +8,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 APP = 'file://' + os.path.join(ROOT, 'index.html')
 STUB = open(os.path.join(SCR, 'stub_maplibre.js'), encoding='utf-8').read()
 STUB_SB = open(os.path.join(SCR, 'stub_supabase.js'), encoding='utf-8').read()
+STUB_EXIFR = open(os.path.join(SCR, 'stub_exifr.js'), encoding='utf-8').read()
 SHOTS = os.path.join(SCR, 'shots')
 os.makedirs(SHOTS, exist_ok=True)
 
@@ -160,6 +161,8 @@ def route_all(ctx, supabase=False):
         url = route.request.url
         if supabase and '@supabase/supabase-js' in url:
             return route.fulfill(status=200, body=STUB_SB, headers={'Content-Type': 'application/javascript', 'Access-Control-Allow-Origin': '*'})
+        if 'exifr@' in url:
+            return route.fulfill(status=200, body=STUB_EXIFR, headers={'Content-Type': 'application/javascript', 'Access-Control-Allow-Origin': '*'})
         if 'maplibre-gl.js' in url:
             return route.fulfill(status=200, body=STUB, headers={'Content-Type': 'application/javascript', 'Access-Control-Allow-Origin': '*'})
         if 'maplibre-gl.css' in url or 'fonts.googleapis.com' in url:
@@ -1344,6 +1347,64 @@ with sync_playwright() as p:
     check('test accounts: no page errors', not errors7, errors7)
     ctx7.close()
 
+    # ---------- 从照片批量加（本地版；假的 exifr 按文件名给拍摄地点和时间） ----------
+    S0 = [x for x in FOOD_S if x['rating'] is not None][0]
+    ctxb = browser.new_context(viewport={'width': 390, 'height': 844}, device_scale_factor=2, has_touch=True, locale='zh-CN')
+    route_all(ctxb)
+    ctxb.add_init_script('window.__exif = ' + json.dumps({
+        'a1.jpg': {'latitude': S0['lat'] + 0.0001, 'longitude': S0['lng'], 'DateTimeOriginal': '2026-09-01T12:00:00'},
+        'a2.jpg': {'latitude': S0['lat'] + 0.0002, 'longitude': S0['lng'], 'DateTimeOriginal': '2026-09-01T12:20:00'},
+        'b1.jpg': {'latitude': 3.15, 'longitude': 101.6, 'DateTimeOriginal': '2026-09-02T19:00:00'}}) + ';')
+    pb = ctxb.new_page()
+    errorsb = []
+    pb.on('pageerror', lambda e: errorsb.append('pageerror: ' + str(e)))
+    pb.goto(APP)
+    pb.wait_for_function('window.__map && window.__map.getSource("places")', timeout=8000)
+    bfiles = []
+    for i_, n_ in enumerate(['a1.jpg', 'a2.jpg', 'b1.jpg', 'c1.jpg']):
+        fp_ = os.path.join(SHOTS, n_)
+        Image.new('RGB', (1200, 900), (60 + 40 * i_, 120, 200)).save(fp_, 'JPEG')
+        bfiles.append(fp_)
+    add(pb)
+    check('bulk: the add page offers adding many from photos', pb.locator('[data-action="bulk-start"]').is_visible())
+    with pb.expect_file_chooser() as fc_:
+        pb.click('[data-action="bulk-start"]')
+    fc_.value.set_files(bfiles)
+    pb.wait_for_function('document.querySelectorAll(".bk-card").length === 2 && !document.querySelector(".bk-names .f-hint")', timeout=8000)
+    sumb = pb.inner_text('.bk-sum')
+    check('bulk: photos grouped by where they were taken, ones without a location left out', '3 张照片，分成 2 个地方' in sumb and '1 张没有拍摄地点' in sumb, sumb)
+    check('bulk: newest place first', '9月2日' in pb.inner_text('#bk-meta-0') and '9月1日' in pb.inner_text('#bk-meta-1'), [pb.inner_text('#bk-meta-0'), pb.inner_text('#bk-meta-1')])
+    chips_b = pb.eval_on_selector_all('#bk-1 .bk-names .chip', 'els => els.map(e => e.textContent + ":" + e.getAttribute("aria-pressed"))')
+    check('bulk: a place already in XueTuan nearby is picked by default', chips_b[0].startswith(S0['name']) and chips_b[0].endswith(':true') and ' m' in chips_b[0], chips_b)
+    check('bulk: both photos of that visit are in, none picked for the far one', pb.locator('#bk-1 .bk-ph[aria-pressed="true"]').count() == 2
+          and pb.locator('#bk-0 [data-bk-name]').count() == 1 and pb.get_attribute('#bk-0 [data-action="bulk-pick"][data-k="-1"]', 'aria-pressed') == 'true')
+    check('bulk: nothing to save before scoring', pb.inner_text('#bk-save') == '保存 0' and pb.is_disabled('#bk-save'))
+    rate(pb, 4, '#bk-rate-1')
+    pb.click('#bk-1 .bk-ph >> nth=1')
+    pb.fill('[data-bk-name="0"]', '照片夜市')
+    pb.click('#bk-0 [data-action="bulk-mode"][data-v="travel"]')
+    rate(pb, 3.5, '#bk-rate-0')
+    check('bulk: typing a name and switching to travel keeps the name', pb.input_value('[data-bk-name="0"]') == '照片夜市' and pb.get_attribute('#bk-0 [data-action="bulk-mode"][data-v="travel"]', 'aria-pressed') == 'true')
+    check('bulk: a photo can be left out', pb.get_attribute('#bk-1 .bk-ph >> nth=1', 'aria-pressed') == 'false' and pb.inner_text('#bk-save') == '保存 2')
+    gb = pb.evaluate('(() => { const c = document.querySelector(".bk-card").getBoundingClientRect(), s = document.querySelector("#bk-save").getBoundingClientRect(); return [document.documentElement.scrollWidth <= innerWidth, c.right <= innerWidth, s.right <= innerWidth, document.querySelector("#panel").dataset.snap]; })()')
+    check('bulk: fits the phone, opens as a full panel', gb == [True, True, True, 'full'], gb)
+    pb.screenshot(path=os.path.join(SHOTS, '14-bulk.png'))
+    pb.click('[data-action="back"]'); pb.wait_for_timeout(200)
+    check('bulk: leaving with scores asks first', '还没保存' in pb.inner_text('#modal'))
+    pb.click('[data-modal="no"]'); pb.wait_for_timeout(150)
+    pb.click('#bk-save')
+    pb.wait_for_function('document.querySelector("#toast") && document.querySelector("#toast").textContent.indexOf("存进足迹 2 个") !== -1', timeout=8000)
+    pb.wait_for_timeout(200)
+    stb = pb.evaluate('''(() => { const d = JSON.parse(localStorage.getItem("xmum-chiwan-map:data:v1")), me = d.profile.id;
+      const mine = d.reviews.filter(r => r.authorId === me && !r.sample), np = d.places.find(p => p.name === "照片夜市");
+      return { mine: mine.map(r => [r.placeId, r.rating, r.photos.length, r.visibility, r.createdAt]), np: np && [np.mode, Math.round(np.lat * 100) / 100, np.lng], t1: new Date("2026-09-01T12:00:00").getTime(), t2: new Date("2026-09-02T19:00:00").getTime() }; })()''')
+    want_b = sorted([[S0['id'], 4, 1, 'private', stb['t1']], [None, 3.5, 1, 'private', stb['t2']]], key=lambda r: r[1])
+    got_b = sorted([[r[0] if r[0] == S0['id'] else None] + r[1:] for r in stb['mine']], key=lambda r: r[1])
+    check('bulk: saved as private records with the photos, dated when they were taken', got_b == want_b and stb['np'] and stb['np'][0] == 'travel' and stb['np'][1] == 3.15, stb)
+    check('bulk: after saving you land on footprints', pb.get_attribute('#tabbar [data-tab="foot"]', 'aria-current') == 'page' and pb.locator('.bk-card').count() == 0)
+    check('bulk: no page errors', not errorsb, errorsb)
+    ctxb.close()
+
     # ---------- 线上版（假的 Supabase） ----------
     A, B = 'aaaaaaaa-0000-4000-8000-00000000000a', 'bbbbbbbb-0000-4000-8000-00000000000b'
     C = 'cccccccc-0000-4000-8000-00000000000c'
@@ -1496,6 +1557,24 @@ with sync_playwright() as p:
     page6.wait_for_timeout(500)
     db6 = page6.evaluate('window.__sb.db')
     check('remote: deleting last visit removes the place', not any(p_['name'] == '线上测试店' for p_ in db6['places']) and page6.locator('.view-head .view-title').count() == 1)
+
+    # 从照片批量加（线上）：附近的店从地点库里找，存成地点 + 记录，照片传上去，日期用拍摄时间
+    page6.evaluate('window.__exif = ' + json.dumps({'k1.jpg': {'latitude': 2.8342, 'longitude': 101.7041, 'DateTimeOriginal': '2026-08-15T13:00:00'}}))
+    kfile = os.path.join(SHOTS, 'k1.jpg')
+    Image.new('RGB', (1000, 1000), (200, 160, 90)).save(kfile, 'JPEG')
+    add(page6)
+    page6.set_input_files('#bulk-file', [kfile])
+    page6.wait_for_function('document.querySelector(".bk-card") && !document.querySelector(".bk-names .f-hint")', timeout=8000)
+    chips6 = page6.locator('#bk-0 .bk-names .chip b').all_inner_texts()
+    check('remote bulk: nearby names come from the place library, nearest first, XueTuan places too', chips6[:2] == ['Kafe Ujian Dekat', 'B 的公开店'], chips6)
+    rate(page6, 5, '#bk-rate-0')
+    page6.click('#bk-save')
+    page6.wait_for_function('document.querySelector("#toast").textContent.indexOf("存进足迹 1 个") !== -1', timeout=8000)
+    db6 = page6.evaluate('window.__sb.db')
+    kp = [p_ for p_ in db6['places'] if p_['osm'] == 'ovt/aaa']
+    kv = [v for v in db6['visits'] if kp and v['place_id'] == kp[0]['id']]
+    check('remote bulk: place + private visit with the photo, dated when it was taken', len(kp) == 1 and kp[0]['name'] == 'Kafe Ujian Dekat' and len(kv) == 1 and kv[0]['rating'] == 5
+          and kv[0]['visibility'] == 'private' and len(kv[0]['photos']) == 1 and kv[0]['created_at'].startswith('2026-08-15'), (kp, kv))
 
     # 把本地旧记录传上去
     tab(page6, 'me')
