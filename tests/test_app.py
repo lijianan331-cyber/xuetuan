@@ -26,6 +26,22 @@ PHOTON = json.dumps({"type": "FeatureCollection", "features": [
 ]})
 photon_calls = []
 results = []
+
+# 示例数据直接从 index.html 里读，加减示例时测试不用跟着改数字
+import math, re
+SAMPLE_ROWS = []
+for m in re.finditer(r"^    \['(s-[^']+)', '(food|travel)', '(\w+)', '\w+', (-?[\d.]+), (-?[\d.]+), '([^']*)', .*, (\d+|null), (\d+|null)\],?$", open(os.path.join(ROOT, 'index.html'), encoding='utf-8').read(), re.M):
+    SAMPLE_ROWS.append({'id': m.group(1), 'mode': m.group(2), 'cat': m.group(3), 'lat': float(m.group(4)), 'lng': float(m.group(5)), 'name': m.group(6), 'rating': None if m.group(7) == 'null' else int(m.group(7))})
+def dist_m(lat, lng, lat0=2.8329, lng0=101.7029):
+    r = math.pi / 180
+    a = math.sin((lat - lat0) * r / 2) ** 2 + math.cos(lat0 * r) * math.cos(lat * r) * math.sin((lng - lng0) * r / 2) ** 2
+    return 2 * 6371000 * math.asin(min(1, math.sqrt(a)))
+FOOD_S = [x for x in SAMPLE_ROWS if x['mode'] == 'food']
+TRAVEL_S = [x for x in SAMPLE_ROWS if x['mode'] == 'travel']
+def tier(x):
+    d = dist_m(x['lat'], x['lng'])
+    return 'walk' if d <= 1500 else 'short' if d <= 10000 else 'mid' if d <= 40000 else 'far'
+
 def check(name, cond, extra=''):
     results.append((name, bool(cond), extra))
     print(('PASS ' if cond else 'FAIL ') + name + ('' if cond else '  -> ' + str(extra)))
@@ -72,9 +88,11 @@ with sync_playwright() as p:
         labelFont: m.layers.find(l => l.id === 'pt-label').layout['text-font'],
         intro: m.calls.filter(c => c[0] === 'move').length } }''')
     check('app layers added', st['layers'] == ['pt-area', 'cl-halo', 'cl-circle', 'cl-count', 'pt-sel', 'pt-pin', 'pt-label', 'me-halo', 'me-dot'], st['layers'])
-    check('pin images drawn on demand (2 unrated food categories)', st['images'] == 2, st['images'])
+    check('parsed sample rows', len(SAMPLE_ROWS) >= 60 and len(FOOD_S) >= 30, len(SAMPLE_ROWS))
+    want_imgs = len({(x['cat'], 'none' if x['rating'] is None else x['rating'] * 10) for x in FOOD_S})
+    check('pin images drawn on demand (one per category + score bucket)', st['images'] == want_imgs, (st['images'], want_imgs))
     pins = page.evaluate('window.__map.getSource("places").data.features.map(f => [f.properties.icon, f.properties.color])')
-    check('unrated pins are pale grey', all(i.endswith('-none') and c == '#B9C1BD' for i, c in pins), pins)
+    check('pins coloured by score (0 grey, 5 red)', all(c.lower() == '#d7261e' for i, c in pins if i.endswith('-50')) and all(c.lower() == '#8e9893' for i, c in pins if i.endswith('-0')) and any(i.endswith('-0') for i, c in pins), pins)
     check('renamed to 雪团', page.title() == '雪团 XueTuan' and page.inner_text('.brand-top') == '雪团', (page.title(), page.inner_text('.brand-top')))
     check('three maps: explore / mine / saved', page.locator('[data-action="scope"]').all_inner_texts() == ['探索', '我的', '收藏'], page.locator('[data-action="scope"]').all_inner_texts())
     check('score legend shown', page.locator('.legend').count() == 1)
@@ -82,11 +100,12 @@ with sync_playwright() as p:
     check('labels patched to Chinese', 'name:zh' in json.dumps(st['label']), st['label'])
     check('shield labels untouched', st['shield'] == '{ref}', st['shield'])
     check('fonts picked from style', st['countFont'] == ['Noto Sans Bold'] and st['labelFont'] == ['Noto Sans Regular'], (st['countFont'], st['labelFont']))
-    check('food mode shows 4 sample food places', st['feats'] == 4, st['feats'])
+    check('food mode shows all sample food places', st['feats'] == len(FOOD_S), (st['feats'], len(FOOD_S)))
     check('intro flight to campus', st['intro'] >= 1, st['intro'])
     feed_n = page.locator('.feed-item').count()
-    check('feed lists 4 food samples', feed_n == 4, feed_n)
-    check('fab hint visible (no food near campus)', page.locator('#fab-hint').is_visible())
+    check('feed lists the food samples', feed_n == min(80, len(FOOD_S)), feed_n)
+    check('sample reviews carry scores', page.locator('.feed-item .score').count() == len([x for x in FOOD_S if x['rating'] is not None]))
+    check('fab hint hidden (samples already near campus)', not page.locator('#fab-hint').is_visible())
     ov = page.evaluate('document.documentElement.scrollWidth <= document.documentElement.clientWidth')
     check('no horizontal overflow (mobile)', ov)
     page.screenshot(path=os.path.join(SHOTS, '01-mobile-peek.png'))
@@ -95,8 +114,8 @@ with sync_playwright() as p:
     page.click('[data-action="mode"][data-mode="travel"]')
     page.wait_for_timeout(200)
     tf = page.evaluate('window.__map.getSource("places").data.features.length')
-    check('travel mode shows 21 samples', tf == 21, tf)
-    check('accent repainted', page.evaluate('window.__map.layers.find(l=>l.id==="cl-circle").paint["circle-color"]').lower() == '#0f8b8d', page.evaluate('window.__map.layers.find(l=>l.id==="cl-circle").paint["circle-color"]'))
+    check('travel mode shows all travel samples', tf == len(TRAVEL_S), (tf, len(TRAVEL_S)))
+    check('accent repainted', page.evaluate('window.__map.layers.find(l=>l.id==="cl-circle").paint["circle-color"]').lower() == '#12897f', page.evaluate('window.__map.layers.find(l=>l.id==="cl-circle").paint["circle-color"]'))
     check('fab label switches', page.inner_text('#fab-label') == '打卡', page.inner_text('#fab-label'))
     # expand sheet by tapping title
     page.click('.title-row .view-title')
@@ -271,19 +290,20 @@ with sync_playwright() as p:
     page.click('[data-action="score"]')
     page.wait_for_timeout(150)
     f3 = page.evaluate('window.__map.getSource("places").data.features.map(f => f.properties.name)')
-    check('score filter 3+ keeps only scored places', page.inner_text('[data-action="score"]') == '3 分以上' and f3 == ['测试椰浆饭'], (page.inner_text('[data-action="score"]'), f3))
+    check('score filter 3+ keeps only scored places', page.inner_text('[data-action="score"]') == '3 分以上' and sorted(f3) == sorted([x['name'] for x in FOOD_S if x['rating'] is not None and x['rating'] >= 3] + ['测试椰浆饭']), (page.inner_text('[data-action="score"]'), f3))
     page.click('[data-action="score"]'); page.click('[data-action="score"]')
     page.wait_for_timeout(150)
     check('score filter cycles back', page.inner_text('[data-action="score"]') == '评分不限')
     page.click('[data-action="dist"]')
     page.wait_for_timeout(150)
     walk = page.evaluate('window.__map.getSource("places").data.features.map(f => f.properties.name)')
-    check('distance filter: walkable', page.inner_text('[data-action="dist"]') == '步行 · 1.5km 内' and walk == ['测试椰浆饭'], (page.inner_text('[data-action="dist"]'), walk))
+    check('distance filter: walkable', page.inner_text('[data-action="dist"]') == '步行 · 1.5km 内' and sorted(walk) == sorted([x['name'] for x in FOOD_S if tier(x) == 'walk'] + ['测试椰浆饭']), (page.inner_text('[data-action="dist"]'), walk))
     page.click('[data-action="dist"]'); page.click('[data-action="dist"]')
     page.wait_for_timeout(150)
     mid = sorted(page.evaluate('window.__map.getSource("places").data.features.map(f => f.properties.name)'))
-    check('distance filter: mid-range is KL', mid == sorted(['亚罗街', '茨厂街']), mid)
-    check('feed follows distance filter', page.locator('.feed-item').count() == 2, page.locator('.feed-item').count())
+    want_mid = sorted([x['name'] for x in FOOD_S if tier(x) == 'mid'])
+    check('distance filter: mid-range', mid == want_mid and '亚罗街' in mid, (mid, want_mid))
+    check('feed follows distance filter', page.locator('.feed-item').count() == len(want_mid), page.locator('.feed-item').count())
     page.click('[data-action="dist"]'); page.click('[data-action="dist"]')
     page.wait_for_timeout(150)
     check('distance filter cycles back', page.inner_text('[data-action="dist"]') == '距离不限')
@@ -471,6 +491,21 @@ with sync_playwright() as p:
     page5.wait_for_timeout(200)
     check('migrated average ignores unrated', page5.inner_text('.score-big') == '3', page5.inner_text('.stats'))
     ctx5.close()
+
+    # a browser that saw the old, unrated sample set gets the new samples and scores
+    ctxu = browser.new_context(viewport={'width': 390, 'height': 844})
+    route_all(ctxu)
+    olds = {'version': 2, 'places': [{'id': 's-jalan-alor', 'mode': 'food', 'cat': 'street', 'precision': 'area', 'lat': 3.1456, 'lng': 101.7088, 'name': '亚罗街', 'altName': 'Jalan Alor', 'link': '', 'osm': '', 'createdBy': 'sample', 'createdAt': 1, 'sample': True}],
+            'reviews': [{'id': 'r-s-jalan-alor', 'placeId': 's-jalan-alor', 'authorId': 'sample', 'rating': None, 'price': None, 'text': 'x', 'photos': [], 'visibility': 'public', 'createdAt': 1, 'sample': True}],
+            'wishlist': [{'placeId': 's-jalan-alor', 'createdAt': 1}], 'profile': {'id': 'u-x', 'name': 'x'}, 'areas': [], 'seeded': True}
+    ctxu.add_init_script('if (!localStorage.getItem("xmum-chiwan-map:data:v1")) localStorage.setItem("xmum-chiwan-map:data:v1", ' + json.dumps(json.dumps(olds)) + ')')
+    pageu = ctxu.new_page()
+    pageu.goto(APP)
+    pageu.wait_for_function('window.__map && window.__map.getSource("places")', timeout=8000)
+    stu = pageu.evaluate('JSON.parse(localStorage.getItem("xmum-chiwan-map:data:v1"))')
+    alor = [r for r in stu['reviews'] if r['id'] == 'r-s-jalan-alor']
+    check('old sample set upgraded: scores filled, new samples added, no duplicates', stu['seeded'] == 2 and len(alor) == 1 and alor[0]['rating'] == 4 and len(stu['places']) == len(SAMPLE_ROWS) and len(stu['wishlist']) == 1, (stu['seeded'], alor, len(stu['places'])))
+    ctxu.close()
 
     # dark mode mobile
     ctx3 = browser.new_context(viewport={'width': 390, 'height': 844}, device_scale_factor=2, color_scheme='dark')
