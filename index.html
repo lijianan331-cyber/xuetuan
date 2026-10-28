@@ -2545,7 +2545,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
      城镇、机场（KLIA）这些大的留着（用户 2026-10-27）。字少了，第一次缩放要现画的中文字也少 */
   var BASE_FOOD = ['restaurant', 'fast_food', 'food_court', 'cafe', 'bar', 'beer', 'pub', 'ice_cream', 'bakery'];
   var BASE_TRAVEL = BASE_FOOD.concat(['attraction', 'museum', 'castle', 'monument', 'zoo', 'aquarium', 'theme_park', 'viewpoint', 'art_gallery']);
-  var HIDE_BASE = ['label_other'];
+  var HIDE_BASE = ['label_other'], BASE_POI_MINZOOM = 15;
   var baseFilters = null;
   function trimBaseLabels() {
     if (!map || GMAP) return;
@@ -2557,7 +2557,10 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     }
     var keep = state.mode === 'travel' ? BASE_TRAVEL : BASE_FOOD;
     Object.keys(baseFilters).forEach(function (id) {
-      if (!map.getLayer(id)) return;
+      var l = map.getLayer(id);
+      if (!l) return;
+      /* 底图的店按名气分几层（16、17 级才出小店），放大到 15 级就全出，跟地点库的点一样密（用户 2026-10-28） */
+      if ((l.minzoom || 0) > BASE_POI_MINZOOM) try { map.setLayerZoomRange(id, BASE_POI_MINZOOM, l.maxzoom == null ? 24 : l.maxzoom); } catch (e) { /* skip */ }
       var only = ['match', ['get', 'class'], keep, true, false];
       try { map.setFilter(id, baseFilters[id] ? ['all', baseFilters[id], only] : only); } catch (e) { /* skip layer */ }
     });

@@ -248,6 +248,7 @@ with sync_playwright() as p:
     # 底图只留吃喝（旅行再加景点），车站医院这些不显示；小村落街区名藏起来（用户 2026-10-27）
     bf = page.evaluate('(() => { const l = window.__map.style.layers; return [l.find(x => x.id === "poi_r1").filter, (l.find(x => x.id === "label_other").layout || {}).visibility]; })()')
     check('basemap: only food places on the food map, small village/neighbourhood names hidden', bf[0] and bf[0][0] == 'match' and 'restaurant' in bf[0][2] and 'cafe' in bf[0][2] and 'bus' not in bf[0][2] and 'hospital' not in bf[0][2] and 'attraction' not in bf[0][2] and bf[1] == 'none', bf)
+    check('basemap: small shops (shown from 16–17 by default) show from zoom 15', page.evaluate('window.__map.style.layers.find(x => x.id === "poi_r1").minzoom') == 15)
     # 提前画中文字：地图停下后取附近 6–12 级瓦片，把里面的中文字先画好（常规字体先画）
     page.evaluate('window.__warmCalls = []; window.__map.style.glyphManager = { _getAndCacheGlyphsPromise: function (s, c) { window.__warmCalls.push([s, c]); } }; window.__map.fire("idle")')
     page.wait_for_timeout(2500)
