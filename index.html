@@ -817,7 +817,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
   };
   var STYLE_ORDER = ['light', 'color', 'dark'];
   var PRICE_STEPS = [0, 15, 30, 50];
-  var APP_LAYERS = ['cl-halo', 'cl-circle', 'cl-count', 'pt-pin', 'pt-photo', 'pt-label', 'me-halo', 'me-dot'];
+  var APP_LAYERS = ['lib-dot', 'lib-label', 'cl-halo', 'cl-circle', 'cl-count', 'pt-pin', 'pt-photo', 'pt-label', 'me-halo', 'me-dot'];
   /* 地图最多按 2 倍画（提速），图钉图片也画 2 倍就够 */
   var DPR = Math.min(window.devicePixelRatio || 1, 2);
   /* 每张照片多存一张小图：列表、地图图钉用它，省流量；地点页和看大图用原图 */
@@ -2225,6 +2225,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
   var viewTimer = null, lastGlobeChip = false;
   function onMoveEnd() {
     clearTimeout(viewTimer); viewTimer = setTimeout(saveView, 400);
+    queueLib();
     ensurePinThumbs();
     updateSelPin();
     var g = globeChipShown();
@@ -2906,6 +2907,17 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     map.addSource('places', { type: 'geojson', data: placesGeoJSON(), cluster: true, clusterMaxZoom: 13, clusterRadius: 46 });
     map.addSource('me', { type: 'geojson', data: meFC() });
     map.addSource('homes', { type: 'geojson', data: homesFC(), cluster: true, clusterMaxZoom: 11, clusterRadius: 36 });
+    /* 地点库里的店：放大后才出，小圆点 + 店名，垫在所有图钉下面 */
+    map.addSource('libpoi', { type: 'geojson', data: libFC() });
+    map.addLayer({
+      id: 'lib-dot', type: 'circle', source: 'libpoi', minzoom: LIB_MINZOOM,
+      paint: { 'circle-radius': 4.5, 'circle-color': ['case', ['==', ['get', 'mode'], 'travel'], '#3F9C8A', '#E8833A'], 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 1.5 }
+    });
+    map.addLayer({
+      id: 'lib-label', type: 'symbol', source: 'libpoi', minzoom: LIB_MINZOOM,
+      layout: { 'text-field': ['get', 'name'], 'text-font': fonts.regular, 'text-size': 11, 'text-anchor': 'top', 'text-offset': [0, 0.5], 'text-max-width': 8, 'text-optional': true, 'text-padding': 3 },
+      paint: { 'text-color': ['case', ['==', ['get', 'mode'], 'travel'], '#2F7D6E', '#B4581B'], 'text-halo-color': 'rgba(255,255,255,0.95)', 'text-halo-width': 1.4 }
+    });
     /* 城市、片区的地点不再画范围圈，和具体地点一样只有图钉（用户 2026-10-27） */
     map.addLayer({
       id: 'cl-halo', type: 'circle', source: 'places', filter: ['has', 'point_count'],
@@ -2962,6 +2974,8 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
   function refreshMap() {
     var src = map && map.getSource && map.getSource('places');
     if (src) src.setData(placesGeoJSON());
+    refreshLib();
+    queueLib();
     var hs = map && map.getSource && map.getSource('homes');
     if (hs) hs.setData(homesFC());
     syncCountries();
@@ -3107,6 +3121,62 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
 
   /* 底图（OpenMapTiles）的 poi 层：不同底图的图层名不一样，按 source-layer 找；换底图时重新找 */
   var poiLayerIds = null;
+  /* ================= 地点库的店画在底图上（用户 2026-10-28：雪团底图放大了很空，谷歌上有的餐厅这里没有）=================
+   * 底图（OpenStreetMap）在马来西亚的店很少；我们的地点库（Overture，Supabase poi 表）多得多。
+   * 放大到 14.5 级以后，按 13 级瓦片分块去取看得到的那几块（同一块只取一次），美食地图只要吃的，旅行地图只要玩的；
+   * 雪团里已经有的店不重复画（它有自己的评分图钉）。点了和点搜索结果一样，出预览、能打分 */
+  var LIB_MINZOOM = 14.5, LIB_TILE_Z = 13, libTiles = {}, libTimer = null;
+  function libFC() {
+    var feats = [], seen = {};
+    if (!map || GMAP) return { type: 'FeatureCollection', features: feats };
+    Object.keys(libTiles).forEach(function (k) {
+      if (k.split('/')[0] !== state.mode || !Array.isArray(libTiles[k])) return;
+      libTiles[k].forEach(function (r) {
+        if (seen[r.osm] || ownPlaceFor(r)) return;
+        seen[r.osm] = 1;
+        feats.push({ type: 'Feature', geometry: { type: 'Point', coordinates: [r.lng, r.lat] }, properties: { osm: r.osm, name: r.name, alt: r.alt, mode: r.mode, cat: r.cat || '', where: r.where } });
+      });
+    });
+    return { type: 'FeatureCollection', features: feats };
+  }
+  function ownPlaceFor(r) {
+    return store.places().some(function (p) {
+      if (!knownToMe(p)) return false;
+      return p.osm === r.osm || (haversine(p, r) < 80 && (sameName(p.name, r.name) || sameName(p.name, r.alt)));
+    });
+  }
+  function refreshLib() { var src = map && map.getSource && map.getSource('libpoi'); if (src) src.setData(libFC()); }
+  function queueLib() { clearTimeout(libTimer); libTimer = setTimeout(loadLib, 250); }
+  function loadLib() {
+    if (!map || GMAP || !sbClient || !map.getSource('libpoi') || map.getZoom() < LIB_MINZOOM) return;
+    var b = viewBounds();
+    if (!b) return;
+    var n = Math.pow(2, LIB_TILE_Z), nw = merc(b.getWest(), b.getNorth()), se = merc(b.getEast(), b.getSouth());
+    var x0 = Math.floor(nw.x * n), x1 = Math.floor(se.x * n), y0 = Math.floor(nw.y * n), y1 = Math.floor(se.y * n);
+    if ((x1 - x0 + 1) * (y1 - y0 + 1) > 12) return;
+    var mode = state.mode, jobs = [];
+    for (var x = x0; x <= x1; x++) for (var y = y0; y <= y1; y++) {
+      var key = mode + '/' + x + '/' + y;
+      if (libTiles[key]) continue;
+      libTiles[key] = 'loading';
+      (function (key, x, y) {
+        var a = unmerc(x / n, y / n), c = unmerc((x + 1) / n, (y + 1) / n);
+        jobs.push(sbClient.from('poi').select('id, name, alt_name, mode, cat, lat, lng, locality').eq('mode', mode)
+          .gte('lat', c.lat).lte('lat', a.lat).gte('lng', a.lng).lte('lng', c.lng).limit(400)
+          .then(function (r) { if (r.error) throw r.error; libTiles[key] = (r.data || []).map(poiRow); },
+            function () { delete libTiles[key]; }));
+      })(key, x, y);
+    }
+    if (jobs.length) Promise.all(jobs).then(refreshLib);
+  }
+  function libAt(pt) {
+    if (!map.getLayer('lib-dot')) return null;
+    var hits = map.queryRenderedFeatures([[pt.x - 10, pt.y - 10], [pt.x + 10, pt.y + 10]], { layers: ['lib-dot', 'lib-label'] });
+    if (!hits.length) return null;
+    var pr = hits[0].properties || {}, co = hits[0].geometry.coordinates;
+    return { osm: pr.osm, name: pr.name, alt: pr.alt || '', lng: round6(co[0]), lat: round6(co[1]), mode: pr.mode, cat: pr.cat || null, precision: 'exact', where: pr.where || '' };
+  }
+
   function basePoiLayers() {
     if (poiLayerIds) return poiLayerIds;
     var st = map && map.getStyle();
@@ -3114,6 +3184,8 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     return poiLayerIds;
   }
   function basePoiAt(pt) {
+    var lib = libAt(pt);
+    if (lib) return lib;
     var layers = basePoiLayers();
     if (!layers.length) return null;
     var hits = map.queryRenderedFeatures([[pt.x - 10, pt.y - 10], [pt.x + 10, pt.y + 10]], { layers: layers });

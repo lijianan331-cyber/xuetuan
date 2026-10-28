@@ -222,7 +222,7 @@ with sync_playwright() as p:
         countFont: m.layers.find(l => l.id === 'cl-count').layout['text-font'],
         labelFont: m.layers.find(l => l.id === 'pt-label').layout['text-font'],
         intro: m.calls.filter(c => c[0] === 'move').map(c => c[1]) } }''')
-    check('app layers added', st['layers'] == ['cl-halo', 'hometown-pin', 'cl-circle', 'cl-count', 'home-pin', 'pt-pin', 'pt-photo', 'pt-label', 'me-halo', 'me-dot'], st['layers'])
+    check('app layers added', st['layers'] == ['lib-dot', 'lib-label', 'cl-halo', 'hometown-pin', 'cl-circle', 'cl-count', 'home-pin', 'pt-pin', 'pt-photo', 'pt-label', 'me-halo', 'me-dot'], st['layers'])
     check('parsed sample rows', len(SAMPLE_ROWS) >= 60 and len(FOOD_S) >= 30, len(SAMPLE_ROWS))
     want_imgs = len({(x['cat'], 'none' if x['rating'] is None else x['rating'] * 10) for x in FOOD_S})
     check('pin images drawn on demand (one per category + score bucket)', st['images'] == want_imgs, (st['images'], want_imgs))
@@ -836,7 +836,7 @@ with sync_playwright() as p:
     st2 = page.evaluate('({setStyle: window.__map.calls.filter(c=>c[0]==="setStyle").length, layers: window.__map.layers.map(l=>l.id).length, images: Object.keys(window.__map.images).length, proj: window.__map.projection})')
     st2['icons'] = page.evaluate('[...new Set(window.__map.getSource("places").data.features.concat(window.__map.getSource("homes").data.features).flatMap(f => [f.properties.icon, f.properties.pic]).filter(Boolean))].sort()')
     st2['imageIds'] = page.evaluate('Object.keys(window.__map.images).sort()')
-    check('base map switch re-adds layers + images', st2['setStyle'] == 1 and st2['layers'] == 10 and st2['icons'] == st2['imageIds'] and st2['proj'] == {'type': ['interpolate', ['linear'], ['zoom'], 5, 'vertical-perspective', 7, 'mercator']}, st2)
+    check('base map switch re-adds layers + images', st2['setStyle'] == 1 and st2['layers'] == 12 and st2['icons'] == st2['imageIds'] and st2['proj'] == {'type': ['interpolate', ['linear'], ['zoom'], 5, 'vertical-perspective', 7, 'mercator']}, st2)
     tab(page, 'explore')
     set_mode(page, 'food')
 
@@ -1594,6 +1594,27 @@ with sync_playwright() as p:
     names6 = page6.evaluate('window.__map.getSource("places").data.features.map(f => f.properties.name)')
     check('remote: uses Supabase with publishable key', page6.evaluate('window.__sb.key').startswith('sb_publishable_'))
     check('remote: logged out sees public places only, no samples', names6 == ['B 的公开店'], names6)
+    # 底图太空：放大后把地点库的店画成小圆点 + 店名；雪团已有的不重复；美食地图只有吃的；点了出预览（用户 2026-10-28）
+    page6.evaluate('''window.__sb.db.poi.push({ id: 'ddd', name: 'B 的公开店', alt_name: '', mode: 'food', cat: 'chinese', lat: 2.8336, lng: 101.7036, locality: 'Sepang' },
+        { id: 'eee', name: 'Taman Ujian', alt_name: '', mode: 'travel', cat: 'park', lat: 2.8345, lng: 101.7045, locality: 'Sepang' })''')
+    page6.evaluate('''(() => { const m = window.__map; m.getBounds = () => ({ getWest: () => 101.69, getEast: () => 101.72, getNorth: () => 2.85, getSouth: () => 2.82, contains: () => true });
+        window.__libQ0 = window.__sb.calls ? window.__sb.calls.length : 0; m.jumpTo({ center: [101.704, 2.834], zoom: 13 }); })()''')
+    page6.wait_for_timeout(600)
+    lib0 = page6.evaluate('window.__map.getSource("libpoi").data.features.length')
+    page6.evaluate('window.__map.jumpTo({ center: [101.704, 2.834], zoom: 15.5 })')
+    page6.wait_for_timeout(900)
+    lib1 = page6.evaluate('window.__map.getSource("libpoi").data.features.map(f => f.properties.name)')
+    ly = page6.evaluate('(() => { const l = window.__map.layers; const i = n => l.findIndex(x => x.id === n); return [l.find(x => x.id === "lib-dot").minzoom, i("lib-label") < i("cl-halo")]; })()')
+    check('place library: nothing fetched when zoomed out; at street level its food places show under our pins, places already in XueTuan not repeated', lib0 == 0 and 'Kafe Ujian Dekat' in lib1 and 'B 的公开店' not in lib1 and 'Taman Ujian' not in lib1 and ly == [14.5, True], (lib0, lib1, ly))
+    page6.evaluate('''(() => { window.__qrf = [{ layer: { id: 'lib-dot' }, properties: { osm: 'ovt/aaa', name: 'Kafe Ujian Dekat', alt: '', mode: 'food', cat: 'cafe', where: 'Sepang' }, geometry: { type: 'Point', coordinates: [101.704, 2.8341] } }];
+        window.__map.fire('click', { point: { x: 200, y: 300 }, lngLat: { lng: 101.704, lat: 2.8341 } }); window.__qrf = []; })()''')
+    page6.wait_for_timeout(400)
+    check('place library: tapping a dot opens its preview with scoring', 'Kafe Ujian Dekat' in page6.inner_text('#view'), page6.inner_text('#view')[:120])
+    page6.click('[data-action="back"]') if page6.locator('[data-action="back"]').count() else None
+    page6.wait_for_timeout(200)
+    page6.evaluate('window.__map.jumpTo({ center: [101.703, 2.8329], zoom: 14.6 })'); page6.wait_for_timeout(300)
+    page6.evaluate('window.__map.getBounds = undefined; window.__sb.db.poi = window.__sb.db.poi.filter(r => r.id !== "ddd" && r.id !== "eee")')
+    tab(page6, 'home'); page6.wait_for_timeout(300)
     check('remote: home shows other people’s public posts with their name', page6.locator('.post-card', has_text='小B').count() == 1 and page6.locator('.post-card', has_text='秘密').count() == 0)
     via_home(page6, '小B', to_place=False)
     check('remote: the post says where they are from', '小B' in page6.inner_text('.post-who') and '来自 Klang' in page6.inner_text('.post-who') and page6.inner_text('.post-text') == '好吃', page6.inner_text('#view')[:200])
