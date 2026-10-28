@@ -51,6 +51,7 @@
   Map.prototype.getLayer = function (id) { return this._find(id); };
   Map.prototype.setLayoutProperty = function (id, k, v) { var l = this._find(id); if (!l) throw new Error('no layer ' + id); (l.layout = l.layout || {})[k] = v; };
   Map.prototype.setPaintProperty = function (id, k, v) { var l = this._find(id); if (!l) throw new Error('no layer ' + id); (l.paint = l.paint || {})[k] = v; };
+  Map.prototype.querySourceFeatures = function (src, o) { return (window.__qsf || []).filter(function (f) { return !o || !o.sourceLayer || f.sourceLayer === o.sourceLayer; }); };
   Map.prototype.setLayerZoomRange = function (id, lo, hi) { var l = this._find(id); if (!l) throw new Error('no layer ' + id); l.minzoom = lo; l.maxzoom = hi; };
   Map.prototype.setFilter = function (id, f) { var l = this._find(id); if (!l) throw new Error('no layer ' + id); l.filter = f; };
   Map.prototype.addImage = function (id, img, o) {

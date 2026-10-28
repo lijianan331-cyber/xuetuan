@@ -1040,7 +1040,8 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       edit: '编辑', saveEdit: '保存修改', updated: '改好了',
       login: '登录', loginTitle: '登录雪团', loginWhy: '浏览不用登录。加地点、写点评、收藏要先登录。',
       loginGoogle: '用 Google 登录', loginOr: '或者用邮箱', loginEmailPh: '你的邮箱', loginSend: '发登录链接',
-      loginSent: '登录链接发到 {e} 了，去邮箱点一下就行。', loginFail: '没成功：{m}', loginFirst: '先登录一下',
+      loginSent: '登录链接发到 {e} 了，去邮箱点一下就行。', loginFail: '没成功：{m}', loginFirst: '先登录一下', anonName: '雪团用户{n}', anonReady: '已经给你分配了一个号，可以直接记了', anonTapAgain: '号分配好了，再点一下',
+      anonWhy: '现在是匿名账号，只存在这台手机的这个浏览器里，清缓存或换手机就找不回了。绑定谷歌后，换手机也能登录，记录都在。', linkGoogle: '绑定谷歌账号',
       loggedIn: '登录了', loggedOut: '已退出登录', logout: '退出登录', account: '账号', signedInAs: '已登录：{e}',
       remoteNote: '记录存在雪团的服务器上，换手机也在。公开的大家都能看到，私密的只有你自己能看到。',
       uploadLocal: '上传这台设备上的旧记录', uploadLocalQ: '把这个浏览器里以前存的记录（不含示例）上传到你的账号？', uploadLocalOk: '上传',
@@ -1142,7 +1143,8 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       edit: 'Edit', saveEdit: 'Save changes', updated: 'Updated',
       login: 'Log in', loginTitle: 'Log in to XueTuan', loginWhy: 'Browsing is open to everyone. Log in to add places, write reviews and save spots.',
       loginGoogle: 'Continue with Google', loginOr: 'or use your email', loginEmailPh: 'Your email', loginSend: 'Email me a login link',
-      loginSent: 'Login link sent to {e}. Open it to log in.', loginFail: 'That didn’t work: {m}', loginFirst: 'Log in first',
+      loginSent: 'Login link sent to {e}. Open it to log in.', loginFail: 'That didn’t work: {m}', loginFirst: 'Log in first', anonName: 'XueTuan user {n}', anonReady: 'You got a guest account, go ahead', anonTapAgain: 'Guest account ready, tap again',
+      anonWhy: 'This is a guest account, kept only in this browser on this phone. Clearing data or switching phones loses it. Link Google to keep your records anywhere.', linkGoogle: 'Link Google account',
       loggedIn: 'Logged in', loggedOut: 'Logged out', logout: 'Log out', account: 'Account', signedInAs: 'Logged in as {e}',
       remoteNote: 'Your entries live on the XueTuan server, so they follow you across devices. Public ones are visible to everyone; private ones only to you.',
       uploadLocal: 'Upload old entries from this device', uploadLocalQ: 'Upload the entries saved in this browser (not the samples) to your account?', uploadLocalOk: 'Upload',
@@ -1633,6 +1635,12 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       signInWithGoogle: function () {
         return client.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: location.origin + location.pathname } }).then(ok);
       },
+      /* 匿名号：不用填任何东西；绑谷歌后还是同一个号，记录都在（后台要开 anonymous sign-ins 和 manual linking） */
+      signInAnonymously: function () { return client.auth.signInAnonymously().then(ok); },
+      isAnon: function () { return !!(session && session.user && session.user.is_anonymous); },
+      linkGoogle: function () {
+        return client.auth.linkIdentity({ provider: 'google', options: { redirectTo: location.origin + location.pathname } }).then(ok);
+      },
       signOut: function () { return client.auth.signOut().then(ok); },
 
       /* ---- 读 ---- */
@@ -2067,7 +2075,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
   function commitStars(el, v) {
     var c = el.dataset.commit;
     if (c === 'form') { if (state.form) { state.form.rating = v; var e = $('#err-rating'); if (e) e.hidden = true; } }
-    else if (c === 'place-score') { if (state.placeId && requireLogin()) startReview(state.placeId, v); }
+    else if (c === 'place-score') { var spid = state.placeId; if (spid && requireLogin(function () { startReview(spid, v); })) startReview(spid, v); }
     else if (c === 'preview-score') { if (state.preview) addFromResult(state.preview, false, v); }
     else if (c === 'bulk') bulkRate(el, v);
   }
@@ -2254,7 +2262,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       map.on('styleimagemissing', onImageMissing);
       map.on('moveend', function () { if (!gSyncing) onMoveEnd(); });
       if (PERF) { map.on('move', perfMoved); map.on('style.load', perfHook); perfHook(); if (!GMAP) map.on('idle', perfMark); }
-      map.on('idle', function () { if (!glyphsWarmed) setTimeout(warmGlyphs, 800); });
+      map.on('idle', function () { if (!glyphsWarmed) setTimeout(warmGlyphs, 800); collectBaseNames(); });
       map.on('zoom', function () { if (state.picking) updatePickUI(); });
       map.on('error', function (e) { if (window.console) console.warn('map:', e && e.error ? e.error.message : e); });
     }).catch(function () { showMapError(); });
@@ -3167,12 +3175,48 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     Object.keys(libTiles).forEach(function (k) {
       if (k.split('/')[0] !== state.mode || !Array.isArray(libTiles[k])) return;
       libTiles[k].forEach(function (r) {
-        if (seen[r.osm] || ownPlaceFor(r)) return;
+        if (seen[r.osm] || ownPlaceFor(r) || baseHas(r)) return;
         seen[r.osm] = 1;
         feats.push({ type: 'Feature', geometry: { type: 'Point', coordinates: [r.lng, r.lat] }, properties: { osm: r.osm, name: r.name, alt: r.alt, mode: r.mode, cat: r.cat || '', where: r.where } });
       });
     });
     return { type: 'FeatureCollection', features: feats };
+  }
+  /* 底图（OSM）和地点库（Overture）常有同一家，位置差几十米，画两遍像两家店（用户 2026-10-28「两个星巴克？」）：
+     底图的店出来以后（15 级起），附近 150 米内底图已有同名的，地点库的点就不画，留底图那个（有图标，也能点开） */
+  var baseNames = null, baseNamesKey = '';
+  function normName(n) { return String(n || '').toLowerCase().replace(/[\s'’`.,\-()&@!·]+/g, ''); }
+  function collectBaseNames() {
+    if (!map || GMAP || !map.querySourceFeatures) return;
+    var names = null, key = '';
+    if (map.getZoom() >= BASE_POI_MINZOOM) {
+      var ids = basePoiLayers(), l = ids.length && map.getLayer(ids[0]), feats = [];
+      if (!l || !l.source) return;
+      try { feats = map.querySourceFeatures(l.source, { sourceLayer: 'poi' }) || []; } catch (e) { return; }
+      var keep = state.mode === 'travel' ? BASE_TRAVEL : BASE_FOOD, parts = [];
+      names = {};
+      feats.forEach(function (f) {
+        var p = f.properties || {}, g = f.geometry;
+        if (!g || g.type !== 'Point' || keep.indexOf(p['class']) === -1) return;
+        [p.name, p['name:en'], p['name:latin']].forEach(function (nm) {
+          nm = normName(nm);
+          if (!nm) return;
+          (names[nm] = names[nm] || []).push({ lng: g.coordinates[0], lat: g.coordinates[1] });
+          parts.push(nm + '@' + g.coordinates[0].toFixed(4) + ',' + g.coordinates[1].toFixed(4));
+        });
+      });
+      key = state.mode + ':' + parts.sort().join('|');
+    }
+    if (key === baseNamesKey) return;
+    baseNamesKey = key; baseNames = names;
+    refreshLib();
+  }
+  function baseHas(r) {
+    if (!baseNames) return false;
+    return [r.name, r.alt].some(function (nm) {
+      var list = nm && baseNames[normName(nm)];
+      return !!list && list.some(function (c) { return haversine(c, r) < 150; });
+    });
   }
   function ownPlaceFor(r) {
     return store.places().some(function (p) {
@@ -4497,7 +4541,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     flyTo([r.lng, r.lat], r.zoom || (r.precision === 'city' ? 10 : r.precision === 'area' ? 14 : 16.5));
   }
   function addFromResult(r, keepMode, rating) {
-    if (!requireLogin()) return;
+    if (!requireLogin(function () { addFromResult(r, keepMode, rating); })) return;
     var mode = keepMode ? state.mode : r.mode;
     if (mode !== state.mode) setMode(mode, { noFly: true });
     var precision = mode === 'food' ? 'exact' : r.precision;
@@ -4557,7 +4601,9 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
   function renderMe() {
     var pf = me();
     var areas = store.areas(), remote = store.mode === 'remote', signedIn = store.signedIn();
-    var account = !remote ? '' : '<div class="field"><span class="f-label">' + esc(t('account')) + '</span>' + (signedIn
+    var account = !remote ? '' : '<div class="field"><span class="f-label">' + esc(t('account')) + '</span>' + (signedIn && store.isAnon()
+      ? '<p class="f-hint">' + esc(t('anonWhy')) + '</p><button type="button" class="btn primary" data-action="link-google">' + esc(t('linkGoogle')) + '</button>'
+      : signedIn
       ? '<div class="account-row"><span>' + esc(t('signedInAs', { e: store.email() })) + '</span><button type="button" class="btn small ghost" data-action="logout">' + esc(t('logout')) + '</button></div>'
       : '<p class="f-hint">' + esc(t('loginWhy')) + '</p><button type="button" class="btn primary" data-action="login">' + esc(t('login')) + '</button>') + '</div>';
     /* 以前这里有“来自哪”四个输入框，没什么用，去掉了（以后改成在旅行地图上设“我的家”） */
@@ -4705,7 +4751,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
   }
   function afterHomeChange() { refreshMap(); renderFilters(); }
   function openHomeSet() {
-    if (!requireLogin()) return;
+    if (!requireLogin(openHomeSet)) return;
     rememberFeedSnap();
     state.homeBack = onMeRoot() ? 'me' : state.view === 'homes' ? 'homes' : null;
     state.view = 'home';
@@ -4744,12 +4790,31 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     state.view = 'login'; state.form = null;
     render(); setSnap('full');
   }
-  /* 线上版没登录时，写操作先去登录页 */
-  function requireLogin() {
+  /* 线上版没登录时：先自动发一个匿名号，发好了接着做刚才那件事（用户 2026-10-28：匿名也能加，随便分配个号，
+     想换手机不丢再绑谷歌）。retry 为空的（要选文件的）发好号后让用户再点一次——浏览器不让代码替用户打开选文件。
+     后台没开匿名登录时，退回原来的登录页 */
+  var afterAuth = null, anonFailed = false;
+  function requireLogin(retry) {
     if (store.signedIn()) return true;
+    if (store.signInAnonymously && !anonFailed) {
+      if (afterAuth) return false;
+      afterAuth = retry || function () { toast(t('anonTapAgain')); };
+      store.signInAnonymously().catch(function () {
+        afterAuth = null; anonFailed = true;
+        toast(t('loginFirst'));
+        openLogin();
+      });
+      return false;
+    }
     toast(t('loginFirst'));
     openLogin();
     return false;
+  }
+  /* 匿名号没名字：给个「雪团用户 1234」，以后在「我的」里随时改 */
+  function ensureAnonName() {
+    if (!store.isAnon || !store.isAnon() || (me().name || '').trim()) return;
+    var id = me().id || '', num = parseInt(id.replace(/[^0-9a-f]/gi, '').slice(-6) || '0', 16) % 10000;
+    store.updateProfile({ name: t('anonName', { n: ('000' + num).slice(-4) }) });
   }
   function sendLoginLink() {
     var input = $('#login-email'), msg = $('#login-msg'), btn = $('#login-send');
@@ -5789,7 +5854,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
   /* 一个一个存：地点（已有的就用已有的，这一批里选了同一家的也只建一次）→ 压缩照片 → 记录 */
   function bulkSave() {
     var b = state.bulk;
-    if (!b || !b.groups || b.saving || !requireLogin()) return;
+    if (!b || !b.groups || b.saving || !requireLogin(bulkSave)) return;
     var todo = b.groups.filter(bulkReady);
     if (!todo.length) return;
     var nick = $('#bk-nick');
@@ -6071,8 +6136,8 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       case 'foot-sub': state.mineSub = d.v; setTab('foot'); break;
       case 'open-post': openPost(d.id); break;
       case 'post-place': openPostPlace(d.id); break;
-      case 'save-place': if (requireLogin()) savePlace(d.id); break;
-      case 'save-preview': if (state.preview && requireLogin()) savePreview(state.preview); break;
+      case 'save-place': { var spl = d.id; if (requireLogin(function () { savePlace(spl); })) savePlace(spl); break; }
+      case 'save-preview': { var spv = state.preview; if (spv && requireLogin(function () { savePreview(spv); })) savePreview(spv); break; }
       case 'cat': state.cat = d.cat; refilter(); break;
       case 'saved-want': state.savedWant = d.v === 'want'; refilter(); break;
       case 'mine-mode': if (state.view !== 'feed') goFeed(); setMineView(d.v); if (state.bsheet) renderBSheet(); break;
@@ -6080,7 +6145,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       case 'home-set': openHomeSet(); break;
       case 'acct': switchAccount(d.id); break;
       case 'acct-add': addAccount(); break;
-      case 'home-pick': if (requireLogin()) startPick({ home: true }); break;
+      case 'home-pick': if (requireLogin(function () { startPick({ home: true }); })) startPick({ home: true }); break;
       case 'home-result': var hr = homeQ.results[+d.i]; if (hr) saveHome(hr.name, hr); break;
       case 'home-del':
         store.setHome(null).then(function () { toast(t('homeRemoved')); afterHomeChange(); render(); }, function () { toast(t('saveFail')); });
@@ -6100,7 +6165,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       case 'set-style': setBasemap(d.style); break;
       case 'campus': closeBSheet(); if (state.view === 'search') { toMapTab(); goFeed(); } flyTo([XMUM.lng, XMUM.lat], state.mode === 'travel' ? TRAVEL_ZOOM : 14.6); break;
       case 'locate': closeBSheet(); if (state.view === 'search') { toMapTab(); goFeed(); } locate(); break;
-      case 'add': if (requireLogin()) openAdd(); break;
+      case 'add': if (requireLogin(openAdd)) openAdd(); break;
       case 'add-pin': startPick({}); break;
       case 'add-existing': startReview(d.id); break;
       case 'pick-cancel': cancelPick(); break;
@@ -6112,8 +6177,8 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       case 'clear-samples': clearSamples(); break;
       case 'open-place': openPlace(d.id); break;
       case 'back': back(); break;
-      case 'write-review': if (state.placeId && requireLogin()) startReview(state.placeId); break;
-      case 'toggle-save': if (state.placeId && requireLogin()) toggleSave(state.placeId); break;
+      case 'write-review': { var wpid = state.placeId; if (wpid && requireLogin(function () { startReview(wpid); })) startReview(wpid); break; }
+      case 'toggle-save': { var tpid = state.placeId; if (tpid && requireLogin(function () { toggleSave(tpid); })) toggleSave(tpid); break; }
       case 'copy-coords': copyCoords(d.c); break;
       case 'photo': openLightbox(d.id, d.group); break;
       case 'edit-review': startEdit(d.id); break;
@@ -6159,6 +6224,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       case 'login': openLogin(); break;
       case 'login-google': store.signInWithGoogle().catch(function (err) { toast(t('loginFail', { m: (err && err.message) || '' })); }); break;
       case 'logout': store.signOut().catch(function () {}); break;
+      case 'link-google': store.linkGoogle().catch(function (err) { toast(t('loginFail', { m: (err && err.message) || '' })); }); break;
       case 'upload-local': uploadLegacy(); break;
       case 'export': exportData(); break;
       case 'import': if (requireLogin()) $('#import-file').click(); break;
@@ -6249,7 +6315,16 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
 
   /* ================= boot ================= */
   store.onAuthChange(function () {
-    toast(t(store.signedIn() ? 'loggedIn' : 'loggedOut'));
+    var next = afterAuth;
+    afterAuth = null;
+    if (next && store.signedIn()) {
+      ensureAnonName();
+      renderChrome(); refreshMap();
+      if (state.view === 'login') goFeed(); else render();
+      next();
+      return;
+    }
+    toast(t(store.signedIn() ? (store.isAnon && store.isAnon() ? 'anonReady' : 'loggedIn') : 'loggedOut'));
     if (state.view === 'login' || state.view === 'form') goFeed(); else render();
     renderChrome();
     refreshMap();

@@ -142,7 +142,16 @@
           onAuthStateChange: function (fn) { listeners.push(fn); setTimeout(function () { fn('INITIAL_SESSION', session); }, 0); return { data: { subscription: { unsubscribe: function () {} } } }; },
           signInWithOtp: function (o) { calls.push(['otp', o.email, o.options && o.options.emailRedirectTo]); return Promise.resolve({ data: {}, error: null }); },
           signInWithOAuth: function (o) { calls.push(['oauth', o.provider]); return Promise.resolve({ data: {}, error: null }); },
-          signOut: function () { window.__sbLogout(); return Promise.resolve({ error: null }); }
+          signOut: function () { window.__sbLogout(); return Promise.resolve({ error: null }); },
+          signInAnonymously: function () {
+            calls.push(['anon']);
+            if (window.__sbNoAnon) return Promise.resolve(err('Anonymous sign-ins are disabled'));
+            var id = 'eeeeeeee-0000-4000-8000-00000000' + String(Date.now() % 10000).padStart(4, '0');
+            window.__sbLogin(id, '');
+            session.user.is_anonymous = true;
+            return Promise.resolve({ data: { session: session }, error: null });
+          },
+          linkIdentity: function (o) { calls.push(['link', o.provider]); return Promise.resolve({ data: {}, error: null }); }
         },
         storage: {
           from: function (bucket) {

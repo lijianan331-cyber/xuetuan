@@ -1651,6 +1651,14 @@ with sync_playwright() as p:
     lib1 = page6.evaluate('window.__map.getSource("libpoi").data.features.map(f => f.properties.name)')
     ly = page6.evaluate('(() => { const l = window.__map.layers; const i = n => l.findIndex(x => x.id === n); return [l.find(x => x.id === "lib-dot").minzoom, i("lib-label") < i("cl-halo")]; })()')
     check('place library: nothing fetched when zoomed out; at street level its food places show under our pins, places already in XueTuan not repeated', lib0 == 0 and 'Kafe Ujian Dekat' in lib1 and 'B 的公开店' not in lib1 and 'Taman Ujian' not in lib1 and ly == [14.5, True], (lib0, lib1, ly))
+    # 底图上已经有同一家（同名、几十米内）：地点库的点不再画第二个（用户 2026-10-28「两个星巴克？」）
+    page6.evaluate('''window.__qsf = [{ sourceLayer: 'poi', properties: { name: 'KAFE UJIAN dekat', class: 'cafe' }, geometry: { type: 'Point', coordinates: [101.7044, 2.8343] } },
+        { sourceLayer: 'poi', properties: { name: 'Kafe Ujian Dekat', class: 'bus' }, geometry: { type: 'Point', coordinates: [101.704, 2.8341] } }]; window.__map.fire('idle')''')
+    lib_dup = page6.evaluate('window.__map.getSource("libpoi").data.features.map(f => f.properties.name)')
+    page6.evaluate('window.__qsf = [{ sourceLayer: "poi", properties: { name: "Kafe Ujian Dekat", class: "cafe" }, geometry: { type: "Point", coordinates: [101.72, 2.85] } }]; window.__map.fire("idle")')
+    lib_far = page6.evaluate('window.__map.getSource("libpoi").data.features.map(f => f.properties.name)')
+    page6.evaluate('window.__qsf = []; window.__map.fire("idle")')
+    check('place library: a shop the basemap already shows nearby (same name) is not drawn twice; same name far away still drawn', 'Kafe Ujian Dekat' not in lib_dup and 'Kafe Ujian Dekat' in lib_far, (lib_dup, lib_far))
     page6.evaluate('''(() => { window.__qrf = [{ layer: { id: 'lib-dot' }, properties: { osm: 'ovt/aaa', name: 'Kafe Ujian Dekat', alt: '', mode: 'food', cat: 'cafe', where: 'Sepang' }, geometry: { type: 'Point', coordinates: [101.704, 2.8341] } }];
         window.__map.fire('click', { point: { x: 200, y: 300 }, lngLat: { lng: 101.704, lat: 2.8341 } }); window.__qrf = []; })()''')
     page6.wait_for_timeout(400)
@@ -1664,9 +1672,10 @@ with sync_playwright() as p:
     via_home(page6, '小B', to_place=False)
     check('remote: the post says where they are from', '小B' in page6.inner_text('.post-who') and '来自 Klang' in page6.inner_text('.post-who') and page6.inner_text('.post-text') == '好吃', page6.inner_text('#view')[:200])
     page6.click('[data-action="back"]'); page6.wait_for_timeout(200)
+    page6.evaluate('window.__sbNoAnon = true')
     add(page6)
     page6.wait_for_timeout(200)
-    check('remote: adding while logged out asks to log in', page6.locator('#login-form').count() == 1 and not page6.locator('#pick').is_visible())
+    check('remote: adding while logged out asks to log in (when guest accounts are off in Supabase)', page6.locator('#login-form').count() == 1 and not page6.locator('#pick').is_visible())
     page6.fill('#login-email', 'not-an-email')
     page6.click('#login-send')
     check('remote: bad email rejected', page6.get_attribute('#login-email', 'aria-invalid') == 'true')
@@ -1680,6 +1689,27 @@ with sync_playwright() as p:
     page6.evaluate('window.__sbLogin("%s", "a@example.com")' % A)
     page6.wait_for_timeout(300)
     check('remote: login returns to feed with toast', page6.locator('.view-head .view-title').count() == 1 and '登录了' in page6.inner_text('#toast'), page6.inner_text('#toast'))
+
+    # 匿名也能加（用户 2026-10-28）：没登录点 + 就自动发一个号，接着打开添加；「我的」里可以绑谷歌
+    pa = ctx6.new_page()
+    errorsa = []
+    pa.on('pageerror', lambda e: errorsa.append('pageerror: ' + str(e)))
+    pa.goto(APP)
+    pa.wait_for_function('window.__map && window.__map.getSource("places")', timeout=8000)
+    pa.wait_for_timeout(300)
+    add(pa)
+    pa.wait_for_function('document.querySelector("#view").innerText.indexOf("加一家店") !== -1', timeout=5000)
+    pa.wait_for_timeout(800)
+    anon = pa.evaluate('(() => { const c = window.__sb.calls.filter(x => x[0] === "anon").length, id = window.__sb.db.profiles.map(p => p.id).find(i => i.startsWith("eeeeeeee")); return [c, (window.__sb.db.profiles.find(p => p.id === id) || {}).name]; })()')
+    check('guest: tapping + while logged out makes a guest account and goes straight on to adding, named 雪团用户NNNN', anon[0] == 1 and pa.locator('#login-form').count() == 0
+          and re.fullmatch(r'雪团用户\d{4}', anon[1] or ''), anon)
+    pa.click('[data-action="back"]') if pa.locator('[data-action="back"]').count() else None
+    tab(pa, 'me')
+    check('guest: 我的 explains the guest account and offers linking Google', pa.locator('[data-action="link-google"]').count() == 1 and '匿名账号' in pa.inner_text('#view') and pa.locator('[data-action="logout"]').count() == 0)
+    pa.click('[data-action="link-google"]'); pa.wait_for_timeout(100)
+    check('guest: linking Google keeps the same account (linkIdentity)', pa.evaluate('window.__sb.calls.some(c => c[0] === "link" && c[1] === "google")'))
+    check('guest: no page errors', not errorsa, errorsa)
+    pa.close()
 
     # 店名搜索：先查地点库，Photon 的同一家店不重复列出
     add(page6)
