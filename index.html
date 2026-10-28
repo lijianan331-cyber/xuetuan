@@ -2320,7 +2320,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
    * 我们代码里让地图动的地方（flyTo / easeTo / jumpTo / panBy）都转给谷歌，padding 自己换算。
    * 点地图：先看点没点到我们的图钉，再看是不是谷歌地图上的店（谷歌卡片 + 我们的打分），都不是就照原来的处理 */
   var GMAP = /[?&]map=google\b/.test(location.search);
-  var gmap = null, gSyncing = false, gPending = null, gAnim = 0, mlJump = null, gLast = {};
+  var gmap = null, gSyncing = false, gPending = null, gAnim = 0, mlJump = null, gLast = {}, gFrames = false;
   function startGoogleMap(center, zoom) {
     document.documentElement.classList.add('gmap-on');
     var el = document.createElement('div');
@@ -2339,7 +2339,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       });
       /* 每画一帧就把镜头抄给 MapLibre */
       var ov = new lib.WebGLOverlayView();
-      ov.onDraw = function () { gSync(); };
+      ov.onDraw = function (o) { if (o && o.transformer) { gFrames = true; gSyncFrame(o.transformer); } else gSync(); };
       ov.setMap(gmap);
       gmap.addListener('bounds_changed', gSync);
       gmap.addListener('idle', function () { gSync(); onMoveEnd(); });
@@ -2351,8 +2351,35 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       location.replace(location.href.replace(/([?&])map=google\b&?/, '$1').replace(/[?&]$/, ''));
     });
   }
-  function gSync() {
+  /* 谷歌矢量地图每画一帧都给一个“这一帧的镜头”（transformer）。直接拿它算 MapLibre 该在哪：
+     把中心附近两个点投到屏幕上，得到这一帧的准确中心和缩放。以前读 getCenter()/getZoom()，
+     两指缩放时它们和这一帧画出来的不完全一样，再加上 bounds_changed 又按旧值同步一次，图钉就来回晃（用户 2026-10-28 视频） */
+  function gSyncFrame(tr) {
     if (!gmap || !map) return;
+    var c = gmap.getCenter();
+    if (!c) return;
+    var el = map.getContainer(), W = el.clientWidth, H = el.clientHeight;
+    if (!W || !H) return;
+    function px(lat, lng) {
+      var m = tr.fromLatLngAltitude({ lat: lat, lng: lng, altitude: 0 });
+      return { x: (m[12] / m[15] * 0.5 + 0.5) * W, y: (0.5 - m[13] / m[15] * 0.5) * H };
+    }
+    var lat0 = c.lat(), lng0 = c.lng(), dl = 0.01;
+    var p0 = px(lat0, lng0), p1 = px(lat0, lng0 + dl);
+    var m0 = merc(lng0, lat0), k = (p1.x - p0.x) / (dl / 360);   /* 整个世界有多少像素宽 */
+    if (!(k > 0) || !isFinite(k)) { gSync(); return; }
+    var ll = unmerc(m0.x + (W / 2 - p0.x) / k, m0.y + (H / 2 - p0.y) / k), z = Math.log(k / 512) / Math.LN2;
+    if (ll.lng === gLast.lng && ll.lat === gLast.lat && z === gLast.mz) return;
+    gLast = { lng: ll.lng, lat: ll.lat, mz: z };
+    gSyncing = true;
+    try {
+      mlJump.call(map, { center: [ll.lng, ll.lat], zoom: z, padding: { top: 0, bottom: 0, left: 0, right: 0 } });
+      if (map.redraw) map.redraw();
+    } finally { gSyncing = false; }
+  }
+  function gSync() {
+    /* 有逐帧镜头时只按它来，别的事件不再插一脚 */
+    if (!gmap || !map || gFrames) return;
     var c = gmap.getCenter(), z = gmap.getZoom();
     if (!c || z == null) return;
     var lng = c.lng(), lat = c.lat();
