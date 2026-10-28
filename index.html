@@ -5423,7 +5423,11 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     if (c) { if (c !== f.cat || f.catSrc !== 'name') suggestCat(f, c, 'name'); }
     else if (f.catSrc === 'name') { var el = $('#cat-guess'); if (el) el.hidden = true; f.catSrc = 'name-old'; }
   }
+  /* 认图小模型在用户的华为手机上会把页面撑崩（批量加三张就崩、单个加一张照片打几个字也崩，2026-10-28），
+     默认关掉，只按店名关键词预选；网址加 ?catmodel 才用（测试里用假的分类器） */
+  function catModelOn() { return !!window.__catClassifier || /[?&]catmodel\b/.test(location.search); }
   function guessCat(f, thumb) {
+    if (!catModelOn()) return;
     var hint = $('#cat-guess');
     if (!catNoteFor(f) || f.catGuessTried || !hint || !thumb) return;
     if (f.cat && f.catSrc !== 'name-old' && f.catSrc !== 'photo') return; /* 店名或地点库已经给了分类，照片不去改 */
@@ -6250,7 +6254,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
         if ($('#nick-field')) $('#nick-field').hidden = state.form.visibility !== 'public';
         lsSet(LS_SHARE, state.form.visibility === 'public' ? '1' : '0');
         break;
-      case 'f-photo-add': $('#f-file').click(); if (catNoteFor(state.form)) loadCatModel().catch(function () {}); break;
+      case 'f-photo-add': $('#f-file').click(); if (catModelOn() && catNoteFor(state.form)) loadCatModel().catch(function () {}); break;
       case 'bulk-start': if (requireLogin()) $('#bulk-file').click(); break;
       case 'bulk-ph': bulkTogglePhoto(+d.i, +d.j, el); break;
       case 'bulk-pick': bulkPick(+d.i, +d.k); break;
