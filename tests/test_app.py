@@ -851,6 +851,7 @@ with sync_playwright() as p:
     page.click('[data-action="homes-toggle"]')
     check('home: independent mode hides travel places', page.evaluate('window.__map.getSource("places").data.features.length') == 0)
     check('home: opening is explained', '校友家乡地图已打开' in page.inner_text('#toast'))
+    check('home: independent sheet has its own title and no restaurant prompt', page.inner_text('#view h2') == '校友家乡地图' and page.locator('#view [data-action="add"]').count() == 0)
     hfs = page.evaluate('window.__map.getSource("homes").data.features.map(f => f.properties)')
     check('home: public home drawn as a red pin on the big travel map', len(hfs) == 1 and hfs[0]['mine'] is True and hfs[0]['icon'] == 'hometown' and hfs[0]['pin'] is True, hfs)
     img = page.evaluate('window.__map.images["hometown"]')

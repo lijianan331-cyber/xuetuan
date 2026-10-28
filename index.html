@@ -3924,6 +3924,10 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
   function renderFeed() {
     if (state.tab === 'home') { renderHome(); return; }
     if (state.tab === 'me') { renderMe(); return; }
+    if (hometownMode()) {
+      view.innerHTML = '<div class="view-head"><h2 class="view-title" data-action="expand">' + esc(t('homesBtn')) + '</h2><span class="count">' + publicHomeCount() + '</span></div><p class="muted">' + esc(t('homesN', { n: publicHomeCount() })) + '</p>';
+      return;
+    }
     var saved = state.scope === 'saved', places = state.scope === 'all';
     var items = saved ? savedPlaces() : places ? placesInView() : feedReviews();
     var key = {
@@ -4192,7 +4196,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     box.innerHTML = f.photos.map(function (ph) {
       var img = ph.existing ? '<img data-photo="' + esc(ph.id) + '" alt="">' : '<img src="' + (ph.preview || ph.url) + '" alt="">';
       return '<div class="ph-edit' + (isClip(ph.id) ? ' is-clip' : isGif(ph.id) ? ' is-gif' : '') + '"><button type="button" class="ph-preview" data-action="f-photo-preview" data-id="' + esc(ph.id) + '" aria-label="' + esc(t('photoPreview')) + '">' + img + '</button><button type="button" class="ph-del" data-action="f-photo-del" data-id="' + ph.id + '" aria-label="' + esc(t('del')) + '">×</button></div>';
-    }).join('') + (f.mediaBusy ? '<div class="ph-edit ph-busy">' + esc(t('clipBusy')) + '</div>' : '') + (f.photos.length + (f.mediaBusy || 0) < MAX_PHOTOS ? '<button type="button" class="ph-add" data-action="f-photo-add">' + ICON.camera + '<span>' + esc(t('addPhoto')) + '</span></button>' : '');
+    }).join('') + (f.mediaBusy ? '<div class="ph-edit ph-busy">' + esc(t('mediaPreparing')) + '</div>' : '') + (f.photos.length + (f.mediaBusy || 0) < MAX_PHOTOS ? '<button type="button" class="ph-add" data-action="f-photo-add">' + ICON.camera + '<span>' + esc(t('addPhoto')) + '</span></button>' : '');
     hydratePhotos(box);
     var submit = $('#f-submit');
     if (submit && !f.saving) { submit.disabled = !!f.mediaBusy; submit.textContent = t(f.mediaBusy ? 'mediaPreparing' : f.editId ? 'saveEdit' : 'publish'); }
@@ -5006,6 +5010,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     if (tab === state.tab) {
       if (state.view !== 'feed') goFeed();
       else if (view.scrollTo) view.scrollTo({ top: 0, behavior: reduceMotion ? 'auto' : 'smooth' });
+      renderFilters();
       return;
     }
     state.tab = tab;
@@ -5021,6 +5026,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     if (state.tab !== 'home' && state.tab !== 'me') return;
     state.tab = 'explore';
     if (state.scope !== 'all') { state.scope = 'all'; renderFilters(); refreshMap(); }
+    renderFilters();
   }
   function openPost(id) {
     if (!store.review(id)) return;
