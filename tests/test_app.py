@@ -5,7 +5,8 @@ from PIL import Image
 SCR = os.path.dirname(os.path.abspath(__file__))
 import os
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-APP = 'file://' + os.path.join(ROOT, 'index.html')
+from pathlib import Path
+APP = Path(ROOT, 'index.html').as_uri()
 STUB = open(os.path.join(SCR, 'stub_maplibre.js'), encoding='utf-8').read()
 STUB_SB = open(os.path.join(SCR, 'stub_supabase.js'), encoding='utf-8').read()
 STUB_EXIFR = open(os.path.join(SCR, 'stub_exifr.js'), encoding='utf-8').read()
@@ -203,7 +204,7 @@ def route_all(ctx, supabase=False):
     ctx.route('**/*', handler)
 
 with sync_playwright() as p:
-    browser = p.chromium.launch()
+    browser = p.chromium.launch(**({'channel': os.environ['XUETUAN_TEST_BROWSER_CHANNEL']} if os.environ.get('XUETUAN_TEST_BROWSER_CHANNEL') else {}))
     ctx = browser.new_context(viewport={'width': 390, 'height': 844}, device_scale_factor=2, has_touch=True, accept_downloads=True, locale='zh-CN')
     route_all(ctx)
     # 打开时替用户滚 1 像素再滚回来（让华为浏览器收起顶上“相关搜索”那一行）：记下滚到过哪
@@ -1226,6 +1227,7 @@ with sync_playwright() as p:
           var r = this.querySelector('gmp-place-text-search-request'), self = this;
           calls.push(['search', r && r.textQuery, r && r.locationBias, r && r.getAttribute('max-result-count')]);
           setTimeout(function () {
+            if (/broken/i.test(r.textQuery) && !window.__googleRecover) { self.dispatchEvent(new Event('gmp-error')); return; }
             self.places = /katsu/i.test(r.textQuery) ? [{ id: 'gK1', location: { lat: 2.8286977, lng: 101.7055681 } }] : [];
             self.dispatchEvent(new Event('gmp-load'));
           }, 30);
@@ -1265,7 +1267,7 @@ with sync_playwright() as p:
     check('google: same words are not asked again', len(pg.evaluate('window.__gcalls')) == 1 and pg.locator('#g-search').is_visible(), pg.evaluate('window.__gcalls'))
     check('google: one search counted for today', pg.evaluate('JSON.parse(localStorage.getItem("xuetuan:google-day")).n') == 1)
     pg.fill('#q', 'zzz nothing'); pg.wait_for_timeout(900)
-    check('google: no results, no Google block', pg.locator('#g-search').is_hidden())
+    check('google: no results stays visible with explanation and Google Maps link', pg.locator('#g-search').is_visible() and '没有找到' in pg.inner_text('#g-search') and pg.locator('#g-search a[href*="google.com/maps/search"]').count() == 1)
     pg.fill('#q', 'katsu'); pg.wait_for_timeout(900)
     pg.screenshot(path=os.path.join(SHOTS, '05g-google-search.png'))
     pg.evaluate('(() => { const e = new Event("gmp-select"); e.place = document.querySelector("gmp-place-search").places[0]; document.querySelector("gmp-place-search").dispatchEvent(e); })()')
@@ -1300,6 +1302,23 @@ with sync_playwright() as p:
     pt = pg3.inner_text('#perf')
     pb = pg3.evaluate('(() => { const r = document.querySelector("#perf").getBoundingClientRect(); return [r.left >= 0, r.right <= innerWidth, getComputedStyle(document.querySelector("#perf")).pointerEvents]; })()')
     check('perf box: ?perf shows open time, tiles and swipe frame rate, does not take taps', '打开' in pt and '瓦片' in pt and '滑动' in pt and pb == [True, True, 'none'], (pt, pb))
+    # 出错不能永久藏掉，且同词可以重试；旧请求不能覆盖新词。
+    tab(pg, 'explore'); pg.click('#map-ctrls [data-action="search"]'); pg.fill('#q', 'broken retry'); pg.wait_for_timeout(900)
+    pg.locator('[data-action="google-retry"]').wait_for(state='visible', timeout=5000)
+    check('google: component error remains visible with a retry action', pg.locator('[data-action="google-retry"]').is_visible())
+    before_retry = len(pg.evaluate('window.__gcalls'))
+    pg.evaluate('window.__googleRecover = true')
+    pg.click('[data-action="google-retry"]'); pg.wait_for_timeout(900)
+    check('google: retry repeats the same query and restores results', len(pg.evaluate('window.__gcalls')) == before_retry + 1 and pg.locator('gmp-place-search').count() == 1)
+    pg.evaluate('window.__staleGoogle = document.querySelector("gmp-place-search")')
+    pg.fill('#q', 'katsu latest'); pg.wait_for_timeout(900)
+    pg.evaluate('window.__staleGoogle.places = []; window.__staleGoogle.dispatchEvent(new Event("gmp-load")); window.__staleGoogle.dispatchEvent(new Event("gmp-error"))')
+    check('google: stale events do not hide the newer results', pg.locator('gmp-place-search').count() == 1 and pg.locator('.g-status').is_hidden())
+    pg.evaluate('localStorage.setItem("xuetuan:google-day", JSON.stringify({d:new Date().toISOString().slice(0,10),n:60}))')
+    before_limit = len(pg.evaluate('window.__gcalls'))
+    pg.fill('#q', 'quota cafe'); pg.wait_for_timeout(900)
+    check('google: daily cap is explained with no extra paid request', '60' in pg.inner_text('#g-search') and len(pg.evaluate('window.__gcalls')) == before_limit and pg.locator('#g-search a').count() == 1)
+    pg.screenshot(path=os.path.join(SHOTS, '05h-google-limit.png'))
     ctxg.close()
     # 谷歌加载不了（本地文件、密钥不让用）：这一块不出，原来的搜索照常
     ctxn = browser.new_context(viewport={'width': 392, 'height': 709})
@@ -1308,7 +1327,13 @@ with sync_playwright() as p:
     pn.goto(APP)
     pn.wait_for_function('window.__map && window.__map.getSource("places")', timeout=8000)
     tab(pn, 'explore'); pn.click('#map-ctrls [data-action="search"]'); pn.fill('#q', 'katsu'); pn.wait_for_timeout(1200)
-    check('google: when Google can’t load, the block stays hidden and map results still show', pn.locator('#g-search').is_hidden() and pn.locator('#search-results .sec-title').count() >= 1)
+    check('google: load failure explains and allows retry without hiding other sources', pn.locator('#g-search').is_visible() and pn.locator('[data-action="google-retry"]').count() == 1 and pn.locator('#search-results .sec-title').count() >= 1)
+    ctxn.route('**/maps.googleapis.com/**', google_route)
+    pn.click('[data-action="google-retry"]'); pn.wait_for_timeout(900)
+    check('google: failed script can load successfully on the same page after retry', pn.locator('gmp-place-search').count() == 1 and pn.locator('.g-status').is_hidden() and len(pn.evaluate('window.__gcalls')) == 1)
+    pn.evaluate('window.gm_authFailure()'); pn.wait_for_timeout(100)
+    check('google: authorization failure is visible and does not erase other results', '授权' in pn.inner_text('#g-search') and pn.locator('#search-results .sec-title').count() >= 1)
+    pn.screenshot(path=os.path.join(SHOTS, '05i-google-auth.png'))
     ctxn.close()
 
     # ---------- 我的地图：美食 / 旅行 / 合并 + 点亮去过的国家 ----------
@@ -1932,3 +1957,5 @@ print('errors:', errors)
 print('errors2:', errors2)
 fails = [r for r in results if not r[1]]
 print(f'{len(results) - len(fails)}/{len(results)} passed')
+
+sys.exit(1 if fails else 0)

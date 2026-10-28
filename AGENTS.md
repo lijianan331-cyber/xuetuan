@@ -2,6 +2,8 @@
 
 先读 `CLAUDE.md`，规则一样：`docs/PRD-V2.md`（现在的方向）、`docs/PRD.md`、`docs/PLAN.md`（复选框 = 进度，最后几条是最新的）。部署和后台设置见 `docs/DEPLOY.md`。
 
+用户命名约定：本 GitHub / Vercel 版本叫 **A**；另一套 Codex Sites 版本叫 **B**，两者代码和数据库不自动同步。
+
 ## 现在的状态（2026-10-28）
 - 全部代码在 `index.html`（MapLibre 固定 5.24.0）。后台是 Supabase（项目 `pshxrwfjcbvqlixdxlzs`，新加坡），建表 / 改表的 SQL 在 `supabase/migrations/`。
 - 最新工作在分支 `claude/project-thread-ze8a57`（PR #7 → main，还没合并；用户说「上线」才合并）。在这个分支上接着做，或从它开新分支。

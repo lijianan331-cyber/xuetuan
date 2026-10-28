@@ -65,6 +65,18 @@ Supabase 自带的发信服务**只能发给项目团队成员的邮箱**（就�
 ## 谷歌地图搜索（Places UI Kit）
 
 1. Google Cloud 项目 xuetuan 绑结算账号，启用 Maps JavaScript API、Places API (New) 和 **Places UI Kit**（`placewidgets.googleapis.com`）。
-2. 凭据 → API 密钥：API 限制勾上面三个；应用限制选“网站”，加 `https://xuetuan.vercel.app/*` 和 `https://raw.githack.com/*`（浏览器跨站只发域名，不发路径，所以 githack 只能写到域名）。
+2. 凭据 → API 密钥：API 限制勾上面三个；应用限制选“网站”，加 `https://xuetuan.vercel.app/*` 、分支预览 `https://xuetuan-git-claude-project-thread-ze8a57-ganan1.vercel.app/*` 和 `https://raw.githack.com/*`（浏览器跨站只发域名，不发路径，所以 githack 只能写到域名）。
 3. 密钥写在 `index.html` 的 `GOOGLE_KEY`。网页里的谷歌密钥本来就是公开的，靠第 2 步的网站限制保护。
 4. 建议在结算里设预算提醒。
+
+
+### 谷歌搜索不出现时（2026-10-28）
+
+搜索两个字以上后，「谷歌地图上的」现在保留状态说明，不再悄悄隐藏：
+- 连接失败 / 超时：点「重试谷歌」；其他来源仍可搜索。
+- 当天 60 次用完：说明次日恢复，不重置计数绕过上限；也可用「去 Google 地图搜」打开官方地图。
+- 授权失败：核对当前完整域名是否在这把 key 的网站限制内，API 限制是否包含 Maps JavaScript API、Places API (New)、Places UI Kit。不要取消密钥限制。
+- `?nogoogle`：明确提示该网址关闭了谷歌搜索；去掉参数后重新打开。
+- Vercel 分支预览若要求登录，需先通过 Vercel 的正常登录；这与雪团内部登录、Google Cloud 的网站授权是三件不同的事。
+
+代码等待 Google 自定义元素注册后才设置请求，避免把属性写进尚未升级的空元素。脚本和请求均有超时；失败不会把整个页面会话永久禁用。旧请求的结果/错误不覆盖新词。
