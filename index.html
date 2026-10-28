@@ -991,7 +991,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       category: '分类（选填）', precision: '标到哪一级',
       precExact: '具体地点', precArea: '一片区域', precCity: '整个城市',
       precHint: '吃饭的店标到门口；旅行可以只标城市，放大时会显示成一个范围。',
-      catGuessing: '正在看照片认是哪一类…', catGuessed: '看照片像「{c}」，不对就点别的', catByName: '按店名选了「{c}」，不对就点别的', catNoGuess: '照片没认出来', rating: '评分', ratingHint: '点或左右拖星星，可以打半颗；拖到最左是 0 分（踩雷）。', errRating: '打个分再发布', starsNone: '还没打分',
+      catGuessing: '正在看照片认是哪一类…', catGuessed: '看照片像「{c}」，不对就点别的', catByName: '按店名选了「{c}」，不对就点别的', catNoGuess: '照片没认出来', optional: '选填', rating: '评分', ratingHint: '点或左右拖星星，可以打半颗；拖到最左是 0 分（踩雷）。', errRating: '打个分再发布', starsNone: '还没打分',
       priceFood: '人均（RM，选填）',
       review: '评论（选填）', reviewPhFood: '写评论', reviewPhTravel: '写评论',
       photos: '照片（选填）', photoLimit: '最多 {n} 张', addPhoto: '加照片', photoReadFail: '这张图读不了，换一张试试',
@@ -1093,7 +1093,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       category: 'Category (optional)', precision: 'How precise',
       precExact: 'Exact spot', precArea: 'An area', precCity: 'Whole city',
       precHint: 'Pin restaurants at the door. Trips can be city-level and show as an area when zoomed in.',
-      catGuessing: 'Reading the photo…', catGuessed: 'Looks like {c} from the photo. Tap another if wrong.', catByName: 'Picked {c} from the name. Tap another if wrong.', catNoGuess: 'Could not tell from the photo', rating: 'Score', ratingHint: 'Tap or drag the stars; half stars work. All the way left is 0 (avoid).', errRating: 'Give it a score first', starsNone: 'Not scored yet',
+      catGuessing: 'Reading the photo…', catGuessed: 'Looks like {c} from the photo. Tap another if wrong.', catByName: 'Picked {c} from the name. Tap another if wrong.', catNoGuess: 'Could not tell from the photo', optional: 'optional', rating: 'Score', ratingHint: 'Tap or drag the stars; half stars work. All the way left is 0 (avoid).', errRating: 'Give it a score first', starsNone: 'Not scored yet',
       priceFood: 'Per person (RM, optional)',
       review: 'Review (optional)', reviewPhFood: 'Write a review', reviewPhTravel: 'Write a review',
       photos: 'Photos (optional)', photoLimit: 'up to {n}', addPhoto: 'Add photo', photoReadFail: 'Couldn’t read that image. Try another one',
@@ -2643,35 +2643,29 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     }
     g.closePath(); g.fillStyle = '#ffffff'; g.fill();
   }
-  function drawPin(color, emoji, saved) {
-    var w = 40, h = 52;
+  /* 一个地点一个圆点（用户 2026-10-28）：有评分按分数的颜色，没评分是蓝色；放大到照片级别再换成照片 */
+  var CLUSTER_BLUE = '#5AA2E6', DOT_NONE = CLUSTER_BLUE;
+  function drawPin(color, saved) {
+    var w = 28, h = 28;
     var cv = document.createElement('canvas');
     cv.width = Math.round(w * DPR); cv.height = Math.round(h * DPR);
     var g = cv.getContext('2d');
     g.scale(DPR, DPR);
     g.save();
-    g.shadowColor = 'rgba(0,0,0,.32)'; g.shadowBlur = 4; g.shadowOffsetY = 1.5;
-    g.beginPath();
-    g.moveTo(20, 47);
-    g.bezierCurveTo(16, 39, 5, 31, 5, 18);
-    g.arc(20, 18, 15, Math.PI, 0);
-    g.bezierCurveTo(35, 31, 24, 39, 20, 47);
-    g.closePath();
-    g.fillStyle = color; g.fill();
+    g.shadowColor = 'rgba(0,0,0,.3)'; g.shadowBlur = 3; g.shadowOffsetY = 1;
+    g.beginPath(); g.arc(14, 14, 8.5, 0, Math.PI * 2);
+    g.fillStyle = '#ffffff'; g.fill();
     g.restore();
-    g.lineWidth = 2; g.strokeStyle = '#ffffff'; g.stroke();
-    g.beginPath(); g.arc(20, 18, 11, 0, Math.PI * 2); g.fillStyle = '#ffffff'; g.fill();
-    g.font = '13px "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif';
-    g.textAlign = 'center'; g.textBaseline = 'middle';
-    g.fillText(emoji, 20, 19);
-    if (saved) drawStarBadge(g, 32, 8, 7);
+    g.beginPath(); g.arc(14, 14, 6.5, 0, Math.PI * 2);
+    g.fillStyle = color; g.fill();
+    if (saved) drawStarBadge(g, 22, 6, 5.5);
     return g.getImageData(0, 0, cv.width, cv.height);
   }
   /* 图钉颜色按 0.5 分一档，图钉图片用到哪个画哪个 */
   function pinImage(p, score, saved) {
     var bucket = score == null ? null : Math.round(score * 2) / 2;
-    var id = 'pin-' + p.mode + '-' + catOf(p).id + '-' + (bucket == null ? 'none' : bucket * 10) + (saved ? '-s' : '');
-    if (map && !map.hasImage(id)) map.addImage(id, drawPin(scoreColor(bucket), catOf(p).emoji, saved), { pixelRatio: DPR });
+    var id = 'dot-' + (bucket == null ? 'none' : bucket * 10) + (saved ? '-s' : '');
+    if (map && !map.hasImage(id)) map.addImage(id, drawPin(bucket == null ? DOT_NONE : scoreColor(bucket), saved), { pixelRatio: DPR });
     return id;
   }
 
@@ -2721,7 +2715,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     var bucket = score == null ? null : Math.round(score * 2) / 2;
     var id = 'ph-' + photo + '-' + (bucket == null ? 'none' : bucket * 10) + (saved ? '-s' : '');
     if (!map.hasImage(id)) {
-      try { map.addImage(id, drawPhotoPin(cv, scoreColor(bucket), saved), { pixelRatio: DPR }); } catch (e) { return null; }
+      try { map.addImage(id, drawPhotoPin(cv, bucket == null ? DOT_NONE : scoreColor(bucket), saved), { pixelRatio: DPR }); } catch (e) { return null; }
     }
     return id;
   }
@@ -2930,7 +2924,8 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
 
   function addAppLayers() {
     var fonts = pickFonts();
-    var accent = accentColor();
+    /* 数字圈用雪团的浅冰蓝，不跟着旅行地图变深（用户 2026-10-28） */
+    var accent = CLUSTER_BLUE;
     map.addSource('places', { type: 'geojson', data: placesGeoJSON(), cluster: true, clusterMaxZoom: 13, clusterRadius: 46 });
     map.addSource('me', { type: 'geojson', data: meFC() });
     map.addSource('homes', { type: 'geojson', data: homesFC(), cluster: true, clusterMaxZoom: 11, clusterRadius: 36 });
@@ -2976,7 +2971,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     map.addLayer({
       id: 'pt-pin', type: 'symbol', source: 'places', filter: ['!', ['has', 'point_count']],
       layout: {
-        'icon-image': ['get', 'icon'], 'icon-anchor': 'bottom', 'icon-allow-overlap': true, 'icon-ignore-placement': true,
+        'icon-image': ['get', 'icon'], 'icon-anchor': 'center', 'icon-allow-overlap': true, 'icon-ignore-placement': true,
         'symbol-sort-key': pinSortKey(null), 'icon-size': pinSize(null)
       },
       paint: { 'icon-opacity': whenPhoto(0, 1) }
@@ -2991,7 +2986,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     });
     map.addLayer({
       id: 'pt-label', type: 'symbol', source: 'places', filter: ['!', ['has', 'point_count']], minzoom: 13,
-      layout: { 'text-field': ['get', 'name'], 'text-font': fonts.regular, 'text-size': 11.5, 'text-anchor': 'top', 'text-offset': [0, 0.35], 'text-max-width': 9, 'text-optional': true },
+      layout: { 'text-field': ['get', 'name'], 'text-font': fonts.regular, 'text-size': 11.5, 'text-anchor': 'top', 'text-offset': [0, 0.8], 'text-max-width': 9, 'text-optional': true },
       paint: { 'text-color': '#18211C', 'text-halo-color': 'rgba(255,255,255,0.95)', 'text-halo-width': 1.6 }
     });
     map.addLayer({ id: 'me-halo', type: 'circle', source: 'me', paint: { 'circle-radius': 17, 'circle-color': '#2F7BF6', 'circle-opacity': 0.18 } });
@@ -3009,7 +3004,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
   }
   function repaintAccent() {
     if (!map || !map.getLayer('cl-circle')) return;
-    var a = accentColor();
+    var a = CLUSTER_BLUE;
     ['cl-circle', 'cl-halo'].forEach(function (id) { try { map.setPaintProperty(id, 'circle-color', a); } catch (e) { /* ignore */ } });
   }
   /* 红针只给还没人记录过的地方用（搜索结果预览、正在第一次记录的新地点）。
@@ -4014,7 +4009,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
         }).join('') + '</div><p class="f-hint cat-guess" id="cat-guess" hidden></p></div>';
     }
     /* 只有评分必填，其余都是选填 */
-    h += '<div class="field"><span class="f-label" id="lbl-rating">' + esc(t('rating')) + ' *</span>' + starsInputHTML('f-rating', f.rating, 'form', 'lbl-rating') +
+    h += '<div class="field"><span class="f-label" id="lbl-rating">' + esc(t('rating')) + ' <small>· ' + esc(t('optional')) + '</small></span>' + starsInputHTML('f-rating', f.rating, 'form', 'lbl-rating') +
       '<p class="f-hint">' + esc(t('ratingHint')) + '</p><div class="f-err" id="err-rating" hidden></div></div>';
     h += fieldHTML('f-text', esc(t('review')), '<textarea id="f-text" class="input" rows="3" maxlength="1000" placeholder="' + esc(t(isFood ? 'reviewPhFood' : 'reviewPhTravel')) + '"></textarea>');
     h += '<div class="field"><span class="f-label">' + esc(t('photos')) + ' <small>· ' + esc(t('photoLimit', { n: MAX_PHOTOS })) + '</small></span><div class="photo-grid" id="f-photos"></div></div>';
@@ -5173,7 +5168,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     var p0 = f.placeId ? placeById(f.placeId) : null;
     var placeFields = formHasPlaceFields(f, p0);
     var bad = null;
-    if (f.rating == null) { showErr('rating', t('errRating')); bad = bad || $('#f-rating'); }
+    /* 评分选填（用户 2026-10-28）：不打分也能保存，地图上是蓝点 */
     if (bad) { bad.focus({ preventScroll: true }); centerInPanel(bad, !reduceMotion); return; }
 
     var btn = $('#f-submit');

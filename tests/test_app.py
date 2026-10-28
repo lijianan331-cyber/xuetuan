@@ -224,8 +224,8 @@ with sync_playwright() as p:
         intro: m.calls.filter(c => c[0] === 'move').map(c => c[1]) } }''')
     check('app layers added', st['layers'] == ['lib-dot', 'lib-label', 'cl-halo', 'hometown-pin', 'cl-circle', 'cl-count', 'home-pin', 'pt-pin', 'pt-photo', 'pt-label', 'me-halo', 'me-dot'], st['layers'])
     check('parsed sample rows', len(SAMPLE_ROWS) >= 60 and len(FOOD_S) >= 30, len(SAMPLE_ROWS))
-    want_imgs = len({(x['cat'], 'none' if x['rating'] is None else x['rating'] * 10) for x in FOOD_S})
-    check('pin images drawn on demand (one per category + score bucket)', st['images'] == want_imgs, (st['images'], want_imgs))
+    want_imgs = len({'none' if x['rating'] is None else x['rating'] * 10 for x in FOOD_S})
+    check('dot images drawn on demand (one per score bucket)', st['images'] == want_imgs, (st['images'], want_imgs))
     pins = page.evaluate('window.__map.getSource("places").data.features.map(f => [f.properties.icon, f.properties.color])')
     check('pins coloured by score (0 grey, 5 red)', all(c.lower() == '#d7261e' for i, c in pins if i.endswith('-50')) and all(c.lower() == '#8e9893' for i, c in pins if i.endswith('-0')) and any(i.endswith('-0') for i, c in pins), pins)
     check('renamed to 雪团', page.title() == '雪团 XueTuan' and '雪团' in page.evaluate('document.querySelector(".panel-brand .brand-name").textContent'), page.title())
@@ -309,7 +309,9 @@ with sync_playwright() as p:
     check('travel map shows the food icon to switch back', page.get_attribute('[data-action="toggle-mode"]', 'aria-label') == '切换到美食地图')
     tf = page.evaluate('window.__map.getSource("places").data.features.length')
     check('travel mode shows all travel samples', tf == len(TRAVEL_S), (tf, len(TRAVEL_S)))
-    check('accent repainted', page.evaluate('window.__map.layers.find(l=>l.id==="cl-circle").paint["circle-color"]').lower() == '#4f63d8', page.evaluate('window.__map.layers.find(l=>l.id==="cl-circle").paint["circle-color"]'))
+    pt = page.evaluate('window.__map.getStyle().layers.filter(l => l.id === "pt-pin")[0].layout["icon-anchor"]')
+    check('one dot per place, centred on the spot', pt == 'center', pt)
+    check('count circles stay the light 雪团 blue on the travel map', page.evaluate('window.__map.layers.find(l=>l.id==="cl-circle").paint["circle-color"]').lower() == '#5aa2e6', page.evaluate('window.__map.layers.find(l=>l.id==="cl-circle").paint["circle-color"]'))
     check('add button label follows the mode', page.get_attribute('#fab', 'aria-label') == '打卡一个地方', page.get_attribute('#fab', 'aria-label'))
     tab(page, 'foot')
     page.click('.title-row .view-title'); page.wait_for_timeout(400)
@@ -360,10 +362,8 @@ with sync_playwright() as p:
     check('map corner buttons hidden while the sheet is full', page.evaluate('getComputedStyle(document.getElementById("map-ctrls")).opacity') == '0')
     check('no "who can see it" segment any more', page.locator('[data-action="f-vis"]').count() == 0)
     check('extras folded under "more"', not page.locator('#f-alt').is_visible() and not page.locator('#f-link').is_visible() and page.locator('details.more').count() == 1)
-    # validation: only the score is required
-    page.click('#f-submit')
-    page.wait_for_timeout(100)
-    check('score required error', page.locator('#err-rating').is_visible())
+    # 评分也是选填（用户 2026-10-28）
+    check('score is optional too', '选填' in page.inner_text('#lbl-rating'), page.inner_text('#lbl-rating'))
     check('name and category are optional', not page.locator('#err-f-name').is_visible() and page.locator('#err-cat').count() == 0 and page.locator('#f-name[aria-invalid]').count() == 0)
     check('score input is five stars, nothing picked yet', page.locator('#f-rating .stars-track .st').count() == 5 and stars_val(page) is None and page.get_attribute('#f-rating', 'role') == 'slider')
     # the form scrolls all the way down above the tab bar
@@ -424,7 +424,7 @@ with sync_playwright() as p:
     mine_pin = page.evaluate(PIN)
     img = page.evaluate('window.__map.images[%s.pic]' % PIN)
     check('no red pin covering the photo pin on its own page', page.locator('#map .sel-pin').count() == 0)
-    check('place with a photo gets a photo pin (frame in the score colour) and keeps its plain pin', mine_pin['photo'] is True and mine_pin['pic'].endswith('-40') and mine_pin['icon'] == 'pin-food-malay-40' and img == {'w': 136, 'h': 156, 'pr': 2}, (mine_pin, img))
+    check('place with a photo gets a photo pin (frame in the score colour) and keeps its plain pin', mine_pin['photo'] is True and mine_pin['pic'].endswith('-40') and mine_pin['icon'] == 'dot-40' and img == {'w': 136, 'h': 156, 'pr': 2}, (mine_pin, img))
     lays = page.evaluate('Object.fromEntries(window.__map.layers.filter(l => l.id === "pt-pin" || l.id === "pt-photo").map(l => [l.id, l]))')
     pid = mine_pin['id']
     ph_props = {'id': pid, 'photo': True, 'precision': 'exact'}
@@ -1421,7 +1421,7 @@ with sync_playwright() as p:
         if page7.locator('[data-action="near-new"]').count(): page7.click('[data-action="near-new"]'); page7.wait_for_timeout(150)
         if share != (page7.get_attribute('[data-action="f-share"]', 'aria-checked') == 'true'): page7.click('[data-action="f-share"]')
         page7.fill('#f-name', name)
-        rate(page7, score)
+        if score is not None: rate(page7, score)
         page7.click('#f-submit'); page7.wait_for_timeout(400)
         page7.click('[data-action="back"]'); page7.wait_for_timeout(150)
     def acct7(name):
@@ -1433,7 +1433,10 @@ with sync_playwright() as p:
     page7.fill('#pf-name', '甲'); page7.wait_for_timeout(500)
     check('me: the header follows the nickname as it is typed', page7.inner_text('#me-name') == '甲')
     add7('甲的公开店', True, 4)
-    add7('甲的私密店', False, 2)
+    add7('甲的私密店', False, None)
+    d7a = page7.evaluate('JSON.parse(localStorage.getItem("xmum-chiwan-map:data:v1"))')
+    ic7 = page7.evaluate('window.__map.getSource("places").data.features.filter(f => f.properties.name === "甲的私密店").map(f => f.properties.icon)')
+    check('a place can be added without a score; it is a blue dot', [r['rating'] for r in d7a['reviews'] if r['placeId'] in [x['id'] for x in d7a['places'] if x['name'] == '甲的私密店']] == [None] and ic7 == ['dot-none'], ic7)
     # 我的：头像、昵称、去过几个地方 / 想去几个 / 分享了几条；点数字去足迹的那一边
     tab(page7, 'me')
     st7 = page7.locator('.me-stat b').all_inner_texts()
