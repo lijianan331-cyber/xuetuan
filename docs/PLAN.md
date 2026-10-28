@@ -174,7 +174,8 @@ V2.0 是现在的方向（不是不可推翻），先只做 P0。对照分析：
 - [x] 修复脚本一次失败后整个页面会话永久禁用谷歌的问题；增加加载/请求超时、同词重试、组件注册等待和旧请求隔离。无结果、每日 60 次上限、`?nogoogle`、授权失败均保留说明，其他搜索不受影响。保留官方 UI Kit、自带署名与原密钥限制，不改数据库。
 - [x] 补齐分支预览域名的 Google Cloud 网站限制检查说明，明确 A（本仓库/Vercel）与 B（独立 Sites 版本）不自动同步。
 - [x] 原有回归与新增谷歌恢复/限额/授权测试 417/417 通过（Windows Edge，离线 Google/MapLibre/Supabase 替身）；测试失败现在返回非零退出码。Windows 可用 `XUETUAN_TEST_BROWSER_CHANNEL=msedge`，默认仍使用 Playwright Chromium。
-- [ ] 在分支预览上核验真实谷歌结果：当前执行端被 Vercel 登录保护挡住，尚未确认 Google Cloud 网站/API 授权与真实联网结果；需正常登录后复核，不把替身测试当成真实谷歌成功。
+- [x] 修复已推回同一分支，提交 ff6e738；Vercel 部署成功。已进入真实分支预览测试，Google Places UI Kit 明确返回：IP address, referer or application did not match any of the ones authorized for the supplied API key。确定为该 key 的来源网站授权拒绝，不是组件未接入。
+- [ ] 在 Google Cloud 的 A 版浏览器 key 网站限制中加入 `https://xuetuan-git-claude-project-thread-ze8a57-ganan1.vercel.app/*`（保留原有域名及 API 限制），然后在此预览域名重新核验真实谷歌结果；此设置需用户操作。
 
 ## 五、费用与限制
 
