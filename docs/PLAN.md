@@ -175,7 +175,7 @@ V2.0 是现在的方向（不是不可推翻），先只做 P0。对照分析：
 - [x] 补齐分支预览域名的 Google Cloud 网站限制检查说明，明确 A（本仓库/Vercel）与 B（独立 Sites 版本）不自动同步。
 - [x] 原有回归与新增谷歌恢复/限额/授权测试 417/417 通过（Windows Edge，离线 Google/MapLibre/Supabase 替身）；测试失败现在返回非零退出码。Windows 可用 `XUETUAN_TEST_BROWSER_CHANNEL=msedge`，默认仍使用 Playwright Chromium。
 - [x] 修复已推回同一分支，提交 ff6e738；Vercel 部署成功。已进入真实分支预览测试，Google Places UI Kit 明确返回：IP address, referer or application did not match any of the ones authorized for the supplied API key。确定为该 key 的来源网站授权拒绝，不是组件未接入。
-- [ ] 在 Google Cloud 的 A 版浏览器 key 网站限制中加入 `https://xuetuan-git-claude-project-thread-ze8a57-ganan1.vercel.app/*`（保留原有域名及 API 限制），然后在此预览域名重新核验真实谷歌结果；此设置需用户操作。
+- [x] 用户已保存 Google Cloud 网站授权。已在真实分支预览（非替身）搜索用户原例 `The Tokyo Pavilion`，Google 官方 UI Kit 列表正常显示餐厅结果、照片、评分与价位；开发者日志无来源网站授权错误。闭合 Shadow DOM 的结果点击受当前浏览器自动化限制，真实点选未自动核验；点选/记录流程的离线回归仍为 417/417 通过。
 
 ## 五、费用与限制
 
