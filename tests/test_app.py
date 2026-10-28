@@ -1,4 +1,4 @@
-import json, os, sys, time
+import json, os, re, subprocess, sys, time
 from playwright.sync_api import sync_playwright
 from PIL import Image
 
@@ -1586,6 +1586,16 @@ with sync_playwright() as p:
     check('bulk: saved as private records with the photos, dated when they were taken', got_b == want_b and stb['np'] and stb['np'][0] == 'travel' and stb['np'][1] == 3.15, stb)
     check('bulk: switched to travel by hand, so it is saved as a travel place of its own', stb['s1'] == ['food', 'travel'], stb['s1'])
     check('bulk: after saving you land on footprints', pb.get_attribute('#tabbar [data-tab="foot"]', 'aria-current') == 'page' and pb.locator('.bk-card').count() == 0)
+    # 好几组其实是同一个地方：点「和上一组是同一个地方」合成一组
+    add(pb)
+    with pb.expect_file_chooser() as fc_:
+        pb.click('[data-action="bulk-start"]')
+    fc_.value.set_files([bfiles[2], bfiles[3], bfiles[4]])
+    pb.wait_for_function('document.querySelectorAll(".bk-card").length === 2', timeout=8000)
+    check('bulk: no merge button on the first group', pb.locator('#bk-0 [data-action="bulk-merge"]').count() == 0 and pb.locator('#bk-1 [data-action="bulk-merge"]').count() == 1)
+    pb.click('#bk-1 [data-action="bulk-merge"]'); pb.wait_for_timeout(150)
+    check('bulk: merging puts both groups\' photos into one, keeping the located place', pb.locator('.bk-card').count() == 1 and pb.locator('#bk-0 .bk-ph').count() == 3
+          and '没有位置' not in pb.inner_text('#bk-meta-0') and pb.locator('#bk-0 [data-bk-q]').count() == 0, [pb.locator('.bk-card').count(), pb.inner_text('#bk-meta-0')])
     check('bulk: no page errors', not errorsb, errorsb)
     ctxb.close()
 
@@ -1700,6 +1710,19 @@ with sync_playwright() as p:
     page6.set_input_files('#f-file', photo)
     page6.wait_for_function('document.querySelectorAll("#f-photos .ph-edit").length === 1', timeout=8000)
     page6.wait_for_function('!document.querySelector("#cat-guess").hidden && document.querySelector("#cat-guess").textContent.indexOf("火锅") !== -1', timeout=5000)
+    # 动图照样动，视频 5 秒以内（重录成小的；长的不收）
+    gif_p, clip_p, long_p = os.path.join(SHOTS, 'm.gif'), os.path.join(SHOTS, 'm.webm'), os.path.join(SHOTS, 'long.webm')
+    Image.new('RGB', (200, 150), (255, 0, 0)).save(gif_p, save_all=True, append_images=[Image.new('RGB', (200, 150), (0, 0, 255))], duration=200, loop=0)
+    for p_, secs in ((clip_p, 2), (long_p, 7)):
+        subprocess.run(['ffmpeg', '-y', '-loglevel', 'error', '-f', 'lavfi', '-i', 'testsrc=size=320x240:rate=15', '-t', str(secs), '-c:v', 'libvpx', '-b:v', '200k', p_], check=True)
+    page6.set_input_files('#f-file', [gif_p, clip_p])
+    page6.wait_for_function('document.querySelectorAll("#f-photos .ph-edit:not(.ph-busy)").length === 3', timeout=15000)
+    check('a GIF and a short video can be added, marked in the thumbnails', page6.locator('#f-photos .ph-edit.is-gif').count() == 1 and page6.locator('#f-photos .ph-edit.is-clip').count() == 1
+          and page6.evaluate('document.querySelector("#f-photos .is-clip img").naturalWidth') > 0)
+    page6.locator('#f-photos').scroll_into_view_if_needed(); page6.screenshot(path=os.path.join(SHOTS, '15-media.png'))
+    page6.set_input_files('#f-file', long_p)
+    page6.wait_for_function('document.querySelector("#toast") && document.querySelector("#toast").textContent.indexOf("5 秒以内") !== -1', timeout=15000)
+    check('a video over 5 seconds is turned away', page6.locator('#f-photos .ph-edit:not(.ph-busy)').count() == 3)
     check('photo category guess (on-device model): hotpot preselected with a note', page6.get_attribute('[data-action="f-cat"][data-cat="hotpot"]', 'aria-pressed') == 'true' and page6.inner_text('#cat-guess') == '看照片像「火锅」，不对就点别的' and page6.evaluate('window.__catCalls') == 1, (page6.inner_text('#cat-guess'), page6.evaluate('window.__catCalls'), page6.evaluate('[...document.querySelectorAll("[data-action=f-cat][aria-pressed=true]")].map(b => b.dataset.cat)')))
     page6.click('[data-action="f-cat"][data-cat="cafe"]')
     page6.fill('#f-name', 'Ramen 线上测试店')
@@ -1713,11 +1736,21 @@ with sync_playwright() as p:
     check('remote: place + visit written to Supabase', len(mine6) == 1 and mine6[0]['created_by'] == A and mine6[0]['cat'] == 'cafe' and len(v6) == 1 and v6[0]['rating'] == 3, (mine6, v6))
     files6 = page6.evaluate('Object.keys(window.__sb.files)')
     full6 = [f for f in files6 if not f.endswith('_t.jpg')]
-    check('remote: photo uploaded to my folder, with a small copy next to it', len(files6) == 2 and len(full6) == 1 and full6[0].startswith(A + '/') and full6[0].replace('.jpg', '_t.jpg') in files6 and v6 and v6[0]['photos'] == full6, (files6, v6))
+    types6 = page6.evaluate('window.__sb.types')
+    exts6 = sorted(f.rsplit('.', 1)[1] for f in full6)
+    check('remote: photo, GIF and video uploaded to my folder, each with a small jpg next to it', len(files6) == 6 and len(full6) == 3 and all(f.startswith(A + '/') for f in full6)
+          and all(re.sub(r'\.\w+$', '_t.jpg', f) in files6 for f in full6) and v6 and sorted(v6[0]['photos']) == sorted(full6)
+          and exts6[0] == 'gif' and exts6[1] == 'jpg' and exts6[2] in ('mp4', 'webm') and sorted(set(types6.values())) == sorted({'image/gif', 'image/jpeg', 'video/' + exts6[2]}), (files6, types6, v6))
     check('remote: nickname saved to profile', [p_['name'] for p_ in db6['profiles'] if p_['id'] == A] == ['小A'], db6['profiles'])
     check('remote: place view after publish', page6.inner_text('.place-head h2') == '线上测试店')
     page6.wait_for_function('[...document.querySelectorAll(".ph img")].some(i => i.src.startsWith("blob:") && i.naturalWidth > 0)', timeout=5000)
     check('remote: uploaded photo shows right away', True)
+    page6.click('.photo-strip .ph.is-clip')
+    page6.wait_for_function('document.getElementById("lb-vid").readyState >= 2', timeout=5000)
+    check('tapping the video plays it in the viewer (muted, looping), the image viewer stays hidden', page6.is_visible('#lb-vid') and page6.is_hidden('#lb-img')
+          and page6.evaluate('(() => { const v = document.getElementById("lb-vid"); return v.muted && v.loop && v.src.startsWith("blob:"); })()'))
+    page6.click('[data-action="lb-close"]')
+    check('closing the viewer stops the video', page6.is_hidden('#lightbox') and page6.evaluate('!document.getElementById("lb-vid").getAttribute("src")'))
 
     # 收藏别人的店
     page6.click('[data-action="back"]')
@@ -1762,7 +1795,8 @@ with sync_playwright() as p:
     page6.click('[data-action="edit-review"]')
     page6.wait_for_timeout(200)
     rate(page6, 0)
-    page6.click('[data-action="f-photo-del"]')
+    while page6.locator('[data-action="f-photo-del"]').count():
+        page6.click('[data-action="f-photo-del"] >> nth=0')
     page6.click('#f-submit')
     page6.wait_for_timeout(500)
     v6 = page6.evaluate('window.__sb.db.visits.filter(v => v.user_id === "%s")' % A)

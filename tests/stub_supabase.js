@@ -10,9 +10,9 @@
     homes: (seed.homes || []).slice(),
     poi: (seed.poi || window.__poi || []).slice()
   };
-  var files = {};
+  var files = {}, types = {};
   var session = null, listeners = [], calls = [];
-  window.__sb = { db: db, files: files, calls: calls };
+  window.__sb = { db: db, files: files, types: types, calls: calls };
 
   function uid() { return session ? session.user.id : null; }
   function newId() { return 'xxxxxxxx-xxxx-4xxx-8xxx-xxxxxxxxxxxx'.replace(/x/g, function () { return (Math.random() * 16 | 0).toString(16); }); }
@@ -147,9 +147,9 @@
         storage: {
           from: function (bucket) {
             return {
-              upload: function (path, blob) {
+              upload: function (path, blob, opts) {
                 if (!uid() || path.split('/')[0] !== uid()) return Promise.resolve(err('not allowed'));
-                files[path] = blob.size; return Promise.resolve({ data: { path: path }, error: null });
+                files[path] = blob.size; types[path] = opts && opts.contentType; return Promise.resolve({ data: { path: path }, error: null });
               },
               remove: function (paths) { paths.forEach(function (p) { delete files[p]; }); return Promise.resolve({ data: [], error: null }); },
               getPublicUrl: function (path) { return { data: { publicUrl: 'https://example.invalid/storage/v1/object/public/' + bucket + '/' + path } }; }

@@ -562,6 +562,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
 .bk-own { display: flex; gap: 8px; align-items: center; }
 .bk-own .input { flex: 1; min-width: 0; }
 .bk-card .stars-input { padding: 0; }
+.bk-merge { align-self: flex-start; font-size: 12.5px; }
 .bk-tip { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; margin: 0 0 12px; padding: 10px 12px; border-radius: 12px; background: var(--surface-2); color: var(--muted); font-size: 13px; }
 .bk-tip p { margin: 0; }
 .bk-need { margin: 0; color: var(--danger); }
@@ -572,6 +573,12 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
 .photo-grid { display: flex; flex-wrap: wrap; gap: 8px; }
 .ph-edit { position: relative; width: 68px; height: 68px; border-radius: 14px; overflow: hidden; background: var(--surface-2); }
 .ph-edit img { width: 100%; height: 100%; object-fit: cover; }
+.ph-busy { display: grid; place-items: center; font-size: 11px; color: var(--muted); text-align: center; padding: 4px; }
+/* 动图、短视频：缩略图是静的，角上标一下，点开才动 */
+.is-clip, .is-gif { position: relative; }
+.is-clip::after, .is-gif::after { position: absolute; left: 5px; bottom: 5px; padding: 1px 5px; border-radius: 6px; background: rgba(0,0,0,.55); color: #fff; font: 600 10px/1.5 system-ui, sans-serif; pointer-events: none; }
+.is-clip::after { content: '▶'; }
+.is-gif::after { content: 'GIF'; }
 .ph-del { position: absolute; top: 4px; right: 4px; width: 24px; height: 24px; padding: 0; border: 0; border-radius: 50%; background: rgba(10, 25, 40, .6); color: #fff; font-size: 16px; line-height: 1; display: grid; place-items: center; }
 .ph-add {
   width: 68px; height: 68px; border: 1.5px dashed var(--line); border: 1.5px dashed color-mix(in srgb, var(--accent) 35%, var(--line)); border-radius: 14px; background: none; color: var(--accent);
@@ -694,7 +701,8 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
 .modal-card h3 { margin: 0; font-size: 18px; }
 .modal-card p { margin: 0; }
 .lightbox { position: fixed; top: 0; right: 0; bottom: 0; left: 0; z-index: 80; display: grid; place-items: center; background: rgba(6, 12, 18, .93); }
-.lightbox img { max-width: min(92vw, 1200px); max-height: 84vh; border-radius: 10px; object-fit: contain; }
+.lightbox img, .lightbox video { max-width: min(92vw, 1200px); max-height: 84vh; border-radius: 10px; object-fit: contain; }
+.lightbox [hidden] { display: none; }
 .lb-btn { position: absolute; width: 46px; height: 46px; padding: 0; border: 0; border-radius: 50%; background: rgba(255, 255, 255, .14); color: #fff; font-size: 22px; display: grid; place-items: center; }
 .lb-close { top: calc(env(safe-area-inset-top, 0px) + 14px); right: max(14px, env(safe-area-inset-right, 0px)); }
 .lb-prev { left: max(14px, env(safe-area-inset-left, 0px)); top: 50%; transform: translateY(-50%); }
@@ -788,12 +796,13 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
 <div class="modal" id="modal" hidden></div>
 <div class="lightbox" id="lightbox" hidden>
   <img id="lb-img" alt="">
+  <video id="lb-vid" muted loop autoplay playsinline hidden></video>
   <button type="button" class="lb-btn lb-close" data-action="lb-close" data-i18n-aria="close">✕</button>
   <button type="button" class="lb-btn lb-prev" id="lb-prev" data-action="lb-prev" aria-label="‹">‹</button>
   <button type="button" class="lb-btn lb-next" id="lb-next" data-action="lb-next" aria-label="›">›</button>
   <div class="lb-count" id="lb-count"></div>
 </div>
-<input type="file" id="f-file" accept="image/*" multiple hidden>
+<input type="file" id="f-file" accept="image/*,video/*" multiple hidden>
 <input type="file" id="bulk-file" accept="image/*" multiple hidden>
 <input type="file" id="bulk-file-any" multiple hidden>
 <input type="file" id="import-file" accept="application/json,.json" hidden>
@@ -1001,7 +1010,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       bulkBtn: '从照片批量加', bulkTitle: '从照片批量加', bulkReading: '正在读照片 {n}/{m}…',
       bulkSum: '{n} 张照片，分成 {g} 组，打了分的才保存。', bulkNoGps: '{n} 张读不到位置，按拍摄时间分了组，自己搜店名。',
       bulkTip: '位置多半是手机交给网页时去掉的，从文件管理里选（DCIM → Camera）也许能读到。', bulkFiles: '从文件管理选',
-      bulkFindPh: '搜地点', bulkModeLabel: '记到吃还是玩', bulkNoLoc: '没有位置', bulkNeed: '搜到地点才能保存', bulkNoMatch: '没搜到，换个写法试试', bulkFinding: '正在搜…',
+      bulkFindPh: '搜地点', bulkMerge: '和上一组是同一个地方', gifTooBig: '动图超过 5MB，存成了静图', clipLong: '视频要在 {n} 秒以内', clipBig: '视频太大了，剪短一点再试', clipRead: '这个视频读不了', clipBusy: '视频处理中…', bulkModeLabel: '记到美食还是旅行', bulkNoLoc: '没有位置', bulkNeed: '搜到地点才能保存', bulkNoMatch: '没搜到，换个写法试试', bulkFinding: '正在搜…',
       bulkNone: '选的照片里都没有拍摄地点。相机设置里打开“地理位置”，以后拍的就有了。',
       bulkSave: '保存 {n}', bulkSaving: '保存中 {n}/{m}', bulkDone: '存进足迹 {n} 个', bulkFailSome: '{n} 个没存上，过会儿再试',
       bulkPhotos: '{n} 张', bulkLooking: '正在找附近的店…', bulkOwn: '自己写', bulkBeen: '记过',
@@ -1103,7 +1112,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       bulkBtn: 'Add many from photos', bulkTitle: 'Add from photos', bulkReading: 'Reading photos {n}/{m}…',
       bulkSum: '{n} photos in {g} groups. Only scored ones are saved.', bulkNoGps: '{n} have no location, so they’re grouped by time. Search for each place.',
       bulkTip: 'Phones often strip the location when handing photos to a web page. Picking them from your file manager (DCIM → Camera) may keep it.', bulkFiles: 'Pick from files',
-      bulkFindPh: 'Search a place', bulkModeLabel: 'Food or travel', bulkNoLoc: 'no location', bulkNeed: 'Find the place to save this one', bulkNoMatch: 'Nothing found, try another spelling', bulkFinding: 'Searching…',
+      bulkFindPh: 'Search a place', bulkMerge: 'Same place as the one above', gifTooBig: 'GIF over 5MB, saved as a still', clipLong: 'Videos must be {n} s or shorter', clipBig: 'Video too big, trim it and try again', clipRead: "Couldn't read this video", clipBusy: 'Processing video…', bulkModeLabel: 'Food or travel', bulkNoLoc: 'no location', bulkNeed: 'Find the place to save this one', bulkNoMatch: 'Nothing found, try another spelling', bulkFinding: 'Searching…',
       bulkNone: 'None of these photos has a location. Turn on location tags in your camera settings for new photos.',
       bulkSave: 'Save {n}', bulkSaving: 'Saving {n}/{m}', bulkDone: '{n} saved to Footprints', bulkFailSome: '{n} couldn’t be saved, try again later',
       bulkPhotos: '{n} photos', bulkLooking: 'Looking for nearby places…', bulkOwn: 'Type a name', bulkBeen: 'recorded',
@@ -1530,15 +1539,16 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     function homeFromRow(r) {
       return { userId: r.user_id, name: (r.owner && r.owner.name) || '', city: r.city, lat: r.lat, lng: r.lng, public: !!r.is_public };
     }
-    function photoPath(id) { return uidNow() + '/' + id + '.jpg'; }
-    /* 小图和原图放在同一个文件夹：xxx.jpg 的小图是 xxx_t.jpg */
-    function thumbPath(path) { return path.replace(/\.jpg$/, '_t.jpg'); }
+    /* 动图和短视频的 id 带后缀（ph_x.gif / ph_x.mp4），照片没有，存成 .jpg */
+    function photoPath(id) { return uidNow() + '/' + id + (/\.\w+$/.test(id) ? '' : '.jpg'); }
+    /* 小图和原图放在同一个文件夹：xxx.jpg（.gif / .mp4）的小图是 xxx_t.jpg */
+    function thumbPath(path) { return path.replace(/\.(jpg|gif|mp4|mov|webm)$/i, '_t.jpg'); }
     /* 传照片（原图 + 小图），返回传成功的路径和是否全部成功；小图传不上去就算了，显示时会退回原图 */
     function uploadPhotos(photos) {
       var bucket = client.storage.from('photos');
       return Promise.all(photos.map(function (ph) {
         var path = photoPath(ph.id);
-        return bucket.upload(path, ph.blob, { contentType: 'image/jpeg', upsert: false }).then(function (res) {
+        return bucket.upload(path, ph.blob, { contentType: mediaType(path), upsert: false }).then(function (res) {
           if (res.error) return null;
           if (ph.url) photoURLs.set(path, ph.url);
           if (!ph.thumb) return path;
@@ -3745,7 +3755,8 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
   /* 带 data-small 的用小图，小图打不开（以前传的照片没有小图）就换原图 */
   function hydratePhotos(root) {
     $$('img[data-photo]', root).forEach(function (img) {
-      var id = img.dataset.photo, small = img.hasAttribute('data-small');
+      var id = img.dataset.photo, small = img.hasAttribute('data-small') || isClip(id);
+      if ((isClip(id) || isGif(id)) && img.parentElement) img.parentElement.classList.add(isClip(id) ? 'is-clip' : 'is-gif');
       function missing() { if (img.parentElement) img.parentElement.classList.add('missing'); }
       store.photoURL(id, small).then(function (u) {
         if (!u) { missing(); return; }
@@ -4044,9 +4055,9 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     var box = $('#f-photos'), f = state.form;
     if (!box || !f) return;
     box.innerHTML = f.photos.map(function (ph) {
-      var img = ph.existing ? '<img data-photo="' + esc(ph.id) + '" alt="">' : '<img src="' + ph.url + '" alt="">';
-      return '<div class="ph-edit">' + img + '<button type="button" class="ph-del" data-action="f-photo-del" data-id="' + ph.id + '" aria-label="' + esc(t('del')) + '">×</button></div>';
-    }).join('') + (f.photos.length < MAX_PHOTOS ? '<button type="button" class="ph-add" data-action="f-photo-add">' + ICON.camera + '<span>' + esc(t('addPhoto')) + '</span></button>' : '');
+      var img = ph.existing ? '<img data-photo="' + esc(ph.id) + '" alt="">' : '<img src="' + (ph.preview || ph.url) + '" alt="">';
+      return '<div class="ph-edit' + (isClip(ph.id) ? ' is-clip' : isGif(ph.id) ? ' is-gif' : '') + '">' + img + '<button type="button" class="ph-del" data-action="f-photo-del" data-id="' + ph.id + '" aria-label="' + esc(t('del')) + '">×</button></div>';
+    }).join('') + (f.mediaBusy ? '<div class="ph-edit ph-busy">' + esc(t('clipBusy')) + '</div>' : '') + (f.photos.length + (f.mediaBusy || 0) < MAX_PHOTOS ? '<button type="button" class="ph-add" data-action="f-photo-add">' + ICON.camera + '<span>' + esc(t('addPhoto')) + '</span></button>' : '');
     hydratePhotos(box);
   }
   var DRAFT_FIELDS = [['f-nick', 'nick'], ['f-name', 'name'], ['f-alt', 'alt'], ['f-price', 'price'], ['f-text', 'text'], ['f-link', 'link']];
@@ -5011,6 +5022,100 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     $$('[aria-invalid]').forEach(function (el) { el.removeAttribute('aria-invalid'); });
   }
 
+  /* 动图和短视频（用户 2026-10-28：动图可以，视频 5 秒以内）。
+     动图原样存；视频在手机上重录成 720p、不带声音的 mp4（不支持的手机录成 webm），省空间也哪台手机都能放。
+     都另做一张 jpg 小图，地图和列表用小图，点开才动 */
+  var CLIP_MAX_SEC = 5, MEDIA_MAX_BYTES = 5 * 1024 * 1024;
+  var MEDIA_TYPES = { gif: 'image/gif', mp4: 'video/mp4', mov: 'video/quicktime', webm: 'video/webm' };
+  function isClip(id) { return /\.(mp4|mov|webm)$/i.test(id || ''); }
+  function isGif(id) { return /\.gif$/i.test(id || ''); }
+  function mediaType(path) { var m = /\.(\w+)$/.exec(path); return (m && MEDIA_TYPES[m[1].toLowerCase()]) || 'image/jpeg'; }
+  function extOf(type) {
+    type = String(type || '').split(';')[0];
+    for (var k in MEDIA_TYPES) if (MEDIA_TYPES[k] === type) return k;
+    return '';
+  }
+  function isMediaFile(file) { return /^(image|video)\//.test(file.type); }
+  /* 返回 { blob, thumb, ext }；ext 是 jpg / gif / mp4 / mov / webm */
+  function prepareMedia(file) {
+    if (/^video\//.test(file.type)) return prepareClip(file);
+    return compressImage(file).then(function (out) {
+      if (file.type === 'image/gif') {
+        if (file.size <= MEDIA_MAX_BYTES) return { blob: file, thumb: out.thumb, ext: 'gif' };
+        toast(t('gifTooBig'));
+      }
+      out.ext = 'jpg';
+      return out;
+    });
+  }
+  function frameJpeg(src, w, h, maxSide) {
+    var scale = Math.min(1, maxSide / Math.max(w, h)), cv = document.createElement('canvas');
+    cv.width = Math.round(w * scale); cv.height = Math.round(h * scale);
+    cv.getContext('2d').drawImage(src, 0, 0, cv.width, cv.height);
+    return new Promise(function (resolve) { cv.toBlob(function (b) { cv.width = cv.height = 0; resolve(b); }, 'image/jpeg', 0.8); });
+  }
+  function prepareClip(file) {
+    var src = URL.createObjectURL(file), v = document.createElement('video');
+    v.muted = true; v.playsInline = true; v.setAttribute('playsinline', ''); v.preload = 'auto';
+    function waitFor(ev, ms) {
+      return new Promise(function (resolve, reject) {
+        var tm = setTimeout(function () { reject(new Error('clipRead')); }, ms);
+        v.addEventListener(ev, function () { clearTimeout(tm); resolve(); }, { once: true });
+        v.addEventListener('error', function () { clearTimeout(tm); reject(new Error('clipRead')); }, { once: true });
+      });
+    }
+    function cleanup() { v.pause(); v.removeAttribute('src'); v.load(); URL.revokeObjectURL(src); }
+    var meta = waitFor('loadedmetadata', 15000);
+    v.src = src;
+    return meta.then(function () {
+      if (!(v.duration <= CLIP_MAX_SEC + 0.4)) throw new Error('clipLong');
+      /* 有的手机不播就不给画面：先跳到 0.1 秒，不行再播一下 */
+      var seeked = waitFor('seeked', 4000);
+      v.currentTime = Math.min(0.1, v.duration / 2);
+      return seeked.catch(function () { return v.play().then(function () { v.pause(); }); });
+    }).then(function () {
+      return frameJpeg(v, v.videoWidth, v.videoHeight, THUMB_SIDE);
+    }).then(function (thumb) {
+      return reencodeClip(v).then(function (blob) {
+        if (!blob) {
+          var ext = extOf(file.type);
+          if (ext && file.size <= MEDIA_MAX_BYTES) return { blob: file, thumb: thumb, ext: ext };
+          throw new Error('clipBig');
+        }
+        if (blob.size > MEDIA_MAX_BYTES) throw new Error('clipBig');
+        return { blob: blob, thumb: thumb, ext: extOf(blob.type) || 'webm' };
+      });
+    }).then(function (out) { cleanup(); return out; }, function (e) { cleanup(); throw e; });
+  }
+  /* 边播边画到 720p 的画布上，用 MediaRecorder 录下来；手机不支持就返回 null（原文件够小就照传） */
+  function reencodeClip(v) {
+    var R = window.MediaRecorder, cv = document.createElement('canvas');
+    if (!R || !cv.captureStream || !v.videoWidth) return Promise.resolve(null);
+    var type = ['video/mp4;codecs=avc1', 'video/mp4', 'video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm'].filter(function (x) { return R.isTypeSupported(x); })[0];
+    if (!type) return Promise.resolve(null);
+    var scale = Math.min(1, 720 / Math.max(v.videoWidth, v.videoHeight));
+    cv.width = Math.round(v.videoWidth * scale / 2) * 2; cv.height = Math.round(v.videoHeight * scale / 2) * 2;
+    var ctx = cv.getContext('2d'), stream = cv.captureStream(30), parts = [], rec;
+    try { rec = new R(stream, { mimeType: type, videoBitsPerSecond: 2500000 }); } catch (e) { return Promise.resolve(null); }
+    return new Promise(function (resolve) {
+      var raf = 0, guard;
+      function stop() { cancelAnimationFrame(raf); clearTimeout(guard); v.pause(); if (rec.state !== 'inactive') rec.stop(); }
+      function draw() { ctx.drawImage(v, 0, 0, cv.width, cv.height); raf = requestAnimationFrame(draw); }
+      rec.ondataavailable = function (e) { if (e.data && e.data.size) parts.push(e.data); };
+      rec.onstop = function () {
+        stream.getTracks().forEach(function (tr) { tr.stop(); });
+        cv.width = cv.height = 0;
+        resolve(parts.length ? new Blob(parts, { type: type.split(';')[0] }) : null);
+      };
+      v.onended = stop;
+      guard = setTimeout(stop, (CLIP_MAX_SEC + 4) * 1000);
+      v.currentTime = 0;
+      draw();
+      rec.start(250);
+      v.play().catch(function () { parts = []; stop(); });
+    });
+  }
+
   /* 返回 { blob: 1280px 原图, thumb: 640px 小图 } */
   function compressImage(file) {
     function toBlob(src, maxSide, quality) {
@@ -5039,18 +5144,30 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     return bitmap.then(fromImage);
   }
 
+  /* 新照片：url 是点开看的（动图、视频本身），preview 是缩略图 */
+  function mediaPhoto(out) {
+    var ext = out.ext || 'jpg', ph = { id: uid('ph') + (ext === 'jpg' ? '' : '.' + ext), blob: out.blob, thumb: out.thumb, url: URL.createObjectURL(out.blob) };
+    ph.preview = isClip(ph.id) && out.thumb ? URL.createObjectURL(out.thumb) : ph.url;
+    return ph;
+  }
   function addFormPhotos(files) {
     var f = state.form;
     if (!f) return;
-    var list = Array.prototype.slice.call(files || []).filter(function (x) { return /^image\//.test(x.type); }).slice(0, MAX_PHOTOS - f.photos.length);
+    var list = Array.prototype.slice.call(files || []).filter(isMediaFile).slice(0, MAX_PHOTOS - f.photos.length);
     list.reduce(function (chain, file) {
       return chain.then(function () {
-        return compressImage(file).then(function (out) {
+        var clip = /^video\//.test(file.type);
+        if (clip) { f.mediaBusy = (f.mediaBusy || 0) + 1; renderFormPhotos(); }
+        return prepareMedia(file).then(function (out) {
           if (!out.blob || state.form !== f) return;
-          f.photos.push({ id: uid('ph'), blob: out.blob, thumb: out.thumb, url: URL.createObjectURL(out.blob) });
-          renderFormPhotos();
+          f.photos.push(mediaPhoto(out));
           if (f.photos.length === 1 || !f.catGuessTried) guessCat(f, out.thumb);
-        }).catch(function () { toast(t('photoReadFail')); });
+        }).catch(function (e) {
+          toast(t(e && (e.message === 'clipLong' || e.message === 'clipBig') ? e.message : clip ? 'clipRead' : 'photoReadFail', { n: CLIP_MAX_SEC }));
+        }).then(function () {
+          if (clip) f.mediaBusy--;
+          if (state.form === f) renderFormPhotos();
+        });
       });
     }, Promise.resolve());
   }
@@ -5106,9 +5223,11 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     if (conn && conn.saveData) return Promise.reject(new Error('save-data'));
     if (!catModel) {
       catModel = import(TFJS_URL).then(function (m) {
+        /* 省内存：只用一个线程的 wasm，不开 WebGPU（手机上一堆照片时页面被撑崩过，用户 2026-10-28） */
+        try { m.env.backends.onnx.wasm.numThreads = 1; } catch (e) { /* ignore */ }
         var tryModel = function (i) {
           if (i >= IMG_MODELS.length) throw new Error('no model');
-          return m.pipeline('image-classification', IMG_MODELS[i], { dtype: 'q8' }).catch(function () { return tryModel(i + 1); });
+          return m.pipeline('image-classification', IMG_MODELS[i], { dtype: 'q8', device: 'wasm' }).catch(function () { return tryModel(i + 1); });
         };
         return tryModel(0);
       });
@@ -5381,20 +5500,39 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     if (Math.max(f, tr) < 0.15) return null;
     return tr > f ? 'travel' : 'food';
   }
+  /* 只认划到眼前的卡片，一次一张，认完歇一下；一次认一大堆会把手机浏览器内存撑爆 */
+  var bulkSeen = null;
   function guessBulkModes(b) {
-    var todo = b.groups.slice();
-    function next() {
-      var g = todo.shift();
-      if (!g || state.bulk !== b) return;
-      loadCatModel().then(function (clf) { return clf(g.photos[0].url, { top_k: 10 }); }).then(function (preds) {
-        if (state.bulk !== b) return;
-        var m = photoMode(preds);
-        g.photoMode = m;
-        if (m && !g.modeSet && g.pick < 0 && g.mode !== m) { g.mode = m; updateBulkModeSeg(g); }
-        next();
-      }, function () { /* 模型用不了：都保持原来的，手动点 */ });
-    }
-    next();
+    if (bulkSeen) bulkSeen.disconnect();
+    b.modeQueue = [];
+    if (!window.IntersectionObserver) return;
+    bulkSeen = new IntersectionObserver(function (entries) {
+      entries.forEach(function (en) {
+        if (!en.isIntersecting || state.bulk !== b) return;
+        var g = b.groups[+String(en.target.id).replace('bk-', '')];
+        if (g && !g.modeTried) { g.modeTried = true; b.modeQueue.push(g); }
+      });
+      pumpBulkModes(b);
+    }, { root: view, rootMargin: '300px 0px' });
+    observeBulkCards(b);
+  }
+  function observeBulkCards(b) {
+    if (!bulkSeen || state.bulk !== b) return;
+    $$('.bk-card').forEach(function (el) { bulkSeen.observe(el); });
+  }
+  function pumpBulkModes(b) {
+    if (b.modeBusy || state.bulk !== b || b.modeOff) return;
+    var g = b.modeQueue.shift();
+    if (!g) return;
+    b.modeBusy = true;
+    loadCatModel().then(function (clf) { return clf(g.photos[0].url, { top_k: 10 }); }).then(function (preds) {
+      b.modeBusy = false;
+      if (state.bulk !== b) return;
+      var m = photoMode(preds);
+      g.photoMode = m;
+      if (m && !g.modeSet && g.pick < 0 && g.mode !== m) { g.mode = m; updateBulkModeSeg(g); }
+      setTimeout(function () { pumpBulkModes(b); }, 150);
+    }, function () { b.modeBusy = false; b.modeOff = true; /* 模型用不了：都保持原来的，手动点 */ });
   }
   function bulkChoose(g, k) {
     var c = k >= 0 && g.cands ? g.cands[k] : null;
@@ -5413,6 +5551,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     var meta = g.noLoc ? bulkDate(g.time) + ' ' + bulkClock(g.time) + ' · ' + t('bulkPhotos', { n: g.photos.length }) + ' · ' + t('bulkNoLoc')
       : bulkDate(g.time) + ' · ' + t('bulkPhotos', { n: g.photos.length });
     h += '<div class="bk-head"><div class="bk-meta" id="bk-meta-' + g.i + '">' + esc(meta) + '</div>' + bulkModeSegHTML(g) + '</div>';
+    if (g.i > 0) h += '<button type="button" class="link-btn bk-merge" data-action="bulk-merge" data-i="' + g.i + '">↑ ' + esc(t('bulkMerge')) + '</button>';
     if (g.noLoc) {
       h +=
         '<input class="input" type="search" data-bk-q="' + g.i + '" maxlength="60" autocomplete="off" enterkeyhint="search" placeholder="' + esc(t('bulkFindPh')) + '" value="' + esc(g.q) + '">' +
@@ -5517,6 +5656,29 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     updateBulkModeSeg(g);
     updateBulkFound(g);
     updateBulkSave();
+  }
+  /* 和上一组是同一个地方（用户 2026-10-28）：照片并到上一组，地点、评分只填一次。
+     上一组没填的，用这一组填过的补上 */
+  function bulkMerge(i) {
+    var b = state.bulk, gs = b && b.groups;
+    if (!gs || b.saving || i <= 0 || !gs[i]) return;
+    var top = gs[i - 1], cur = gs[i];
+    var onTop = top.photos.filter(function (p) { return p.on; }).length;
+    cur.photos.forEach(function (p) { p.on = p.on && onTop < MAX_PHOTOS; if (p.on) onTop++; });
+    top.photos = top.photos.concat(cur.photos);
+    if (top.rating == null && cur.rating != null) top.rating = cur.rating;
+    if (top.noLoc && !cur.noLoc) { top.noLoc = false; top.lat = cur.lat; top.lng = cur.lng; top.cands = cur.cands; top.pick = cur.pick; top.name = top.name || cur.name; }
+    else if (top.pick < 0 && cur.pick >= 0) { top.cands = cur.cands; top.pick = cur.pick; top.found = cur.found; top.q = cur.q; }
+    if (!top.name && cur.name) top.name = cur.name;
+    if (!top.modeSet && cur.modeSet) { top.mode = cur.mode; top.modeSet = true; }
+    gs.splice(i, 1);
+    gs.forEach(function (g, k) { g.i = k; });
+    var y = view.scrollTop;
+    renderBulk();
+    view.scrollTop = y;
+    observeBulkCards(b);
+    var el = $('#bk-' + top.i);
+    if (el && el.scrollIntoView) el.scrollIntoView({ block: 'nearest' });
   }
   function bulkReady(g) { return g.rating != null && (!g.noLoc || g.pick >= 0); }
   function renderBulk() {
@@ -5647,8 +5809,8 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       var photos = [];
       return g.photos.filter(function (ph) { return ph.on; }).reduce(function (chain, ph) {
         return chain.then(function () {
-          return compressImage(ph.file).then(function (out) {
-            if (out.blob) photos.push({ id: uid('ph'), blob: out.blob, thumb: out.thumb, url: URL.createObjectURL(out.blob) });
+          return prepareMedia(ph.file).then(function (out) {
+            if (out.blob) photos.push(mediaPhoto(out));
           }, function () { /* 读不了的照片跳过，记录照样存 */ });
         });
       }, Promise.resolve()).then(function () {
@@ -5828,9 +5990,22 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     var multi = lb.ids.length > 1;
     $('#lb-prev').hidden = !multi; $('#lb-next').hidden = !multi;
     $('#lb-count').textContent = multi ? (lb.i + 1) + ' / ' + lb.ids.length : '';
-    store.photoURL(lb.ids[lb.i]).then(function (u) { $('#lb-img').src = u || ''; });
+    var id = lb.ids[lb.i], clip = isClip(id), img = $('#lb-img'), vid = $('#lb-vid');
+    img.hidden = clip; vid.hidden = !clip;
+    if (clip) img.removeAttribute('src'); else { vid.pause(); vid.removeAttribute('src'); }
+    store.photoURL(id).then(function (u) {
+      if (lb.ids[lb.i] !== id) return;
+      if (!clip) { img.src = u || ''; return; }
+      vid.src = u || '';
+      var pr = vid.play();
+      if (pr && pr.catch) pr.catch(function () {});
+    });
   }
-  function closeLightbox() { $('#lightbox').hidden = true; $('#lb-img').removeAttribute('src'); syncNavGuard(); }
+  function closeLightbox() {
+    $('#lightbox').hidden = true; $('#lb-img').removeAttribute('src');
+    var vid = $('#lb-vid'); vid.pause(); vid.removeAttribute('src'); vid.hidden = true;
+    syncNavGuard();
+  }
 
   /* ================= events ================= */
   /* 拉的时候只改字和“看 N 个地方”，松手再刷新地图和整张筛选卡（重画会打断拖动） */
@@ -5936,6 +6111,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       case 'bulk-start': if (requireLogin()) $('#bulk-file').click(); break;
       case 'bulk-ph': bulkTogglePhoto(+d.i, +d.j, el); break;
       case 'bulk-pick': bulkPick(+d.i, +d.k); break;
+      case 'bulk-merge': bulkMerge(+d.i); break;
       case 'bulk-mode': bulkSetMode(+d.i, d.v); break;
       case 'bulk-share':
         state.bulk.share = !state.bulk.share;
