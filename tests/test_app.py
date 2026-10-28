@@ -679,7 +679,7 @@ with sync_playwright() as p:
     page.wait_for_selector('[data-action="osm-pick"]', timeout=5000)
     osm_rows = page.locator('[data-action="osm-pick"]').all_inner_texts()
     check('osm search lists results, duplicates merged', len(osm_rows) == 2 and 'Kafe Ujian' in osm_rows[0] and '添加' in osm_rows[0], osm_rows)
-    check('osm city result goes to travel', '玩' in osm_rows[1], osm_rows)
+    check('osm city result goes to travel', '旅行' in osm_rows[1], osm_rows)
     check('photon queried near the map centre', any('q=kafe' in u and 'lat=' in u for u in photon_calls), photon_calls[-1:])
     page.locator('[data-action="osm-pick"]').first.click()
     page.wait_for_timeout(300)
@@ -1512,6 +1512,8 @@ with sync_playwright() as p:
         'b1.jpg': {'latitude': 3.15, 'longitude': 101.6, 'DateTimeOriginal': '2026-09-02T19:00:00'},
         # 手机把经纬度去掉了，只剩拍摄时间：隔不到 1 小时的算一组
         'c1.jpg': {'DateTimeOriginal': '2026-08-30T12:00:00'}, 'c2.jpg': {'DateTimeOriginal': '2026-08-30T12:40:00'}}) + ';')
+    # 假的本地小模型：每张都像海边（吃还是玩按照片猜）
+    ctxb.add_init_script('window.__catCalls = 0; window.__catClassifier = function (u, o) { window.__catCalls++; return Promise.resolve([{ label: "seashore, coast, seacoast, sea-coast", score: 0.6 }, { label: "cup", score: 0.1 }]); };')
     pb = ctxb.new_page()
     errorsb = []
     pb.on('pageerror', lambda e: errorsb.append('pageerror: ' + str(e)))
@@ -1539,8 +1541,10 @@ with sync_playwright() as p:
     check('bulk: both photos of that visit are in, none picked for the far one', pb.locator('#bk-1 .bk-ph[aria-pressed="true"]').count() == 2
           and pb.locator('#bk-0 [data-bk-name]').count() == 1 and pb.get_attribute('#bk-0 [data-action="bulk-pick"][data-k="-1"]', 'aria-pressed') == 'true')
     check('bulk: nothing to save before scoring', pb.inner_text('#bk-save') == '保存 0' and pb.is_disabled('#bk-save'))
-    check('bulk: food or travel is picked automatically from the place', pb.get_attribute('#bk-1 [data-action="bulk-mode"][data-v="food"]', 'aria-pressed') == 'true'
-          and pb.get_attribute('#bk-2 [data-action="bulk-mode"][data-v="food"]', 'aria-pressed') == 'true')
+    pb.wait_for_function('window.__catCalls >= 3', timeout=5000); pb.wait_for_timeout(100)
+    check('bulk: food or travel is picked from the place first, else from the photo (beach = 旅行)', pb.get_attribute('#bk-1 [data-action="bulk-mode"][data-v="food"]', 'aria-pressed') == 'true'
+          and pb.get_attribute('#bk-2 [data-action="bulk-mode"][data-v="travel"]', 'aria-pressed') == 'true' and pb.inner_text('#bk-2 [data-action="bulk-mode"][data-v="travel"]') == '旅行'
+          and pb.get_attribute('#bk-2 [data-bk-q]', 'placeholder') == '搜地点')
     rate(pb, 4, '#bk-rate-1')
     pb.click('#bk-1 .bk-ph >> nth=1')
     pb.fill('[data-bk-name="0"]', '照片夜市')

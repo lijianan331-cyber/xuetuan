@@ -967,7 +967,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     zh: {
       tagline: '中国有美团，雪邦有雪团',
       foodAria: '吃：美食地图', travelAria: '玩：旅行地图',
-      food: '吃', travel: '玩',
+      food: '美食', travel: '旅行',
       catAll: '全部',
       scoreAria: '{n} 分', legend: '评分',
       dist_walk: '步行 · 1.5km 内', dist_short: '短途打车 · 1.5–10km', dist_mid: '中距离 · 10–40km', dist_far: '更远 · 40km 以上',
@@ -1001,7 +1001,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       bulkBtn: '从照片批量加', bulkTitle: '从照片批量加', bulkReading: '正在读照片 {n}/{m}…',
       bulkSum: '{n} 张照片，分成 {g} 组，打了分的才保存。', bulkNoGps: '{n} 张读不到位置，按拍摄时间分了组，自己搜店名。',
       bulkTip: '位置多半是手机交给网页时去掉的，从文件管理里选（DCIM → Camera）也许能读到。', bulkFiles: '从文件管理选',
-      bulkFindPh: '搜店名', bulkModeLabel: '记到吃还是玩', bulkNoLoc: '没有位置', bulkNeed: '搜到店名才能保存', bulkNoMatch: '没搜到，换个写法试试', bulkFinding: '正在搜…',
+      bulkFindPh: '搜地点', bulkModeLabel: '记到吃还是玩', bulkNoLoc: '没有位置', bulkNeed: '搜到地点才能保存', bulkNoMatch: '没搜到，换个写法试试', bulkFinding: '正在搜…',
       bulkNone: '选的照片里都没有拍摄地点。相机设置里打开“地理位置”，以后拍的就有了。',
       bulkSave: '保存 {n}', bulkSaving: '保存中 {n}/{m}', bulkDone: '存进足迹 {n} 个', bulkFailSome: '{n} 个没存上，过会儿再试',
       bulkPhotos: '{n} 张', bulkLooking: '正在找附近的店…', bulkOwn: '自己写', bulkBeen: '记过',
@@ -5250,6 +5250,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       b.groups = groupPhotos(b);
       render();
       findNames(b);
+      guessBulkModes(b);
     }, function () {
       if (state.bulk !== b) return;
       b.error = true;
@@ -5263,14 +5264,28 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     return Promise.all([meta, thumb]).then(function (r) {
       var x = r[0] || {}, t0 = x.DateTimeOriginal || x.CreateDate || x.ModifyDate;
       var time = t0 instanceof Date && !isNaN(t0) ? t0.getTime() : (file.lastModified || Date.now());
-      var url = r[1] || URL.createObjectURL(file);
-      b.urls.push(url);
-      var it = { file: file, time: Math.min(time, Date.now()), url: url, rot: r[1] ? rotOf(x.Orientation) : 0, on: false };
+      /* 没有 EXIF 小图时自己缩一张 240px 的：以前直接拿原图当预览，一次选四十多张、每张几 MB，
+         手机浏览器内存不够会把页面重开，回来就全没了（用户 2026-10-28） */
+      return (r[1] ? Promise.resolve(r[1]) : smallThumb(file)).then(function (url) {
+        url = url || URL.createObjectURL(file);
+        b.urls.push(url);
+        var it = { file: file, time: Math.min(time, Date.now()), url: url, rot: r[1] ? rotOf(x.Orientation) : 0, on: false };
       if (typeof x.latitude === 'number' && typeof x.longitude === 'number' && isFinite(x.latitude) && isFinite(x.longitude) && (x.latitude || x.longitude)) {
-        it.lat = x.latitude; it.lng = x.longitude;
-      }
-      return it;
+          it.lat = x.latitude; it.lng = x.longitude;
+        }
+        return it;
+      });
     });
+  }
+  function smallThumb(file) {
+    if (!window.createImageBitmap) return Promise.resolve(null);
+    return createImageBitmap(file, { resizeWidth: 240, resizeQuality: 'medium' }).then(function (bm) {
+      var cv = document.createElement('canvas');
+      cv.width = bm.width; cv.height = bm.height;
+      cv.getContext('2d').drawImage(bm, 0, 0);
+      if (bm.close) bm.close();
+      return new Promise(function (resolve) { cv.toBlob(function (bl) { cv.width = cv.height = 0; resolve(bl ? URL.createObjectURL(bl) : null); }, 'image/jpeg', 0.75); });
+    }).catch(function () { return null; });
   }
   function rotOf(o) {
     var s = String(o == null ? '' : o);
@@ -5357,6 +5372,35 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       return parsePhoton({ features: keep }).filter(function (r) { return r.precision === 'exact'; });
     });
   }
+  /* 吃还是玩先看照片（用户 2026-10-28：不是吃的就是玩）：手机本地的小模型认第一张，
+     食物饮料算吃，海边、山、雪、古迹、街景算玩。选中的地点或自己点过吃/玩都比它优先 */
+  var IMG_FOOD = ['plate', 'soup bowl', 'consomme', 'hot pot', 'hotpot', 'wok', 'frying pan', 'restaurant', 'dining table', 'eating house', 'eating place', 'mixing bowl', 'banana', 'pineapple', 'strawberry', 'orange', 'lemon', 'pomegranate', 'fig', 'custard apple', 'jackfruit', 'granny smith', 'broccoli', 'cauliflower', 'head cabbage', 'mushroom', 'cucumber', 'bell pepper', 'corn', 'acorn squash', 'butternut squash', 'spaghetti squash', 'zucchini', 'artichoke', 'pizza', 'cheeseburger', 'hotdog', 'hot dog', 'carbonara', 'french loaf', 'bagel', 'burrito', 'meat loaf', 'meatloaf', 'potpie', 'mashed potato', 'pretzel', 'guacamole', 'ice cream', 'icecream', 'ice lolly', 'trifle', 'chocolate sauce', 'espresso', 'cup', 'coffee mug', 'eggnog', 'red wine', 'beer glass', 'goblet', 'teapot', 'coffeepot', 'pop bottle', 'water bottle', 'measuring cup', 'menu', 'bakery', 'bakeshop'];
+  var IMG_TRAVEL = ['seashore', 'coast', 'seacoast', 'sea-coast', 'sandbar', 'sand bar', 'lakeside', 'lakeshore', 'alp', 'valley', 'vale', 'volcano', 'cliff', 'drop', 'promontory', 'headland', 'coral reef', 'geyser', 'breakwater', 'groin', 'pier', 'dock', 'boathouse', 'beacon', 'lighthouse', 'palace', 'monastery', 'church', 'mosque', 'castle', 'stupa', 'triumphal arch', 'obelisk', 'totem pole', 'suspension bridge', 'steel arch bridge', 'viaduct', 'dam', 'dike', 'fountain', 'bell cote', 'dome', 'planetarium', 'cinema', 'library', 'prison', 'yurt', 'mountain tent', 'ski', 'dogsled', 'snowmobile', 'canoe', 'catamaran', 'trimaran', 'speedboat', 'gondola', 'liner', 'airliner', 'airship', 'balloon', 'paddle', 'snorkel', 'swimming trunks', 'bikini', 'sarong', 'maillot', 'sunglasses', 'umbrella', 'parachute', 'steam locomotive', 'passenger car', 'streetcar', 'cab', 'water ouzel'];
+  function photoMode(preds) {
+    var f = 0, tr = 0;
+    (preds || []).forEach(function (pr) {
+      var names = String(pr.label || '').toLowerCase().split(/\s*,\s*/), sc = +pr.score || 0;
+      if (names.some(function (n) { return IMG_FOOD.indexOf(n) !== -1; })) f += sc;
+      else if (names.some(function (n) { return IMG_TRAVEL.indexOf(n) !== -1; })) tr += sc;
+    });
+    if (Math.max(f, tr) < 0.15) return null;
+    return tr > f ? 'travel' : 'food';
+  }
+  function guessBulkModes(b) {
+    var todo = b.groups.slice();
+    function next() {
+      var g = todo.shift();
+      if (!g || state.bulk !== b) return;
+      loadCatModel().then(function (clf) { return clf(g.photos[0].url, { top_k: 10 }); }).then(function (preds) {
+        if (state.bulk !== b) return;
+        var m = photoMode(preds);
+        g.photoMode = m;
+        if (m && !g.modeSet && g.pick < 0 && g.mode !== m) { g.mode = m; updateBulkModeSeg(g); }
+        next();
+      }, function () { /* 模型用不了：都保持原来的，手动点 */ });
+    }
+    next();
+  }
   function bulkChoose(g, k) {
     var c = k >= 0 && g.cands ? g.cands[k] : null;
     g.pick = c ? k : -1;
@@ -5437,8 +5481,10 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       Promise.all(jobs).then(function (r) {
         if (state.bulk !== b || g.seq !== seq) return;
         var ext = mergeResults(r[1] || [], r[0]).filter(function (x) {
-          return x.precision === 'exact' && !known.some(function (k) { return (x.osm && k.osm === x.osm) || (k.name.toLowerCase() === x.name.toLowerCase() && haversine(k, x) < BULK_NEAR); });
+          return !known.some(function (k) { return (x.osm && k.osm === x.osm) || (k.name.toLowerCase() === x.name.toLowerCase() && haversine(k, x) < BULK_NEAR); });
         });
+        /* 店和景点排前面，城市、地区也能选（比如只记得在普吉岛） */
+        ext.sort(function (a, z) { return (a.precision === 'exact' ? 0 : 1) - (z.precision === 'exact' ? 0 : 1); });
         g.found = known.concat(ext).slice(0, 6);
         g.finding = false;
         updateBulkFound(g);
