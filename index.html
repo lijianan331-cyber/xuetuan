@@ -192,7 +192,7 @@ body[data-snap="full"] .map-ctrls button { pointer-events: none; }
 .form .seg button { flex: 1; min-width: 0; padding: 0 8px; }
 
 /* ---------- locate button + bottom tab bar ---------- */
-:root { --tabbar: calc(50px + env(safe-area-inset-bottom, 0px)); }
+:root { --tabbar: calc(60px + env(safe-area-inset-bottom, 0px)); }
 .locate-btn {
   position: absolute; z-index: 9;
   right: max(12px, env(safe-area-inset-right, 0px));
@@ -220,11 +220,19 @@ body[data-snap="full"] .map-ctrls button { pointer-events: none; }
 .tab {
   min-width: 0; border: 0; background: none; padding: 5px 2px 3px;
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
-  color: var(--muted); font-size: 10px; font-weight: 600; line-height: 1.1;
+  color: #82929f; font-size: 11px; font-weight: 600; line-height: 1.1;
 }
-.tab svg { width: 20px; height: 20px; }
+.tab svg { width: 24px; height: 24px; padding: 2px; box-sizing: content-box; border-radius: 9px; }
 .tab span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.tab[aria-current="page"] { color: var(--accent); }
+.tab { --tab-color: #387fae; }
+.tab[data-tab="explore"] { --tab-color: #3e8d99; }
+.tab[data-tab="foot"] { --tab-color: #5a7caf; }
+.tab[data-tab="me"] { --tab-color: #6d7c9b; }
+.tab[aria-current="page"] { color: var(--tab-color); }
+.tab[aria-current="page"] svg { background: color-mix(in srgb, var(--tab-color) 9%, white); }
+.map-chip.homes-switch { width: 32px; padding: 0; justify-content: center; color: var(--food); }
+.map-chip.homes-switch svg { width: 19px; height: 19px; }
+.map-chip.homes-switch[aria-pressed="true"] { background: #e7f3fb; }
 /* 加一笔：只在我的地图上，定位按钮上面一个蓝色圆钮 */
 .add-fab {
   position: absolute; z-index: 9; display: none; place-items: center;
@@ -510,11 +518,11 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
 .f-loc { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
 .form-place { display: flex; align-items: center; gap: 8px; font-size: 15px; }
 .stars-input {
-  display: flex; align-items: center; gap: 12px; padding: 4px 0; touch-action: none; user-select: none; -webkit-user-select: none;
-  cursor: pointer; outline: none; --c: #B9C1BD;
+  display: flex; align-items: center; gap: 12px; padding: 4px 0; touch-action: pan-y; user-select: none; -webkit-user-select: none;
+  outline: none; --c: #B9C1BD;
 }
 .stars-input:focus-visible .stars-track { outline: 2px solid var(--accent); outline-offset: 4px; border-radius: 8px; }
-.stars-track { display: flex; gap: 4px; }
+.stars-track { display: flex; flex: none; gap: 4px; touch-action: pan-y; cursor: pointer; }
 .stars-track .st { position: relative; width: 36px; height: 36px; color: #DCE3EA; }
 .stars-track .st svg { display: block; width: 100%; height: 100%; }
 .stars-track .st-fill { position: absolute; inset: 0 auto 0 0; overflow: hidden; color: var(--c); }
@@ -588,6 +596,8 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
 .photo-grid { display: flex; flex-wrap: wrap; gap: 8px; }
 .ph-edit { position: relative; width: 68px; height: 68px; border-radius: 14px; overflow: hidden; background: var(--surface-2); }
 .ph-edit img { width: 100%; height: 100%; object-fit: cover; }
+.ph-preview { display: block; width: 100%; height: 100%; padding: 0; border: 0; background: none; }
+.save-status { margin: 8px 0; font-size: 13px; color: var(--muted); }
 .ph-busy { display: grid; place-items: center; font-size: 11px; color: var(--muted); text-align: center; padding: 4px; }
 /* 动图、短视频：缩略图是静的，角上标一下，点开才动 */
 .is-clip, .is-gif { position: relative; }
@@ -724,6 +734,8 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
 .lb-prev { left: max(14px, env(safe-area-inset-left, 0px)); top: 50%; transform: translateY(-50%); }
 .lb-next { right: max(14px, env(safe-area-inset-right, 0px)); top: 50%; transform: translateY(-50%); }
 .lb-count { position: absolute; left: 50%; bottom: calc(env(safe-area-inset-bottom, 0px) + 18px); transform: translateX(-50%); color: #fff; font-size: 13px; font-weight: 600; }
+.lb-comment { position: absolute; bottom: calc(env(safe-area-inset-bottom, 0px) + 48px); left: 12%; right: 12%; max-height: 18vh; overflow-y: auto; color: white; background: rgba(0,0,0,.55); border-radius: 10px; padding: 9px 12px; font-size: 13px; white-space: pre-wrap; }
+.lightbox:has(.lb-comment:not([hidden])) > img, .lightbox:has(.lb-comment:not([hidden])) > video { max-height: 65vh; margin-bottom: 9vh; }
 .drop-pulse { width: 18px; height: 18px; border-radius: 50%; background: var(--accent); animation: drop-pulse 1.4s ease-out 1 forwards; }
 @keyframes drop-pulse {
   0% { transform: scale(.4); box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 60%, transparent); }
@@ -817,6 +829,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
   <button type="button" class="lb-btn lb-prev" id="lb-prev" data-action="lb-prev" aria-label="‹">‹</button>
   <button type="button" class="lb-btn lb-next" id="lb-next" data-action="lb-next" aria-label="›">›</button>
   <div class="lb-count" id="lb-count"></div>
+  <div class="lb-comment" id="lb-comment" hidden></div>
 </div>
 <input type="file" id="f-file" accept="image/*,video/*" multiple hidden>
 <input type="file" id="bulk-file" accept="image/*" multiple hidden>
@@ -1041,7 +1054,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       homeTitle: '设置我的家', homeSearchPh: '搜城市，比如 吉隆坡、深圳', homePick: '在地图上点', homeNote: '只存城市名和大概位置（约 10 公里），不存地址。',
       homeNoResult: '没找到这个城市，换个写法，或者在地图上点', homeSaved: '设好了：{c}', homeRemoved: '不设家了', homeLookup: '正在认是哪个城市…',
       homePickHint: '拖动地图，把十字对准你家所在的城市', homePickFail: '认不出这是哪个城市，换个位置，或者直接搜城市名',
-      homesBtn: '同学的家乡', homeOf: '{n}的家乡', homesN: '{n} 位同学的家乡', homeOnlyYou: '只有你自己看得到', homeEdit: '改我的家', homeSetCta: '你也标上家乡',
+      homesBtn: '校友家乡地图', homesOpened: '校友家乡地图已打开', homesClosed: '校友家乡地图已关闭', saveWorking: '正在保存…', saveUploading: '正在上传照片 {n}/{m}', saveWriting: '正在保存记录…', mediaPreparing: '正在处理照片…', photoPreview: '放大查看照片', homeOf: '{n}的家乡', homesN: '{n} 位同学的家乡', homeOnlyYou: '只有你自己看得到', homeEdit: '改我的家', homeSetCta: '你也标上家乡',
       publish: '发布',
       location: '位置', repick: '重新选',
       noRating: '暂无评分', myScore: '我的评分', avgOf: '{n} 人打分的平均', avgNoZero: '（不算 {n} 个 0 分）', perPerson: '人均', costLabel: '花费', reviewsLabel: '条点评', reviewsTitle: '点评',
@@ -1144,7 +1157,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       homeTitle: 'Set my home', homeSearchPh: 'Search a city, e.g. Kuala Lumpur', homePick: 'Pick on the map', homeNote: 'Only the city name and a rough spot (about 10 km) are saved, never an address.',
       homeNoResult: 'No city found. Try another spelling or pick on the map', homeSaved: 'Home set: {c}', homeRemoved: 'Home removed', homeLookup: 'Finding the city…',
       homePickHint: 'Drag the map until the crosshair is on your home city', homePickFail: 'Couldn’t tell which city this is. Move a bit, or search the city name',
-      homesBtn: 'Classmates’ hometowns', homeOf: '{n}’s hometown', homesN: '{n} classmates’ hometowns', homeOnlyYou: 'Only you can see this', homeEdit: 'Change my home', homeSetCta: 'Add your hometown',
+      homesBtn: 'Alumni hometown map', homesOpened: 'Alumni hometown map opened', homesClosed: 'Alumni hometown map closed', saveWorking: 'Saving…', saveUploading: 'Uploading photos {n}/{m}', saveWriting: 'Saving your record…', mediaPreparing: 'Preparing photos…', photoPreview: 'Enlarge photo', homeOf: '{n}’s hometown', homesN: '{n} classmates’ hometowns', homeOnlyYou: 'Only you can see this', homeEdit: 'Change my home', homeSetCta: 'Add your hometown',
       publish: 'Publish',
       location: 'Location', repick: 'Change',
       noRating: 'No score yet', myScore: 'My score', avgOf: 'Average of {n}', avgNoZero: ' ({n} zero scores left out)', perPerson: 'per person', costLabel: 'cost', reviewsLabel: 'reviews', reviewsTitle: 'Reviews',
@@ -1218,7 +1231,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     lang: 'zh', mode: 'food', tab: 'home', scope: 'all', cat: 'all', priceAbout: 0, minScore: 0, dist: 'any',
     view: 'feed', placeId: null, postId: null, placeBack: null, form: null, nearby: null, query: '',
     snap: 'peek', feedSnap: 'peek', picking: null, preview: null, bsheet: null, me: null, styleKey: 'light',
-    mineBoth: false, countries: false, savedWant: false, mineSub: 'mine', homesOn: true, homes: null, homeBack: null, bulk: null
+    mineBoth: false, countries: false, savedWant: false, mineSub: 'mine', homesOn: false, homes: null, homeBack: null, bulk: null
   };
   var map = null;
   var lastRenderedView = null;
@@ -1562,17 +1575,25 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     /* 小图和原图放在同一个文件夹：xxx.jpg（.gif / .mp4）的小图是 xxx_t.jpg */
     function thumbPath(path) { return path.replace(/\.(jpg|gif|mp4|mov|webm)$/i, '_t.jpg'); }
     /* 传照片（原图 + 小图），返回传成功的路径和是否全部成功；小图传不上去就算了，显示时会退回原图 */
-    function uploadPhotos(photos) {
-      var bucket = client.storage.from('photos');
+    function uploadPhotos(photos, progress) {
+      var bucket = client.storage.from('photos'), done = 0;
+      if (progress && photos.length) progress('upload', 0, photos.length);
       return Promise.all(photos.map(function (ph) {
         var path = photoPath(ph.id);
-        return bucket.upload(path, ph.blob, { contentType: mediaType(path), upsert: false }).then(function (res) {
-          if (res.error) return null;
+        if (ph.uploadedPath === path) { done++; if (progress) progress('upload', done, photos.length); return path; }
+        /* 原图和小图并行；仍等待上传确认后再保存记录。 */
+        function upload(p, blob, type) { return bucket.upload(p, blob, { contentType: type, upsert: false }).then(function (res) { return !res.error; }, function () { return false; }); }
+        return Promise.all([upload(path, ph.blob, mediaType(path)), ph.thumb ? upload(thumbPath(path), ph.thumb, 'image/jpeg') : Promise.resolve(false)]).then(function (res) {
+          done++; if (progress) progress('upload', done, photos.length);
+          if (!res[0]) {
+            if (res[1]) return bucket.remove([thumbPath(path)]).then(function () { return null; }, function () { return null; });
+            return null;
+          }
           if (ph.url) photoURLs.set(path, ph.url);
-          if (!ph.thumb) return path;
-          photoURLs.set(path + THUMB_KEY, URL.createObjectURL(ph.thumb));
-          return bucket.upload(thumbPath(path), ph.thumb, { contentType: 'image/jpeg', upsert: false }).then(function () { return path; }, function () { return path; });
-        }, function () { return null; });
+          ph.uploadedPath = path;
+          if (ph.thumb && res[1]) photoURLs.set(path + THUMB_KEY, URL.createObjectURL(ph.thumb));
+          return path;
+        });
       })).then(function (paths) {
         var good = paths.filter(Boolean);
         return { paths: good, ok: good.length === photos.length };
@@ -1700,8 +1721,9 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
           return p;
         });
       },
-      addReview: function (f, newPhotos) {
-        return needLogin() || uploadPhotos(newPhotos).then(function (up) {
+      addReview: function (f, newPhotos, progress) {
+        return needLogin() || uploadPhotos(newPhotos, progress).then(function (up) {
+          if (progress) progress('write');
           var row = { place_id: f.placeId, rating: f.rating, price: f.price, text: f.text, visibility: f.visibility, photos: up.paths };
           if (f.createdAt) row.created_at = new Date(f.createdAt).toISOString();
           return client.from('visits').insert(row).select().single().then(ok).then(function (v) {
@@ -1711,10 +1733,11 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
           });
         });
       },
-      updateReview: function (id, patch, keepPhotos, newPhotos) {
+      updateReview: function (id, patch, keepPhotos, newPhotos, progress) {
         var r = find(cache.reviews, id);
         if (!r) return Promise.reject(new Error('missing'));
-        return needLogin() || uploadPhotos(newPhotos).then(function (up) {
+        return needLogin() || uploadPhotos(newPhotos, progress).then(function (up) {
+          if (progress) progress('write');
           var dropped = (r.photos || []).filter(function (p) { return keepPhotos.indexOf(p) === -1; });
           var row = { rating: patch.rating, price: patch.price, text: patch.text, visibility: patch.visibility, photos: keepPhotos.concat(up.paths) };
           return client.from('visits').update(row).eq('id', id).select().single().then(ok).then(function (v) {
@@ -2008,6 +2031,13 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     });
     return best ? best.photos[0] : null;
   }
+  function placePhotos(p) {
+    var seen = {}, photos = [];
+    scopedReviews(p.id).slice().sort(function (a, b) { return b.createdAt - a.createdAt; }).forEach(function (r) {
+      (r.photos || []).forEach(function (id) { if (!seen[id]) { seen[id] = true; photos.push(id); } });
+    });
+    return photos;
+  }
   function inScope(p) {
     if (state.scope === 'saved') return store.isSaved(p.id) && visibleToMe(p) && !(state.savedWant && beenThere(p));
     return scopedReviews(p.id).length > 0;
@@ -2098,15 +2128,20 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
   (function setupStars() {
     var active = null;
     document.addEventListener('pointerdown', function (e) {
-      var el = e.target.closest && e.target.closest('.stars-input');
-      if (!el || (e.pointerType === 'mouse' && e.button !== 0)) return;
-      e.preventDefault();
-      active = { el: el, id: e.pointerId, v: starsValueAt(el, e.clientX) };
-      try { el.setPointerCapture(e.pointerId); } catch (err) { /* 不支持也能用 */ }
-      setStars(el, active.v);
+      var track = e.target.closest && e.target.closest('.stars-track'), el = track && track.closest('.stars-input');
+      if (!el || (state.form && state.form.saving) || (e.pointerType === 'mouse' && e.button !== 0)) return;
+      active = { el: el, id: e.pointerId, x: e.clientX, y: e.clientY, moving: false, v: starsValueAt(el, e.clientX) };
+      /* 按下时不抢滚动、不改分；轻点松手确认，横向拖动才预览。 */
     });
     document.addEventListener('pointermove', function (e) {
       if (!active || e.pointerId !== active.id) return;
+      if (!active.moving) {
+        var dx = Math.abs(e.clientX - active.x), dy = Math.abs(e.clientY - active.y);
+        if (dy > 6 && dy >= dx) { active = null; return; }
+        if (dx < 6) return;
+        active.moving = true;
+        try { active.el.setPointerCapture(e.pointerId); } catch (err) {}
+      }
       var v = starsValueAt(active.el, e.clientX);
       if (v !== active.v) { active.v = v; setStars(active.el, v); }
     });
@@ -2114,9 +2149,12 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       if (!active || e.pointerId !== active.id) return;
       var a = active;
       active = null;
-      if (e.type === 'pointerup') commitStars(a.el, a.v);
-      else if (a.el.dataset.commit === 'form' && state.form && state.form.rating != null) setStars(a.el, state.form.rating);
-      else if (a.el.dataset.commit === 'bulk') { var g = bulkGroupOf(a.el); if (g && g.rating != null) setStars(a.el, g.rating); }
+      if (e.type === 'pointerup') { setStars(a.el, a.v); commitStars(a.el, a.v); }
+      else {
+        var old = a.el.dataset.commit === 'form' && state.form ? state.form.rating : a.el.dataset.commit === 'bulk' && bulkGroupOf(a.el) ? bulkGroupOf(a.el).rating : null;
+        if (old != null) setStars(a.el, old);
+        else { a.el.removeAttribute('aria-valuenow'); a.el.removeAttribute('aria-valuetext'); $('.stars-val', a.el).textContent = t('starsNone'); $$('.st-fill', a.el).forEach(function (fill) { fill.style.width = '0%'; }); }
+      }
     }
     document.addEventListener('pointerup', finish);
     document.addEventListener('pointercancel', finish);
@@ -2709,10 +2747,10 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
   /* 有照片的地点放大地图后显示成照片图钉，外框颜色仍然按评分。
      照片要先读出来画成小方块：只读地图上看得到、快放大到位的，最多同时读 3 张 */
   var PIN_PHOTO = 56;
-  /* 放大到多少级照片才出来：具体地点 13 级、片区 11 级、城市 8 级（用户 2026-10-27 嫌 15 级太晚、照片太小）。
+  /* 放大到多少级照片才出来：具体地点 12 级、片区 10 级、城市 7 级（用户 2026-10-27 嫌 15 级太晚、照片太小）。
      到了这一级照片从图钉大小长出来，再放大一级长到正常大小；缩小时照片慢慢缩回图钉大小，再换回普通图钉。
      都用整数级：地图只在整数级上计算这类样式，用半级会在 15 级那里突然变大变小 */
-  var PHOTO_ZOOM = { city: 8, area: 11, exact: 13 };
+  var PHOTO_ZOOM = { city: 7, area: 10, exact: 12 };
   function photoZoom(prec) { return PHOTO_ZOOM[prec] || PHOTO_ZOOM.exact; }
   /* 差一级就到了才去读照片，世界地图上不白白下载 */
   function photoWanted(p) { return !map || map.getZoom() >= photoZoom(p.precision) - 1; }
@@ -2730,7 +2768,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     });
     return e;
   }
-  /* 照片图钉大小：刚出来时和图钉差不多大，放大一级到正常大小，再放大一级大一点。打开的那家再大一圈 */
+  /* 照片随地图缩放渐变，同一缩放级别大小一致，选中只置顶。 */
   /* 普通图钉的大小；正在看的那家大一圈（像谷歌地图那样，不再在针下面画圈，用户 2026-10-27） */
   function pinSize(selId) {
     function at(v) { return !selId ? v : ['case', ['==', ['get', 'id'], selId], Math.round(v * 1300) / 1000, v]; }
@@ -2740,23 +2778,23 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     var e = ['interpolate', ['linear'], ['zoom']];
     for (var z = 7; z <= 17; z++) {
       var v = byPrecision(function (pr) { var d = z - photoZoom(pr); return d <= 0 ? 0.6 : d === 1 ? 1 : 1.15; });
-      e.push(z, !selId ? v : ['case', ['==', ['get', 'id'], selId], typeof v === 'number' ? Math.round(v * 1200) / 1000 : ['*', v, 1.2], v]);
+      e.push(z, v);
     }
     return e;
   }
   var pinThumbs = new Map();   // 照片 id → 'loading' | canvas | false（读不了）
   var thumbQueue = [], thumbBusy = 0, THUMB_PIN_MAX = 300, pinRefreshTimer = null;
-  function photoPinImage(photo, score, saved) {
+  function photoPinImage(photo, score, saved, count) {
     var cv = pinThumbs.get(photo);
     if (!cv || cv === 'loading' || !map) return null;
     var bucket = score == null ? null : Math.round(score * 2) / 2;
-    var id = 'ph-' + photo + '-' + (bucket == null ? 'none' : bucket * 10) + (saved ? '-s' : '');
+    var id = 'ph-' + photo + '-' + (bucket == null ? 'none' : bucket * 10) + (saved ? '-s' : '') + '-n' + (count || 1);
     if (!map.hasImage(id)) {
-      try { map.addImage(id, drawPhotoPin(cv, bucket == null ? DOT_NONE : scoreColor(bucket), saved), { pixelRatio: DPR }); } catch (e) { return null; }
+      try { map.addImage(id, drawPhotoPin(cv, bucket == null ? DOT_NONE : scoreColor(bucket), saved, count), { pixelRatio: DPR }); } catch (e) { return null; }
     }
     return id;
   }
-  function drawPhotoPin(thumb, color, saved) {
+  function drawPhotoPin(thumb, color, saved, count) {
     var S = PIN_PHOTO, W = S + 12, H = S + 22;
     var cv = document.createElement('canvas');
     cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR);
@@ -2779,6 +2817,11 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     g.drawImage(thumb, 6, 5, S, S);
     g.restore();
     if (saved) drawStarBadge(g, W - 8, 8, 7);
+    if (count > 1) {
+      var label = count > 99 ? '99+' : String(count), bw = label.length > 2 ? 26 : 20;
+      g.fillStyle = 'rgba(255,255,255,.96)'; rounded(W - bw - 7, S - 13, bw, 18, 8); g.fill();
+      g.fillStyle = '#25445e'; g.font = 'bold 11px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(label, W - bw / 2 - 7, S - 4);
+    }
     return g.getImageData(0, 0, cv.width, cv.height);
   }
   function loadImage(u) {
@@ -2842,21 +2885,23 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
   }
 
   function placesInView() {
+    if (hometownMode()) return [];
     return store.places().filter(function (p) { return inScope(p) && passesFilters(p); });
   }
   function placesGeoJSON() {
+    if (hometownMode()) return { type: 'FeatureCollection', features: [] };
     var b = viewBounds();
     return {
       type: 'FeatureCollection',
       features: placesInView().map(function (p) {
         /* 收藏地图上每个都是收藏的，就不再加星 */
         var saved = state.scope !== 'saved' && store.isSaved(p.id);
-        var s = stats(p), photo = coverPhoto(p), ph = photo ? photoPinImage(photo, s.score, saved) : null;
+        var s = stats(p), photo = coverPhoto(p), count = placePhotos(p).length, ph = photo ? photoPinImage(photo, s.score, saved, count) : null;
         if (photo && !ph && !pinThumbs.has(photo) && photoWanted(p) && (!b || b.contains([p.lng, p.lat]))) queueThumb(photo);
         return {
           type: 'Feature',
           geometry: { type: 'Point', coordinates: [p.lng, p.lat] },
-          properties: { id: p.id, name: placeTitle(p), icon: pinImage(p, s.score, saved), pic: ph || '', photo: !!ph, saved: saved, color: scoreColor(s.score), precision: p.precision }
+          properties: { id: p.id, name: placeTitle(p), icon: pinImage(p, s.score, saved), pic: ph || '', photo: !!ph, photoCount: count, saved: saved, color: scoreColor(s.score), precision: p.precision }
         };
       })
     };
@@ -2930,8 +2975,9 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     var m = /^hometown-n-(.+)$/.exec(e.id || '');
     if (m && !map.hasImage(e.id)) map.addImage(e.id, drawHometown(m[1]), { pixelRatio: DPR });
   }
+  function hometownMode() { return state.tab === 'explore' && state.scope === 'all' && state.homesOn; }
   function homesShown() {
-    if (state.scope === 'all') return state.mode === 'travel' && state.homesOn;
+    if (state.scope === 'all') return hometownMode();
     return state.scope === 'mine' && (state.mode === 'travel' || state.mineBoth);
   }
   function homesOnMap() {
@@ -2988,7 +3034,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       id: 'hometown-pin', type: 'symbol', source: 'homes', filter: ['any', ['has', 'point_count'], ['==', ['get', 'pin'], true]],
       layout: {
         'icon-image': ['case', ['has', 'point_count'], ['concat', 'hometown-n-', ['get', 'point_count_abbreviated']], ['get', 'icon']],
-        'icon-anchor': 'bottom', 'icon-allow-overlap': true, 'icon-ignore-placement': true, 'icon-size': ['interpolate', ['linear'], ['zoom'], 2, 0.85, 10, 1]
+        'icon-anchor': 'bottom', 'icon-allow-overlap': true, 'icon-ignore-placement': true, 'icon-size': ['interpolate', ['linear'], ['zoom'], 2, 0.48, 5, 0.62, 10, 0.9]
       }
     });
     map.addLayer({
@@ -3137,12 +3183,14 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
         });
       } else if (f.properties && f.properties.id) {
         openPlace(f.properties.id, { fly: false });
+        if (f.layer && f.layer.id === 'pt-photo') openPlacePhotos(f.properties.id);
       }
       return;
     }
     var homeLayers = ['hometown-pin', 'home-pin'].filter(function (id) { return map.getLayer(id); });
     var homes = homeLayers.length ? map.queryRenderedFeatures([[e.point.x - 14, e.point.y - 14], [e.point.x + 14, e.point.y + 14]], { layers: homeLayers }) : [];
     if (homes.length) { openHomesAt(homes); return; }
+    if (hometownMode()) return;
     /* 底图上自带的店名、景点名也能点：还不在雪团的先预览，打个分就能记进我的地图 */
     var poi = (state.view === 'feed' || state.view === 'place' || state.view === 'preview') && basePoiAt(e.point);
     if (poi) { openBasePoi(poi); return; }
@@ -3187,7 +3235,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
   var LIB_MINZOOM = 14.5, LIB_TILE_Z = 13, libTiles = {}, libTimer = null;
   function libFC() {
     var feats = [], seen = {};
-    if (!map || GMAP) return { type: 'FeatureCollection', features: feats };
+    if (!map || GMAP || hometownMode()) return { type: 'FeatureCollection', features: feats };
     Object.keys(libTiles).forEach(function (k) {
       if (k.split('/')[0] !== state.mode || !Array.isArray(libTiles[k])) return;
       libTiles[k].forEach(function (r) {
@@ -3594,8 +3642,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     }
     $('#map-ctrls').innerHTML = h;
     /* 旅行大地图左上角：红针是什么、有几位，点一下收起 / 显示；没人公开家乡就不出 */
-    var nh = state.scope === 'all' && state.mode === 'travel' ? publicHomeCount() : 0;
-    $('#map-chips').innerHTML = nh ? '<button type="button" class="map-chip" data-action="homes-toggle" aria-pressed="' + state.homesOn + '">' + HOMETOWN_PIN + '<span>' + esc(t('homesBtn')) + '</span><b>' + nh + '</b></button>' : '';
+    $('#map-chips').innerHTML = state.tab === 'explore' && state.scope === 'all' ? '<button type="button" class="map-chip homes-switch" data-action="homes-toggle" aria-label="' + esc(t('homesBtn')) + '" title="' + esc(t('homesBtn')) + '" aria-pressed="' + state.homesOn + '">' + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="m3 10 9-7 9 7M5 9v12h14V9M9 21v-7h6v7"/></svg></button>' : '';
   }
 
   /* 我的地图只分 美食 / 旅行 / 合并（在筛选里选） */
@@ -4144,9 +4191,11 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     if (!box || !f) return;
     box.innerHTML = f.photos.map(function (ph) {
       var img = ph.existing ? '<img data-photo="' + esc(ph.id) + '" alt="">' : '<img src="' + (ph.preview || ph.url) + '" alt="">';
-      return '<div class="ph-edit' + (isClip(ph.id) ? ' is-clip' : isGif(ph.id) ? ' is-gif' : '') + '">' + img + '<button type="button" class="ph-del" data-action="f-photo-del" data-id="' + ph.id + '" aria-label="' + esc(t('del')) + '">×</button></div>';
+      return '<div class="ph-edit' + (isClip(ph.id) ? ' is-clip' : isGif(ph.id) ? ' is-gif' : '') + '"><button type="button" class="ph-preview" data-action="f-photo-preview" data-id="' + esc(ph.id) + '" aria-label="' + esc(t('photoPreview')) + '">' + img + '</button><button type="button" class="ph-del" data-action="f-photo-del" data-id="' + ph.id + '" aria-label="' + esc(t('del')) + '">×</button></div>';
     }).join('') + (f.mediaBusy ? '<div class="ph-edit ph-busy">' + esc(t('clipBusy')) + '</div>' : '') + (f.photos.length + (f.mediaBusy || 0) < MAX_PHOTOS ? '<button type="button" class="ph-add" data-action="f-photo-add">' + ICON.camera + '<span>' + esc(t('addPhoto')) + '</span></button>' : '');
     hydratePhotos(box);
+    var submit = $('#f-submit');
+    if (submit && !f.saving) { submit.disabled = !!f.mediaBusy; submit.textContent = t(f.mediaBusy ? 'mediaPreparing' : f.editId ? 'saveEdit' : 'publish'); }
   }
   var DRAFT_FIELDS = [['f-nick', 'nick'], ['f-name', 'name'], ['f-alt', 'alt'], ['f-price', 'price'], ['f-text', 'text'], ['f-link', 'link']];
   function captureFormDraft() {
@@ -4952,6 +5001,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
      再点一下当前这一栏：在子页面就回到这一栏的首页，已经在首页就滚回最上面 */
   function scopeOfTab(tab) { return tab === 'foot' ? state.mineSub : 'all'; }
   function setTab(tab) {
+    if (state.form && state.form.saving) { toast(t('saveWorking')); return; }
     if (state.bsheet) closeBSheet();
     if (tab === state.tab) {
       if (state.view !== 'feed') goFeed();
@@ -4959,9 +5009,11 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       return;
     }
     state.tab = tab;
+    state.homesOn = false;
     state.preview = null; state.homes = null;
     var scope = scopeOfTab(tab);
-    if (scope !== state.scope) { state.scope = scope; renderFilters(); refreshMap(); }
+    if (scope !== state.scope) state.scope = scope;
+    renderFilters(); refreshMap();
     goFeed();
   }
   /* 地图上的东西（地点、搜索结果、去哪儿看）在首页、我的里打开时，跳到探索去看 */
@@ -5031,6 +5083,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
   }
   function formCancel() {
     var f = state.form, pid = f && f.placeId;
+    if (f && f.saving) { toast(t('saveWorking')); return; }
     if (f) f.photos.forEach(function (ph) { if (!ph.existing && !store.hasPhotoURL(ph.id)) URL.revokeObjectURL(ph.url); });
     state.form = null;
     if (pid && placeById(pid)) {
@@ -5041,6 +5094,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
   var TRAVEL_ZOOM = 11;
   function setMode(mode, opts) {
     opts = opts || {};
+    state.homesOn = false;
     if (mode === state.mode) return;
     state.mode = mode; state.cat = 'all';
     if (mode === 'travel') { state.priceAbout = 0; state.dist = 'any'; }
@@ -5320,12 +5374,13 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
   }
   function addFormPhotos(files) {
     var f = state.form;
-    if (!f) return;
-    var list = Array.prototype.slice.call(files || []).filter(isMediaFile).slice(0, MAX_PHOTOS - f.photos.length);
+    if (!f || f.saving) return;
+    var list = Array.prototype.slice.call(files || []).filter(isMediaFile).slice(0, MAX_PHOTOS - f.photos.length - (f.mediaBusy || 0));
+    f.mediaBusy = (f.mediaBusy || 0) + list.length;
+    renderFormPhotos();
     list.reduce(function (chain, file) {
       return chain.then(function () {
         var clip = /^video\//.test(file.type);
-        if (clip) { f.mediaBusy = (f.mediaBusy || 0) + 1; renderFormPhotos(); }
         return prepareMedia(file).then(function (out) {
           if (!out.blob || state.form !== f) return;
           f.photos.push(mediaPhoto(out));
@@ -5333,7 +5388,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
         }).catch(function (e) {
           toast(t(e && (e.message === 'clipLong' || e.message === 'clipBig') ? e.message : clip ? 'clipRead' : 'photoReadFail', { n: CLIP_MAX_SEC }));
         }).then(function () {
-          if (clip) f.mediaBusy--;
+          f.mediaBusy--;
           if (state.form === f) renderFormPhotos();
         });
       });
@@ -5452,7 +5507,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
   function submitForm(e) {
     e.preventDefault();
     var f = state.form;
-    if (!f) return;
+    if (!f || f.saving || f.mediaBusy) return;
     captureFormDraft();
     clearErrs();
     var d = f.draft || {};
@@ -5463,7 +5518,14 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     if (bad) { bad.focus({ preventScroll: true }); centerInPanel(bad, !reduceMotion); return; }
 
     var btn = $('#f-submit');
-    if (btn) btn.disabled = true;
+    f.saving = true;
+    if (btn) { btn.disabled = true; btn.textContent = t('saveWorking'); }
+    var frozen = $$('#place-form input, #place-form textarea, #place-form button, #place-form select').filter(function (el) { return !el.disabled; });
+    frozen.forEach(function (el) { el.disabled = true; });
+    var status = document.createElement('p'); status.className = 'save-status'; status.setAttribute('role', 'status');
+    $('#place-form').appendChild(status);
+    function progress(stage, done, total) { status.textContent = stage === 'upload' ? t('saveUploading', { n: done, m: total }) : t('saveWriting'); if (btn) btn.textContent = stage === 'upload' ? (state.lang === 'en' ? 'Uploading ' : '上传 ') + done + '/' + total : t('saveWorking'); }
+    progress('write');
     if (f.visibility === 'public' && (d.nick || '').trim()) store.updateProfile({ name: d.nick.trim().slice(0, 20) });
     var placeData = placeFields ? {
       mode: p0 ? p0.mode : state.mode, cat: f.cat || 'other', precision: f.precision, lat: f.loc.lat, lng: f.loc.lng,
@@ -5478,8 +5540,10 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     var keepPhotos = f.photos.filter(function (ph) { return ph.existing; }).map(function (ph) { return ph.id; });
     var placeStep = !placeData ? Promise.resolve(p0) : p0 ? store.updatePlace(p0.id, placeData) : store.addPlace(placeData);
     placeStep.then(function (place) {
+      /* 重试时复用刚创建成功的地点，避免重复创建。 */
+      f.placeId = place.id;
       rv.placeId = place.id;
-      var save = f.editId ? store.updateReview(f.editId, rv, keepPhotos, newPhotos) : store.addReview(rv, newPhotos);
+      var save = f.editId ? store.updateReview(f.editId, rv, keepPhotos, newPhotos, progress) : store.addReview(rv, newPhotos, progress);
       return save.then(function (res) { return { place: place, res: res }; });
     }).then(function (x) {
       state.form = null;
@@ -5497,7 +5561,9 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       openPlace(x.place.id, { drop: !f.editId });
     }).catch(function (e) {
       if (window.console) console.warn('save:', e);
-      if (btn) btn.disabled = false;
+      f.saving = false;
+      frozen.forEach(function (el) { el.disabled = false; }); status.remove();
+      if (btn) { btn.disabled = false; btn.textContent = t(f.editId ? 'saveEdit' : 'publish'); }
       toast(t('saveFail'));
     });
   }
@@ -6123,8 +6189,21 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     fr.readAsText(file);
   }
 
-  var lb = { ids: [], i: 0 };
+  var lb = { ids: [], i: 0 }, lbRequest = 0;
+  function openPlacePhotos(id, photo) {
+    var p = placeById(id), ids = p ? placePhotos(p) : [];
+    if (!ids.length) return;
+    lb = { ids: ids, i: Math.max(0, ids.indexOf(photo)), place: id };
+    $('#lightbox').hidden = false; showLightbox(); syncNavGuard();
+  }
+  function openFormPhoto(id) {
+    var f = state.form; if (!f) return;
+    var photos = f.photos.slice(), ids = photos.map(function (ph) { return ph.id; });
+    lb = { ids: ids, i: Math.max(0, ids.indexOf(id)), photos: photos };
+    $('#lightbox').hidden = false; showLightbox(); syncNavGuard();
+  }
   function openLightbox(id, group) {
+    if (group === 'place' && state.placeId) { openPlacePhotos(state.placeId, id); return; }
     var ids = $$('[data-action="photo"][data-group="' + group + '"]', view).map(function (b) { return b.dataset.id; });
     lb = { ids: ids.length ? ids : [id], i: Math.max(0, ids.indexOf(id)) };
     $('#lightbox').hidden = false;
@@ -6132,14 +6211,19 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     syncNavGuard();
   }
   function showLightbox() {
+    var request = ++lbRequest;
     var multi = lb.ids.length > 1;
     $('#lb-prev').hidden = !multi; $('#lb-next').hidden = !multi;
     $('#lb-count').textContent = multi ? (lb.i + 1) + ' / ' + lb.ids.length : '';
     var id = lb.ids[lb.i], clip = isClip(id), img = $('#lb-img'), vid = $('#lb-vid');
+    var comment = $('#lb-comment'), review = lb.place && scopedReviews(lb.place).find(function (r) { return (r.photos || []).indexOf(id) !== -1; });
+    comment.textContent = review ? [review.authorName, review.rating == null ? '' : fmtScore(review.rating) + ' / 5', review.text].filter(Boolean).join(' · ') : '';
+    comment.hidden = !comment.textContent;
     img.hidden = clip; vid.hidden = !clip;
     if (clip) img.removeAttribute('src'); else { vid.pause(); vid.removeAttribute('src'); }
-    store.photoURL(id).then(function (u) {
-      if (lb.ids[lb.i] !== id) return;
+    var draft = lb.photos && lb.photos.find(function (ph) { return ph.id === id && !ph.existing; });
+    (draft ? Promise.resolve(draft.url) : store.photoURL(id)).then(function (u) {
+      if (request !== lbRequest || $('#lightbox').hidden || lb.ids[lb.i] !== id) return;
       if (!clip) { img.src = u || ''; return; }
       vid.src = u || '';
       var pr = vid.play();
@@ -6147,6 +6231,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     });
   }
   function closeLightbox() {
+    lbRequest++;
     $('#lightbox').hidden = true; $('#lb-img').removeAttribute('src');
     var vid = $('#lb-vid'); vid.pause(); vid.removeAttribute('src'); vid.hidden = true;
     syncNavGuard();
@@ -6203,7 +6288,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       case 'cat': state.cat = d.cat; refilter(); break;
       case 'saved-want': state.savedWant = d.v === 'want'; refilter(); break;
       case 'mine-mode': if (state.view !== 'feed') goFeed(); setMineView(d.v); if (state.bsheet) renderBSheet(); break;
-      case 'homes-toggle': state.homesOn = !state.homesOn; refreshMap(); renderFilters(); saveView(); break;
+      case 'homes-toggle': state.homesOn = !state.homesOn; goFeed(); refreshMap(); renderFilters(); saveView(); toast(t(state.homesOn ? 'homesOpened' : 'homesClosed')); break;
       case 'home-set': openHomeSet(); break;
       case 'acct': switchAccount(d.id); break;
       case 'acct-add': addAccount(); break;
@@ -6274,7 +6359,9 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
         (dirty ? confirmBox(t('bulkLeaveQ'), t('bulkLeave')) : Promise.resolve(true)).then(function (ok) { if (ok) $('#bulk-file-any').click(); });
         break;
       }
+      case 'f-photo-preview': openFormPhoto(d.id); break;
       case 'f-photo-del':
+        if (!state.form || state.form.saving) break;
         state.form.photos = state.form.photos.filter(function (ph) {
           if (ph.id === d.id && !ph.existing) URL.revokeObjectURL(ph.url);
           return ph.id !== d.id;
@@ -6403,7 +6490,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       if (savedView.lang === 'en' || savedView.lang === 'zh') state.lang = savedView.lang;
       if (savedView.mode === 'travel' || savedView.mode === 'food') state.mode = savedView.mode;
       if (STYLE_URLS[savedView.styleKey]) state.styleKey = savedView.styleKey;
-      state.mineBoth = savedView.mineBoth === true; state.countries = savedView.countries === true; state.homesOn = savedView.homesOn !== false;
+      state.mineBoth = savedView.mineBoth === true; state.countries = savedView.countries === true; state.homesOn = false;
     }
     applyStaticI18n();
     renderChrome();

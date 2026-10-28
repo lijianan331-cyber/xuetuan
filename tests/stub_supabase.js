@@ -64,6 +64,7 @@
   Query.prototype.run = function () {
     var self = this, t = db[this.table], rows, now = new Date().toISOString();
     calls.push([this.table, this.op]);
+    if (this.table === 'visits' && this.op === 'insert' && window.__sbFailVisit) return err('test visit unavailable');
     if (this.op === 'upsert') {
       // 只有 homes 用：按 user_id 覆盖；和数据库触发器一样把位置取整到 0.1 度
       var up = Object.assign({}, this.payload, { updated_at: now });
@@ -158,7 +159,10 @@
             return {
               upload: function (path, blob, opts) {
                 if (!uid() || path.split('/')[0] !== uid()) return Promise.resolve(err('not allowed'));
-                files[path] = blob.size; types[path] = opts && opts.contentType; return Promise.resolve({ data: { path: path }, error: null });
+                calls.push(['upload', path]);
+                return Promise.resolve(window.__sbUploadGate ? window.__sbUploadGate(path) : null).then(function () {
+                  files[path] = blob.size; types[path] = opts && opts.contentType; return { data: { path: path }, error: null };
+                });
               },
               remove: function (paths) { paths.forEach(function (p) { delete files[p]; }); return Promise.resolve({ data: [], error: null }); },
               getPublicUrl: function (path) { return { data: { publicUrl: 'https://example.invalid/storage/v1/object/public/' + bucket + '/' + path } }; }
