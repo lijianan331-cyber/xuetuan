@@ -226,7 +226,7 @@ body[data-snap="full"] .map-ctrls button { pointer-events: none; }
 .tab span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tab { --tab-color: #438bbd; }
 .tab[data-tab="explore"] { --tab-color: #47978d; }
-.tab[data-tab="foot"] { --tab-color: #b18a5d; }
+.tab[data-tab="foot"] { --tab-color: #5b87b4; }
 .tab[data-tab="me"] { --tab-color: #9279ac; }
 .tab[aria-current="page"] { color: var(--tab-color); }
 .tab[aria-current="page"] svg { opacity: 1; background: color-mix(in srgb, var(--tab-color) 12%, white); }
@@ -2751,7 +2751,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
      到了这一级照片从图钉大小长出来，再放大一级长到正常大小；缩小时照片慢慢缩回图钉大小，再换回普通图钉。
      都用整数级：地图只在整数级上计算这类样式，用半级会在 15 级那里突然变大变小 */
   var PHOTO_ZOOM = { city: 7, area: 10, exact: 12 };
-  var TRAVEL_PHOTO_ZOOM = { city: 4, area: 7, exact: 9 };
+  var TRAVEL_PHOTO_ZOOM = { city: 3.8, area: 6.8, exact: 8.8 };
   function photoZoom(prec, mode) { var levels = mode === 'travel' ? TRAVEL_PHOTO_ZOOM : PHOTO_ZOOM; return levels[prec] || levels.exact; }
   /* 差一级就到了才去读照片，世界地图上不白白下载 */
   function photoWanted(p) { return !map || map.getZoom() >= photoZoom(p.precision, p.mode) - 1; }
@@ -2766,7 +2766,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
   /* 有照片的地点到了照片级别取 onPhoto，其余取 k（照片层的不透明度、普通图钉和选中圆圈的淡出都用它） */
   function whenPhoto(onPhoto, k) {
     var e = ['step', ['zoom'], k];
-    [4, 7, 9, 10, 12].forEach(function (z) {
+    [3.8, 6.8, 7, 8.8, 10, 12].forEach(function (z) {
       var v = byPlaceKind(function (pr, mode) { return z >= photoZoom(pr, mode) ? onPhoto : k; });
       e.push(z, v === k ? k : ['case', ['==', ['get', 'photo'], true], v, k]);
     });
@@ -2780,8 +2780,8 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
   }
   function photoPinSize(selId) {
     var e = ['interpolate', ['linear'], ['zoom']];
-    for (var z = 4; z <= 17; z++) {
-      var v = byPlaceKind(function (pr, mode) { var d = z - photoZoom(pr, mode); return mode === 'travel' ? (d <= 0 ? 0.85 : d === 1 ? 1.25 : 1.4) : (d <= 0 ? 0.6 : d === 1 ? 1 : 1.15); });
+    for (var z = 3; z <= 17; z++) {
+      var v = byPlaceKind(function (pr, mode) { var d = z - Math.ceil(photoZoom(pr, mode)); return mode === 'travel' ? (d <= 0 ? 0.85 : d === 1 ? 1.25 : 1.4) * 1.15 : (d <= 0 ? 0.6 : d === 1 ? 1 : 1.15); });
       e.push(z, v);
     }
     return e;
@@ -3087,7 +3087,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     var src = map && map.getSource && map.getSource('places');
     if (src && typeof src.setClusterOptions === 'function' && placeClusterProfiles.get(src) !== placeClusterMaxZoom()) {
       placeClusterProfiles.set(src, placeClusterMaxZoom());
-      Promise.resolve(src.setClusterOptions({ clusterMaxZoom: placeClusterMaxZoom(), clusterRadius: 46 })).catch(function () { placeClusterProfiles.delete(src); });
+      Promise.resolve(src.setClusterOptions({ cluster: true, clusterMaxZoom: placeClusterMaxZoom(), clusterRadius: 46 })).catch(function () { placeClusterProfiles.delete(src); });
     }
     if (src) src.setData(placesGeoJSON());
     refreshLib();

@@ -43,7 +43,7 @@
   Map.prototype.addSource = function (id, s) {
     if (this.sources[id]) throw new Error('source exists ' + id);
     this.sources[id] = { spec: s, data: s.data, setData: function (d) { this.data = d; }, getClusterExpansionZoom: function () { return Promise.resolve(12); },
-      setClusterOptions: function (options) { Object.assign(this.spec, options); this.clusterUpdates = (this.clusterUpdates || 0) + 1; return Promise.resolve(); },
+      setClusterOptions: function (options) { this.spec.cluster = options.cluster; Object.assign(this.spec, options); this.clusterUpdates = (this.clusterUpdates || 0) + 1; return this; },
       getClusterLeaves: function () { return Promise.resolve(((this.data && this.data.features) || []).slice()); } };
   };
   Map.prototype.getSource = function (id) { return this.sources[id]; };
