@@ -206,6 +206,8 @@ with sync_playwright() as p:
     browser = p.chromium.launch()
     ctx = browser.new_context(viewport={'width': 390, 'height': 844}, device_scale_factor=2, has_touch=True, accept_downloads=True, locale='zh-CN')
     route_all(ctx)
+    # 打开时替用户滚 1 像素再滚回来（让华为浏览器收起顶上“相关搜索”那一行）：记下滚到过哪
+    ctx.add_init_script('window.__scrolls = []; addEventListener("scroll", () => window.__scrolls.push(scrollY), true);')
     page = ctx.new_page()
     errors = []
     page.on('pageerror', lambda e: errors.append('pageerror: ' + str(e)))
@@ -285,6 +287,8 @@ with sync_playwright() as p:
     GEO = '(() => { const p = document.querySelector("#panel").getBoundingClientRect(), t = document.querySelector("#tabbar").getBoundingClientRect(); return [Math.round(p.bottom) >= Math.round(t.top), Math.round(t.bottom) === innerHeight, document.documentElement.scrollHeight <= innerHeight]; })()'
     geo = page.evaluate(GEO)
     check('peek: sheet sits on the tab bar, tab bar on the screen edge', geo == [True, True, True], geo)
+    check('on open the page is nudged 1px and back, so browsers fold their extra top row', 1 in page.evaluate('window.__scrolls') and page.evaluate('scrollY') == 0
+          and page.evaluate('document.body.style.height') == '', page.evaluate('window.__scrolls'))
     for hh in (700, 900, 844):
         page.set_viewport_size({'width': 390, 'height': hh})
         page.wait_for_timeout(500)

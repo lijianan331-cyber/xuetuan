@@ -3331,9 +3331,27 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
   }
   /* 拖面板、碰地图时收起键盘：输入框一直留着焦点的话，有的浏览器收了键盘还算在打字 */
   function blurTyping() { if (typingNow()) document.activeElement.blur(); }
+  /* 华为浏览器刚打开时顶上多一行“相关搜索”，报给网页的却是那行收起后的高度（?debug 量到 668，实际只露出约 615），
+     标签栏被挤到底部工具栏后面，要用户先滑一下那行才收起（用户 2026-10-28）。打开时替用户把页面滚 1 像素再滚回来，
+     让浏览器以为滑过了、收起那一行；不支持的浏览器什么也不发生 */
+  var nudging = false;
+  function nudgeBrowserBars() {
+    if (!isMobile() || typingNow()) return;
+    var de = document.documentElement, b = document.body;
+    nudging = true;
+    de.style.overflow = b.style.overflow = 'auto';
+    b.style.height = 'calc(100% + 80px)';
+    window.scrollTo(0, 1);
+    setTimeout(function () {
+      window.scrollTo(0, 0);
+      de.style.overflow = b.style.overflow = b.style.height = '';
+      nudging = false;
+      syncViewport();
+    }, 450);
+  }
   function syncViewport() {
     var h = measureAppH(), top = measureAppTop(), typing = typingNow();
-    if (window.scrollY || window.scrollX) window.scrollTo(0, 0);
+    if (!nudging && (window.scrollY || window.scrollX)) window.scrollTo(0, 0);
     unscrollApp();
     if (!typing) fullH = h;
     else if (h > fullH) fullH = h;
@@ -6227,6 +6245,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
   /* 有的浏览器收起/展开工具栏时不发 resize，隔一会儿量一次（没变就什么都不做） */
   setInterval(syncViewport, 800);
   syncViewport();
+  nudgeBrowserBars();
 
   /* ================= boot ================= */
   store.onAuthChange(function () {
