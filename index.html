@@ -192,7 +192,7 @@ body[data-snap="full"] .map-ctrls button { pointer-events: none; }
 .form .seg button { flex: 1; min-width: 0; padding: 0 8px; }
 
 /* ---------- locate button + bottom tab bar ---------- */
-:root { --tabbar: calc(60px + env(safe-area-inset-bottom, 0px)); }
+:root { --tabbar: calc(54px + env(safe-area-inset-bottom, 0px)); }
 .locate-btn {
   position: absolute; z-index: 9;
   right: max(12px, env(safe-area-inset-right, 0px));
@@ -218,18 +218,18 @@ body[data-snap="full"] .map-ctrls button { pointer-events: none; }
   background: var(--surface); box-shadow: 0 -1px 0 var(--line), 0 -6px 20px rgba(40, 90, 140, .06);
 }
 .tab {
-  min-width: 0; border: 0; background: none; padding: 5px 2px 3px;
+  min-width: 0; border: 0; background: none; padding: 4px 2px 3px;
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
-  color: #82929f; font-size: 11px; font-weight: 600; line-height: 1.1;
+  color: #82929f; font-size: 10.5px; font-weight: 600; line-height: 1.1;
 }
-.tab svg { width: 24px; height: 24px; padding: 2px; box-sizing: content-box; border-radius: 9px; }
+.tab svg { width: 22px; height: 22px; padding: 1px; box-sizing: content-box; border-radius: 8px; color: var(--tab-color); opacity: .8; }
 .tab span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.tab { --tab-color: #387fae; }
-.tab[data-tab="explore"] { --tab-color: #3e8d99; }
-.tab[data-tab="foot"] { --tab-color: #5a7caf; }
-.tab[data-tab="me"] { --tab-color: #6d7c9b; }
+.tab { --tab-color: #438bbd; }
+.tab[data-tab="explore"] { --tab-color: #47978d; }
+.tab[data-tab="foot"] { --tab-color: #b18a5d; }
+.tab[data-tab="me"] { --tab-color: #9279ac; }
 .tab[aria-current="page"] { color: var(--tab-color); }
-.tab[aria-current="page"] svg { background: color-mix(in srgb, var(--tab-color) 9%, white); }
+.tab[aria-current="page"] svg { opacity: 1; background: color-mix(in srgb, var(--tab-color) 12%, white); }
 .map-chip.homes-switch { width: 32px; padding: 0; justify-content: center; color: var(--food); }
 .map-chip.homes-switch svg { width: 19px; height: 19px; }
 .map-chip.homes-switch[aria-pressed="true"] { background: #e7f3fb; }
@@ -1067,10 +1067,10 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       you: '我', anon: '某同学', fromPrefix: '来自 ',
       del: '删除', delReviewQ: '删除这条点评？', delOk: '删除', deleted: '已删除',
       edit: '编辑', saveEdit: '保存修改', updated: '改好了',
-      login: '登录', loginTitle: '登录雪团', loginWhy: '浏览不用登录。加地点、写点评、收藏要先登录。',
+      login: '登录', loginTitle: '登录雪团', loginWhy: '无需登录也能添加地点、写点评和收藏。匿名使用后，可在“我的”绑定账号，换设备仍能找回记录。',
       loginGoogle: '用 Google 登录', loginOr: '或者用邮箱', loginEmailPh: '你的邮箱', loginSend: '发登录链接',
       loginSent: '登录链接发到 {e} 了，去邮箱点一下就行。', loginFail: '没成功：{m}', loginFirst: '先登录一下', anonName: '雪团用户{n}', anonReady: '已经给你分配了一个号，可以直接记了', anonTapAgain: '号分配好了，再点一下',
-      anonWhy: '现在是匿名账号，只存在这台手机的这个浏览器里，清缓存或换手机就找不回了。绑定谷歌后，换手机也能登录，记录都在。', linkGoogle: '绑定谷歌账号',
+      anonWhy: '你正在使用匿名账号，可以添加、点评和收藏。身份保存在当前浏览器；清除浏览器数据或换设备前，请绑定谷歌账号，以便找回记录。', anonFail: '匿名账号暂时创建失败，请检查网络后重试，无需先登录。', linkGoogle: '绑定谷歌账号',
       loggedIn: '登录了', loggedOut: '已退出登录', logout: '退出登录', account: '账号', signedInAs: '已登录：{e}',
       remoteNote: '记录存在雪团的服务器上，换手机也在。公开的大家都能看到，私密的只有你自己能看到。',
       uploadLocal: '上传这台设备上的旧记录', uploadLocalQ: '把这个浏览器里以前存的记录（不含示例）上传到你的账号？', uploadLocalOk: '上传',
@@ -1170,10 +1170,10 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       you: 'Me', anon: 'A student', fromPrefix: 'from ',
       del: 'Delete', delReviewQ: 'Delete this review?', delOk: 'Delete', deleted: 'Deleted',
       edit: 'Edit', saveEdit: 'Save changes', updated: 'Updated',
-      login: 'Log in', loginTitle: 'Log in to XueTuan', loginWhy: 'Browsing is open to everyone. Log in to add places, write reviews and save spots.',
+      login: 'Log in', loginTitle: 'Log in to XueTuan', loginWhy: 'Add places, write reviews and save spots without logging in. Link your guest account in Profile to recover your records on another device.',
       loginGoogle: 'Continue with Google', loginOr: 'or use your email', loginEmailPh: 'Your email', loginSend: 'Email me a login link',
       loginSent: 'Login link sent to {e}. Open it to log in.', loginFail: 'That didn’t work: {m}', loginFirst: 'Log in first', anonName: 'XueTuan user {n}', anonReady: 'You got a guest account, go ahead', anonTapAgain: 'Guest account ready, tap again',
-      anonWhy: 'This is a guest account, kept only in this browser on this phone. Clearing data or switching phones loses it. Link Google to keep your records anywhere.', linkGoogle: 'Link Google account',
+      anonWhy: 'You can add places, review and save with this guest account. Its identity stays in this browser. Link Google before clearing browser data or switching devices to recover your records.', anonFail: 'Could not create your guest account. Check your connection and try again; no login is required.', linkGoogle: 'Link Google account',
       loggedIn: 'Logged in', loggedOut: 'Logged out', logout: 'Log out', account: 'Account', signedInAs: 'Logged in as {e}',
       remoteNote: 'Your entries live on the XueTuan server, so they follow you across devices. Public ones are visible to everyone; private ones only to you.',
       uploadLocal: 'Upload old entries from this device', uploadLocalQ: 'Upload the entries saved in this browser (not the samples) to your account?', uploadLocalOk: 'Upload',
@@ -2751,19 +2751,23 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
      到了这一级照片从图钉大小长出来，再放大一级长到正常大小；缩小时照片慢慢缩回图钉大小，再换回普通图钉。
      都用整数级：地图只在整数级上计算这类样式，用半级会在 15 级那里突然变大变小 */
   var PHOTO_ZOOM = { city: 7, area: 10, exact: 12 };
-  function photoZoom(prec) { return PHOTO_ZOOM[prec] || PHOTO_ZOOM.exact; }
+  var TRAVEL_PHOTO_ZOOM = { city: 4, area: 7, exact: 9 };
+  function photoZoom(prec, mode) { var levels = mode === 'travel' ? TRAVEL_PHOTO_ZOOM : PHOTO_ZOOM; return levels[prec] || levels.exact; }
   /* 差一级就到了才去读照片，世界地图上不白白下载 */
-  function photoWanted(p) { return !map || map.getZoom() >= photoZoom(p.precision) - 1; }
+  function photoWanted(p) { return !map || map.getZoom() >= photoZoom(p.precision, p.mode) - 1; }
   /* 同一个缩放级别，三种精度的值一样就直接给数字，不一样就按精度分 */
   function byPrecision(fn) {
     var v = ['city', 'area', 'exact'].map(function (pr) { return Math.round(fn(pr) * 1000) / 1000; });
     return v[0] === v[1] && v[1] === v[2] ? v[0] : ['match', ['get', 'precision'], 'city', v[0], 'area', v[1], v[2]];
   }
+  function byPlaceKind(fn) {
+    return ['match', ['get', 'mode'], 'travel', byPrecision(function (pr) { return fn(pr, 'travel'); }), byPrecision(function (pr) { return fn(pr, 'food'); })];
+  }
   /* 有照片的地点到了照片级别取 onPhoto，其余取 k（照片层的不透明度、普通图钉和选中圆圈的淡出都用它） */
   function whenPhoto(onPhoto, k) {
     var e = ['step', ['zoom'], k];
-    [PHOTO_ZOOM.city, PHOTO_ZOOM.area, PHOTO_ZOOM.exact].forEach(function (z) {
-      var v = byPrecision(function (pr) { return z >= photoZoom(pr) ? onPhoto : k; });
+    [4, 7, 9, 10, 12].forEach(function (z) {
+      var v = byPlaceKind(function (pr, mode) { return z >= photoZoom(pr, mode) ? onPhoto : k; });
       e.push(z, v === k ? k : ['case', ['==', ['get', 'photo'], true], v, k]);
     });
     return e;
@@ -2776,8 +2780,8 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
   }
   function photoPinSize(selId) {
     var e = ['interpolate', ['linear'], ['zoom']];
-    for (var z = 7; z <= 17; z++) {
-      var v = byPrecision(function (pr) { var d = z - photoZoom(pr); return d <= 0 ? 0.6 : d === 1 ? 1 : 1.15; });
+    for (var z = 4; z <= 17; z++) {
+      var v = byPlaceKind(function (pr, mode) { var d = z - photoZoom(pr, mode); return mode === 'travel' ? (d <= 0 ? 0.85 : d === 1 ? 1.25 : 1.4) : (d <= 0 ? 0.6 : d === 1 ? 1 : 1.15); });
       e.push(z, v);
     }
     return e;
@@ -2901,7 +2905,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
         return {
           type: 'Feature',
           geometry: { type: 'Point', coordinates: [p.lng, p.lat] },
-          properties: { id: p.id, name: placeTitle(p), icon: pinImage(p, s.score, saved), pic: ph || '', photo: !!ph, photoCount: count, saved: saved, color: scoreColor(s.score), precision: p.precision }
+          properties: { id: p.id, name: placeTitle(p), mode: p.mode, icon: pinImage(p, s.score, saved), pic: ph || '', photo: !!ph, photoCount: count, saved: saved, color: scoreColor(s.score), precision: p.precision }
         };
       })
     };
@@ -3005,11 +3009,14 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     return ['case', ['==', ['get', 'id'], selId || '__none__'], 2, ['get', 'photo'], 1, 0];
   }
 
+  var placeClusterProfiles = new WeakMap();
+  function placeClusterMaxZoom() { return state.mode === 'travel' || (state.scope === 'mine' && state.mineBoth) ? 8 : 13; }
   function addAppLayers() {
     var fonts = pickFonts();
     /* 数字圈用雪团的浅冰蓝，不跟着旅行地图变深（用户 2026-10-28） */
     var accent = CLUSTER_BLUE;
-    map.addSource('places', { type: 'geojson', data: placesGeoJSON(), cluster: true, clusterMaxZoom: 13, clusterRadius: 46 });
+    map.addSource('places', { type: 'geojson', data: placesGeoJSON(), cluster: true, clusterMaxZoom: placeClusterMaxZoom(), clusterRadius: 46 });
+    placeClusterProfiles.set(map.getSource('places'), placeClusterMaxZoom());
     map.addSource('me', { type: 'geojson', data: meFC() });
     map.addSource('homes', { type: 'geojson', data: homesFC(), cluster: true, clusterMaxZoom: 11, clusterRadius: 36 });
     /* 地点库里的店：放大后才出，小圆点 + 店名，垫在所有图钉下面 */
@@ -3078,6 +3085,10 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
 
   function refreshMap() {
     var src = map && map.getSource && map.getSource('places');
+    if (src && typeof src.setClusterOptions === 'function' && placeClusterProfiles.get(src) !== placeClusterMaxZoom()) {
+      placeClusterProfiles.set(src, placeClusterMaxZoom());
+      Promise.resolve(src.setClusterOptions({ clusterMaxZoom: placeClusterMaxZoom(), clusterRadius: 46 })).catch(function () { placeClusterProfiles.delete(src); });
+    }
     if (src) src.setData(placesGeoJSON());
     refreshLib();
     queueLib();
@@ -4912,6 +4923,10 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
   }
 
   function renderLogin() {
+    if (store.isAnon && store.isAnon()) {
+      view.innerHTML = '<div class="view-top"><button type="button" class="icon-btn flat" data-action="back" aria-label="' + esc(t('back')) + '">' + ICON.back + '</button><h2 class="view-title">' + esc(t('linkGoogle')) + '</h2></div><div class="form"><p class="note">' + esc(t('anonWhy')) + '</p><button type="button" class="btn primary block" data-action="link-google">' + ICON.google + esc(t('linkGoogle')) + '</button></div>';
+      return;
+    }
     view.innerHTML = '<div class="view-top"><button type="button" class="icon-btn flat" data-action="back" aria-label="' + esc(t('back')) + '">' + ICON.back + '</button><h2 class="view-title">' + esc(t('loginTitle')) + '</h2></div>' +
       '<div class="form"><p class="note">' + esc(t('loginWhy')) + '</p>' +
       '<button type="button" class="btn primary block" data-action="login-google">' + ICON.google + esc(t('loginGoogle')) + '</button>' +
@@ -4927,17 +4942,16 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
   }
   /* 线上版没登录时：先自动发一个匿名号，发好了接着做刚才那件事（用户 2026-10-28：匿名也能加，随便分配个号，
      想换手机不丢再绑谷歌）。retry 为空的（要选文件的）发好号后让用户再点一次——浏览器不让代码替用户打开选文件。
-     后台没开匿名登录时，退回原来的登录页 */
-  var afterAuth = null, anonFailed = false;
+     匿名创建失败时留在原页，可再次点击重试，不强迫注册 */
+  var afterAuth = null;
   function requireLogin(retry) {
     if (store.signedIn()) return true;
-    if (store.signInAnonymously && !anonFailed) {
+    if (store.signInAnonymously) {
       if (afterAuth) return false;
       afterAuth = retry || function () { toast(t('anonTapAgain')); };
       store.signInAnonymously().catch(function () {
-        afterAuth = null; anonFailed = true;
-        toast(t('loginFirst'));
-        openLogin();
+        afterAuth = null;
+        toast(t('anonFail'));
       });
       return false;
     }
@@ -6378,7 +6392,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       case 'near-new': state.view = 'form'; render(); break;
       case 'osm-pick': pickOsm(+d.i); break;
       case 'login': openLogin(); break;
-      case 'login-google': store.signInWithGoogle().catch(function (err) { toast(t('loginFail', { m: (err && err.message) || '' })); }); break;
+      case 'login-google': (store.isAnon && store.isAnon() ? store.linkGoogle() : store.signInWithGoogle()).catch(function (err) { toast(t('loginFail', { m: (err && err.message) || '' })); }); break;
       case 'logout': store.signOut().catch(function () {}); break;
       case 'link-google': store.linkGoogle().catch(function (err) { toast(t('loginFail', { m: (err && err.message) || '' })); }); break;
       case 'upload-local': uploadLegacy(); break;

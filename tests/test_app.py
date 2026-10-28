@@ -90,7 +90,7 @@ def open_place(pg, q, name=None):
     # 在探索里按名字搜出来，打开地点页
     tab(pg, 'explore')
     pg.click('#map-ctrls [data-action="search"]'); pg.fill('#q', q); pg.wait_for_timeout(200)
-    pg.locator('#search-local .near-item', has_text=name or q).first.click(); pg.wait_for_timeout(300)
+    pg.locator('#search-local .near-item', has_text=name or q).first.click(); pg.wait_for_timeout(500)  # focusout viewport sync runs at 350ms
 def via_home(pg, text, to_place=True):
     # 首页卡片 → 帖子 →（帖子里的地点）→ 探索地图上的地点页
     tab(pg, 'home')
@@ -359,7 +359,9 @@ with sync_playwright() as p:
     check('red pin removed on the map', page.locator('#map .sel-pin').count() == 0)
 
     # back to food, add a place at XMUM
+    check('travel clusters release photos from regional zoom', page.evaluate('window.__map.getSource("places").spec.clusterMaxZoom') == 8)
     set_mode(page, 'food')
+    check('food clustering restored after travel', page.evaluate('window.__map.getSource("places").spec.clusterMaxZoom') == 13)
     page.evaluate('window.__map.center = {lng: 101.7031, lat: 2.8331}; window.__map.zoom = 17;')
     add(page)
     page.wait_for_timeout(200)
@@ -461,6 +463,11 @@ with sync_playwright() as p:
     check('area / city photos show from district / city zoom', map_expr(ph_op, 9.9, {'photo': True, 'precision': 'area'}) == 0 and map_expr(ph_op, 10, {'photo': True, 'precision': 'area'}) == 1
           and map_expr(ph_op, 6.9, {'photo': True, 'precision': 'city'}) == 0 and map_expr(ph_op, 7, {'photo': True, 'precision': 'city'}) == 1)
     check('places without photos keep their pin at every zoom', all(map_expr(pin_op, z, {'photo': False, 'precision': 'exact'}) == 1 for z in (3, 12, 15.5, 18)))
+    travel_props = dict(ph_props, mode='travel', precision='exact')
+    check('travel photos appear at regional zoom 9; food keeps street zoom 12', map_expr(ph_op, 8.9, travel_props) == 0 and map_expr(ph_op, 9, travel_props) == 1 and map_expr(ph_op, 9, dict(travel_props, mode='food')) == 0)
+    check('travel city and area photos appear at zoom 4 and 7', map_expr(ph_op, 4, dict(travel_props, precision='city')) == 1 and map_expr(ph_op, 7, dict(travel_props, precision='area')) == 1)
+    check('travel pictures grow to 70-78px while food size is retained', [round(map_expr(ph_size,z,travel_props),2) for z in (9,10,11)] == [0.85,1.25,1.4] and map_expr(ph_size,11,travel_props) > map_expr(ph_size,15,dict(travel_props,mode='food')))
+
     check('opened photo pin drawn on top at the same size', lays['pt-photo']['layout']['symbol-sort-key'][1] == ['==', ['get', 'id'], pid] and lays['pt-photo']['layout']['symbol-sort-key'][2] == 2
           and abs(map_expr(ph_size, 13, ph_props) - 1.0) < 0.01 and abs(map_expr(ph_size, 13, dict(ph_props, id='x')) - 1.0) < 0.01, lays['pt-photo']['layout'])
     page.evaluate('window.__map.jumpTo({zoom: 12})')
@@ -1787,7 +1794,8 @@ with sync_playwright() as p:
     page6.evaluate('window.__sbNoAnon = true')
     add(page6)
     page6.wait_for_timeout(200)
-    check('remote: adding while logged out asks to log in (when guest accounts are off in Supabase)', page6.locator('#login-form').count() == 1 and not page6.locator('#pick').is_visible())
+    check('guest failure does not force login or lose the current view', page6.locator('#login-form').count() == 0 and '无需先登录' in page6.inner_text('#toast'))
+    tab(page6, 'me'); page6.click('[data-action="login"]')
     page6.fill('#login-email', 'not-an-email')
     page6.click('#login-send')
     check('remote: bad email rejected', page6.get_attribute('#login-email', 'aria-invalid') == 'true')
@@ -1800,7 +1808,7 @@ with sync_playwright() as p:
     check('remote: google login requested', page6.evaluate('window.__sb.calls.some(c => c[0] === "oauth" && c[1] === "google")'))
     page6.evaluate('window.__sbLogin("%s", "a@example.com")' % A)
     page6.wait_for_timeout(300)
-    check('remote: login returns to feed with toast', page6.locator('.view-head .view-title').count() == 1 and '登录了' in page6.inner_text('#toast'), page6.inner_text('#toast'))
+    check('remote: login returns to feed with toast', page6.locator('#login-form').count() == 0 and page6.locator('#me-name').count() == 1 and '登录了' in page6.inner_text('#toast'), page6.inner_text('#toast'))
 
     # 匿名也能加（用户 2026-10-28）：没登录点 + 就自动发一个号，接着打开添加；「我的」里可以绑谷歌
     pa = ctx6.new_page()
@@ -1820,8 +1828,33 @@ with sync_playwright() as p:
     check('guest: 我的 explains the guest account and offers linking Google', pa.locator('[data-action="link-google"]').count() == 1 and '匿名账号' in pa.inner_text('#view') and pa.locator('[data-action="logout"]').count() == 0)
     pa.click('[data-action="link-google"]'); pa.wait_for_timeout(100)
     check('guest: linking Google keeps the same account (linkIdentity)', pa.evaluate('window.__sb.calls.some(c => c[0] === "link" && c[1] === "google")'))
+    check('guest binding never starts a separate Google sign-in', pa.evaluate('!window.__sb.calls.some(c => c[0] === "oauth")'))
     check('guest: no page errors', not errorsa, errorsa)
     pa.close()
+    for action in ('save', 'review', 'retry'):
+        pg_guest = ctx6.new_page()
+        pg_guest.goto(APP)
+        pg_guest.wait_for_function('window.__map && window.__map.getSource("places")')
+        pg_guest.wait_for_timeout(250)
+        if action == 'retry':
+            pg_guest.evaluate('window.__sbNoAnon=true')
+            add(pg_guest); pg_guest.wait_for_timeout(200)
+            check('guest creation failure is retryable without a login page', pg_guest.locator('#login-form').count() == 0)
+            pg_guest.evaluate('window.__sbNoAnon=false')
+            add(pg_guest)
+            pg_guest.wait_for_function('window.__sb.calls.filter(c => c[0]==="anon").length===2')
+            pg_guest.wait_for_selector('#q')
+            check('guest retry proceeds straight to adding', pg_guest.locator('#login-form').count() == 0)
+        else:
+            open_place(pg_guest, 'B 的公开店')
+            pg_guest.click('[data-action="toggle-save"]' if action == 'save' else '[data-action="write-review"]')
+            pg_guest.wait_for_timeout(500)
+            if action == 'save':
+                check('first-ever save creates a guest and keeps the wishlist entry', pg_guest.evaluate('window.__sb.calls.filter(c => c[0]==="anon").length===1 && window.__sb.db.wishlist.some(w => w.user_id.startsWith("eeeeeeee"))') and pg_guest.locator('#login-form').count() == 0)
+            else:
+                check('first-ever review creates a guest and opens the review form', pg_guest.evaluate('window.__sb.calls.filter(c => c[0]==="anon").length===1') and pg_guest.locator('#place-form').count() == 1 and pg_guest.locator('#login-form').count() == 0)
+        pg_guest.close()
+
 
     # 店名搜索：先查地点库，Photon 的同一家店不重复列出
     add(page6)
