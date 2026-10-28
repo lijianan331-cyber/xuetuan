@@ -468,6 +468,15 @@ body[data-snap="page"] .panel-body { padding-top: env(safe-area-inset-top, 0px);
 .form { display: flex; flex-direction: column; gap: 16px; padding-top: 2px; }
 .field { min-width: 0; display: flex; flex-direction: column; gap: 6px; }
 .f-label { font-size: 12px; font-weight: 700; color: var(--muted); }
+.price-field .f-label { display: flex; justify-content: space-between; align-items: baseline; }
+#flt-price-val { font-size: 13px; color: var(--accent); }
+#flt-price-val.muted { color: var(--muted); font-weight: 600; }
+#flt-price { --fill: 0%; -webkit-appearance: none; appearance: none; width: 100%; height: 28px; margin: 6px 0 0; background: transparent; touch-action: pan-y; }
+#flt-price::-webkit-slider-runnable-track { height: 4px; border-radius: 2px; background: linear-gradient(90deg, var(--accent) var(--fill), var(--line) var(--fill)); }
+#flt-price::-moz-range-track { height: 4px; border-radius: 2px; background: linear-gradient(90deg, var(--accent) var(--fill), var(--line) var(--fill)); }
+#flt-price::-webkit-slider-thumb { -webkit-appearance: none; width: 24px; height: 24px; margin-top: -10px; border-radius: 50%; background: #fff; border: 2px solid var(--accent); box-shadow: 0 1px 4px rgba(0,0,0,.2); }
+#flt-price::-moz-range-thumb { width: 22px; height: 22px; border-radius: 50%; background: #fff; border: 2px solid var(--accent); }
+.price-ticks { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); }
 .f-label small { font-weight: 600; }
 .input {
   width: 100%; min-height: 42px; padding: 9px 12px; border: 1.5px solid transparent; border-radius: 12px;
@@ -478,6 +487,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
 .input:focus { outline: none; background: var(--surface); border-color: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft); }
 .input[aria-invalid="true"] { border-color: var(--danger); }
 .f-hint { margin: 0; color: var(--muted); font-size: 12px; }
+.cat-guess { margin-top: 4px; color: var(--accent); }
 .f-err { color: var(--danger); font-size: 12.5px; font-weight: 700; }
 .chips-wrap { display: flex; flex-wrap: wrap; gap: 6px; }
 .chips-wrap .chip { background: var(--surface-2); }
@@ -816,7 +826,22 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     dark: 'https://tiles.openfreemap.org/styles/dark'
   };
   var STYLE_ORDER = ['light', 'color', 'dark'];
-  var PRICE_STEPS = [0, 15, 30, 50];
+  /* 人均价位滑条：拉到“RM x 左右”，显示 x 的 2/3 到 4/3（15 → 10–20，30 → 20–40）。
+     60 以下常见价位挡位密、拉得慢，100 往上挡位稀、拉得快；最右 500 = 333 以上都算 */
+  var PRICE_STOPS = [0, 5, 8, 10, 12, 15, 18, 20, 25, 30, 35, 40, 45, 50, 55, 60, 70, 80, 90, 100, 150, 200, 300, 400, 500];
+  function priceBand(x) {
+    if (!x) return null;
+    return [Math.round(x * 2 / 3), x >= PRICE_STOPS[PRICE_STOPS.length - 1] ? Infinity : Math.round(x * 4 / 3)];
+  }
+  function priceFits(avg, x) {
+    var b = priceBand(x);
+    return !b || (!!avg && avg >= b[0] && avg <= b[1]);
+  }
+  function priceLabel(x) {
+    var b = priceBand(x);
+    if (!b) return t('anyOpt');
+    return t('priceAbout', { n: x }) + ' · ' + (b[1] === Infinity ? 'RM' + b[0] + '+' : 'RM' + b[0] + '–' + b[1]);
+  }
   var APP_LAYERS = ['lib-dot', 'lib-label', 'cl-halo', 'cl-circle', 'cl-count', 'pt-pin', 'pt-photo', 'pt-label', 'me-halo', 'me-dot'];
   /* 地图最多按 2 倍画（提速），图钉图片也画 2 倍就够 */
   var DPR = Math.min(window.devicePixelRatio || 1, 2);
@@ -833,6 +858,8 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       { id: 'mamak', zh: '嘛嘛·印度', en: 'Mamak & Indian', emoji: '🥘', color: '#9A5B2F' },
       { id: 'west', zh: '西餐快餐', en: 'Western', emoji: '🍔', color: '#2F6FD6' },
       { id: 'jpkr', zh: '日韩', en: 'Japanese & Korean', emoji: '🍣', color: '#7B52D1' },
+      { id: 'hotpot', zh: '火锅', en: 'Hotpot', emoji: '🍲', color: '#B02A37' },
+      { id: 'pretty', zh: '漂亮饭', en: 'Pretty plates', emoji: '🥗', color: '#E8628C' },
       { id: 'cafe', zh: '咖啡饮品', en: 'Cafés & drinks', emoji: '☕', color: '#1E9C8F' },
       { id: 'sweet', zh: '甜品', en: 'Desserts', emoji: '🍧', color: '#D64F9A' },
       { id: 'street', zh: '夜市小摊', en: 'Night markets & stalls', emoji: '🏮', color: '#EE6A24' },
@@ -964,7 +991,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       category: '分类（选填）', precision: '标到哪一级',
       precExact: '具体地点', precArea: '一片区域', precCity: '整个城市',
       precHint: '吃饭的店标到门口；旅行可以只标城市，放大时会显示成一个范围。',
-      rating: '评分', ratingHint: '点或左右拖星星，可以打半颗；拖到最左是 0 分（踩雷）。', errRating: '打个分再发布', starsNone: '还没打分',
+      catGuessing: '正在看照片认是哪一类…', catGuessed: '看照片像「{c}」，不对就点别的', catByName: '按店名选了「{c}」，不对就点别的', catNoGuess: '照片没认出来', rating: '评分', ratingHint: '点或左右拖星星，可以打半颗；拖到最左是 0 分（踩雷）。', errRating: '打个分再发布', starsNone: '还没打分',
       priceFood: '人均（RM，选填）',
       review: '评论（选填）', reviewPhFood: '写评论', reviewPhTravel: '写评论',
       photos: '照片（选填）', photoLimit: '最多 {n} 张', addPhoto: '加照片', photoReadFail: '这张图读不了，换一张试试',
@@ -1036,7 +1063,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       openMap: '探索地图', postPlace: '在地图上看', placeEmpty: '还没有人记录过这里。',
       meBeen: '去过', meWant: '想去', meShared: '分享', meNoName: '还没起昵称', meNoHome: '还没设家乡', meGuest: '还没登录',
       filterBtn: '筛选', filtersTitle: '筛选', filterScore: '评分', filterDist: '离学校多远', filterPrice: '人均价位', anyOpt: '不限',
-      scoreOpt: '{n} 分以上', priceOpt: 'RM{n} 以内', filterReset: '重置', filterShow: '看 {n} 个地方',
+      scoreOpt: '{n} 分以上', priceAbout: 'RM{n} 左右', filterReset: '重置', filterShow: '看 {n} 个地方',
       areasTitle: '去哪儿看', locWorld: '全球', locHere: '这附近', saveHere: '记住现在这片'
     },
     en: {
@@ -1066,7 +1093,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       category: 'Category (optional)', precision: 'How precise',
       precExact: 'Exact spot', precArea: 'An area', precCity: 'Whole city',
       precHint: 'Pin restaurants at the door. Trips can be city-level and show as an area when zoomed in.',
-      rating: 'Score', ratingHint: 'Tap or drag the stars; half stars work. All the way left is 0 (avoid).', errRating: 'Give it a score first', starsNone: 'Not scored yet',
+      catGuessing: 'Reading the photo…', catGuessed: 'Looks like {c} from the photo. Tap another if wrong.', catByName: 'Picked {c} from the name. Tap another if wrong.', catNoGuess: 'Could not tell from the photo', rating: 'Score', ratingHint: 'Tap or drag the stars; half stars work. All the way left is 0 (avoid).', errRating: 'Give it a score first', starsNone: 'Not scored yet',
       priceFood: 'Per person (RM, optional)',
       review: 'Review (optional)', reviewPhFood: 'Write a review', reviewPhTravel: 'Write a review',
       photos: 'Photos (optional)', photoLimit: 'up to {n}', addPhoto: 'Add photo', photoReadFail: 'Couldn’t read that image. Try another one',
@@ -1138,7 +1165,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       openMap: 'Explore the map', postPlace: 'See on map', placeEmpty: 'Nobody has recorded this place yet.',
       meBeen: 'Been', meWant: 'Wishlist', meShared: 'Shared', meNoName: 'No nickname yet', meNoHome: 'No hometown yet', meGuest: 'Not logged in',
       filterBtn: 'Filters', filtersTitle: 'Filters', filterScore: 'Score', filterDist: 'Distance from campus', filterPrice: 'Price per person', anyOpt: 'Any',
-      scoreOpt: '{n}+', priceOpt: 'Up to RM{n}', filterReset: 'Reset', filterShow: 'Show {n} places',
+      scoreOpt: '{n}+', priceAbout: 'About RM{n}', filterReset: 'Reset', filterShow: 'Show {n} places',
       areasTitle: 'Go to', locWorld: 'The world', locHere: 'Around here', saveHere: 'Save this area'
     }
   };
@@ -1161,7 +1188,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
   /* ================= state ================= */
   /* tab：底部四栏 首页 / 探索 / 足迹 / 我的（V2.0）。scope：地图上画哪些记录（all 公开 / mine 我去过 / saved 想去） */
   var state = {
-    lang: 'zh', mode: 'food', tab: 'home', scope: 'all', cat: 'all', priceMax: 0, minScore: 0, dist: 'any',
+    lang: 'zh', mode: 'food', tab: 'home', scope: 'all', cat: 'all', priceAbout: 0, minScore: 0, dist: 'any',
     view: 'feed', placeId: null, postId: null, placeBack: null, form: null, nearby: null, query: '',
     snap: 'peek', feedSnap: 'peek', picking: null, preview: null, bsheet: null, me: null, styleKey: 'light',
     mineBoth: false, countries: false, savedWant: false, mineSub: 'mine', homesOn: true, homes: null, homeBack: null, bulk: null
@@ -2096,12 +2123,12 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     if (state.scope === 'mine') return true; /* 我的地图只分美食 / 旅行，不用分类和筛选 */
     if (state.cat !== 'all' && p.cat !== state.cat) return false;
     s = s || stats(p);
-    if (state.priceMax && !(s.avgPrice && s.avgPrice <= state.priceMax)) return false;
+    if (state.priceAbout && !priceFits(s.avgPrice, state.priceAbout)) return false;
     if (state.minScore && !(s.score != null && s.score >= state.minScore)) return false;
     if (state.mode === 'food' && state.dist !== 'any' && distTier(p) !== state.dist) return false;
     return true;
   }
-  function filtersActive() { return state.scope !== 'mine' && ((state.scope === 'saved' && state.savedWant) || state.cat !== 'all' || !!state.priceMax || !!state.minScore || state.dist !== 'any'); }
+  function filtersActive() { return state.scope !== 'mine' && ((state.scope === 'saved' && state.savedWant) || state.cat !== 'all' || !!state.priceAbout || !!state.minScore || state.dist !== 'any'); }
   function catOf(p) {
     var list = CATS[p.mode] || CATS.food;
     for (var i = 0; i < list.length; i++) if (list[i].id === p.cat) return list[i];
@@ -3454,7 +3481,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
   var DIST_STEPS = ['any'].concat(DIST_TIERS.map(function (x) { return x.id; }));
   function activeFilterCount() {
     if (state.scope === 'mine') return 0;
-    return (state.scope === 'saved' && state.savedWant ? 1 : 0) + (state.cat !== 'all' ? 1 : 0) + (state.minScore ? 1 : 0) + (state.dist !== 'any' ? 1 : 0) + (state.priceMax ? 1 : 0);
+    return (state.scope === 'saved' && state.savedWant ? 1 : 0) + (state.cat !== 'all' ? 1 : 0) + (state.minScore ? 1 : 0) + (state.dist !== 'any' ? 1 : 0) + (state.priceAbout ? 1 : 0);
   }
   var CTRL_ICON = {
     search: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg>',
@@ -3660,8 +3687,10 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
         if (food) {
           h += '<div class="field"><span class="f-label">' + esc(t('filterDist')) + '</span><div class="chips-wrap">' +
             DIST_STEPS.map(function (d) { return optHTML('set-dist', d, state.dist === d, d === 'any' ? t('anyOpt') : t('dist_' + d)); }).join('') + '</div></div>';
-          h += '<div class="field"><span class="f-label">' + esc(t('filterPrice')) + '</span><div class="chips-wrap">' +
-            PRICE_STEPS.map(function (n) { return optHTML('set-price', n, state.priceMax === n, n ? t('priceOpt', { n: n }) : t('anyOpt')); }).join('') + '</div></div>';
+          var pi = Math.max(0, PRICE_STOPS.indexOf(state.priceAbout));
+          h += '<div class="field price-field"><span class="f-label">' + esc(t('filterPrice')) + '<b id="flt-price-val"' + (pi ? '' : ' class="muted"') + '>' + esc(priceLabel(state.priceAbout)) + '</b></span>' +
+            '<input type="range" id="flt-price" min="0" max="' + (PRICE_STOPS.length - 1) + '" step="1" value="' + pi + '" style="--fill:' + (pi / (PRICE_STOPS.length - 1) * 100) + '%" aria-label="' + esc(t('filterPrice')) + '">' +
+            '<div class="price-ticks" aria-hidden="true"><span>' + esc(t('anyOpt')) + '</span><span>RM500</span></div></div>';
         }
       }
       h += '<div class="bsheet-foot' + (mine ? ' single' : '') + '">' + (mine ? '' : '<button type="button" class="btn ghost" data-action="clear-filters">' + esc(t('filterReset')) + '</button>') +
@@ -3982,7 +4011,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       h += '<div class="field"><span class="f-label" id="lbl-cat">' + esc(t('category')) + '</span><div class="chips-wrap one-line" role="group" aria-labelledby="lbl-cat">' +
         CATS[state.mode].map(function (c) {
           return '<button type="button" class="chip" data-action="f-cat" data-cat="' + c.id + '" aria-pressed="' + (f.cat === c.id) + '">' + catIconHTML(c) + esc(catName(c)) + '</button>';
-        }).join('') + '</div></div>';
+        }).join('') + '</div><p class="f-hint cat-guess" id="cat-guess" hidden></p></div>';
     }
     /* 只有评分必填，其余都是选填 */
     h += '<div class="field"><span class="f-label" id="lbl-rating">' + esc(t('rating')) + ' *</span>' + starsInputHTML('f-rating', f.rating, 'form', 'lbl-rating') +
@@ -4840,7 +4869,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     opts = opts || {};
     if (mode === state.mode) return;
     state.mode = mode; state.cat = 'all';
-    if (mode === 'travel') { state.priceMax = 0; state.dist = 'any'; }
+    if (mode === 'travel') { state.priceAbout = 0; state.dist = 'any'; }
     renderChrome();
     refreshMap();
     repaintAccent();
@@ -5025,11 +5054,115 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
           if (!out.blob || state.form !== f) return;
           f.photos.push({ id: uid('ph'), blob: out.blob, thumb: out.thumb, url: URL.createObjectURL(out.blob) });
           renderFormPhotos();
+          if (f.photos.length === 1 || !f.catGuessTried) guessCat(f, out.thumb);
         }).catch(function () { toast(t('photoReadFail')); });
       });
     }, Promise.resolve());
   }
 
+  /* 分类预选（用户 2026-10-28，不接 AI 接口）：新地点、吃的、自己还没点过分类时
+     1) 店名里有“寿司、拉面、奶茶”这类明确关键词 → 直接预选
+     2) 加照片 → 手机本地的小模型（MobileNet，ImageNet 1000 类）认图，只认得准的几类：火锅、饮品、甜品、部分西餐
+     都会在分类下面说一句，点别的随时改。优先级：自己点的 > 店名 > 照片 > 地点库带来的 > 空 */
+  var NAME_CATS = [
+    ['hotpot', /火锅|麻辣烫|冒菜|串串|海底捞|steamboat|hot ?pot|shabu|mala/i],
+    ['jpkr', /寿司|拉面|日料|日式|日本|居酒屋|丼|乌冬|天妇罗|烧鸟|韩式|韩国|部队锅|拌饭|sushi|ramen|sashimi|izakaya|udon|donburi|katsu|yakiniku|yakitori|omakase|japanese|korean|kimchi|bibimbap|tteok|bulgogi|takoyaki|\bdon\b/i],
+    ['sweet', /甜品|糖水|蛋糕|冰淇淋|雪花冰|刨冰|甜点|dessert|cake|ice ?cream|gelato|bingsu|waffle|cendol|ais kacang|patisserie|donut|doughnut/i],
+    ['cafe', /奶茶|咖啡|茶饮|果茶|饮品|柠檬茶|coffee|caf[eé]|kopi(?!tiam)|boba|bubble ?tea|milk ?tea|tealive|chatime|mixue|蜜雪|starbucks|zus|luckin|瑞幸|latte|juice|smoothie/i],
+    ['pretty', /漂亮饭|早午餐|brunch|bistro/i],
+    ['west', /西餐|汉堡|披萨|比萨|牛排|意面|麦当劳|肯德基|burger|pizza|steak|pasta|western|mcdonald|\bkfc\b|subway|domino|grill/i],
+    ['mamak', /嘛嘛|印度|mamak|roti|nasi kandar|banana leaf|biryani|thosai|tandoori|naan/i],
+    ['malay', /椰浆饭|娘惹|马来|nasi lemak|nyonya|rendang|laksa|warung|ayam penyet|satay/i],
+    ['street', /夜市|小摊|美食中心|pasar malam|hawker|food court/i],
+    ['cn', /中餐|茶餐厅|云吞|肉骨茶|点心|饺子|小笼|面馆|bak kut teh|dim sum|dumpling|chinese/i]
+  ];
+  function nameCat(name) {
+    for (var i = 0; i < NAME_CATS.length; i++) if (NAME_CATS[i][1].test(name || '')) return NAME_CATS[i][0];
+    return null;
+  }
+  /* ImageNet 里和这几类对得上的标签（标签是英文，取逗号前后的名字比对） */
+  var IMG_CATS = {
+    hotpot: ['hot pot', 'hotpot', 'caldron', 'cauldron', 'dutch oven', 'crock pot'],
+    cafe: ['espresso', 'cup', 'coffee mug', 'eggnog', 'red wine', 'beer glass', 'beer bottle', 'wine bottle', 'pop bottle', 'soda bottle', 'water bottle', 'goblet', 'cocktail shaker', 'coffeepot', 'teapot', 'water jug', 'pitcher', 'measuring cup'],
+    sweet: ['ice cream', 'icecream', 'ice lolly', 'lolly', 'popsicle', 'trifle', 'chocolate sauce', 'chocolate syrup', 'waffle iron'],
+    west: ['cheeseburger', 'hotdog', 'hot dog', 'pizza', 'carbonara', 'french loaf', 'bagel', 'burrito', 'meat loaf', 'meatloaf', 'potpie', 'mashed potato', 'pretzel', 'guacamole']
+  };
+  var IMG_MIN = 0.2;
+  var DEBUG_CAT = /[?&]catdebug\b/.test(location.search);
+  function imgCat(preds) {
+    var sum = {};
+    (preds || []).forEach(function (pr) {
+      var names = String(pr.label || '').toLowerCase().split(/\s*,\s*/);
+      Object.keys(IMG_CATS).forEach(function (c) {
+        if (names.some(function (n) { return IMG_CATS[c].indexOf(n) !== -1; })) sum[c] = (sum[c] || 0) + (+pr.score || 0);
+      });
+    });
+    var best = null;
+    Object.keys(sum).forEach(function (c) { if (sum[c] >= IMG_MIN && (!best || sum[c] > sum[best])) best = c; });
+    return best;
+  }
+  /* 模型第一次要下载（脚本 + 运行库 + 模型，压缩后大约 8MB，之后浏览器缓存），点“加照片”时就开始准备 */
+  var TFJS_URL = 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.8.1/dist/transformers.min.js';
+  var IMG_MODELS = ['Xenova/mobilenet_v2_1.0_224', 'onnx-community/mobilenetv4_conv_small.e2400_r224_in1k'];
+  var catModel = null;
+  function loadCatModel() {
+    if (window.__catClassifier) return Promise.resolve(window.__catClassifier);
+    var conn = navigator.connection;
+    if (conn && conn.saveData) return Promise.reject(new Error('save-data'));
+    if (!catModel) {
+      catModel = import(TFJS_URL).then(function (m) {
+        var tryModel = function (i) {
+          if (i >= IMG_MODELS.length) throw new Error('no model');
+          return m.pipeline('image-classification', IMG_MODELS[i], { dtype: 'q8' }).catch(function () { return tryModel(i + 1); });
+        };
+        return tryModel(0);
+      });
+      catModel.catch(function () { catModel = null; });
+    }
+    return catModel;
+  }
+  function catNoteFor(f) {
+    if (!f || f.catSrc === 'user' || !$('#cat-guess')) return false;
+    var p = f.placeId ? placeById(f.placeId) : null;
+    return formHasPlaceFields(f, p) && (p ? p.mode : state.mode) === 'food';
+  }
+  function suggestCat(f, cat, src, extra) {
+    var c = cat && CATS.food.filter(function (x) { return x.id === cat; })[0];
+    if (!c || state.form !== f || !catNoteFor(f)) return;
+    f.cat = c.id; f.catSrc = src;
+    setPressed('[data-action="f-cat"]', 'cat', c.id);
+    var row = $('#place-form .chips-wrap.one-line'), sel = row && row.querySelector('[aria-pressed="true"]');
+    if (sel) row.scrollLeft += sel.getBoundingClientRect().left - row.getBoundingClientRect().left - 18;
+    var el = $('#cat-guess');
+    if (el) { el.textContent = t(src === 'name' ? 'catByName' : 'catGuessed', { c: catName(c) }) + (extra || ''); el.hidden = false; }
+  }
+  function onNameForCat(f, name) {
+    if (!catNoteFor(f)) return;
+    var c = nameCat(name);
+    if (c) { if (c !== f.cat || f.catSrc !== 'name') suggestCat(f, c, 'name'); }
+    else if (f.catSrc === 'name') { var el = $('#cat-guess'); if (el) el.hidden = true; f.catSrc = 'name-old'; }
+  }
+  function guessCat(f, thumb) {
+    var hint = $('#cat-guess');
+    if (!catNoteFor(f) || f.catGuessTried || !hint || !thumb) return;
+    if (f.cat && f.catSrc !== 'name-old' && f.catSrc !== 'photo') return; /* 店名或地点库已经给了分类，照片不去改 */
+    f.catGuessTried = true;
+    hint.textContent = t('catGuessing'); hint.hidden = false;
+    var url = URL.createObjectURL(thumb);
+    var end = function (preds) {
+      URL.revokeObjectURL(url);
+      var el = $('#cat-guess'), c = imgCat(preds);
+      var dbg = DEBUG_CAT && preds ? '（' + preds.slice(0, 3).map(function (p) { return String(p.label).split(',')[0] + ' ' + Math.round(p.score * 100) + '%'; }).join('，') + '）' : '';
+      if (state.form !== f || !catNoteFor(f) || (f.cat && f.catSrc !== 'name-old' && f.catSrc !== 'photo')) { if (el && state.form === f && f.catSrc !== 'name') el.hidden = true; return; }
+      if (c) suggestCat(f, c, 'photo', dbg);
+      else if (el) { el.textContent = dbg ? t('catNoGuess') + dbg : ''; el.hidden = !dbg; }
+    };
+    loadCatModel().then(function (clf) { return clf(url, { top_k: 10 }); }).then(end, function (e) {
+      end(null);
+      var el = $('#cat-guess');
+      if (DEBUG_CAT && el && state.form === f) { el.textContent = t('catNoGuess') + '（' + String(e && e.message || e) + '）'; el.hidden = false; }
+    });
+  }
   function submitForm(e) {
     e.preventDefault();
     var f = state.form;
@@ -5659,6 +5792,17 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
   function closeLightbox() { $('#lightbox').hidden = true; $('#lb-img').removeAttribute('src'); syncNavGuard(); }
 
   /* ================= events ================= */
+  /* 拉的时候只改字和“看 N 个地方”，松手再刷新地图和整张筛选卡（重画会打断拖动） */
+  function setPriceAbout(el, done) {
+    state.priceAbout = PRICE_STOPS[+el.value] || 0;
+    var v = $('#flt-price-val');
+    if (v) { v.textContent = priceLabel(state.priceAbout); v.classList.toggle('muted', !state.priceAbout); }
+    el.style.setProperty('--fill', (+el.value / (PRICE_STOPS.length - 1) * 100) + '%');
+    if (done) { refilter(); return; }
+    var btn = $('#bsheet-card .bsheet-foot .btn.primary');
+    if (btn) btn.textContent = t('filterShow', { n: store.places().filter(function (p) { return inScope(p) && passesFilters(p); }).length });
+  }
+  document.addEventListener('change', function (e) { if (e.target.id === 'flt-price') setPriceAbout(e.target, true); });
   function refilter() {
     renderFilters(); refreshMap();
     if (state.view === 'feed') render();
@@ -5711,10 +5855,9 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       case 'countries': state.countries = !state.countries; syncCountries(); renderFilters(); saveView(); break;
       case 'filters': openBSheet('filters'); break;
       case 'sheet-close': closeBSheet(); break;
-      case 'set-price': state.priceMax = +d.v; refilter(); break;
       case 'set-score': state.minScore = +d.v; refilter(); break;
       case 'set-dist': state.dist = d.v; refilter(); break;
-      case 'clear-filters': state.savedWant = false; state.cat = 'all'; state.priceMax = 0; state.minScore = 0; state.dist = 'any'; renderFilters(); refreshMap(); render(); if (state.bsheet) renderBSheet(); break;
+      case 'clear-filters': state.savedWant = false; state.cat = 'all'; state.priceAbout = 0; state.minScore = 0; state.dist = 'any'; renderFilters(); refreshMap(); render(); if (state.bsheet) renderBSheet(); break;
       case 'search': rememberFeedSnap(); state.view = 'search'; render(); setSnap('full'); break;
       case 'set-lang': setLang(d.lang); break;
       case 'set-style': setBasemap(d.style); break;
@@ -5740,7 +5883,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       case 'del-review': deleteReview(d.id); break;
       case 'form-cancel': formCancel(); break;
       case 'repick': captureFormDraft(); startPick({ repick: true }); break;
-      case 'f-cat': state.form.cat = d.cat; setPressed('[data-action="f-cat"]', 'cat', d.cat); break;
+      case 'f-cat': state.form.cat = d.cat; state.form.catSrc = 'user'; setPressed('[data-action="f-cat"]', 'cat', d.cat); if ($('#cat-guess')) $('#cat-guess').hidden = true; break;
       case 'f-prec': state.form.precision = d.prec; setPressed('[data-action="f-prec"]', 'prec', d.prec); break;
       case 'f-share':
         state.form.visibility = state.form.visibility === 'public' ? 'private' : 'public';
@@ -5748,7 +5891,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
         if ($('#nick-field')) $('#nick-field').hidden = state.form.visibility !== 'public';
         lsSet(LS_SHARE, state.form.visibility === 'public' ? '1' : '0');
         break;
-      case 'f-photo-add': $('#f-file').click(); break;
+      case 'f-photo-add': $('#f-file').click(); if (catNoteFor(state.form)) loadCatModel().catch(function () {}); break;
       case 'bulk-start': if (requireLogin()) $('#bulk-file').click(); break;
       case 'bulk-ph': bulkTogglePhoto(+d.i, +d.j, el); break;
       case 'bulk-pick': bulkPick(+d.i, +d.k); break;
@@ -5794,6 +5937,8 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
   });
   document.addEventListener('input', function (e) {
     var el = e.target;
+    if (el.id === 'flt-price') { setPriceAbout(el, false); return; }
+    if (el.id === 'f-name') { onNameForCat(state.form, el.value); return; }
     if (el.id === 'q') { state.query = el.value; queueOsmSearch(); renderSearchResults(); queueGoogle(); }
     else if (el.id === 'home-q') { homeQ.q = el.value; queueHomeSearch(); renderHomeResults(); }
     else if (el.dataset && el.dataset.bkName != null) { var bg = state.bulk && state.bulk.groups && state.bulk.groups[+el.dataset.bkName]; if (bg) bg.name = el.value; }

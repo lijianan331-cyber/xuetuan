@@ -54,7 +54,7 @@ results = []
 import math, re
 SAMPLE_ROWS = []
 for m in re.finditer(r"^    \['(s-[^']+)', '(food|travel)', '(\w+)', '\w+', (-?[\d.]+), (-?[\d.]+), '([^']*)', .*, (\d+|null), (\d+|null)\],?$", open(os.path.join(ROOT, 'index.html'), encoding='utf-8').read(), re.M):
-    SAMPLE_ROWS.append({'id': m.group(1), 'mode': m.group(2), 'cat': m.group(3), 'lat': float(m.group(4)), 'lng': float(m.group(5)), 'name': m.group(6), 'rating': None if m.group(7) == 'null' else int(m.group(7))})
+    SAMPLE_ROWS.append({'id': m.group(1), 'mode': m.group(2), 'cat': m.group(3), 'lat': float(m.group(4)), 'lng': float(m.group(5)), 'name': m.group(6), 'rating': None if m.group(7) == 'null' else int(m.group(7)), 'price': None if m.group(8) == 'null' else int(m.group(8))})
 def dist_m(lat, lng, lat0=2.8329, lng0=101.7029):
     r = math.pi / 180
     a = math.sin((lat - lat0) * r / 2) ** 2 + math.cos(lat0 * r) * math.cos(lat * r) * math.sin((lng - lng0) * r / 2) ** 2
@@ -608,7 +608,7 @@ with sync_playwright() as p:
     page.click('[data-action="filters"]')
     page.wait_for_timeout(100)
     cats_food = len(set(x['cat'] for x in FOOD_S))
-    check('filter sheet: category, score (with legend), distance, price', page.locator('#bsheet').is_visible() and page.locator('#bsheet [data-action="cat"]').count() >= cats_food + 1 and page.locator('#bsheet .legend').count() == 1 and page.locator('[data-action="set-score"]').count() == 3 and page.locator('[data-action="set-dist"]').count() == 5 and page.locator('[data-action="set-price"]').count() == 4)
+    check('filter sheet: category, score (with legend), distance, price', page.locator('#bsheet').is_visible() and page.locator('#bsheet [data-action="cat"]').count() >= cats_food + 1 and page.locator('#bsheet .legend').count() == 1 and page.locator('[data-action="set-score"]').count() == 3 and page.locator('[data-action="set-dist"]').count() == 5 and page.locator('#bsheet input#flt-price[type="range"]').count() == 1 and page.inner_text('#flt-price-val') == '不限')
     page.click('#bsheet [data-action="cat"][data-cat="cn"]')
     page.wait_for_timeout(150)
     fc = page.evaluate('window.__map.getSource("places").data.features.map(f => f.properties.name)')
@@ -630,6 +630,29 @@ with sync_playwright() as p:
     mid = sorted(page.evaluate('window.__map.getSource("places").data.features.map(f => f.properties.name)'))
     want_mid = sorted([x['name'] for x in FOOD_S if tier(x) == 'mid'])
     check('distance filter: mid-range', mid == want_mid and '亚罗街' in mid, (mid, want_mid))
+    # 价位滑条：挡位不均匀（60 以下密，100 往上稀，最多 500），拉到 x 显示 x 的 2/3–4/3
+    page.click('[data-action="set-dist"][data-v="any"]')
+    page.wait_for_timeout(100)
+    stops = page.evaluate('(() => { const r = document.querySelector("#flt-price"); return +r.max; })()')
+    def slide(n):
+        page.evaluate('''n => { const r = document.querySelector('#flt-price'); r.value = n; r.dispatchEvent(new Event('input', {bubbles: true})); }''', n)
+    def slide_done(n):
+        slide(n); page.evaluate('''() => document.querySelector('#flt-price').dispatchEvent(new Event('change', {bubbles: true}))'''); page.wait_for_timeout(150)
+    def band(lo, hi): return sorted([x['name'] for x in FOOD_S if x['price'] and lo <= x['price'] <= hi] + (['测试椰浆饭'] if lo <= 9.5 <= hi else []))
+    slide(3)
+    live = page.inner_text('#flt-price-val'), page.inner_text('#bsheet [data-action="sheet-close"]')
+    check('price slider: dragging updates "RM x 左右" and the count live', live == ('RM10 左右 · RM7–13', '看 %d 个地方' % len(band(7, 13))), live)
+    slide_done(3)
+    p10 = page.evaluate('window.__map.getSource("places").data.features.map(f => f.properties.name)')
+    slide_done(5)
+    p15 = page.evaluate('window.__map.getSource("places").data.features.map(f => f.properties.name)')
+    check('price slider: RM10 shows 7–13, RM15 shows 10–20', sorted(p10) == band(7, 13) and sorted(p15) == band(10, 20) and '测试椰浆饭' in p10 and '测试椰浆饭' not in p15 and page.inner_text('#flt-price-val') == 'RM15 左右 · RM10–20', (p10, band(7, 13), p15, band(10, 20)))
+    slide(stops)
+    check('price slider: uneven stops, top is RM500+', stops >= 20 and page.inner_text('#flt-price-val') == 'RM500 左右 · RM333+', (stops, page.inner_text('#flt-price-val')))
+    slide_done(0)
+    check('price slider back to 不限', page.inner_text('#flt-price-val') == '不限')
+    page.click('[data-action="set-dist"][data-v="mid"]')
+    page.wait_for_timeout(100)
     page.click('[data-action="sheet-close"]')
     page.wait_for_timeout(100)
     check('filter button shows 1 active filter', not page.locator('#bsheet').is_visible() and page.inner_text('[data-action="filters"]').endswith('1'), page.inner_text('[data-action="filters"]'))
@@ -1660,11 +1683,21 @@ with sync_playwright() as p:
     page6.wait_for_timeout(200)
     page6.click('[data-action="f-share"]')
     page6.fill('#f-nick', '小A')
+    # 分类预选：店名关键词 > 照片（本地小模型，测试里用假的分类器）；自己点的最大
+    page6.fill('#f-name', 'Sushi 测试')
+    check('category from shop name: "sushi" preselects 日韩 with a note', page6.get_attribute('[data-action="f-cat"][data-cat="jpkr"]', 'aria-pressed') == 'true' and page6.inner_text('#cat-guess') == '按店名选了「日韩」，不对就点别的', page6.inner_text('#cat-guess'))
     page6.fill('#f-name', '线上测试店')
-    page6.click('[data-action="f-cat"][data-cat="cafe"]')
+    check('category note goes away when the keyword is gone', page6.locator('#cat-guess').is_hidden())
     rate(page6, 3)
+    page6.evaluate('window.__catCalls = 0; window.__catClassifier = (u, o) => { window.__catCalls++; return Promise.resolve([{ label: "hotpot, hot pot", score: 0.55 }, { label: "soup bowl", score: 0.2 }]); }; 0')
     page6.set_input_files('#f-file', photo)
     page6.wait_for_function('document.querySelectorAll("#f-photos .ph-edit").length === 1', timeout=8000)
+    page6.wait_for_function('!document.querySelector("#cat-guess").hidden && document.querySelector("#cat-guess").textContent.indexOf("火锅") !== -1', timeout=5000)
+    check('photo category guess (on-device model): hotpot preselected with a note', page6.get_attribute('[data-action="f-cat"][data-cat="hotpot"]', 'aria-pressed') == 'true' and page6.inner_text('#cat-guess') == '看照片像「火锅」，不对就点别的' and page6.evaluate('window.__catCalls') == 1, (page6.inner_text('#cat-guess'), page6.evaluate('window.__catCalls'), page6.evaluate('[...document.querySelectorAll("[data-action=f-cat][aria-pressed=true]")].map(b => b.dataset.cat)')))
+    page6.click('[data-action="f-cat"][data-cat="cafe"]')
+    page6.fill('#f-name', 'Ramen 线上测试店')
+    page6.fill('#f-name', '线上测试店')
+    check('photo category guess: my own pick wins over photo and name', page6.get_attribute('[data-action="f-cat"][data-cat="cafe"]', 'aria-pressed') == 'true' and page6.get_attribute('[data-action="f-cat"][data-cat="hotpot"]', 'aria-pressed') == 'false' and page6.locator('#cat-guess').is_hidden())
     page6.click('#f-submit')
     page6.wait_for_timeout(800)
     db6 = page6.evaluate('window.__sb.db')
