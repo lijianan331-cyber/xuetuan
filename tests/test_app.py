@@ -1520,8 +1520,8 @@ with sync_playwright() as p:
         'b1.jpg': {'latitude': 3.15, 'longitude': 101.6, 'DateTimeOriginal': '2026-09-02T19:00:00'},
         # 手机把经纬度去掉了，只剩拍摄时间：隔不到 1 小时的算一组
         'c1.jpg': {'DateTimeOriginal': '2026-08-30T12:00:00'}, 'c2.jpg': {'DateTimeOriginal': '2026-08-30T12:40:00'}}) + ';')
-    # 假的本地小模型：每张都像海边（吃还是玩按照片猜）
-    ctxb.add_init_script('window.__catCalls = 0; window.__catClassifier = function (u, o) { window.__catCalls++; return Promise.resolve([{ label: "seashore, coast, seacoast, sea-coast", score: 0.6 }, { label: "cup", score: 0.1 }]); };')
+    # 认图小模型在用户手机上三张就崩（2026-10-28）：批量加不再用它
+    ctxb.add_init_script('window.__catCalls = 0; window.__catClassifier = function (u, o) { window.__catCalls++; return Promise.resolve([]); };')
     pb = ctxb.new_page()
     errorsb = []
     pb.on('pageerror', lambda e: errorsb.append('pageerror: ' + str(e)))
@@ -1537,21 +1537,26 @@ with sync_playwright() as p:
     with pb.expect_file_chooser() as fc_:
         pb.click('[data-action="bulk-start"]')
     fc_.value.set_files(bfiles)
-    pb.wait_for_function('document.querySelectorAll(".bk-card").length === 3 && !document.querySelector(".bk-names .f-hint")', timeout=8000)
+    pb.wait_for_function('document.querySelectorAll(".bk-card").length === 5 && !document.querySelector(".bk-names .f-hint")', timeout=8000)
     sumb = pb.inner_text('.bk-sum')
-    check('bulk: photos grouped by where they were taken; ones without a location grouped by time', '5 张照片，分成 3 组' in sumb and '2 张读不到位置' in sumb, sumb)
-    check('bulk: newest place first', '9月2日' in pb.inner_text('#bk-meta-0') and '9月1日' in pb.inner_text('#bk-meta-1') and '8月30日' in pb.inner_text('#bk-meta-2'), [pb.inner_text('#bk-meta-0'), pb.inner_text('#bk-meta-1')])
-    check('bulk: no-location photos taken 40 min apart are one group with a search box', pb.locator('#bk-2 .bk-ph').count() == 2 and '没有位置' in pb.inner_text('#bk-meta-2')
-          and '12:00' in pb.inner_text('#bk-meta-2') and pb.locator('#bk-2 [data-bk-q]').count() == 1 and pb.locator('#bk-2 [data-action="bulk-pick"]').count() == 0)
+    check('bulk: every photo is its own group (auto grouping put unrelated photos together)', '5 张照片，分成 5 组' in sumb and '2 张读不到位置' in sumb and pb.locator('.bk-card .bk-ph').count() == 5, sumb)
+    check('bulk: newest first', '9月2日' in pb.inner_text('#bk-meta-0') and '9月1日' in pb.inner_text('#bk-meta-1') and '8月30日' in pb.inner_text('#bk-meta-3'), [pb.inner_text('#bk-meta-0'), pb.inner_text('#bk-meta-1')])
+    # 同一个地方的照片：点「↑ 和上一组是同一个地方」合起来，一起打分
+    pb.click('#bk-2 [data-action="bulk-merge"]'); pb.wait_for_timeout(150)
+    pb.click('#bk-3 [data-action="bulk-merge"]'); pb.wait_for_timeout(150)
+    check('bulk: same-place photos merged into one group, dated by the earliest photo', pb.locator('.bk-card').count() == 3 and pb.locator('#bk-1 .bk-ph').count() == 2 and pb.locator('#bk-2 .bk-ph').count() == 2
+          and '12:00' in pb.inner_text('#bk-meta-2'), [pb.locator('.bk-card').count(), pb.inner_text('#bk-meta-2')])
+    check('bulk: no-location group has a search box', '没有位置' in pb.inner_text('#bk-meta-2')
+          and pb.locator('#bk-2 [data-bk-q]').count() == 1 and pb.locator('#bk-2 [data-action="bulk-pick"]').count() == 0)
     check('bulk: explains the missing locations and offers the file manager', pb.locator('.bk-tip [data-action="bulk-files"]').is_visible() and '文件管理' in pb.inner_text('.bk-tip'))
     chips_b = pb.eval_on_selector_all('#bk-1 .bk-names .chip', 'els => els.map(e => e.textContent + ":" + e.getAttribute("aria-pressed"))')
     check('bulk: a place already in XueTuan nearby is picked by default', chips_b[0].startswith(S0['name']) and chips_b[0].endswith(':true') and ' m' in chips_b[0], chips_b)
     check('bulk: both photos of that visit are in, none picked for the far one', pb.locator('#bk-1 .bk-ph[aria-pressed="true"]').count() == 2
           and pb.locator('#bk-0 [data-bk-name]').count() == 1 and pb.get_attribute('#bk-0 [data-action="bulk-pick"][data-k="-1"]', 'aria-pressed') == 'true')
     check('bulk: nothing to save before scoring', pb.inner_text('#bk-save') == '保存 0' and pb.is_disabled('#bk-save'))
-    pb.wait_for_function('window.__catCalls >= 3', timeout=5000); pb.wait_for_timeout(100)
-    check('bulk: food or travel is picked from the place first, else from the photo (beach = 旅行)', pb.get_attribute('#bk-1 [data-action="bulk-mode"][data-v="food"]', 'aria-pressed') == 'true'
-          and pb.get_attribute('#bk-2 [data-action="bulk-mode"][data-v="travel"]', 'aria-pressed') == 'true' and pb.inner_text('#bk-2 [data-action="bulk-mode"][data-v="travel"]') == '旅行'
+    pb.wait_for_timeout(300)
+    check('bulk: food or travel follows the picked place; no photo model is loaded (it crashed phones)', pb.get_attribute('#bk-1 [data-action="bulk-mode"][data-v="food"]', 'aria-pressed') == 'true'
+          and pb.evaluate('window.__catCalls') == 0 and pb.inner_text('#bk-2 [data-action="bulk-mode"][data-v="travel"]') == '旅行'
           and pb.get_attribute('#bk-2 [data-bk-q]', 'placeholder') == '搜地点')
     rate(pb, 4, '#bk-rate-1')
     pb.click('#bk-1 .bk-ph >> nth=1')
@@ -1596,8 +1601,9 @@ with sync_playwright() as p:
     with pb.expect_file_chooser() as fc_:
         pb.click('[data-action="bulk-start"]')
     fc_.value.set_files([bfiles[2], bfiles[3], bfiles[4]])
-    pb.wait_for_function('document.querySelectorAll(".bk-card").length === 2', timeout=8000)
+    pb.wait_for_function('document.querySelectorAll(".bk-card").length === 3', timeout=8000)
     check('bulk: no merge button on the first group', pb.locator('#bk-0 [data-action="bulk-merge"]').count() == 0 and pb.locator('#bk-1 [data-action="bulk-merge"]').count() == 1)
+    pb.click('#bk-2 [data-action="bulk-merge"]'); pb.wait_for_timeout(150)
     pb.click('#bk-1 [data-action="bulk-merge"]'); pb.wait_for_timeout(150)
     check('bulk: merging puts both groups\' photos into one, keeping the located place', pb.locator('.bk-card').count() == 1 and pb.locator('#bk-0 .bk-ph').count() == 3
           and '没有位置' not in pb.inner_text('#bk-meta-0') and pb.locator('#bk-0 [data-bk-q]').count() == 0, [pb.locator('.bk-card').count(), pb.inner_text('#bk-meta-0')])

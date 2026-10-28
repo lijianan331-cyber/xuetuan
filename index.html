@@ -5417,13 +5417,12 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
   }
 
   /* ================= 从照片批量加 [建议，用户 2026-10-27 要先把自己去过的全加上] =================
-   * 一次选很多张照片，读照片里的拍摄地点和时间（只在手机上读，exifr），分成一个个地方：
-   * 和这一组第一张相距 150 米内、和上一张相隔不到 3 小时的算同一次。
+   * 一次选很多张照片，读照片里的拍摄地点和时间（只在手机上读，exifr），每张一组，同一个地方的自己合起来。
    * 每个地方在附近找名字：雪团里已有的 → 地点库 → Photon。打了分的才存，
    * 照片一起带上，记录日期用拍摄时间。默认不分享（一次加很多旧记录，不想一下子全公开）。
-   * 很多手机把照片交给网页时会去掉经纬度：这些照片按拍摄时间分组（隔 1 小时以上算下一组），每组自己搜店名。 */
+   * 很多手机把照片交给网页时会去掉经纬度：这些照片自己搜地点。 */
   var EXIFR_URL = 'https://cdn.jsdelivr.net/npm/exifr@7.1.3/dist/lite.umd.js';
-  var BULK_NEAR = 150, BULK_GAP = 3 * 3600 * 1000, BULK_GAP_NOLOC = 3600 * 1000;
+  var BULK_NEAR = 150;
   var PHOTON_SKIP = ['highway', 'place', 'boundary', 'building', 'landuse', 'railway', 'waterway', 'power', 'route', 'junction'];
   function startBulk(files) {
     var list = Array.prototype.slice.call(files || []).filter(function (f) { return /^image\//.test(f.type) || /\.(jpe?g|heic|heif)$/i.test(f.name); });
@@ -5450,7 +5449,6 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       b.groups = groupPhotos(b);
       render();
       findNames(b);
-      guessBulkModes(b);
     }, function () {
       if (state.bulk !== b) return;
       b.error = true;
@@ -5502,15 +5500,10 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       g = { photos: [it], cands: null, pick: -1, touched: false, name: '', mode: state.mode, modeSet: false, rating: null, noLoc: noLoc, q: '', found: null };
       groups.push(g);
     }
-    geo.forEach(function (it) {
-      if (g && haversine(g.photos[0], it) <= BULK_NEAR && it.time - g.photos[g.photos.length - 1].time <= BULK_GAP) g.photos.push(it);
-      else open(it, false);
-    });
-    g = null;
-    bare.forEach(function (it) {
-      if (g && it.time - g.photos[g.photos.length - 1].time <= BULK_GAP_NOLOC) g.photos.push(it);
-      else open(it, true);
-    });
+    /* 每张照片单独一组（用户 2026-10-28：自动按地点、时间分组会把不相干的照片分到一起），
+       同一个地方的自己点「和上一组是同一个地方」合起来 */
+    geo.forEach(function (it) { open(it, false); });
+    bare.forEach(function (it) { open(it, true); });
     groups.forEach(function (g) {
       g.time = g.photos[0].time;
       g.lat = g.noLoc ? null : g.photos.reduce(function (s, p) { return s + p.lat; }, 0) / g.photos.length;
@@ -5572,54 +5565,8 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       return parsePhoton({ features: keep }).filter(function (r) { return r.precision === 'exact'; });
     });
   }
-  /* 吃还是玩先看照片（用户 2026-10-28：不是吃的就是玩）：手机本地的小模型认第一张，
-     食物饮料算吃，海边、山、雪、古迹、街景算玩。选中的地点或自己点过吃/玩都比它优先 */
-  var IMG_FOOD = ['plate', 'soup bowl', 'consomme', 'hot pot', 'hotpot', 'wok', 'frying pan', 'restaurant', 'dining table', 'eating house', 'eating place', 'mixing bowl', 'banana', 'pineapple', 'strawberry', 'orange', 'lemon', 'pomegranate', 'fig', 'custard apple', 'jackfruit', 'granny smith', 'broccoli', 'cauliflower', 'head cabbage', 'mushroom', 'cucumber', 'bell pepper', 'corn', 'acorn squash', 'butternut squash', 'spaghetti squash', 'zucchini', 'artichoke', 'pizza', 'cheeseburger', 'hotdog', 'hot dog', 'carbonara', 'french loaf', 'bagel', 'burrito', 'meat loaf', 'meatloaf', 'potpie', 'mashed potato', 'pretzel', 'guacamole', 'ice cream', 'icecream', 'ice lolly', 'trifle', 'chocolate sauce', 'espresso', 'cup', 'coffee mug', 'eggnog', 'red wine', 'beer glass', 'goblet', 'teapot', 'coffeepot', 'pop bottle', 'water bottle', 'measuring cup', 'menu', 'bakery', 'bakeshop'];
-  var IMG_TRAVEL = ['seashore', 'coast', 'seacoast', 'sea-coast', 'sandbar', 'sand bar', 'lakeside', 'lakeshore', 'alp', 'valley', 'vale', 'volcano', 'cliff', 'drop', 'promontory', 'headland', 'coral reef', 'geyser', 'breakwater', 'groin', 'pier', 'dock', 'boathouse', 'beacon', 'lighthouse', 'palace', 'monastery', 'church', 'mosque', 'castle', 'stupa', 'triumphal arch', 'obelisk', 'totem pole', 'suspension bridge', 'steel arch bridge', 'viaduct', 'dam', 'dike', 'fountain', 'bell cote', 'dome', 'planetarium', 'cinema', 'library', 'prison', 'yurt', 'mountain tent', 'ski', 'dogsled', 'snowmobile', 'canoe', 'catamaran', 'trimaran', 'speedboat', 'gondola', 'liner', 'airliner', 'airship', 'balloon', 'paddle', 'snorkel', 'swimming trunks', 'bikini', 'sarong', 'maillot', 'sunglasses', 'umbrella', 'parachute', 'steam locomotive', 'passenger car', 'streetcar', 'cab', 'water ouzel'];
-  function photoMode(preds) {
-    var f = 0, tr = 0;
-    (preds || []).forEach(function (pr) {
-      var names = String(pr.label || '').toLowerCase().split(/\s*,\s*/), sc = +pr.score || 0;
-      if (names.some(function (n) { return IMG_FOOD.indexOf(n) !== -1; })) f += sc;
-      else if (names.some(function (n) { return IMG_TRAVEL.indexOf(n) !== -1; })) tr += sc;
-    });
-    if (Math.max(f, tr) < 0.15) return null;
-    return tr > f ? 'travel' : 'food';
-  }
-  /* 只认划到眼前的卡片，一次一张，认完歇一下；一次认一大堆会把手机浏览器内存撑爆 */
-  var bulkSeen = null;
-  function guessBulkModes(b) {
-    if (bulkSeen) bulkSeen.disconnect();
-    b.modeQueue = [];
-    if (!window.IntersectionObserver) return;
-    bulkSeen = new IntersectionObserver(function (entries) {
-      entries.forEach(function (en) {
-        if (!en.isIntersecting || state.bulk !== b) return;
-        var g = b.groups[+String(en.target.id).replace('bk-', '')];
-        if (g && !g.modeTried) { g.modeTried = true; b.modeQueue.push(g); }
-      });
-      pumpBulkModes(b);
-    }, { root: view, rootMargin: '300px 0px' });
-    observeBulkCards(b);
-  }
-  function observeBulkCards(b) {
-    if (!bulkSeen || state.bulk !== b) return;
-    $$('.bk-card').forEach(function (el) { bulkSeen.observe(el); });
-  }
-  function pumpBulkModes(b) {
-    if (b.modeBusy || state.bulk !== b || b.modeOff) return;
-    var g = b.modeQueue.shift();
-    if (!g) return;
-    b.modeBusy = true;
-    loadCatModel().then(function (clf) { return clf(g.photos[0].url, { top_k: 10 }); }).then(function (preds) {
-      b.modeBusy = false;
-      if (state.bulk !== b) return;
-      var m = photoMode(preds);
-      g.photoMode = m;
-      if (m && !g.modeSet && g.pick < 0 && g.mode !== m) { g.mode = m; updateBulkModeSeg(g); }
-      setTimeout(function () { pumpBulkModes(b); }, 150);
-    }, function () { b.modeBusy = false; b.modeOff = true; /* 模型用不了：都保持原来的，手动点 */ });
-  }
+  /* 以前这里用手机本地的小模型按照片猜美食/旅行，用户手机上三张照片就把页面撑崩、也没认出来（2026-10-28），
+     去掉了：选中的地点决定美食/旅行，没有就跟着现在的地图，自己点着改 */
   function bulkChoose(g, k) {
     var c = k >= 0 && g.cands ? g.cands[k] : null;
     g.pick = c ? k : -1;
@@ -5753,6 +5700,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     cur.photos.forEach(function (p) { p.on = p.on && onTop < MAX_PHOTOS; if (p.on) onTop++; });
     top.photos = top.photos.concat(cur.photos);
     if (top.rating == null && cur.rating != null) top.rating = cur.rating;
+    top.time = Math.min(top.time, cur.time);
     if (top.noLoc && !cur.noLoc) { top.noLoc = false; top.lat = cur.lat; top.lng = cur.lng; top.cands = cur.cands; top.pick = cur.pick; top.name = top.name || cur.name; }
     else if (top.pick < 0 && cur.pick >= 0) { top.cands = cur.cands; top.pick = cur.pick; top.found = cur.found; top.q = cur.q; }
     if (!top.name && cur.name) top.name = cur.name;
@@ -5762,7 +5710,6 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     var y = view.scrollTop;
     renderBulk();
     view.scrollTop = y;
-    observeBulkCards(b);
     var el = $('#bk-' + top.i);
     if (el && el.scrollIntoView) el.scrollIntoView({ block: 'nearest' });
   }
