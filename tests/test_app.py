@@ -363,9 +363,9 @@ with sync_playwright() as p:
     check('red pin removed on the map', page.locator('#map .sel-pin').count() == 0)
 
     # back to food, add a place at XMUM
-    check('travel clusters remain enabled while releasing photos at regional zoom', page.evaluate('window.__map.getSource("places").spec.clusterMaxZoom===8 && window.__map.getSource("places").spec.cluster===true'))
+    check('travel clusters remain enabled while releasing photos at regional zoom', page.evaluate('window.__map.getSource("places").spec.clusterMaxZoom===18 && window.__map.getSource("places").spec.cluster===true'))
     set_mode(page, 'food')
-    check('food clustering restored and enabled after travel', page.evaluate('window.__map.getSource("places").spec.clusterMaxZoom===13 && window.__map.getSource("places").spec.cluster===true'))
+    check('food clustering restored and enabled after travel', page.evaluate('window.__map.getSource("places").spec.clusterMaxZoom===18 && window.__map.getSource("places").spec.cluster===true'))
     page.evaluate('window.__map.center = {lng: 101.7031, lat: 2.8331}; window.__map.zoom = 17;')
     add(page)
     page.wait_for_timeout(200)
@@ -464,17 +464,19 @@ with sync_playwright() as p:
     check('photo pins once zoomed in a bit: plain pin below 13, photo from 13', map_expr(ph_op, 11.9, ph_props) == 0 and map_expr(pin_op, 11.9, ph_props) == 1
           and map_expr(ph_op, 12, ph_props) == 1 and map_expr(pin_op, 12, ph_props) == 0, [map_expr(x, z, ph_props) for x in (ph_op, pin_op) for z in (12.9, 13)])
     sizes = [round(map_expr(ph_size, z, dict(ph_props, id='x')), 3) for z in (12, 12.5, 13, 14)]
-    check('zooming out shrinks the photo step by step to pin size before it turns into the pin', sizes == [0.6, 0.8, 1.0, 1.15], sizes)
+    check('photo size stays consistent at street zoom', sizes == [1.61, 1.61, 1.61, 1.61], sizes)
     check('area / city photos show from district / city zoom', map_expr(ph_op, 9.9, {'photo': True, 'precision': 'area'}) == 0 and map_expr(ph_op, 10, {'photo': True, 'precision': 'area'}) == 1
           and map_expr(ph_op, 6.9, {'photo': True, 'precision': 'city'}) == 0 and map_expr(ph_op, 7, {'photo': True, 'precision': 'city'}) == 1)
     check('places without photos keep their pin at every zoom', all(map_expr(pin_op, z, {'photo': False, 'precision': 'exact'}) == 1 for z in (3, 12, 15.5, 18)))
     travel_props = dict(ph_props, mode='travel', precision='exact')
     check('travel photos appear a little earlier at regional zoom 8.8; food keeps street zoom 12', map_expr(ph_op, 8.79, travel_props) == 0 and map_expr(ph_op, 8.8, travel_props) == 1 and map_expr(ph_op, 9, dict(travel_props, mode='food')) == 0)
     check('travel city and area photos appear a little earlier at zoom 3.8 and 6.8', map_expr(ph_op, 3.8, dict(travel_props, precision='city')) == 1 and map_expr(ph_op, 6.8, dict(travel_props, precision='area')) == 1)
-    check('travel pictures grow another 15 percent to 80-90px while food size is retained', [round(map_expr(ph_size,z,travel_props),2) for z in (9,10,11)] == [0.98,1.44,1.61] and map_expr(ph_size,11,travel_props) > map_expr(ph_size,15,dict(travel_props,mode='food')))
+    check('photo size is identical for all precisions and both map modes at each zoom', all(len({round(map_expr(ph_size,z,dict(ph_props,mode=m,precision=pr)),4) for m in ['food','travel'] for pr in ['city','area','exact']})==1 for z in [4,7,8.8,10,12,16]))
+    check('clustering continues through street zoom with room for the largest photo', page.evaluate('window.__map.getSource("places").spec.clusterMaxZoom===18 && window.__map.getSource("places").spec.clusterRadius>=68*1.61'))
+
 
     check('opened photo pin drawn on top at the same size', lays['pt-photo']['layout']['symbol-sort-key'][1] == ['==', ['get', 'id'], pid] and lays['pt-photo']['layout']['symbol-sort-key'][2] == 2
-          and abs(map_expr(ph_size, 13, ph_props) - 1.0) < 0.01 and abs(map_expr(ph_size, 13, dict(ph_props, id='x')) - 1.0) < 0.01, lays['pt-photo']['layout'])
+          and abs(map_expr(ph_size, 13, ph_props) - 1.61) < 0.01 and abs(map_expr(ph_size, 13, dict(ph_props, id='x')) - 1.61) < 0.01, lays['pt-photo']['layout'])
     page.evaluate('window.__map.jumpTo({zoom: 12})')
     page.wait_for_timeout(200)
     check('zoomed out on its page: still no red pin', page.locator('#map .sel-pin').count() == 0)

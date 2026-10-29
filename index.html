@@ -2786,13 +2786,10 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
     return ['interpolate', ['linear'], ['zoom'], 2, at(0.66), 12, at(0.85)];
   }
   function photoPinSize(selId) {
-    var e = ['interpolate', ['linear'], ['zoom']];
-    for (var z = 3; z <= 17; z++) {
-      var v = byPlaceKind(function (pr, mode) { var d = z - Math.ceil(photoZoom(pr, mode)); return mode === 'travel' ? (d <= 0 ? 0.85 : d === 1 ? 1.25 : 1.4) * 1.15 : (d <= 0 ? 0.6 : d === 1 ? 1 : 1.15); });
-      e.push(z, v);
-    }
-    return e;
+    /* 所有地点共享屏幕尺寸；精度只决定何时出现照片，不参与照片大小。 */
+    return ['interpolate', ['linear'], ['zoom'], 3, 0.85, 7, 1.1, 10, 1.44, 11, 1.61];
   }
+
   var pinThumbs = new Map();   // 照片 id → 'loading' | canvas | false（读不了）
   var thumbQueue = [], thumbBusy = 0, THUMB_PIN_MAX = 300, pinRefreshTimer = null;
   function photoPinImage(photo, score, saved, count) {
@@ -3017,12 +3014,13 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
   }
 
   var placeClusterProfiles = new WeakMap();
-  function placeClusterMaxZoom() { return state.mode === 'travel' || (state.scope === 'mine' && state.mineBoth) ? 8 : 13; }
+  var PLACE_CLUSTER_RADIUS = 112; // 68px 照片画布 × 最大比例 1.61 ≈ 110px，避免展开后互相覆盖。
+  function placeClusterMaxZoom() { return 18; }
   function addAppLayers() {
     var fonts = pickFonts();
     /* 数字圈用雪团的浅冰蓝，不跟着旅行地图变深（用户 2026-10-28） */
     var accent = CLUSTER_BLUE;
-    map.addSource('places', { type: 'geojson', data: placesGeoJSON(), cluster: true, clusterMaxZoom: placeClusterMaxZoom(), clusterRadius: 46 });
+    map.addSource('places', { type: 'geojson', data: placesGeoJSON(), cluster: true, clusterMaxZoom: placeClusterMaxZoom(), clusterRadius: PLACE_CLUSTER_RADIUS });
     placeClusterProfiles.set(map.getSource('places'), placeClusterMaxZoom());
     map.addSource('me', { type: 'geojson', data: meFC() });
     map.addSource('homes', { type: 'geojson', data: homesFC(), cluster: true, clusterMaxZoom: 11, clusterRadius: 36 });
@@ -3094,7 +3092,7 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
     var src = map && map.getSource && map.getSource('places');
     if (src && typeof src.setClusterOptions === 'function' && placeClusterProfiles.get(src) !== placeClusterMaxZoom()) {
       placeClusterProfiles.set(src, placeClusterMaxZoom());
-      Promise.resolve(src.setClusterOptions({ cluster: true, clusterMaxZoom: placeClusterMaxZoom(), clusterRadius: 46 })).catch(function () { placeClusterProfiles.delete(src); });
+      Promise.resolve(src.setClusterOptions({ cluster: true, clusterMaxZoom: placeClusterMaxZoom(), clusterRadius: PLACE_CLUSTER_RADIUS })).catch(function () { placeClusterProfiles.delete(src); });
     }
     if (src) src.setData(placesGeoJSON());
     refreshLib();
