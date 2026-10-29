@@ -168,6 +168,8 @@ def map_expr(e, z, props):
         return props.get(a[0])
     if op == '==':
         return map_expr(a[0], z, props) == map_expr(a[1], z, props)
+    if op == '!=':
+        return map_expr(a[0], z, props) != map_expr(a[1], z, props)
     if op == '*':
         return map_expr(a[0], z, props) * map_expr(a[1], z, props)
     raise ValueError(op)
@@ -261,7 +263,7 @@ with sync_playwright() as p:
         countFont: m.layers.find(l => l.id === 'cl-count').layout['text-font'],
         labelFont: m.layers.find(l => l.id === 'pt-label').layout['text-font'],
         intro: m.calls.filter(c => c[0] === 'move').map(c => c[1]) } }''')
-    check('app layers added', st['layers'] == ['lib-dot', 'lib-label', 'cl-halo', 'hometown-pin', 'cl-circle', 'cl-count', 'home-pin', 'pt-pin', 'pt-photo', 'pt-label', 'me-halo', 'me-dot'], st['layers'])
+    check('app layers added', st['layers'] == ['lib-dot', 'lib-label', 'cl-halo', 'hometown-pin', 'cl-circle', 'cl-count', 'cl-photo', 'home-pin', 'pt-pin', 'pt-photo', 'pt-label', 'me-halo', 'me-dot'], st['layers'])
     check('parsed sample rows', len(SAMPLE_ROWS) >= 60 and len(FOOD_S) >= 30, len(SAMPLE_ROWS))
     want_imgs = len({'none' if x['rating'] is None else x['rating'] * 10 for x in FOOD_S})
     check('dot images drawn on demand (one per score bucket)', st['images'] == want_imgs, (st['images'], want_imgs))
@@ -492,6 +494,10 @@ with sync_playwright() as p:
     check('food and scenery photos share visibility thresholds', all(map_expr(ph_op,z,dict(travel_props,mode='travel',precision=pr))==map_expr(ph_op,z,dict(travel_props,mode='food',precision=pr)) for pr in ['city','area','exact'] for z in [3.8,6.8,7,9,10,11.99,12,14]))
     check('photo size is identical for all precisions and both map modes at each zoom', all(len({round(map_expr(ph_size,z,dict(ph_props,mode=m,precision=pr)),4) for m in ['food','travel'] for pr in ['city','area','exact']})==1 for z in [4,7,8.8,10,12,16]))
     check('clustering continues through street zoom with room for the largest photo', page.evaluate('window.__map.getSource("places").spec.clusterMaxZoom===18 && window.__map.getSource("places").spec.clusterRadius>=68*1.15'))
+    cl_op = page.evaluate('window.__map.getLayer("cl-circle").paint["circle-opacity"]')
+    check('photo clusters keep counts at city zoom and show covers at street zoom', map_expr(cl_op,13.9,{'photoRef':'cover'})==1 and map_expr(cl_op,14,{'photoRef':'cover'})==0 and map_expr(cl_op,18,{'photoRef':''})==1)
+    cg = page.evaluate('''()=>{const f=window.__map.getSource('places').data.features.find(f=>f.properties.photoRef);const id='cg:3:'+f.properties.photoRef;window.__map.fire('styleimagemissing',{id});return window.__map.images[id];}''')
+    check('cluster photo sprites are drawn from a loaded cover with a photo-count badge', cg is not None and cg['w']==136 and cg['h']==156)
 
 
     check('opened photo pin drawn on top at the same size', lays['pt-photo']['layout']['symbol-sort-key'][1] == ['==', ['get', 'id'], pid] and lays['pt-photo']['layout']['symbol-sort-key'][2] == 2
@@ -870,9 +876,17 @@ with sync_playwright() as p:
     check('home: saving switches to the travel map', page.evaluate('document.documentElement.classList.contains("mode-travel")'))
     check('home: Me header says where I am from', page.inner_text('.me-head small') == '来自 Sepang', page.inner_text('.me-head'))
     tab(page, 'foot')
+    check('home: my map has an independent hometown switch, off by default', page.get_attribute('[data-action="mine-home-toggle"]','aria-pressed')=='false' and page.evaluate('window.__map.getSource("homes").data.features.length')==0)
+    page.click('[data-action="mine-home-toggle"]')
     hf = page.evaluate('window.__map.getSource("homes").data.features.map(f => [f.properties.mine, f.properties.icon, f.properties.pin])')
     check('home: my private home shows on my travel map as my house', hf == [[True, 'home-me', False]], hf)
-    check('home: no hometown note on my map', page.locator('#map-chips .map-chip').count() == 0)
+    check('home: my hometown switch stays available on my map', page.get_attribute('[data-action="mine-home-toggle"]','aria-pressed')=='true')
+    page.evaluate('window.__qrf=[{layer:{id:"cl-circle"},properties:{cluster:true,point_count:2}}];window.__map.fire("idle")')
+    check('home: my house moves beside a nearby place count with a connector', page.evaluate('window.__map.getLayer("home-pin").layout["icon-image"]==="home-me-raised" && window.__map.getLayer("home-pin").layout["icon-anchor"]==="left" && window.__map.images["home-me-raised"].w===216'))
+    page.evaluate('window.__qrf=[];window.__map.fire("idle")')
+    house_places_before = page.evaluate('window.__map.getSource("places").data.features.length')
+    page.click('[data-action="mine-home-toggle"]')
+    check('home: my house switch hides only the house and keeps places', page.evaluate('window.__map.getSource("homes").data.features.length===0') and page.evaluate('window.__map.getSource("places").data.features.length')==house_places_before)
     tab(page, 'explore')
     hf = page.evaluate('window.__map.getSource("homes").data.features.length')
     check('home: private home not on the big map', hf == 0, hf)
@@ -891,9 +905,9 @@ with sync_playwright() as p:
     img = page.evaluate('window.__map.images["hometown"]')
     check('home: red pin drawn at 22x30, smaller than a place pin', img == {'w': 44, 'h': 60, 'pr': 2}, img)
     img = page.evaluate('(() => { window.__map.fire("styleimagemissing", {id: "hometown-n-12"}); return window.__map.images["hometown-n-12"]; })()')
-    check('home: grouped red pin drawn with the count', img == {'w': 54, 'h': 74, 'pr': 2}, img)
+    check('home: grouped hometown pin has a small count badge', img == {'w': 76, 'h': 76, 'pr': 2}, img)
     hl = page.evaluate('[window.__map.layers.find(l => l.id === "hometown-pin").layout, window.__map.layers.map(l => l.id)]')
-    check('home: red pins stand on their tip, under the place count circles', hl[0]['icon-anchor'] == 'bottom' and hl[0]['icon-image'][2][1] == 'hometown-n-' and hl[1].index('hometown-pin') < hl[1].index('cl-circle') < hl[1].index('home-pin'), hl)
+    check('home: hometown badge uses student counts and a stable pin-tip anchor', hl[0]['icon-anchor'] == 'top-left' and hl[0]['icon-image'][2][1] == 'hometown-n-' and hl[0]['icon-image'][2][2] == ['to-string',['get','students']], hl)
     hb = page.evaluate('(() => { const b = document.querySelector("#map-chips [data-action=homes-toggle]"); return b && [b.getAttribute("aria-pressed"), b.textContent, !!b.querySelector("svg"), document.querySelectorAll("#map-ctrls [data-action=homes-toggle]").length]; })()')
     check('home: top-left note on the big travel map says red pins are hometowns, with how many', hb == ['true', '', True, 0] and page.get_attribute('[data-action="homes-toggle"]', 'aria-label') == '校友家乡地图', hb)
     img = page.evaluate('window.__map.images["home-me"]')
@@ -927,7 +941,7 @@ with sync_playwright() as p:
     st2 = page.evaluate('({setStyle: window.__map.calls.filter(c=>c[0]==="setStyle").length, layers: window.__map.layers.map(l=>l.id).length, images: Object.keys(window.__map.images).length, proj: window.__map.projection})')
     st2['icons'] = page.evaluate('[...new Set(window.__map.getSource("places").data.features.concat(window.__map.getSource("homes").data.features).flatMap(f => [f.properties.icon, f.properties.pic]).filter(Boolean))].sort()')
     st2['imageIds'] = page.evaluate('Object.keys(window.__map.images).sort()')
-    check('base map switch re-adds layers + images', st2['setStyle'] == 1 and st2['layers'] == 12 and st2['icons'] == st2['imageIds'] and st2['proj'] == {'type': ['interpolate', ['linear'], ['zoom'], 5, 'vertical-perspective', 7, 'mercator']}, st2)
+    check('base map switch re-adds layers + images', st2['setStyle'] == 1 and st2['layers'] == 13 and st2['icons'] == st2['imageIds'] and st2['proj'] == {'type': ['interpolate', ['linear'], ['zoom'], 5, 'vertical-perspective', 7, 'mercator']}, st2)
     tab(page, 'explore')
     set_mode(page, 'food')
 
@@ -1014,7 +1028,7 @@ with sync_playwright() as p:
 
     # cluster click
     page.click('[data-action="back"]')
-    page.evaluate('window.__qrf = [{properties: {cluster: true, cluster_id: 7, point_count: 5}, geometry: {coordinates: [115.3, -8.6]}}]')
+    page.evaluate('window.__map.zoom=10;window.__qrf = [{properties: {cluster: true, cluster_id: 7, point_count: 5}, geometry: {coordinates: [115.3, -8.6]}}]')
     page.evaluate('window.__map.fire("click", {point: {x: 200, y: 300}, lngLat: {lng: 115.3, lat: -8.6}})')
     page.wait_for_timeout(200)
     last = page.evaluate('window.__map.calls.filter(c => c[0] === "move").slice(-1)[0][1]')
@@ -1550,7 +1564,8 @@ with sync_playwright() as p:
     page7.wait_for_function('window.__map && window.__map.getSource("places")', timeout=8000)
     page7.wait_for_timeout(300)
     def add7(name, share, score):
-        page7.evaluate('window.__map.center = {lng: 101.7055, lat: 2.8402}; window.__map.zoom = 17;')
+        # Distinct shops: the separate coincident-coordinate regression covers shared GPS positions.
+        page7.evaluate('lng=>{window.__map.center={lng,lat:2.8402};window.__map.zoom=17;}',101.7075 if name=='甲的私密店' else 101.7055)
         add(page7); page7.wait_for_timeout(150)
         page7.click('[data-action="add-pin"]'); page7.click('[data-action="pick-confirm"]'); page7.wait_for_timeout(200)
         if page7.locator('[data-action="near-new"]').count(): page7.click('[data-action="near-new"]'); page7.wait_for_timeout(150)
@@ -2141,6 +2156,14 @@ with sync_playwright() as p:
     page6.click('[data-action="homes-toggle"]')
     uids = sorted(page6.evaluate('window.__map.getSource("homes").data.features.map(f => f.properties.uid)'))
     check('remote home: big map shows public homes only (not 小C’s private one)', uids == sorted([A, B]), uids)
+    page6.evaluate('''([a,b])=>{const h=window.__sb.db.homes;window.__oldBHome={...h.find(x=>x.user_id===b)};const x=h.find(x=>x.user_id===a);Object.assign(h.find(x=>x.user_id===b),{city:x.city,lat:x.lat,lng:x.lng});}''',[A,B])
+    tab(page6,'home');page6.wait_for_timeout(200);tab(page6,'explore');page6.click('[data-action="homes-toggle"]')
+    city_group=page6.evaluate('window.__map.getSource("homes").data.features')
+    check('public hometowns in the same city use one marker and a student-count badge',len(city_group)==1 and city_group[0]['properties']['students']==2 and city_group[0]['properties']['icon']=='hometown-n-2')
+    page6.evaluate('window.__qrf=window.__map.getSource("homes").data.features.map(f=>({...f,layer:{id:"hometown-pin"}}));window.__map.fire("click",{point:{x:200,y:300},lngLat:{lng:100.3,lat:5.4}})')
+    page6.wait_for_selector('.homes-list')
+    check('same-city hometown badge opens all public classmates, excluding private homes',page6.locator('.homes-list li').count()==2)
+    page6.evaluate('window.__qrf=[];Object.assign(window.__sb.db.homes.find(h=>h.user_id===window.__oldBHome.user_id),window.__oldBHome)')
     tab(page6, 'me')
     page6.click('[data-action="home-del"]')
     page6.wait_for_timeout(200)
@@ -2243,6 +2266,7 @@ with sync_playwright() as p:
     page6.click('[data-action="visit-multi"]')
     # Live home data, filters, and an update banner that does not interrupt scrolling.
     tab(page6,'home');page6.wait_for_timeout(300)
+    check('home secondary filters start folded behind one small button', not page6.locator('#home-days').is_visible() and not page6.locator('#home-min').is_visible() and not page6.locator('#home-sort').is_visible() and page6.locator('[data-action="home-filters"]').is_visible())
     page6.evaluate('''(pid)=>{ const d=window.__sb.db, now=Date.now();
       d.places.push({...d.places.find(p=>p.id===pid),id:'hf-travel',mode:'travel',name:'新美景地点'});
       [{id:'hf-food',place_id:pid,title:'首页新美食',rating:5,visibility:'public',updated_at:new Date(now).toISOString()},
@@ -2255,9 +2279,13 @@ with sync_playwright() as p:
     check('home detects new public posts and keeps private records out', page6.locator('.post-card',has_text='首页新美景').count()==1 and page6.locator('.post-card',has_text='绝不公开的测试').count()==0)
     page6.click('[data-action="home-mode"][data-v="travel"]')
     check('home scenery filter excludes food', page6.locator('.post-card',has_text='首页新美景').count()==1 and page6.locator('.post-card',has_text='首页新美食').count()==0)
+    page6.click('[data-action="home-filters"]')
     page6.select_option('#home-min','4.5')
     check('home rating filter combines with scenery', page6.locator('.post-card',has_text='首页新美景').count()==0 and '暂无符合筛选' in page6.inner_text('#view'))
+    check('home filter popover remains open while changing selections', page6.locator('#home-filter-panel').is_visible() and page6.locator('.home-filter-count').inner_text()=='1')
     page6.select_option('#home-min','0');page6.click('[data-action="home-mode"][data-v="all"]')
+    check('clicking outside home filters closes the popover', not page6.locator('#home-filter-panel').is_visible())
+    page6.click('[data-action="home-filters"]')
     page6.select_option('#home-days','7')
     check('home time uses posting activity while preserving original visit dates', page6.locator('.post-card',has_text='首页新美食').count()==1 and page6.locator('.post-card',has_text='旧动态测试').count()==0 and page6.evaluate('window.__sb.db.visits.find(v=>v.id==="hf-food").created_at.startsWith("2020")'))
     page6.select_option('#home-sort','rating')
@@ -2273,6 +2301,54 @@ with sync_playwright() as p:
     check('tapping the update banner applies new cards', page6.locator('.post-card',has_text='等待读完后再更新').count()==1)
     check('home filters fit mobile width', page6.evaluate('document.documentElement.scrollWidth<=innerWidth'))
     page6.screenshot(path=os.path.join(SHOTS,'16-home-filters.png'))
+    page6.click('[data-action="home-filters"]')
+    check('home filter popover fits inside the mobile viewport', page6.evaluate('(()=>{const r=document.getElementById("home-filter-panel").getBoundingClientRect();return r.left>=0&&r.right<=innerWidth;})()'))
+    page6.screenshot(path=os.path.join(SHOTS,'18-home-filter-popover.png'))
+    page6.keyboard.press('Escape')
+    check('Escape dismisses home filters without changing their values', not page6.locator('#home-filter-panel').is_visible() and page6.input_value('#home-days')=='0' and page6.input_value('#home-min')=='0' and page6.input_value('#home-sort')=='newest')
+
+    # Street-level clusters offer photos and a selectable place list instead of endless zooming.
+    page6.evaluate('''uid=>{const d=window.__sb.db,r=d.visits.find(v=>v.user_id===uid),p=d.places.find(p=>p.id===r.place_id);d.places.push({...p,id:'same-coordinate',name:'同坐标测试地点'});d.visits.push({...r,id:'same-coordinate-visit',place_id:'same-coordinate',photos:['fixture.jpg'],visibility:'private'});}''',A)
+    page6.click('[data-action="home-refresh"]');page6.wait_for_timeout(150)
+    tab(page6,'foot')
+    shared_points=page6.evaluate('window.__map.getSource("places").data.features.filter(f=>JSON.parse(f.properties.memberIds).includes("same-coordinate"))')
+    check('exactly coincident places use one marker without changing their original records',len(shared_points)==1 and len(json.loads(shared_points[0]['properties']['memberIds']))>=2 and page6.evaluate('window.__sb.db.places.some(p=>p.id==="same-coordinate")'))
+    check('coincident records retain their overview number before showing a cover', shared_points[0]['properties']['point_count']==len(json.loads(shared_points[0]['properties']['memberIds'])) and shared_points[0]['properties']['locationCount']==shared_points[0]['properties']['point_count'])
+    page6.evaluate('''()=>{const m=window.__map,s=m.getSource('places');window.__oldLeaves=s.getClusterLeaves;s.getClusterLeaves=()=>Promise.resolve(s.data.features.slice(0,2));m.zoom=16;window.__qrf=[{layer:{id:'cl-photo'},properties:{cluster:true,cluster_id:9},geometry:{type:'Point',coordinates:[101.7,2.8]}}];m.fire('click',{point:{x:195,y:300},lngLat:{lng:101.7,lat:2.8}});}''')
+    page6.wait_for_selector('.cluster-list')
+    check('street-level photo clusters open a place list, without another forced zoom',page6.locator('.cluster-list li').count()>=2 and page6.evaluate('window.__map.zoom')==16)
+    page6.evaluate('window.__qrf=[];window.__map.getSource("places").getClusterLeaves=window.__oldLeaves')
+    page6.locator('.cluster-list [data-action="open-place"]').first.click()
+    check('photo cluster members open their original reviews and photos',page6.locator('.place-head').count()==1)
+
+    tab(page6,'me');page6.click('[data-action="my-share"]');page6.wait_for_timeout(250)
+    import base64, urllib.parse
+    share_url=page6.input_value('#share-link')
+    def card_payload(url):
+        raw=urllib.parse.parse_qs(urllib.parse.urlsplit(url).query)['card'][0]
+        return json.loads(base64.urlsafe_b64decode(raw+'='*((4-len(raw)%4)%4)))
+    public_card=card_payload(share_url)
+    expected_public=page6.evaluate('''u=>{const d=window.__sb.db;return new Set(d.visits.filter(r=>r.user_id===u&&r.visibility==='public').map(r=>r.place_id)).size;}''',A)
+    check('my share card defaults to public counts without private photos or coordinates', public_card['places']==expected_public and not public_card['privateCounts'] and set(public_card)=={'v','name','food','scenery','places','countries','date','privateCounts'})
+    page6.check('#share-private');page6.wait_for_timeout(100)
+    all_card=card_payload(page6.input_value('#share-link'))
+    check('private counts require explicit opt-in and expose counts only',all_card['privateCounts'] and all_card['places']>public_card['places'] and set(all_card)==set(public_card))
+    page6.uncheck('#share-private');page6.wait_for_timeout(200)
+    with page6.expect_download() as saved_card:
+        page6.click('[data-action="save-share-card"]')
+    check('footprint share card can be saved as a PNG image',saved_card.value.suggested_filename=='xuetuan-footprints.png')
+    page6.screenshot(path=os.path.join(SHOTS,'19-my-share-card.png'))
+    page6.evaluate('''()=>{Object.defineProperty(navigator,'share',{configurable:true,value:d=>{window.__sharedCard={url:d.url,files:(d.files||[]).length};return Promise.resolve();}});Object.defineProperty(navigator,'canShare',{configurable:true,value:()=>true});}''')
+    page6.click('[data-action="share-card"]')
+    check('native share includes the generated card and a share link',page6.evaluate('window.__sharedCard.files===1 && window.__sharedCard.url.includes("card=")'))
+    share_ctx=browser.new_context(viewport={'width':390,'height':844},device_scale_factor=2)
+    route_all(share_ctx,True);reader=share_ctx.new_page();reader.goto(share_url);reader.wait_for_selector('#share-canvas')
+    check('shared link opens the snapshot without logging in or exposing private fields',reader.locator('#share-private').count()==0 and public_card['name'] in reader.get_attribute('#share-canvas','aria-label'))
+    reader.click('#view [data-action="tab"][data-tab="home"]')
+    check('a shared footprint card leads a new visitor to the home feed',reader.locator('.home-top').count()==1)
+    share_ctx.close()
+    with open(os.path.join(os.getenv('TEMP',SCR),'xuetuan-real-cluster-spec.json'),'w',encoding='utf-8') as f:
+        json.dump(page6.evaluate('({source:window.__map.getSource("places").spec,layers:window.__map.layers.filter(l=>["cl-photo","cl-circle","cl-halo"].includes(l.id))})'),f)
 
     # 退出登录
     tab(page6, 'me')

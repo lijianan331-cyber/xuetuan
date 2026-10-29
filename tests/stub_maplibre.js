@@ -78,6 +78,7 @@
   Map.prototype.zoomOut = function () { this._move({ zoom: this.zoom - 1 }); };
   Map.prototype.getCenter = function () { return this._ll(); };
   Map.prototype.getZoom = function () { return this.zoom; };
+  Map.prototype.project = function () { return { x: 195, y: 300 }; };
   Map.prototype.getContainer = function () { return this.container; };
   Map.prototype.getCanvas = function () { return this.canvas; };
   Map.prototype.unproject = function () { return this._ll(); };

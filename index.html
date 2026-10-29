@@ -678,11 +678,21 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
 .post-title { font-size: 21px; line-height: 1.4; margin: 14px 0 10px; overflow-wrap: anywhere; }
 .home-filters { display: flex; flex-direction: column; gap: 7px; margin-bottom: 10px; }
 .home-filter-row { display: flex; gap: 6px; align-items: center; }
-.home-filter-row .input { flex: 1; min-width: 0; height: 34px; padding: 5px 7px; font-size: 12px; }
 .home-filter-row .chip { padding: 6px 12px; font-size: 12px; }
-.home-refresh { margin-left: auto; min-height: 34px; padding: 4px 9px; font-size: 12px; }
+.home-filter-menu { position: relative; margin-left: auto; }
+.home-filter-toggle, .home-refresh { min-height: 32px; padding: 4px 7px; font-size: 12px; }
+.home-filter-toggle { gap: 4px; }
+.home-filter-toggle svg { width: 16px; height: 16px; }
+.home-filter-count { min-width: 15px; padding: 0 3px; border-radius: 8px; background: var(--surface-2); color: var(--accent); font-size: 10px; }
+.home-filter-panel { position: absolute; top: calc(100% + 6px); right: 0; z-index: 5; width: 240px; display: grid; gap: 10px; padding: 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); box-shadow: var(--shadow); }
+.home-filter-panel label { display: grid; grid-template-columns: 48px minmax(0, 1fr); align-items: center; gap: 8px; font-size: 12px; color: var(--muted); }
+.home-filter-panel .input { width: 100%; min-width: 0; height: 34px; padding: 5px 7px; font-size: 12px; }
 .home-updates { width: 100%; margin: 0 0 10px; }
 .home-privacy { margin: 0 0 12px; font-size: 11px; color: var(--muted); }
+.share-card { max-width: 420px; margin: 10px auto 16px; }
+.share-card canvas { display: block; width: 100%; height: auto; border-radius: 18px; box-shadow: var(--shadow); }
+.share-link { font-size: 12px; }
+.share-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
 .home-sec small { color: var(--muted); font-size: 12px; }
 .home-empty { padding: 4px 2px 16px; }
 .post-grid { list-style: none; margin: 0; padding: 0 0 8px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 8px; }
@@ -1258,8 +1268,8 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
   var state = {
     lang: 'zh', mode: 'food', tab: 'home', scope: 'all', cat: 'all', priceAbout: 0, minScore: 0, dist: 'any',
     view: 'feed', placeId: null, postId: null, placeBack: null, form: null, nearby: null, query: '',
-    homeMode: 'all', homeDays: 0, homeMin: 0, homeSort: 'newest', bootLoading: true, posting: false, snap: 'peek', feedSnap: 'peek', picking: null, preview: null, bsheet: null, me: null, styleKey: 'light',
-    mineBoth: false, countries: false, savedWant: false, mineSub: 'mine', homesOn: false, homes: null, homeBack: null, bulk: null
+    homeMode: 'all', homeDays: 0, homeMin: 0, homeSort: 'newest', homeFiltersOpen: false, bootLoading: true, posting: false, snap: 'peek', feedSnap: 'peek', picking: null, preview: null, bsheet: null, me: null, styleKey: 'light',
+    mineBoth: false, countries: false, savedWant: false, mineSub: 'mine', homesOn: false, mineHomeOn: false, homes: null, homeBack: null, clusterPlaces: null, bulk: null
   };
   var map = null;
   var lastRenderedView = null;
@@ -1933,6 +1943,7 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
       }
       v.mode = state.mode; v.lang = state.lang; v.styleKey = state.styleKey;
       v.mineBoth = state.mineBoth; v.countries = state.countries; v.homesOn = state.homesOn;
+      v.mineHomeOn = state.mineHomeOn;
       localStorage.setItem(LS_VIEW, JSON.stringify(v));
     } catch (e) { /* storage blocked: keep going */ }
   }
@@ -2362,7 +2373,7 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
       map.on('styleimagemissing', onImageMissing);
       map.on('moveend', function () { if (!gSyncing) onMoveEnd(); });
       if (PERF) { map.on('move', perfMoved); map.on('style.load', perfHook); perfHook(); if (!GMAP) map.on('idle', perfMark); }
-      map.on('idle', function () { if (!glyphsWarmed) setTimeout(warmGlyphs, 800); collectBaseNames(); });
+      map.on('idle', function () { if (!glyphsWarmed) setTimeout(warmGlyphs, 800); collectBaseNames(); updateHomePlacement(); });
       map.on('zoom', function () { if (state.picking) updatePickUI(); });
       map.on('error', function (e) { if (window.console) console.warn('map:', e && e.error ? e.error.message : e); });
     }).catch(function () { showMapError(); });
@@ -2586,7 +2597,7 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
     if (!e.placeId) { onMapClick(ev); return; }
     /* 点到谷歌地图上的店：不弹谷歌自己的小窗。图钉盖在店上面时算点图钉 */
     if (e.stop) e.stop();
-    var ours = ['cl-circle', 'pt-photo', 'pt-pin', 'hometown-pin', 'home-pin'].filter(function (id) { return map.getLayer(id); });
+    var ours = ['cl-photo', 'cl-circle', 'pt-photo', 'pt-pin', 'hometown-pin', 'home-pin'].filter(function (id) { return map.getLayer(id); });
     var hit = ours.length && map.queryRenderedFeatures([[pt.x - 12, pt.y - 12], [pt.x + 12, pt.y + 10]], { layers: ours }).length;
     if (hit || state.picking) { onMapClick(ev); return; }
     pickResult({ osm: 'g/' + e.placeId, gid: e.placeId, name: '', alt: '', lng: round6(lngLat.lng), lat: round6(lngLat.lat), mode: state.mode, cat: null, precision: 'exact', where: '', google: true, zoom: map.getZoom() });
@@ -2921,32 +2932,48 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
   }
   function placesGeoJSON() {
     if (hometownMode()) return { type: 'FeatureCollection', features: [] };
-    var b = viewBounds();
-    return {
-      type: 'FeatureCollection',
-      features: placesInView().map(function (p) {
+    var b = viewBounds(), points = new Map();
+    placesInView().forEach(function (p) {
         /* 收藏地图上每个都是收藏的，就不再加星 */
         var saved = state.scope !== 'saved' && store.isSaved(p.id);
         var s = stats(p), photo = coverPhoto(p), count = placePhotos(p).length, ph = photo ? photoPinImage(photo, s.score, saved, count) : null;
         if (photo && !ph && !pinThumbs.has(photo) && photoWanted(p) && (!b || b.contains([p.lng, p.lat]))) queueThumb(photo);
-        return {
+        var f = {
           type: 'Feature',
           geometry: { type: 'Point', coordinates: [p.lng, p.lat] },
-          properties: { id: p.id, name: /^g\//.test(p.osm || '') ? '' : placeTitle(p), mode: p.mode, icon: pinImage(p, s.score, saved), pic: ph || '', photo: !!ph, photoCount: count, saved: saved, color: scoreColor(s.score), precision: p.precision }
-        };
-      })
-    };
+          properties: { id: p.id, name: /^g\//.test(p.osm || '') ? '' : placeTitle(p), mode: p.mode, icon: pinImage(p, s.score, saved), pic: ph || '', photo: !!ph, photoRef: ph ? JSON.stringify([photo, s.score, saved]) : '', photoCount: count, photoTotal: count, locationCount: 1, saved: saved, color: scoreColor(s.score), precision: p.precision }
+        }, key = p.lng.toFixed(6) + ',' + p.lat.toFixed(6), old = points.get(key);
+        if (!old) { f.properties.memberIds = JSON.stringify([p.id]); points.set(key, f); }
+        else {
+          var ids = JSON.parse(old.properties.memberIds); ids.push(p.id); old.properties.memberIds = JSON.stringify(ids);
+          old.properties.photoCount += count;
+          old.properties.photoTotal = old.properties.photoCount;
+          old.properties.point_count = old.properties.locationCount = ids.length;
+          old.properties.point_count_abbreviated = String(ids.length);
+          if (!old.properties.photoRef && f.properties.photoRef) { old.properties.photoRef = f.properties.photoRef; old.properties.photo = true; }
+          if (old.properties.photoRef) {
+            var ref = JSON.parse(old.properties.photoRef);
+            old.properties.pic = photoPinImage(ref[0], ref[1], ref[2], old.properties.photoCount) || old.properties.pic;
+          }
+        }
+    });
+    return { type: 'FeatureCollection', features: Array.from(points.values()) };
   }
   /* ================= 我的家 =================
    * 旅行大地图：大家公开的家乡画成小红针（左上角“同学的家乡”小签说明，点它开关），离得近的合成一根带人数的；
    * 我的地图 · 旅行：只画我自己的家，是小房子，公不公开都画（用户 2026-10-27） */
   var HOME_COLOR = '#4F63D8';
   /* 小房子：白底蓝房子；我自己的是蓝底白房子 */
-  function drawHome(mine) {
-    var s = 44, cx = 22, cy = 22, cv = document.createElement('canvas');
-    cv.width = Math.round(s * DPR); cv.height = Math.round(s * DPR);
+  function drawHome(mine, raised) {
+    var s = 44, cx = raised ? 86 : 22, cy = 22, cv = document.createElement('canvas');
+    cv.width = Math.round((raised ? 108 : s) * DPR); cv.height = Math.round(s * DPR);
     var g = cv.getContext('2d');
     g.scale(DPR, DPR);
+    if (raised) {
+      g.beginPath(); g.moveTo(54, cy); g.lineTo(71, cy);
+      g.strokeStyle = '#ffffff'; g.lineWidth = 4; g.stroke();
+      g.strokeStyle = HOME_COLOR; g.lineWidth = 1.5; g.stroke();
+    }
     g.save();
     g.shadowColor = 'rgba(0,0,0,.3)'; g.shadowBlur = 4; g.shadowOffsetY = 1.5;
     g.beginPath(); g.arc(cx, cy, 13.5, 0, Math.PI * 2);
@@ -2966,12 +2993,26 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
     if (map && !map.hasImage(id)) map.addImage(id, drawHome(mine), { pixelRatio: DPR });
     return id;
   }
+  var homePlacement = null;
+  function updateHomePlacement() {
+    if (!map || !map.getLayer('home-pin')) return;
+    var home = state.scope === 'mine' && homesShown() && store.myHome(), raised = false;
+    if (home && map.project) {
+      var p = map.project([home.lng, home.lat]);
+      raised = map.queryRenderedFeatures([[p.x - 35, p.y - 35], [p.x + 35, p.y + 35]], { layers: ['cl-circle','pt-pin','pt-photo','cl-photo'] }).length > 0;
+    }
+    if (homePlacement === raised) return;
+    homePlacement = raised;
+    if (raised && !map.hasImage('home-me-raised')) map.addImage('home-me-raised', drawHome(true, true), { pixelRatio: DPR });
+    map.setLayoutProperty('home-pin', 'icon-image', raised ? 'home-me-raised' : ['get', 'icon']);
+    map.setLayoutProperty('home-pin', 'icon-anchor', raised ? 'left' : 'center');
+  }
   /* 家乡红针：比地点图钉小一圈，谷歌红、深红描边、针头一个白点（地点图钉是白描边、白圈里画表情）。
      合在一起的针头大一点，里面写人数 */
   var HOMETOWN_RED = '#EA4335';
   var HOMETOWN_PIN = '<svg viewBox="0 0 22 28" aria-hidden="true"><path d="M11 26.4C8.8 22.2 3 18 3 11a8 8 0 0 1 16 0c0 7-5.8 11.2-8 15.4z" fill="' + HOMETOWN_RED + '" stroke="#B31412" stroke-width="1.2"/><circle cx="11" cy="11" r="2.9" fill="#fff"/></svg>';
   function drawHometown(count) {
-    var r = count ? 10.5 : 8, w = Math.round(2 * r + 6), cx = w / 2, cy = r + 3, tip = cy + 1.93 * r, h = Math.ceil(tip + 3);
+    var r = 8, w = count ? 38 : 22, cx = 11, cy = r + 3, tip = cy + 1.93 * r, h = count ? 38 : 30;
     var cv = document.createElement('canvas');
     cv.width = Math.round(w * DPR); cv.height = Math.round(h * DPR);
     var g = cv.getContext('2d');
@@ -2989,27 +3030,37 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
     g.lineWidth = 1.2; g.strokeStyle = '#B31412'; g.stroke();
     g.fillStyle = '#ffffff';
     if (count) {
-      g.font = '700 ' + (count.length > 2 ? 8.5 : 10.5) + 'px ' + getComputedStyle(document.body).fontFamily;
+      g.beginPath(); g.arc(27, 27, 10, 0, Math.PI * 2); g.fill();
+      g.strokeStyle = '#f3c7c2'; g.lineWidth = 1; g.stroke();
+      g.fillStyle = '#9f3329'; g.font = '700 ' + (String(count).length > 2 ? 8.5 : 10.5) + 'px ' + getComputedStyle(document.body).fontFamily;
       g.textAlign = 'center'; g.textBaseline = 'middle';
-      g.fillText(count, cx, cy + 0.5);
+      g.fillText(String(count), 27, 27.5);
     } else {
       g.beginPath(); g.arc(cx, cy, 2.9, 0, Math.PI * 2); g.fill();
     }
     return g.getImageData(0, 0, cv.width, cv.height);
   }
-  function hometownImage() {
-    if (map && !map.hasImage('hometown')) map.addImage('hometown', drawHometown(), { pixelRatio: DPR });
-    return 'hometown';
+  function hometownImage(count) {
+    var id = count > 1 ? 'hometown-n-' + count : 'hometown';
+    if (map && !map.hasImage(id)) map.addImage(id, drawHometown(count > 1 ? String(count) : null), { pixelRatio: DPR });
+    return id;
   }
   /* 合在一起的红针按人数要图片，地图要的时候再画 */
   function onImageMissing(e) {
     var m = /^hometown-n-(.+)$/.exec(e.id || '');
     if (m && !map.hasImage(e.id)) map.addImage(e.id, drawHometown(m[1]), { pixelRatio: DPR });
+    var c = /^cg:(\d+):(.+)$/.exec(e.id || '');
+    if (c && !map.hasImage(e.id)) {
+      try {
+        var ref = JSON.parse(c[2]), thumb = pinThumbs.get(ref[0]);
+        if (thumb && thumb !== 'loading') map.addImage(e.id, drawPhotoPin(thumb, ref[1] == null ? DOT_NONE : scoreColor(ref[1]), ref[2], Number(c[1])), { pixelRatio: DPR });
+      } catch (err) { /* An unavailable cover falls back to the count circle. */ }
+    }
   }
   function hometownMode() { return state.tab === 'explore' && state.scope === 'all' && state.homesOn; }
   function homesShown() {
     if (state.scope === 'all') return hometownMode();
-    return state.scope === 'mine' && (state.mode === 'travel' || state.mineBoth);
+    return state.tab === 'foot' && state.scope === 'mine' && state.mineHomeOn;
   }
   function homesOnMap() {
     if (!homesShown()) return [];
@@ -3017,11 +3068,17 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
     return store.homes().filter(function (h) { return h.public; });
   }
   function homesFC() {
+    var grouped = [];
+    homesOnMap().forEach(function (h) {
+      var group = state.scope === 'all' && grouped.find(function (g) { return g.city === (h.city || '').trim().toLowerCase() && Math.abs(g.lng - h.lng) < 0.3 && Math.abs(g.lat - h.lat) < 0.3; });
+      if (group) group.ids.push(h.userId);
+      else grouped.push({ city: (h.city || '').trim().toLowerCase(), lng: h.lng, lat: h.lat, ids: [h.userId] });
+    });
     return {
       type: 'FeatureCollection',
-      features: homesOnMap().map(function (h) {
-        var mine = h.userId === me().id, pin = state.scope === 'all';
-        return { type: 'Feature', geometry: { type: 'Point', coordinates: [h.lng, h.lat] }, properties: { uid: h.userId, mine: mine, icon: pin ? hometownImage() : homeImage(mine), pin: pin } };
+      features: grouped.map(function (h) {
+        var mine = h.ids.indexOf(me().id) !== -1, pin = state.scope === 'all';
+        return { type: 'Feature', geometry: { type: 'Point', coordinates: [h.lng, h.lat] }, properties: { uid: h.ids[0], uids: JSON.stringify(h.ids), students: h.ids.length, mine: mine, icon: pin ? hometownImage(h.ids.length) : homeImage(mine), pin: pin } };
       })
     };
   }
@@ -3038,15 +3095,19 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
 
   var placeClusterProfiles = new WeakMap();
   var PLACE_CLUSTER_RADIUS = 80; // 68px 画布 × 最大比例 1.15 ≈ 78px，与缩小后的照片匹配。
+  var CLUSTER_PHOTO_ZOOM = 14;
+  function whenClusterPhoto(photo, circle) { return ['step', ['zoom'], circle, CLUSTER_PHOTO_ZOOM, ['case', ['!=', ['get', 'photoRef'], ''], photo, circle]]; }
   function placeClusterMaxZoom() { return 18; }
   function addAppLayers() {
     var fonts = pickFonts();
     /* 数字圈用雪团的浅冰蓝，不跟着旅行地图变深（用户 2026-10-28） */
     var accent = CLUSTER_BLUE;
-    map.addSource('places', { type: 'geojson', data: placesGeoJSON(), cluster: true, clusterMaxZoom: placeClusterMaxZoom(), clusterRadius: PLACE_CLUSTER_RADIUS });
+    homePlacement = null;
+    map.addSource('places', { type: 'geojson', data: placesGeoJSON(), cluster: true, clusterMaxZoom: placeClusterMaxZoom(), clusterRadius: PLACE_CLUSTER_RADIUS,
+      clusterProperties: { photoRef: [['case', ['!=', ['accumulated'], ''], ['accumulated'], ['get', 'photoRef']], ['get', 'photoRef']], photoTotal: ['+', ['get', 'photoCount']], locationCount: ['+', ['get', 'locationCount']] } });
     placeClusterProfiles.set(map.getSource('places'), placeClusterMaxZoom());
     map.addSource('me', { type: 'geojson', data: meFC() });
-    map.addSource('homes', { type: 'geojson', data: homesFC(), cluster: true, clusterMaxZoom: 11, clusterRadius: 36 });
+    map.addSource('homes', { type: 'geojson', data: homesFC(), cluster: true, clusterMaxZoom: 11, clusterRadius: 36, clusterProperties: { students: ['+', ['get', 'students']] } });
     /* 地点库里的店：放大后才出，小圆点 + 店名，垫在所有图钉下面 */
     map.addSource('libpoi', { type: 'geojson', data: libFC() });
     map.addLayer({
@@ -3061,25 +3122,30 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
     /* 城市、片区的地点不再画范围圈，和具体地点一样只有图钉（用户 2026-10-27） */
     map.addLayer({
       id: 'cl-halo', type: 'circle', source: 'places', filter: ['has', 'point_count'],
-      paint: { 'circle-radius': ['step', ['get', 'point_count'], 22, 10, 26, 50, 31, 200, 37], 'circle-color': accent, 'circle-opacity': 0.2 }
+      paint: { 'circle-radius': ['step', ['get', 'point_count'], 22, 10, 26, 50, 31, 200, 37], 'circle-color': accent, 'circle-opacity': whenClusterPhoto(0, 0.2) }
     });
     /* 大地图上的家乡红针垫在地点数字圈下面：缩小看全国时两者常叠在一起，针头露在圈上面，不挡住圈里的数字。
        合在一起的只会是红针（我的地图只有自己一个家） */
     map.addLayer({
       id: 'hometown-pin', type: 'symbol', source: 'homes', filter: ['any', ['has', 'point_count'], ['==', ['get', 'pin'], true]],
       layout: {
-        'icon-image': ['case', ['has', 'point_count'], ['concat', 'hometown-n-', ['get', 'point_count_abbreviated']], ['get', 'icon']],
-        'icon-anchor': 'bottom', 'icon-allow-overlap': true, 'icon-ignore-placement': true, 'icon-size': ['interpolate', ['linear'], ['zoom'], 2, 0.48, 5, 0.62, 10, 0.9]
+        'icon-image': ['case', ['has', 'point_count'], ['concat', 'hometown-n-', ['to-string', ['get', 'students']]], ['get', 'icon']],
+        'icon-anchor': 'top-left', 'icon-offset': [-11, -27], 'icon-allow-overlap': true, 'icon-ignore-placement': true, 'icon-size': ['interpolate', ['linear'], ['zoom'], 2, 0.7, 5, 0.85, 10, 1]
       }
     });
     map.addLayer({
       id: 'cl-circle', type: 'circle', source: 'places', filter: ['has', 'point_count'],
-      paint: { 'circle-radius': ['step', ['get', 'point_count'], 15, 10, 19, 50, 23, 200, 27], 'circle-color': accent, 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 2 }
+      paint: { 'circle-radius': ['step', ['get', 'point_count'], 15, 10, 19, 50, 23, 200, 27], 'circle-color': accent, 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 2, 'circle-opacity': whenClusterPhoto(0, 1), 'circle-stroke-opacity': whenClusterPhoto(0, 1) }
     });
     map.addLayer({
       id: 'cl-count', type: 'symbol', source: 'places', filter: ['has', 'point_count'],
-      layout: { 'text-field': ['get', 'point_count_abbreviated'], 'text-font': fonts.bold, 'text-size': 12.5, 'text-allow-overlap': true, 'text-ignore-placement': true },
-      paint: { 'text-color': '#ffffff' }
+      layout: { 'text-field': ['to-string', ['get', 'locationCount']], 'text-font': fonts.bold, 'text-size': 12.5, 'text-allow-overlap': true, 'text-ignore-placement': true },
+      paint: { 'text-color': '#ffffff', 'text-opacity': whenClusterPhoto(0, 1) }
+    });
+    map.addLayer({
+      id: 'cl-photo', type: 'symbol', source: 'places', minzoom: CLUSTER_PHOTO_ZOOM,
+      filter: ['all', ['has', 'point_count'], ['!=', ['get', 'photoRef'], '']],
+      layout: { 'icon-image': ['concat', 'cg:', ['to-string', ['get', 'photoTotal']], ':', ['get', 'photoRef']], 'icon-anchor': 'bottom', 'icon-allow-overlap': true, 'icon-ignore-placement': true, 'icon-size': photoPinSize(null) }
     });
     /* 我的地图上自己的小房子盖在地点的数字圈上面（缩小看全国时两者常常叠在一起），但在单个地点图钉下面 */
     map.addLayer({
@@ -3122,6 +3188,7 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
     queueLib();
     var hs = map && map.getSource && map.getSource('homes');
     if (hs) hs.setData(homesFC());
+    updateHomePlacement();
     syncCountries();
   }
   function repaintAccent() {
@@ -3210,17 +3277,20 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
       map.panBy([e.point.x - c.clientWidth / 2, e.point.y - c.clientHeight / 2], { duration: 350 });
       return;
     }
-    var layers = ['cl-circle', 'pt-photo', 'pt-pin', 'pt-label'].filter(function (id) { return map.getLayer(id); });
+    var layers = ['cl-photo', 'cl-circle', 'pt-photo', 'pt-pin', 'pt-label'].filter(function (id) { return map.getLayer(id); });
     var box = [[e.point.x - 12, e.point.y - 12], [e.point.x + 12, e.point.y + 10]];
     var hits = layers.length ? map.queryRenderedFeatures(box, { layers: layers }) : [];
     if (hits.length) {
       var f = hits[0];
       if (f.properties && f.properties.cluster) {
         var src = map.getSource('places');
+        if (map.getZoom() >= CLUSTER_PHOTO_ZOOM) { openPlaceCluster(src, f.properties.cluster_id); return; }
         clusterZoom(src, f.properties.cluster_id).then(function (z) {
           map.easeTo({ center: f.geometry.coordinates, zoom: (z == null ? map.getZoom() + 2 : z) + 0.4, duration: reduceMotion ? 0 : 600, padding: mapPadding() });
         });
       } else if (f.properties && f.properties.id) {
+        var members = []; try { members = JSON.parse(f.properties.memberIds || '[]'); } catch (err) {}
+        if (members.length > 1) { showPlaceGroup(members); return; }
         openPlace(f.properties.id, { fly: false });
         if (f.layer && f.layer.id === 'pt-photo') openPlacePhotos(f.properties.id);
       }
@@ -3248,17 +3318,34 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
       } catch (e) { resolve([]); }
     });
   }
+  var clusterTap = 0;
+  function showPlaceGroup(ids) {
+    ids = ids.filter(function (id, i) { var p = placeById(id); return p && inScope(p) && passesFilters(p) && ids.indexOf(id) === i; });
+    if (!ids.length) return;
+    if (ids.length === 1) { openPlace(ids[0], { fly: false }); return; }
+    rememberFeedSnap(); state.clusterPlaces = ids; state.view = 'cluster'; render(); setSnap('half');
+  }
+  function openPlaceCluster(src, id) {
+    var seq = ++clusterTap, tab = state.tab, scope = state.scope, mode = state.mode;
+    clusterLeaves(src, id).then(function (features) {
+      if (seq !== clusterTap || state.tab !== tab || state.scope !== scope || state.mode !== mode || state.picking || map.getSource('places') !== src) return;
+      var ids = [];
+      features.forEach(function (f) { var pr = f.properties || {}, members = [pr.id]; try { members = JSON.parse(pr.memberIds || '[]'); if (!members.length) members = [pr.id]; } catch (e) {} members.forEach(function (id) { if (ids.indexOf(id) === -1) ids.push(id); }); });
+      showPlaceGroup(ids);
+    });
+  }
   function openHomesAt(hits) {
-    var src = map.getSource('homes');
+    var src = map.getSource('homes'), tab = state.tab, scope = state.scope;
     Promise.all(hits.map(function (f) {
       return f.properties && f.properties.cluster ? clusterLeaves(src, f.properties.cluster_id) : Promise.resolve([f]);
     })).then(function (lists) {
+      if (state.tab !== tab || state.scope !== scope || !homesShown()) return;
       var ids = [];
-      lists.forEach(function (l) { l.forEach(function (f) { var u = f.properties && f.properties.uid; if (u && ids.indexOf(u) === -1) ids.push(u); }); });
-      var list = ids.map(homeOf).filter(Boolean);
+      lists.forEach(function (l) { l.forEach(function (f) { var pr = f.properties || {}, us = [pr.uid]; try { if (pr.uids) us = JSON.parse(pr.uids); } catch (e) {} us.forEach(function (u) { if (u && ids.indexOf(u) === -1) ids.push(u); }); }); });
+      var list = ids.map(homeOf).filter(function (h) { return h && (h.public || (state.scope === 'mine' && h.userId === me().id && state.mineHomeOn)); });
       if (!list.length) return;
       rememberFeedSnap();
-      state.homes = ids;
+      state.homes = list.map(function (h) { return h.userId; });
       state.view = 'homes';
       render();
       setSnap('half');
@@ -3681,7 +3768,9 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
     }
     $('#map-ctrls').innerHTML = h;
     /* 旅行大地图左上角：红针是什么、有几位，点一下收起 / 显示；没人公开家乡就不出 */
-    $('#map-chips').innerHTML = state.tab === 'explore' && state.scope === 'all' ? '<button type="button" class="map-chip homes-switch" data-action="homes-toggle" aria-label="' + esc(t('homesBtn')) + '" title="' + esc(t('homesBtn')) + '" aria-pressed="' + state.homesOn + '">' + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="m3 10 9-7 9 7M5 9v12h14V9M9 21v-7h6v7"/></svg></button>' : '';
+    var publicHomes = state.tab === 'explore' && state.scope === 'all', ownHome = state.tab === 'foot' && state.scope === 'mine' && !!store.myHome();
+    var homeLabel = publicHomes ? t('homesBtn') : (state.lang === 'en' ? 'Show my hometown' : '显示我的家乡');
+    $('#map-chips').innerHTML = publicHomes || ownHome ? '<button type="button" class="map-chip homes-switch" data-action="' + (publicHomes ? 'homes-toggle' : 'mine-home-toggle') + '" aria-label="' + esc(homeLabel) + '" title="' + esc(homeLabel) + '" aria-pressed="' + (publicHomes ? state.homesOn : state.mineHomeOn) + '">' + ICON.home + '</button>' : '';
   }
 
   /* 我的地图只分 美食 / 旅行 / 合并（在筛选里选） */
@@ -3916,6 +4005,8 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
     else if (v === 'preview') renderPreview();
     else if (v === 'login') renderLogin();
     else if (v === 'homes') renderHomes();
+    else if (v === 'cluster') renderPlaceCluster();
+    else if (v === 'share') renderShareCard();
     else if (v === 'home') renderHomeSet();
     placeMap(wasInCard);
     if (lastRenderedView !== v + state.tab) view.scrollTop = 0;
@@ -4082,15 +4173,22 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
     }).sort(function (a, b) { return (state.homeSort === 'rating' ? (b.rating == null ? -1 : b.rating) - (a.rating == null ? -1 : a.rating) : 0) || homeTime(b) - homeTime(a); }).slice(0, 60);
   }
   function homeSelect(id, label, value, options) {
-    return '<select class="input" id="' + id + '" aria-label="' + esc(label) + '">' + options.map(function (o) { return '<option value="' + o[0] + '"' + (String(o[0]) === String(value) ? ' selected' : '') + '>' + esc(o[1]) + '</option>'; }).join('') + '</select>';
+    return '<label><span>' + esc(label) + '</span><select class="input" id="' + id + '">' + options.map(function (o) { return '<option value="' + o[0] + '"' + (String(o[0]) === String(value) ? ' selected' : '') + '>' + esc(o[1]) + '</option>'; }).join('') + '</select></label>';
+  }
+  function setHomeFiltersOpen(open) {
+    state.homeFiltersOpen = !!open;
+    var panel = $('#home-filter-panel'), button = $('[data-action="home-filters"]');
+    if (panel) panel.hidden = !state.homeFiltersOpen;
+    if (button) button.setAttribute('aria-expanded', String(state.homeFiltersOpen));
   }
   function homeFiltersHTML() {
-    var en = state.lang === 'en';
+    var en = state.lang === 'en', n = Number(!!state.homeDays) + Number(!!state.homeMin) + Number(state.homeSort !== 'newest');
     return '<div class="home-filters"><div class="home-filter-row">' + [['all',en?'All':'全部'],['food',t('food')],['travel',t('scenery')]].map(function (o) { return '<button type="button" class="chip" data-action="home-mode" data-v="' + o[0] + '" aria-pressed="' + (state.homeMode === o[0]) + '">' + esc(o[1]) + '</button>'; }).join('') +
-      '<button type="button" class="btn ghost home-refresh" data-action="home-refresh">' + esc(en?'Refresh':'刷新') + '</button></div><div class="home-filter-row">' +
+      '<div class="home-filter-menu"><button type="button" class="btn ghost home-filter-toggle" data-action="home-filters" aria-expanded="' + state.homeFiltersOpen + '" aria-controls="home-filter-panel">' + CTRL_ICON.filter + esc(en?'Filter':'筛选') + (n ? '<span class="home-filter-count">' + n + '</span>' : '') + '</button><div class="home-filter-panel" id="home-filter-panel"' + (state.homeFiltersOpen ? '' : ' hidden') + '>' +
       homeSelect('home-days',en?'Time':'时间',state.homeDays,[[0,en?'All time':'全部时间'],[1,en?'24 hours':'最近24小时'],[7,en?'7 days':'最近7天'],[30,en?'30 days':'最近30天']]) +
       homeSelect('home-min',en?'Rating':'评分',state.homeMin,[[0,en?'Any rating':'不限评分'],[3,en?'3+':'3分以上'],[4,en?'4+':'4分以上'],[4.5,en?'4.5+':'4.5分以上']]) +
       homeSelect('home-sort',en?'Sort':'排序',state.homeSort,[['newest',en?'Newest':'最新动态'],['rating',en?'Top rated':'评分优先']]) + '</div></div>' +
+      '<button type="button" class="btn ghost home-refresh" data-action="home-refresh">' + esc(en?'Refresh':'刷新') + '</button></div></div>' +
       '<button type="button" class="btn ghost home-updates" data-action="home-apply" hidden>' + esc(en?'New content · tap to update':'有新内容，点击更新') + '</button>' +
       '<p class="home-privacy">' + esc(en?'Only public records with photos appear here. Private footprints stay private.':'仅展示带图片的公开记录，私人足迹不会自动公开。') + '</p>';
   }
@@ -4900,7 +4998,7 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
       : '<button type="button" class="btn small" data-action="export">' + esc(t('exportData')) + '</button>' +
         '<button type="button" class="btn small" data-action="import">' + esc(t('importData')) + '</button>' +
         (store.hasSamples() ? '<button type="button" class="btn small ghost" data-action="clear-samples">' + esc(t('clearSamples')) + '</button>' : '');
-    var h = meHeadHTML() +
+    var h = meHeadHTML() + '<button type="button" class="btn home-set-btn" data-action="my-share">' + CTRL_ICON.arrow + esc(state.lang === 'en' ? 'Share my footprints' : '分享我的足迹') + '</button>' +
       '<div class="form">' + account + testAccountsHTML() + personal +
       '<div class="field"><span class="f-label">' + esc(t('language')) + '</span><div class="seg">' +
       '<button type="button" data-action="set-lang" data-lang="zh" aria-pressed="' + (state.lang === 'zh') + '">中文</button>' +
@@ -4918,6 +5016,81 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
   }
 
   /* 本地版的测试账号：点一下就换成另一个人 */
+  var shareCard = null;
+  function shareSnapshot(includePrivate) {
+    var ids = new Set();
+    store.reviews().forEach(function (r) { if (isMine(r) && !r.sample && (includePrivate || r.visibility === 'public')) ids.add(r.placeId); });
+    var ps = Array.from(ids).map(placeById).filter(function (p) { return p && !p.sample; }), countries = {};
+    if (world.fc) ps.forEach(function (p) { var i = countryAt(p.lng, p.lat); if (i >= 0) countries[i] = true; });
+    return { v: 1, name: (me().name || (state.lang === 'en' ? 'A XueTuan explorer' : '雪团同学')).slice(0, 20), food: ps.filter(function (p) { return p.mode === 'food'; }).length, scenery: ps.filter(function (p) { return p.mode === 'travel'; }).length, places: ps.length, countries: world.fc ? Object.keys(countries).length : null, date: new Date().toISOString().slice(0, 10), privateCounts: !!includePrivate };
+  }
+  function sharedCardURL(data) {
+    var url = new URL(location.href), token = url.searchParams.get('_vercel_share');
+    url.search = ''; url.hash = '';
+    if (token) url.searchParams.set('_vercel_share', token);
+    url.searchParams.set('card', btoa(unescape(encodeURIComponent(JSON.stringify(data)))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''));
+    return url.href;
+  }
+  function readSharedCard() {
+    try {
+      var raw = new URL(location.href).searchParams.get('card');
+      if (!raw || raw.length > 1800) return null;
+      var d = JSON.parse(decodeURIComponent(escape(atob(raw.replace(/-/g, '+').replace(/_/g, '/')))));
+      if (d.v !== 1 || typeof d.name !== 'string' || !d.name.trim() || d.name.length > 20 || !['food','scenery','places'].every(function (k) { return Number.isInteger(d[k]) && d[k] >= 0 && d[k] <= 100000; }) || (d.countries !== null && (!Number.isInteger(d.countries) || d.countries < 0 || d.countries > 300)) || d.food + d.scenery !== d.places) return null;
+      return { v: 1, name: d.name, food: d.food, scenery: d.scenery, places: d.places, countries: d.countries, date: /^\d{4}-\d{2}-\d{2}$/.test(d.date) ? d.date : '', privateCounts: d.privateCounts === true };
+    } catch (e) { return null; }
+  }
+  function openMyShare() {
+    shareCard = { own: true, includePrivate: false, owner: me().id };
+    state.view = 'share'; render(); setSnap('full');
+    loadWorld().then(function () { if (shareCard && shareCard.own && shareCard.owner === me().id && state.view === 'share') render(); }, function () {});
+  }
+  function renderShareCard() {
+    if (!shareCard) { goFeed(); return; }
+    if (shareCard.own && shareCard.owner !== me().id) { shareCard = null; goFeed(); return; }
+    if (shareCard.own) shareCard.data = shareSnapshot(shareCard.includePrivate);
+    var card = shareCard, d = card.data, en = state.lang === 'en';
+    card.url = sharedCardURL(d); card.blob = null;
+    view.innerHTML = '<div class="view-top"><button type="button" class="icon-btn flat" data-action="back" aria-label="' + esc(t('back')) + '">' + ICON.back + '</button><h2 class="view-title">' + esc(en ? 'My footprint card' : '足迹分享卡') + '</h2></div>' +
+      (card.own ? '<label class="f-hint"><input type="checkbox" id="share-private"' + (card.includePrivate ? ' checked' : '') + '> ' + esc(en ? 'Include private record counts (no details)' : '包含仅个人记录的数量（不含详情）') + '</label>' : '') +
+      '<div class="share-card"><canvas id="share-canvas" width="900" height="1120" role="img" aria-label="' + esc(d.name + ' · ' + d.food + (en ? ' restaurants, ' : ' 家餐厅，') + d.scenery + (en ? ' scenery places, ' : ' 处美景，') + d.places + (en ? ' places' : ' 个地点')) + '"></canvas></div>' +
+      '<p class="f-hint">' + esc(en ? 'A snapshot of recorded footprints. Country counts are estimated from coordinates. No photos, reviews or hometown location are included.' : '统计来自已记录的足迹，国家/地区按坐标估算。不含照片、点评或家乡位置。') + '</p><div class="share-actions"><button type="button" class="btn primary" data-action="share-card">' + esc(en ? 'Share' : '分享') + '</button><button type="button" class="btn" data-action="save-share-card">' + esc(en ? 'Save image' : '保存图片') + '</button><button type="button" class="btn ghost" data-action="copy-share-card">' + esc(en ? 'Copy link' : '复制链接') + '</button></div>' +
+      '<input class="input share-link" id="share-link" readonly aria-label="' + esc(en ? 'Share link' : '分享链接') + '" value="' + esc(card.url) + '">' + (!card.own ? '<button type="button" class="btn primary" data-action="tab" data-tab="home">' + esc(en ? 'Explore XueTuan' : '打开雪团，一起发现') + '</button>' : '');
+    var canvas = $('#share-canvas'), g = canvas.getContext('2d'), grad = g.createLinearGradient(0, 0, 900, 1120);
+    grad.addColorStop(0, '#e7f4ff'); grad.addColorStop(1, '#fbfdff'); g.fillStyle = grad; g.fillRect(0, 0, 900, 1120);
+    g.fillStyle = '#3b89cc'; g.font = '700 32px sans-serif'; g.fillText('雪团 XueTuan', 64, 100);
+    g.fillStyle = '#23425f'; g.font = '700 48px sans-serif'; g.fillText(en ? 'Places become memories' : '每一处，都是我的故事', 64, 206);
+    g.font = '30px sans-serif'; var name = d.name; while (g.measureText(name).width > 760) name = name.slice(0, -1); g.fillText(name, 64, 270);
+    var labels = en ? ['Restaurants','Scenery','Countries / regions','Places'] : ['家餐厅','处美景','个国家 / 地区','个地点'];
+    [d.food, d.scenery, d.countries, d.places].forEach(function (n, i) {
+      var x = 64 + (i % 2) * 396, y = 340 + Math.floor(i / 2) * 240;
+      g.fillStyle = '#ffffff'; g.fillRect(x, y, 376, 220); g.fillStyle = '#4b91c5'; g.font = '700 74px sans-serif'; g.fillText(n == null ? '—' : String(n), x + 28, y + 104);
+      g.fillStyle = '#647e91'; g.font = '26px sans-serif'; g.fillText(labels[i], x + 28, y + 164);
+    });
+    g.fillStyle = '#6e889b'; g.font = '24px sans-serif'; g.fillText(en ? 'Food, scenery, and the stories in between.' : '记录美食与美景，发现同学的故事。', 64, 910);
+    g.font = '21px sans-serif'; g.fillText((d.privateCounts ? (en ? 'All recorded footprints' : '全部足迹数量') : (en ? 'Public footprints' : '公开足迹数量')) + ' · ' + d.date, 64, 978);
+    g.fillText(en ? 'Open the shared link to explore XueTuan.' : '打开分享链接，来雪团一起发现。', 64, 1040);
+    canvas.toBlob(function (blob) { if (shareCard === card && canvas.isConnected) card.blob = blob; }, 'image/png');
+  }
+  function saveShareCard() {
+    if (!shareCard || !shareCard.blob) return;
+    var a = document.createElement('a'), url = URL.createObjectURL(shareCard.blob);
+    a.href = url; a.download = 'xuetuan-footprints.png'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(function () { URL.revokeObjectURL(url); }, 30000);
+  }
+  function copyShareCard() {
+    if (!shareCard) return;
+    var field = $('#share-link');
+    function fallback() { if (field) { field.focus(); field.select(); } toast(state.lang === 'en' ? 'Copy the selected link' : '长按选中的链接即可复制'); }
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(shareCard.url).then(function () { toast(state.lang === 'en' ? 'Link copied' : '链接已复制'); }, fallback);
+    else fallback();
+  }
+  function sendShareCard() {
+    if (!shareCard) return;
+    if (!navigator.share) { copyShareCard(); return; }
+    var data = { title: '雪团 XueTuan', text: shareCard.data.name + (state.lang === 'en' ? '’s footprints' : '的雪团足迹'), url: shareCard.url };
+    if (shareCard.blob && navigator.canShare) { var files = [new File([shareCard.blob], 'xuetuan-footprints.png', { type: 'image/png' })]; if (navigator.canShare({ files: files })) data.files = files; }
+    try { Promise.resolve(navigator.share(data)).catch(function (err) { if (err.name !== 'AbortError') copyShareCard(); }); } catch (err) { copyShareCard(); }
+  }
   function testAccountsHTML() {
     if (!store.accounts) return '';
     var cur = me().id;
@@ -4954,6 +5127,14 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
     return '<div class="field" id="home-field"><span class="f-label">' + esc(t('myHome')) + '</span>' + body + '</div>';
   }
   /* 点了地图上的小房子：谁的家、在哪 */
+  function renderPlaceCluster() {
+    var places = (state.clusterPlaces || []).map(placeById).filter(function (p) { return p && inScope(p) && passesFilters(p); });
+    if (!places.length) { goFeed(); return; }
+    view.innerHTML = '<div class="view-top"><button type="button" class="icon-btn flat" data-action="back" aria-label="' + esc(t('back')) + '">' + ICON.back + '</button><h2 class="view-title">' + esc(state.lang === 'en' ? places.length + ' nearby places' : '这里有 ' + places.length + ' 个地点') + '</h2></div>' +
+      '<p class="f-hint">' + esc(state.lang === 'en' ? 'Choose a place to see its photos and reviews.' : '位置相近，选择地点查看照片和点评。') + '</p><ul class="near-list cluster-list">' + places.map(function (p) {
+        return placeRowHTML(p, 'open-place', esc(catName(catOf(p))) + ' · ' + esc(state.lang === 'en' ? placePhotos(p).length + ' photos' : placePhotos(p).length + ' 张照片'), stats(p).score != null ? scoreHTML(stats(p).score) : '');
+      }).join('') + '</ul>';
+  }
   function renderHomes() {
     var list = (state.homes || []).map(homeOf).filter(Boolean);
     if (!list.length) { goFeed(); return; }
@@ -6487,6 +6668,7 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
     if (state.bsheet) renderBSheet();
   }
   document.addEventListener('click', function (e) {
+    if (state.homeFiltersOpen && !e.target.closest('.home-filter-menu')) setHomeFiltersOpen(false);
     var mb = e.target.closest('[data-modal]');
     if (mb) { closeModal(mb.dataset.modal === 'yes'); return; }
     if (e.target.id === 'modal') { closeModal(false); return; }
@@ -6509,6 +6691,11 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
       case 'visit-privacy': changeVisitVisibility([d.id],d.v); break;
       case 'visit-bulk': changeVisitVisibility(Array.from(selectedVisits),d.v); break;
       case 'home-mode': state.homeMode = ['all','food','travel'].indexOf(d.v) !== -1 ? d.v : 'all'; render(); view.scrollTop = 0; break;
+      case 'home-filters': setHomeFiltersOpen(!state.homeFiltersOpen); break;
+      case 'my-share': openMyShare(); break;
+      case 'share-card': sendShareCard(); break;
+      case 'save-share-card': saveShareCard(); break;
+      case 'copy-share-card': copyShareCard(); break;
       case 'home-refresh': refreshHome(true); break;
       case 'home-apply': render(); view.scrollTop = 0; break;
       /* 足迹标题旁边的 去过 / 想去 */
@@ -6529,6 +6716,7 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
       case 'saved-want': state.savedWant = d.v === 'want'; refilter(); break;
       case 'mine-mode': if (state.view !== 'feed') goFeed(); setMineView(d.v); if (state.bsheet) renderBSheet(); break;
       case 'homes-toggle': state.homesOn = !state.homesOn; goFeed(); refreshMap(); renderFilters(); saveView(); toast(t(state.homesOn ? 'homesOpened' : 'homesClosed')); break;
+      case 'mine-home-toggle': state.mineHomeOn = !state.mineHomeOn; refreshMap(); renderFilters(); saveView(); toast(state.lang === 'en' ? (state.mineHomeOn ? 'My hometown shown' : 'My hometown hidden') : (state.mineHomeOn ? '已显示我的家乡' : '已隐藏我的家乡')); break;
       case 'home-set': openHomeSet(); break;
       case 'acct': switchAccount(d.id); break;
       case 'acct-add': addAccount(); break;
@@ -6653,6 +6841,7 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
     }
   });
   document.addEventListener('change', function (e) {
+    if (e.target.id === 'share-private' && shareCard && shareCard.own) { shareCard.includePrivate = e.target.checked; render(); return; }
     if (e.target.id === 'f-file') { addFormPhotos(e.target.files); e.target.value = ''; }
     else if (e.target.id === 'bulk-file' || e.target.id === 'bulk-file-any') { startBulk(e.target.files); e.target.value = ''; }
     else if (e.target.id === 'import-file') { importData(e.target.files[0]); e.target.value = ''; }
@@ -6663,6 +6852,7 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
     if (!$('#lightbox').hidden) closeLightbox();
     else if (!$('#modal').hidden) closeModal(false);
     else if (state.bsheet) closeBSheet();
+    else if (state.homeFiltersOpen) { setHomeFiltersOpen(false); var hf = $('[data-action="home-filters"]'); if (key && hf) hf.focus(); }
     else if (state.picking) cancelPick();
     else if (state.view !== 'feed') back();
     else if (!key && state.tab !== 'home') setTab('home');
@@ -6744,9 +6934,12 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
     if (savedView.mode === 'travel' || savedView.mode === 'food') state.mode = savedView.mode;
     if (STYLE_URLS[savedView.styleKey]) state.styleKey = savedView.styleKey;
     state.mineBoth = savedView.mineBoth === true; state.countries = savedView.countries === true; state.homesOn = false;
+    state.mineHomeOn = savedView.mineHomeOn === true;
   }
   var dataReady = store.init().catch(function () { toast(t('loadFail')); });
-  applyStaticI18n(); renderChrome(); render(); setSnap(feedSnapNow('peek')); perfStart(); initMap();
+  var incomingShare = readSharedCard();
+  if (incomingShare) { shareCard = { own: false, data: incomingShare }; state.view = 'share'; }
+  applyStaticI18n(); renderChrome(); render(); setSnap(incomingShare ? 'full' : feedSnapNow('peek')); perfStart(); initMap();
   dataReady.then(function () {
     state.bootLoading = false;
     if (state.view === 'form') captureFormDraft();
