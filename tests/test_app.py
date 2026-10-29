@@ -94,7 +94,11 @@ def open_place(pg, q, name=None):
 def via_home(pg, text, to_place=True):
     # 首页卡片 → 帖子 →（帖子里的地点）→ 探索地图上的地点页
     tab(pg, 'home')
-    pg.locator('.post-card', has_text=text).first.locator('.pc-open').click(); pg.wait_for_timeout(250)
+    card = pg.locator('.post-card', has_text=text).first
+    if not card.count():
+        rid = pg.evaluate('(text) => { const d=JSON.parse(localStorage.getItem("xmum-chiwan-map:data:v1")); return d && d.reviews.find(r => r.text === text)?.id; }', text)
+        card = pg.locator('.post-card').filter(has=pg.locator('[data-id="' + str(rid) + '"]'))
+    card.locator('.pc-open').click(); pg.wait_for_timeout(250)
     if to_place:
         pg.click('[data-action="post-place"]'); pg.wait_for_timeout(300)
 def set_mode(pg, mode):
@@ -950,12 +954,12 @@ with sync_playwright() as p:
     # 首页：大家最新分享的记录（不是示例），两列卡片，有照片的放照片
     check('after reload: the app opens on home', page.get_attribute('#tabbar [data-tab="home"]', 'aria-current') == 'page' and page.get_attribute('#panel', 'data-snap') == 'page')
     cards = page.locator('.post-card .pc-place').all_inner_texts()
-    check('home: my public records show as cards, newest first, private ones not', cards[:1] == ['Kafe Ujian'] and '测试椰浆饭' in cards and page.locator('.post-card', has_text='其实还行').count() == 0, cards)
+    check('home: my public records show as cards, newest first, private ones not', 'Kafe Ujian' not in cards and '测试椰浆饭' in cards and page.locator('.post-card', has_text='其实还行').count() == 0, cards)
     page.wait_for_function('[...document.querySelectorAll(".post-card .pc-cover img")].some(i => i.naturalWidth > 0)', timeout=5000)
     cg = page.evaluate('''(() => { const cs = [...document.querySelectorAll(".post-card")].map(c => c.getBoundingClientRect()); const cv = document.querySelector(".post-card .pc-cover").getBoundingClientRect();
-      return [cs.length >= 2 && Math.abs(cs[0].top - cs[1].top) < 2 && cs[0].right <= cs[1].left, Math.abs(cv.width - cv.height) < 2, document.documentElement.scrollWidth <= innerWidth]; })()''')
+      return [cs.length >= 1 && cv.width < innerWidth / 2, Math.abs(cv.width - cv.height) < 2, document.documentElement.scrollWidth <= innerWidth]; })()''')
     check('home: two columns of square covers, no sideways scroll', cg == [True, True, True], cg)
-    check('home: a card without photos shows the words instead', page.locator('.post-card', has_text='Kafe Ujian').locator('.pc-words').count() == 1)
+    check('home: records without photos are omitted', page.locator('.post-card', has_text='Kafe Ujian').count() == 0 and page.locator('.post-card .pc-words').count() == 0)
     page.screenshot(path=os.path.join(SHOTS, '06c-mobile-home-cards.png'))
     star = page.locator('.post-card', has_text='测试椰浆饭').first.locator('.pc-save')
     star.click(); page.wait_for_timeout(200)
@@ -1133,7 +1137,7 @@ with sync_playwright() as p:
     ctx5 = browser.new_context(viewport={'width': 390, 'height': 844})
     route_all(ctx5)
     v1 = {'places': [{'id': 'p-old', 'mode': 'food', 'cat': 'cn', 'precision': 'exact', 'lat': 2.833, 'lng': 101.703, 'name': '老店', 'altName': '', 'link': '', 'createdBy': 'u-old', 'createdAt': 1, 'sample': False}],
-          'reviews': [{'id': 'r-old', 'placeId': 'p-old', 'authorId': 'u-old', 'rating': 0, 'price': None, 'text': '', 'photos': [], 'visibility': 'public', 'createdAt': 1},
+          'reviews': [{'id': 'r-old', 'placeId': 'p-old', 'authorId': 'u-old', 'rating': 0, 'price': None, 'text': '', 'photos': ['fixture.jpg'], 'visibility': 'public', 'createdAt': 1},
                       {'id': 'r-old2', 'placeId': 'p-old', 'authorId': 'u-old', 'rating': 3, 'price': None, 'text': '', 'photos': [], 'visibility': 'public', 'createdAt': 2}],
           'profile': {'id': 'u-old', 'name': '旧'}, 'areas': [], 'seeded': True}
     ctx5.add_init_script('if (!localStorage.getItem("xmum-chiwan-map:data:v1")) localStorage.setItem("xmum-chiwan-map:data:v1", ' + json.dumps(json.dumps(v1)) + ')')
@@ -1173,7 +1177,7 @@ with sync_playwright() as p:
     pd.goto(APP)
     pd.wait_for_function('window.__map && window.__map.getSource("places")', timeout=8000)
     pd.evaluate('''(() => { const k = "xmum-chiwan-map:data:v1", d = JSON.parse(localStorage.getItem(k));
-      d.reviews.forEach(r => { r.authorId = d.profile.id; r.sample = false; }); d.places.forEach(p => { p.sample = false; }); d.seeded = 2; localStorage.setItem(k, JSON.stringify(d)); })()''')
+      d.reviews.forEach(r => { r.authorId = d.profile.id; r.sample = false; r.photos = ['fixture.jpg']; }); d.places.forEach(p => { p.sample = false; }); d.seeded = 2; localStorage.setItem(k, JSON.stringify(d)); })()''')
     pd.reload()
     pd.wait_for_function('window.__map && window.__map.getSource("places")', timeout=8000)
     pd.wait_for_timeout(400)
@@ -1312,19 +1316,17 @@ with sync_playwright() as p:
     check('google: picking shows Google’s own place card, a red pin and scores', pg.locator('#g-detail gmp-place-details-compact').count() == 1 and pg.evaluate('window.__gcalls.slice(-1)[0]') == ['details', 'gK1'] and pg.locator('#map .sel-pin').count() == 1 and pg.locator('[data-commit="preview-score"]').count() == 1 and '距 XMUM' in pg.inner_text('#view'), pg.inner_text('#view')[:100])
     rate(pg, 4, '[data-commit="preview-score"]')
     pg.wait_for_timeout(300)
-    check('google: form starts with the words searched as the name', pg.input_value('#f-name') == 'katsu' and stars_val(pg) == '4', pg.input_value('#f-name') if pg.locator('#f-name').count() else 'no form')
-    check('google: form displays the selected Google place card and asks to check the editable name', pg.locator('#g-form-detail gmp-place-details-compact').count() == 1 and '请核对' in pg.inner_text('#view') and pg.locator('#f-name').get_attribute('readonly') is None)
-    pg.fill('#f-name', 'Katsu Lab Bell')
+    check('google: selected shop is shown by Google, no editable query-name field', pg.locator('#g-form-detail gmp-place-details-compact').count() == 1 and pg.locator('#f-name').count() == 0 and stars_val(pg) == '4' and '请核对' not in pg.inner_text('#view'))
     pg.click('#f-submit')
     pg.wait_for_timeout(500)
     stored = pg.evaluate('JSON.parse(localStorage.getItem("xmum-chiwan-map:data:v1"))')
-    kl = [p_ for p_ in stored['places'] if p_['name'] == 'Katsu Lab Bell']
+    kl = [p_ for p_ in stored['places'] if p_['osm'] == 'g/gK1']
     check('google: place saved with the Google place id', len(kl) == 1 and kl[0]['osm'] == 'g/gK1' and kl[0]['mode'] == 'food' and kl[0]['lat'] == 2.828698, kl)
     pg.click('[data-action="search"]') if pg.locator('[data-action="search"]').count() else None
     tab(pg, 'explore'); pg.click('#map-ctrls [data-action="search"]'); pg.fill('#q', 'katsu'); pg.wait_for_timeout(900)
     pg.evaluate('(() => { const e = new Event("gmp-select"); e.place = document.querySelector("gmp-place-search").places[0]; document.querySelector("gmp-place-search").dispatchEvent(e); })()')
     pg.wait_for_timeout(400)
-    check('google: picking a place already in XueTuan opens it', pg.locator('#g-detail').count() == 0 and 'Katsu Lab Bell' in pg.inner_text('#view'), pg.inner_text('#view')[:100])
+    check('google: picking a place already in XueTuan opens it', pg.locator('#g-detail').count() == 0 and pg.locator('.place-head').count() == 1, pg.inner_text('#view')[:100])
     check('google basemap trial: off unless the address asks for it', pg.locator('#map .gmap').count() == 0 and pg.evaluate('!document.documentElement.classList.contains("gmap-on") && window.__map.interactive !== false'))
     # 谷歌底图试用（&map=google）：谷歌地图起不来就回到原来的地图
     pg2 = ctxg.new_page()
@@ -1531,6 +1533,7 @@ with sync_playwright() as p:
         if share != (page7.get_attribute('[data-action="f-share"]', 'aria-checked') == 'true'): page7.click('[data-action="f-share"]')
         page7.fill('#f-name', name)
         if score is not None: rate(page7, score)
+        page7.set_input_files('#f-file', photo); page7.wait_for_function('document.querySelectorAll("#f-photos .ph-edit").length === 1')
         page7.click('#f-submit'); page7.wait_for_timeout(400)
         page7.click('[data-action="back"]'); page7.wait_for_timeout(150)
     def acct7(name):
@@ -1586,6 +1589,7 @@ with sync_playwright() as p:
     page7.mouse.up(); page7.wait_for_timeout(100)
     check('stars: dragging left lands on a half star (3.5), shown while dragging', live7 == ('3.5', '3.5', '50%'), live7)
     if page7.get_attribute('[data-action="f-share"]', 'aria-checked') != 'true': page7.click('[data-action="f-share"]')
+    page7.set_input_files('#f-file', photo); page7.wait_for_function('document.querySelectorAll("#f-photos .ph-edit").length === 1')
     page7.fill('#f-text', '乙也来过'); page7.click('#f-submit'); page7.wait_for_timeout(400)
     check('test accounts: B adds a second review to A’s place', page7.locator('#view .review, #view .rv').count() >= 2 or page7.inner_text('#view').count('乙也来过') == 1, page7.inner_text('#view')[:300])
     d7 = page7.evaluate('JSON.parse(localStorage.getItem("xmum-chiwan-map:data:v1"))')
@@ -1610,11 +1614,12 @@ with sync_playwright() as p:
     rate(page7, 0)
     zero7 = stars_val(page7)
     if page7.get_attribute('[data-action="f-share"]', 'aria-checked') != 'true': page7.click('[data-action="f-share"]')
+    page7.set_input_files('#f-file', photo); page7.wait_for_function('document.querySelectorAll("#f-photos .ph-edit").length === 1')
     page7.fill('#f-text', '丙打零分'); page7.click('#f-submit'); page7.wait_for_timeout(400)
     check('stars: dragging off the first star gives 0', zero7 == '0', zero7)
     page7.click('[data-action="back"]'); page7.wait_for_timeout(200)
     tab(page7, 'home')
-    fi7 = page7.locator('.post-card', has_text='乙也来过').first
+    fi7 = page7.locator('.post-card', has_text='测试号 B').first
     check('home card: each record shows its own stars (3.5 = three and a half)', fi7.locator('.stars-mini').get_attribute('aria-label') == '3.5 分' and fi7.evaluate('e => [...e.querySelectorAll(".stars-mini .st-fill")].map(f => f.style.width).join()') == '100%,100%,100%,50%,0%')
     who7 = [x.split(' · ')[0] for x in page7.locator('.post-card .pc-who > span:not(.avatar)').all_inner_texts()]
     check('home: newest first (C’s 0, then B, then A), A’s private record not there', who7 == ['测试号 C', '测试号 B', '甲'], who7)
@@ -1765,7 +1770,7 @@ with sync_playwright() as p:
             {'id': 'p-b-pub', 'mode': 'food', 'cat': 'cn', 'precision': 'exact', 'lat': 2.8335, 'lng': 101.7035, 'name': 'B 的公开店', 'alt_name': '', 'link': '', 'osm': '', 'created_by': B, 'created_at': '2026-10-01T00:00:00Z'},
             {'id': 'p-b-priv', 'mode': 'food', 'cat': 'cn', 'precision': 'exact', 'lat': 2.8400, 'lng': 101.7100, 'name': 'B 的私密店', 'alt_name': '', 'link': '', 'osm': '', 'created_by': B, 'created_at': '2026-10-01T00:00:00Z'}],
         'visits': [
-            {'id': 'v-b-pub', 'place_id': 'p-b-pub', 'user_id': B, 'rating': 5, 'price': '12.00', 'text': '好吃', 'photos': [], 'visibility': 'public', 'created_at': '2026-10-02T00:00:00Z'},
+            {'id': 'v-b-pub', 'place_id': 'p-b-pub', 'user_id': B, 'rating': 5, 'price': '12.00', 'text': '好吃', 'photos': ['fixture.jpg'], 'visibility': 'public', 'created_at': '2026-10-02T00:00:00Z'},
             {'id': 'v-b-priv', 'place_id': 'p-b-priv', 'user_id': B, 'rating': 1, 'price': None, 'text': '秘密', 'photos': [], 'visibility': 'private', 'created_at': '2026-10-02T00:00:00Z'}]
     }
     ctx6 = browser.new_context(viewport={'width': 390, 'height': 844}, device_scale_factor=2, has_touch=True, accept_downloads=True)

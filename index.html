@@ -4006,7 +4006,7 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
    * 上面一张地图预览（点了去探索），下面是大家最新分享的记录：两列图文卡片，点卡片看帖子。
    * 只放真实的公开记录，不放示例；没有就诚实地说没有（V2.0） */
   function homeReviews() {
-    return store.reviews().filter(function (r) { return r.visibility === 'public' && !r.sample && placeById(r.placeId); })
+    return store.reviews().filter(function (r) { return r.visibility === 'public' && !r.sample && r.photos && r.photos.length > 0 && placeById(r.placeId); })
       .sort(function (a, b) { return b.createdAt - a.createdAt; }).slice(0, 60);
   }
   function renderHome() {
@@ -4165,11 +4165,11 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
     var h = '<div class="view-top"><button type="button" class="icon-btn flat" data-action="form-cancel" aria-label="' + esc(t('back')) + '">' + ICON.back + '</button><h2 class="view-title">' + esc(title) + '</h2>' +
       '<button type="submit" form="place-form" class="btn primary small" id="f-submit">' + esc(t(f.editId ? 'saveEdit' : 'publish')) + '</button></div>' +
       '<form id="place-form" class="form" novalidate>';
-    if (p && !placeFields) h += '<div class="form-place">' + catIconHTML(catOf(p)) + '<b>' + esc(placeTitle(p)) + '</b></div>';
+    if (p && !placeFields && /^g\//.test(p.osm || '')) h += '<div id="g-form-detail" class="g-search"></div>';
+    else if (p && !placeFields) h += '<div class="form-place">' + catIconHTML(catOf(p)) + '<b>' + esc(placeTitle(p)) + '</b></div>';
     if (placeFields) {
       if (/^g\//.test(f.osm)) h += '<div id="g-form-detail" class="g-search"></div>';
-      h += fieldHTML('f-name', esc(t('name')), '<input id="f-name" class="input" maxlength="60"' + (f.lockedName ? ' readonly' : '') + ' placeholder="' + esc(t(isFood ? 'namePhFood' : 'namePhTravel')) + '">');
-      if (/^g\//.test(f.osm)) h += '<p class="f-hint">' + esc(state.lang === 'en' ? 'Please check and complete the name above.' : '请核对并补全上方名称。') + '</p>';
+      else h += fieldHTML('f-name', esc(t('name')), '<input id="f-name" class="input" maxlength="60"' + (f.lockedName ? ' readonly' : '') + ' placeholder="' + esc(t(isFood ? 'namePhFood' : 'namePhTravel')) + '">');
       h += '<div class="f-loc"><span>' + esc(t('location')) + '：' + f.loc.lat.toFixed(5) + ', ' + f.loc.lng.toFixed(5) + '</span><button type="button" class="link-btn" data-action="repick">' + esc(t('repick')) + '</button></div>';
       h += '<div class="field"><span class="f-label" id="lbl-cat">' + esc(t('category')) + '</span><div class="chips-wrap one-line" role="group" aria-labelledby="lbl-cat">' +
         CATS[state.mode].map(function (c) {
@@ -4599,7 +4599,7 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
     if (!isFinite(lat) || !isFinite(lng)) return null;
     return { osm: 'g/' + pl.id, gid: pl.id, name: q, alt: '', lng: round6(lng), lat: round6(lat), mode: state.mode, cat: null, precision: 'exact', where: '', google: true };
   }
-  /* 谷歌组件自己显示完整店名；搜索词仍可修改，避免把残缺词锁死。 */
+  /* 添加时直接由谷歌组件显示店名，避免把搜索词展示成店名输入框。 */
   function mountGoogleFormDetail(f) {
     var slot = $('#g-form-detail');
     if (!slot) return;
@@ -5263,7 +5263,7 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
     setSnap('full');
   }
   function startReview(placeId, rating) {
-    state.form = newForm({ placeId: placeId, rating: rating == null ? null : rating });
+    state.form = newForm({ placeId: placeId, osm: (placeById(placeId) || {}).osm || '', rating: rating == null ? null : rating });
     state.view = 'form';
     render();
     setSnap('full');
