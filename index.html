@@ -583,6 +583,8 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
 .bk-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .bk-meta { min-width: 0; color: var(--muted); font-size: 12px; font-weight: 600; }
 .bk-mode { flex: none; }
+.bk-names:empty { display: none; }
+.bk-card:has([data-bk-q]) { gap: 7px; }
 .bk-names .chip { max-width: 100%; }
 .bk-names .chip b { min-width: 0; overflow: hidden; text-overflow: ellipsis; font-weight: inherit; }
 .bk-names .chip small { flex: none; font-size: 11px; font-weight: 600; opacity: .7; }
@@ -2910,7 +2912,7 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
         return {
           type: 'Feature',
           geometry: { type: 'Point', coordinates: [p.lng, p.lat] },
-          properties: { id: p.id, name: placeTitle(p), mode: p.mode, icon: pinImage(p, s.score, saved), pic: ph || '', photo: !!ph, photoCount: count, saved: saved, color: scoreColor(s.score), precision: p.precision }
+          properties: { id: p.id, name: /^g\//.test(p.osm || '') ? '' : placeTitle(p), mode: p.mode, icon: pinImage(p, s.score, saved), pic: ph || '', photo: !!ph, photoCount: count, saved: saved, color: scoreColor(s.score), precision: p.precision }
         };
       })
     };
@@ -3905,8 +3907,26 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
     syncNavGuard();
   }
 
+  /* 已发布地点按原 Google ID 显示官方名称，不把搜索词再当成标题。 */
+  function hydrateGoogleTitles(root) {
+    $$('[data-google-place]', root).forEach(function (slot) {
+      if (slot.dataset.mounted) return;
+      slot.dataset.mounted = '1';
+      loadGoogle().then(function () {
+        if (!slot.isConnected) return;
+        var card = document.createElement('gmp-place-details');
+        var req = document.createElement('gmp-place-details-place-request');
+        req.place = slot.dataset.googlePlace;
+        card.appendChild(req);
+        card.appendChild(document.createElement('gmp-place-name'));
+        card.addEventListener('gmp-error', function () { slot.textContent = t('googleUnavailable'); });
+        slot.replaceChildren(card);
+      }, function () { if (slot.isConnected) slot.textContent = t('googleUnavailable'); });
+    });
+  }
   /* 带 data-small 的用小图，小图打不开（以前传的照片没有小图）就换原图 */
   function hydratePhotos(root) {
+    hydrateGoogleTitles(root);
     $$('img[data-photo]', root).forEach(function (img) {
       var id = img.dataset.photo, small = img.hasAttribute('data-small') || isClip(id);
       if ((isClip(id) || isGif(id)) && img.parentElement) img.parentElement.classList.add(isClip(id) ? 'is-clip' : 'is-gif');
@@ -4111,7 +4131,7 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
 
     var h = '<div class="view-top"><button type="button" class="icon-btn flat" data-action="back" aria-label="' + esc(t('back')) + '">' + ICON.back + '</button>' +
       (p.sample ? '<span class="badge">' + esc(t('sample')) + '</span>' : '') + '</div>' +
-      '<div class="place-head"><h2>' + esc(placeTitle(p)) + '</h2>' +
+      '<div class="place-head">' + (/^g\//.test(p.osm || '') ? '<div class="google-place-title" data-google-place="' + esc(p.osm.slice(2)) + '" role="status">' + esc(t('googleLoading')) + '</div>' : '<h2>' + esc(placeTitle(p)) + '</h2>') +
       (placeSub(p) ? '<div class="alt">' + esc(placeSub(p)) + '</div>' : '') +
       '<div class="tags">' + tags + '</div></div>' +
       '<div class="actions place-actions">' + actions + '</div>' +
@@ -5694,6 +5714,19 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
       });
     });
   }
+  document.addEventListener('error', function (e) {
+    var img = e.target, button = img.closest && img.closest('.bk-preview');
+    if (!button || img.tagName !== 'IMG' || img.dataset.repaired) return;
+    img.dataset.repaired = '1';
+    var b = state.bulk, g = b && b.groups && b.groups[+button.dataset.i], ph = g && g.photos[+button.dataset.j];
+    if (!ph || videoFile(ph.file)) return;
+    smallThumb(ph.file).then(function (url) {
+      if (!url) { img.removeAttribute('src'); return; }
+      if (state.bulk !== b) { URL.revokeObjectURL(url); return; }
+      b.urls.push(url); ph.url = url; ph.rot = 0;
+      if (img.isConnected) { img.style.transform = ''; img.src = url; }
+    });
+  }, true);
   function smallThumb(file) {
     if (!window.createImageBitmap) return Promise.resolve(null);
     return createImageBitmap(file, { resizeWidth: 240, resizeQuality: 'medium' }).then(function (bm) {
@@ -6295,6 +6328,9 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
   }
   function showLightbox() {
     var request = ++lbRequest;
+    (lb.ownedURLs || []).forEach(function (u) { URL.revokeObjectURL(u); });
+    if (lb.photos && lb.ownedURLs) lb.photos.forEach(function (p) { if (lb.ownedURLs.indexOf(p.url) !== -1) delete p.url; });
+    if (lb.ownedURLs) lb.ownedURLs = [];
     var multi = lb.ids.length > 1;
     $('#lb-prev').hidden = !multi; $('#lb-next').hidden = !multi;
     $('#lb-count').textContent = multi ? (lb.i + 1) + ' / ' + lb.ids.length : '';
@@ -6305,9 +6341,21 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
     img.hidden = clip; vid.hidden = !clip;
     if (clip) img.removeAttribute('src'); else { vid.pause(); vid.removeAttribute('src'); }
     var draft = lb.photos && lb.photos.find(function (ph) { return ph.id === id && !ph.existing; });
-    if (draft && draft.file && !draft.url) { draft.url = URL.createObjectURL(draft.file); lb.ownedURLs.push(draft.url); }
+    var pending = null;
+    if (draft && draft.file && !draft.url) {
+      /* 批量预览只解码一张适合屏幕的大图，原文件留给保存。 */
+      if (!clip && !/\.gif$/i.test(draft.file.name || '') && window.createImageBitmap) {
+        img.src = draft.preview || '';
+        pending = createImageBitmap(draft.file, { resizeWidth: 1280, resizeQuality: 'medium' }).then(function (bm) {
+          return frameJpeg(bm, bm.width, bm.height, 1600).then(function (blob) { bm.close(); return blob; }, function (e) { bm.close(); throw e; });
+        }).then(function (blob) {
+          if (!blob || request !== lbRequest || $('#lightbox').hidden) return null;
+          var url = URL.createObjectURL(blob); lb.ownedURLs.push(url); return url;
+        }).catch(function () { return draft.preview || null; });
+      } else { draft.url = URL.createObjectURL(draft.file); lb.ownedURLs.push(draft.url); }
+    }
     img.onerror = draft && draft.preview ? function () { if (request === lbRequest && !$('#lightbox').hidden) { img.onerror = null; img.src = draft.preview; } } : null;
-    (draft ? Promise.resolve(draft.url) : store.photoURL(id)).then(function (u) {
+    (pending || (draft ? Promise.resolve(draft.url) : store.photoURL(id))).then(function (u) {
       if (request !== lbRequest || $('#lightbox').hidden || lb.ids[lb.i] !== id) return;
       if (!clip) { img.src = u || ''; return; }
       vid.src = u || '';

@@ -1327,6 +1327,8 @@ with sync_playwright() as p:
     pg.evaluate('(() => { const e = new Event("gmp-select"); e.place = document.querySelector("gmp-place-search").places[0]; document.querySelector("gmp-place-search").dispatchEvent(e); })()')
     pg.wait_for_timeout(400)
     check('google: picking a place already in XueTuan opens it', pg.locator('#g-detail').count() == 0 and pg.locator('.place-head').count() == 1, pg.inner_text('#view')[:100])
+    check('published Google place uses original ID for its official title', pg.locator('.place-head [data-google-place="gK1"] gmp-place-details-place-request').evaluate('(e) => e.place') == 'gK1' and pg.locator('.place-head h2').count() == 0)
+    check('Google saved pin does not repeat the truncated search query', pg.evaluate('window.__map.getSource("places").data.features.filter(f=>f.properties.id).every(f=>f.properties.name!=="katsu")'))
     check('google basemap trial: off unless the address asks for it', pg.locator('#map .gmap').count() == 0 and pg.evaluate('!document.documentElement.classList.contains("gmap-on") && window.__map.interactive !== false'))
     # 谷歌底图试用（&map=google）：谷歌地图起不来就回到原来的地图
     pg2 = ctxg.new_page()
@@ -1689,6 +1691,7 @@ with sync_playwright() as p:
     check('bulk photo viewer can switch pictures', pb.inner_text('#lb-count') == '2 / 2')
     pb.click('[data-action="lb-close"]')
     check('bulk preview closes with place and score intact', stars_val(pb, '#bk-rate-1') == '4' and pb.locator('#bk-1 .bk-ph[data-on="true"]').count() == picked_before)
+    check('bulk preview keeps a bounded image and import thumbnails alive', pb.evaluate('[...document.querySelectorAll("#bk-1 .bk-preview img")].every(i => i.complete && i.naturalWidth > 0)'))
 
     pb.click('#bk-1 .bk-check >> nth=1')
     pb.fill('[data-bk-name="0"]', '照片夜市')
