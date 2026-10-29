@@ -1307,6 +1307,7 @@ with sync_playwright() as p:
     pg.fill('#q', 'katsu la'); pg.wait_for_timeout(100); pg.fill('#q', 'katsu lab'); pg.wait_for_timeout(900)
     check('google: same words are not asked again', len(pg.evaluate('window.__gcalls')) == 1 and pg.locator('#g-search').is_visible(), pg.evaluate('window.__gcalls'))
     check('google: one search counted for today', pg.evaluate('JSON.parse(localStorage.getItem("xuetuan:google-day")).n') == 1)
+    check('Google search cards use in-app selection without Open in Maps content', pg.locator('gmp-place-search').evaluate('(e)=>e.selectable===true && !!e.querySelector("template[slot=details-item]") && !e.querySelector("gmp-place-standard-content") && !!e.querySelector("gmp-place-attribution")'))
     pg.fill('#q', 'zzz nothing'); pg.wait_for_timeout(900)
     check('google: no results stays visible with explanation and Google Maps link', pg.locator('#g-search').is_visible() and '没有找到' in pg.inner_text('#g-search') and pg.locator('#g-search a[href*="google.com/maps/search"]').count() == 1)
     pg.fill('#q', 'katsu'); pg.wait_for_timeout(900)
@@ -1675,7 +1676,7 @@ with sync_playwright() as p:
     chips_b = pb.eval_on_selector_all('#bk-1 .bk-names .chip', 'els => els.map(e => e.textContent + ":" + e.getAttribute("aria-pressed"))')
     check('bulk: a place already in XueTuan nearby is picked by default', chips_b[0].startswith(S0['name']) and chips_b[0].endswith(':true') and ' m' in chips_b[0], chips_b)
     check('bulk: both photos of that visit are in, none picked for the far one', pb.locator('#bk-1 .bk-ph[data-on="true"]').count() == 2
-          and pb.locator('#bk-0 [data-bk-name]').count() == 1 and pb.get_attribute('#bk-0 [data-action="bulk-pick"][data-k="-1"]', 'aria-pressed') == 'true')
+          and pb.locator('#bk-0 [data-bk-name]').count() == 0 and pb.locator('#bk-0 [data-action="bulk-map"]').count() == 1)
     check('bulk: nothing to save before scoring', pb.inner_text('#bk-save') == '保存 0' and pb.is_disabled('#bk-save'))
     pb.wait_for_timeout(300)
     check('bulk: food or travel follows the picked place; no photo model is loaded (it crashed phones)', pb.get_attribute('#bk-1 [data-action="bulk-mode"][data-v="food"]', 'aria-pressed') == 'true'
@@ -1694,10 +1695,9 @@ with sync_playwright() as p:
     check('bulk preview keeps a bounded image and import thumbnails alive', pb.evaluate('[...document.querySelectorAll("#bk-1 .bk-preview img")].every(i => i.complete && i.naturalWidth > 0)'))
 
     pb.click('#bk-1 .bk-check >> nth=1')
-    pb.fill('[data-bk-name="0"]', '照片夜市')
     pb.click('#bk-0 [data-action="bulk-mode"][data-v="travel"]')
     rate(pb, 3.5, '#bk-rate-0')
-    check('bulk: typing a name and switching to travel keeps the name', pb.input_value('[data-bk-name="0"]') == '照片夜市' and pb.get_attribute('#bk-0 [data-action="bulk-mode"][data-v="travel"]', 'aria-pressed') == 'true')
+    check('bulk: changing mode needs no redundant name input', pb.locator('[data-bk-name]').count() == 0 and pb.get_attribute('#bk-0 [data-action="bulk-mode"][data-v="travel"]', 'aria-pressed') == 'true')
     check('bulk: a photo can be left out', pb.get_attribute('#bk-1 .bk-check >> nth=1', 'aria-pressed') == 'false' and pb.inner_text('#bk-save') == '保存 2')
     rate(pb, 5, '#bk-rate-2')
     check('bulk: a scored no-location group needs a place before it can be saved', pb.is_visible('#bk-need-2') and pb.inner_text('#bk-save') == '保存 2')
@@ -1721,7 +1721,7 @@ with sync_playwright() as p:
     pb.wait_for_function('document.querySelector("#toast") && document.querySelector("#toast").textContent.indexOf("存进足迹 3 个") !== -1', timeout=8000)
     pb.wait_for_timeout(200)
     stb = pb.evaluate('''(s1name) => { const d = JSON.parse(localStorage.getItem("xmum-chiwan-map:data:v1")), me = d.profile.id;
-      const mine = d.reviews.filter(r => r.authorId === me && !r.sample), np = d.places.find(p => p.name === "照片夜市");
+      const mine = d.reviews.filter(r => r.authorId === me && !r.sample), np = d.places.find(p => p.name === "没起名的地方");
       return { mine: mine.map(r => [r.placeId, r.rating, r.photos.length, r.visibility, r.createdAt]), np: np && [np.mode, Math.round(np.lat * 100) / 100, np.lng],
         s1: d.places.filter(p => p.name === s1name).map(p => p.mode).sort(),
         t1: new Date("2026-09-01T12:00:00").getTime(), t2: new Date("2026-09-02T19:00:00").getTime(), t3: new Date("2026-08-30T12:00:00").getTime() }; }''', S1['name'])
@@ -1750,14 +1750,13 @@ with sync_playwright() as p:
     check('bulk map pick opens without discarding the import', pb.is_visible('#pick') and pb.locator('.bk-ph').count()==3)
     pb.evaluate('window.__map.center={lng:101.9,lat:3.2};window.__map.zoom=16')
     pb.click('[data-action="pick-confirm"]')
-    pb.fill('[data-bk-name="0"]','地图手选测试')
     check('bulk map pick preserves media, score and travel mode', pb.locator('.bk-ph').count()==3 and stars_val(pb,'#bk-rate-0')=='4' and pb.get_attribute('#bk-0 [data-action="bulk-mode"][data-v="travel"]','aria-pressed')=='true')
     pb.click('#bk-0 [data-action="bulk-map"]')
     pb.evaluate('window.__map.center={lng:110,lat:30}')
     pb.click('[data-action="pick-cancel"]')
-    check('cancel bulk map picking retains the previous place and draft',pb.input_value('[data-bk-name="0"]')=='地图手选测试' and stars_val(pb,'#bk-rate-0')=='4')
+    check('cancel bulk map picking retains the previous place and draft',pb.locator('[data-bk-name]').count()==0 and stars_val(pb,'#bk-rate-0')=='4')
     pb.click('#bk-save');pb.wait_for_timeout(800)
-    manual = pb.evaluate('JSON.parse(localStorage.getItem("xmum-chiwan-map:data:v1")).places.find(p=>p.name==="地图手选测试")')
+    manual = pb.evaluate('JSON.parse(localStorage.getItem("xmum-chiwan-map:data:v1")).places.find(p=>p.lat===3.2 && p.lng===101.9)')
     check('bulk map coordinates are saved only on import confirmation',manual and manual['lat']==3.2 and manual['lng']==101.9 and manual['mode']=='travel',manual)
     check('bulk: comment saved with the review', pb.evaluate('(id) => JSON.parse(localStorage.getItem("xmum-chiwan-map:data:v1")).reviews.some(r => r.placeId === id && r.text === "第一条\\n第二条")', manual['id']) if manual else False)
     check('bulk: no page errors', not errorsb, errorsb)

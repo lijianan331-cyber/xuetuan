@@ -588,8 +588,6 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
 .bk-names .chip { max-width: 100%; }
 .bk-names .chip b { min-width: 0; overflow: hidden; text-overflow: ellipsis; font-weight: inherit; }
 .bk-names .chip small { flex: none; font-size: 11px; font-weight: 600; opacity: .7; }
-.bk-own { display: flex; gap: 8px; align-items: center; }
-.bk-own .input { flex: 1; min-width: 0; }
 .bk-card .stars-input { padding: 0; }
 textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
 .bk-merge { align-self: flex-start; font-size: 12.5px; }
@@ -4582,8 +4580,11 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
         gsearch.failed = false;
         if (googleDay().n >= GOOGLE_DAILY) { box.dataset.state = ''; slot.innerHTML = ''; googleStatus(box, 'googleLimit', false); return; }
         var c = context.center(), list = document.createElement('gmp-place-search');
-        list.setAttribute('selectable', '');
-        list.appendChild(document.createElement('gmp-place-standard-content'));
+        list.setAttribute('selectable', ''); list.selectable = true;
+        var template = document.createElement('template'); template.setAttribute('slot', 'details-item');
+        ['gmp-place-name', 'gmp-place-address', 'gmp-place-type', 'gmp-place-rating'].forEach(function (tag) { template.content.appendChild(document.createElement(tag)); });
+        list.appendChild(template);
+        list.appendChild(document.createElement('gmp-place-attribution'));
         var req = document.createElement('gmp-place-text-search-request');
         req.setAttribute('max-result-count', '5');
         req.locationBias = { lat: c.lat, lng: c.lng }; req.textQuery = q;
@@ -4604,7 +4605,7 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
           googleStatus(box, n ? null : 'googleEmpty', false);
         });
         list.addEventListener('gmp-error', function () { fail(gsearch.failed || 'googleUnavailable'); });
-        list.addEventListener('gmp-select', function (e) { if (current()) context.pick(googleResult(e.place, q)); });
+        list.addEventListener('gmp-select', function (e) { if (e.cancelable) e.preventDefault(); if (current()) context.pick(googleResult(e.place, q)); });
         box.dataset.q = q; box.dataset.n = ''; box.dataset.state = 'loading'; box.hidden = false;
         slot.innerHTML = ''; slot.hidden = false; slot.appendChild(list); googleCount();
         timeout = setTimeout(function () { fail('googleUnavailable'); }, 12000);
@@ -5867,12 +5868,9 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
       h += g.cands.map(function (c, k) {
         return '<button type="button" class="chip" data-action="bulk-pick" data-i="' + g.i + '" data-k="' + k + '" aria-pressed="' + (g.pick === k) + '"><b>' + esc(c.name) + '</b><small>' + esc(c.been ? t('bulkBeen') : fmtDist(c.d)) + '</small></button>';
       }).join('');
-      h += '<button type="button" class="chip" data-action="bulk-pick" data-i="' + g.i + '" data-k="-1" aria-pressed="' + (g.pick === -1) + '">' + ICON.pen + esc(t('bulkOwn')) + '</button>';
     }
     h += '</div><button type="button" class="link-btn" data-action="bulk-search" data-i="' + g.i + '">' + esc(t('bulkOtherPlace')) + '</button>';
-    if (g.cands && g.pick === -1) {
-      h += '<div class="bk-own"><input class="input" data-bk-name="' + g.i + '" maxlength="60" autocomplete="off" placeholder="' + esc(t(g.mode === 'food' ? 'namePhFood' : 'namePhTravel')) + '" value="' + esc(g.name) + '"></div>';
-    }
+
     return h + starsInputHTML('bk-rate-' + g.i, g.rating, 'bulk', 'bk-meta-' + g.i) + bulkCommentHTML(g) + '</li>';
   }
   /* 记到吃还是玩：跟着选中的店自动换（店的分类），用户点过就按用户的 */
