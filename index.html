@@ -663,6 +663,8 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
 .home-attrib a { color: inherit; text-decoration: none; }
 .home-sec { display: flex; align-items: baseline; gap: 8px; margin: 14px 0 10px; }
 .home-sec h2 { margin: 0; font-size: 16.5px; font-weight: 800; letter-spacing: -.01em; }
+.home-publish { margin-left: auto; gap: 4px; }
+.post-title { font-size: 21px; line-height: 1.4; margin: 14px 0 10px; overflow-wrap: anywhere; }
 .home-sec small { color: var(--muted); font-size: 12px; }
 .home-empty { padding: 4px 2px 16px; }
 .post-grid { list-style: none; margin: 0; padding: 0 0 8px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 8px; }
@@ -1237,7 +1239,7 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
   var state = {
     lang: 'zh', mode: 'food', tab: 'home', scope: 'all', cat: 'all', priceAbout: 0, minScore: 0, dist: 'any',
     view: 'feed', placeId: null, postId: null, placeBack: null, form: null, nearby: null, query: '',
-    snap: 'peek', feedSnap: 'peek', picking: null, preview: null, bsheet: null, me: null, styleKey: 'light',
+    posting: false, snap: 'peek', feedSnap: 'peek', picking: null, preview: null, bsheet: null, me: null, styleKey: 'light',
     mineBoth: false, countries: false, savedWant: false, mineSub: 'mine', homesOn: false, homes: null, homeBack: null, bulk: null
   };
   var map = null;
@@ -1409,7 +1411,7 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
         var me = data.profile;
         var r = {
           id: uid('r'), placeId: f.placeId, authorId: me.id, authorName: me.name || '',
-          rating: f.rating, price: f.price, text: f.text, photos: newPhotos.map(function (ph) { return ph.id; }),
+          rating: f.rating, price: f.price, title: f.title || null, text: f.text, photos: newPhotos.map(function (ph) { return ph.id; }),
           visibility: f.visibility, createdAt: f.createdAt || Date.now(), sample: false
         };
         return putPhotos(newPhotos).then(function (photosOk) {
@@ -1424,7 +1426,7 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
         if (!r || r.authorId !== data.profile.id) return Promise.reject(new Error('not yours'));
         return putPhotos(newPhotos).then(function (photosOk) {
           (r.photos || []).forEach(function (pid) { if (keepPhotos.indexOf(pid) === -1) forgetPhoto(pid); });
-          ['rating', 'price', 'text', 'visibility'].forEach(function (k) { if (patch[k] !== undefined) r[k] = patch[k]; });
+          ['rating', 'price', 'title', 'text', 'visibility'].forEach(function (k) { if (patch[k] !== undefined) r[k] = patch[k]; });
           r.photos = keepPhotos.concat(newPhotos.map(function (ph) { return ph.id; }));
           r.authorName = data.profile.name || '';
           r.updatedAt = Date.now();
@@ -1569,7 +1571,7 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
       author = author || r.author || {};
       return {
         id: r.id, placeId: r.place_id, authorId: r.user_id, authorName: author.name || '',
-        rating: r.rating == null ? null : +r.rating, price: r.price == null ? null : +r.price, text: r.text, photos: r.photos || [],
+        rating: r.rating == null ? null : +r.rating, price: r.price == null ? null : +r.price, title: r.title || null, text: r.text, photos: r.photos || [],
         visibility: r.visibility, createdAt: Date.parse(r.created_at), sample: false
       };
     }
@@ -1731,7 +1733,7 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
       addReview: function (f, newPhotos, progress) {
         return needLogin() || uploadPhotos(newPhotos, progress).then(function (up) {
           if (progress) progress('write');
-          var row = { place_id: f.placeId, rating: f.rating, price: f.price, text: f.text, visibility: f.visibility, photos: up.paths };
+          var row = { place_id: f.placeId, rating: f.rating, price: f.price, text: f.text, title: f.title || null, visibility: f.visibility, photos: up.paths };
           if (f.createdAt) row.created_at = new Date(f.createdAt).toISOString();
           return client.from('visits').insert(row).select().single().then(ok).then(function (v) {
             var r = reviewFromRow(v, cache.profile);
@@ -1746,7 +1748,7 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
         return needLogin() || uploadPhotos(newPhotos, progress).then(function (up) {
           if (progress) progress('write');
           var dropped = (r.photos || []).filter(function (p) { return keepPhotos.indexOf(p) === -1; });
-          var row = { rating: patch.rating, price: patch.price, text: patch.text, visibility: patch.visibility, photos: keepPhotos.concat(up.paths) };
+          var row = { rating: patch.rating, price: patch.price, text: patch.text, title: patch.title || null, visibility: patch.visibility, photos: keepPhotos.concat(up.paths) };
           return client.from('visits').update(row).eq('id', id).select().single().then(ok).then(function (v) {
             removePhotos(dropped);
             Object.assign(r, reviewFromRow(v, cache.profile));
@@ -1859,7 +1861,7 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
               return Promise.all(blobs).then(function (list) {
                 return self.addReview({
                   placeId: p.id, rating: r.rating == null ? null : clamp(Math.round(r.rating * 2) / 2, 0, 5), price: r.price || null,
-                  text: String(r.text || '').slice(0, 1000), visibility: r.visibility === 'private' ? 'private' : 'public'
+                  title: r.title ? String(r.title).slice(0, 80) : null, text: String(r.text || '').slice(0, 1000), visibility: r.visibility === 'private' ? 'private' : 'public'
                 }, list);
               });
             });
@@ -4038,7 +4040,7 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
         '<span class="hm-pill">' + CTRL_ICON.compass + esc(t('openMap')) + '</span></button>' +
         '<div class="home-attrib">' + $('.attrib').innerHTML + '</div></div>';
     }
-    h += '<div class="home-sec"><h2>' + esc(t('latest')) + '</h2></div>';
+    h += '<div class="home-sec"><h2>' + esc(t('latest')) + '</h2><button type="button" class="btn primary small home-publish" data-action="new-post">' + ICON.pen + esc(state.lang === 'en' ? 'Post' : '发帖') + '</button></div>';
     if (!items.length) h += '<div class="empty home-empty"><p>' + esc(t('latestEmpty')) + '</p><button type="button" class="link-btn" data-action="add">' + esc(t('goRecord')) + '</button></div>';
     else h += '<ul class="post-grid">' + items.map(postCardHTML).join('') + '</ul>';
     view.innerHTML = h;
@@ -4057,7 +4059,7 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
       : '<span class="pc-words' + (p.mode === 'travel' ? ' travel' : '') + '"><i aria-hidden="true">' + c.emoji + '</i><span>' + esc(text || catName(c)) + '</span></span>';
     var score = (r.rating != null ? starsMiniHTML(r.rating) : '') + (r.price ? '<span>RM ' + fmtPrice(r.price) + '</span>' : '');
     return '<li class="post-card"><button type="button" class="pc-open" data-action="open-post" data-id="' + esc(r.id) + '">' +
-      '<span class="pc-cover">' + cover + '</span><span class="pc-body"><span class="pc-place">' + esc(placeTitle(p)) + '</span>' +
+      '<span class="pc-cover">' + cover + '</span><span class="pc-body"><span class="pc-place">' + esc(r.title || placeTitle(p)) + '</span>' +
       (score ? '<span class="pc-score">' + score + '</span>' : '') +
       '<span class="pc-who">' + avatarHTML(name) + '<span>' + esc(name) + ' · ' + esc(timeAgo(r.createdAt)) + '</span></span></span></button>' +
       saveBtnHTML(p.id, true) + '</li>';
@@ -4078,6 +4080,7 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
     if (r.price) sc.push('<span>RM ' + fmtPrice(r.price) + ' ' + esc(t(p.mode === 'food' ? 'perPerson' : 'costLabel')) + '</span>');
     if (r.visibility === 'private') sc.push('<span class="pill">' + esc(t('visPrivateShort')) + '</span>');
     if (sc.length) h += '<div class="post-score">' + sc.join('<span class="sep">·</span>') + '</div>';
+    if (r.title) h += '<h1 class="post-title">' + esc(r.title) + '</h1>';
     if (text) h += '<p class="post-text">' + esc(text) + '</p>';
     h += '<ul class="near-list post-place">' + placeRowHTML(p, 'post-place', esc(catName(c)) + ' · ' + esc(t('distFrom', { d: fmtDist(haversine(XMUM, p)) })), '<span class="near-cta">' + esc(t('postPlace')) + '</span>') + '</ul>';
     h += '<div class="actions post-actions">' + saveBtnHTML(p.id, false) + '</div>';
@@ -4180,7 +4183,7 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
     var isFood = (p ? p.mode : state.mode) === 'food';
     var placeFields = formHasPlaceFields(f, p);
     var share = f.visibility === 'public';
-    var title = f.editId ? t('formEdit') : p ? t('formReview') : t(isFood ? 'formNewFood' : 'formNewTravel');
+    var title = f.editId ? t('formEdit') : f.post ? (state.lang === 'en' ? 'Create post' : '发布分享') : p ? t('formReview') : t(isFood ? 'formNewFood' : 'formNewTravel');
     /* 发布按钮放在顶部右边，不用滑到底才找得到 */
     var h = '<div class="view-top"><button type="button" class="icon-btn flat" data-action="form-cancel" aria-label="' + esc(t('back')) + '">' + ICON.back + '</button><h2 class="view-title">' + esc(title) + '</h2>' +
       '<button type="submit" form="place-form" class="btn primary small" id="f-submit">' + esc(t(f.editId ? 'saveEdit' : 'publish')) + '</button></div>' +
@@ -4191,23 +4194,26 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
       if (/^g\//.test(f.osm)) h += '<div id="g-form-detail" class="g-search"></div>';
       else h += fieldHTML('f-name', esc(t('name')), '<input id="f-name" class="input" maxlength="60"' + (f.lockedName ? ' readonly' : '') + ' placeholder="' + esc(t(isFood ? 'namePhFood' : 'namePhTravel')) + '">');
       h += '<div class="f-loc"><span>' + esc(t('location')) + '：' + f.loc.lat.toFixed(5) + ', ' + f.loc.lng.toFixed(5) + '</span><button type="button" class="link-btn" data-action="repick">' + esc(t('repick')) + '</button></div>';
-      h += '<div class="field"><span class="f-label" id="lbl-cat">' + esc(t('category')) + '</span><div class="chips-wrap one-line" role="group" aria-labelledby="lbl-cat">' +
+      if (!f.post) h += '<div class="field"><span class="f-label" id="lbl-cat">' + esc(t('category')) + '</span><div class="chips-wrap one-line" role="group" aria-labelledby="lbl-cat">' +
         CATS[state.mode].map(function (c) {
           return '<button type="button" class="chip" data-action="f-cat" data-cat="' + c.id + '" aria-pressed="' + (f.cat === c.id) + '">' + catIconHTML(c) + esc(catName(c)) + '</button>';
         }).join('') + '</div><p class="f-hint cat-guess" id="cat-guess" hidden></p></div>';
     }
-    /* 只有评分必填，其余都是选填 */
+    if (f.post) h += '<div class="field"><span class="f-label">' + esc(state.lang === 'en' ? 'Photos' : '图片') + ' <small>· ' + esc(t('photoLimit', { n: MAX_PHOTOS })) + '</small></span><div class="photo-grid" id="f-photos"></div></div>';
+    if (f.post || (f.draft && f.draft.title)) h += fieldHTML('f-title', esc(state.lang === 'en' ? 'Title' : '标题'), '<input id="f-title" class="input" maxlength="80" placeholder="' + esc(state.lang === 'en' ? 'Give this memory a title' : '给这次体验起个标题') + '">');
+    /* 评分选填 */
     h += '<div class="field"><span class="f-label" id="lbl-rating">' + esc(t('rating')) + ' <small>· ' + esc(t('optional')) + '</small></span>' + starsInputHTML('f-rating', f.rating, 'form', 'lbl-rating') +
       '<div class="f-err" id="err-rating" hidden></div></div>';
-    h += fieldHTML('f-text', esc(t('review')), '<textarea id="f-text" class="input" rows="2" maxlength="1000" placeholder="' + esc(t(isFood ? 'reviewPhFood' : 'reviewPhTravel')) + '"></textarea>');
-    h += '<div class="field"><span class="f-label">' + esc(t('photos')) + ' <small>· ' + esc(t('photoLimit', { n: MAX_PHOTOS })) + '</small></span><div class="photo-grid" id="f-photos"></div></div>';
+    h += fieldHTML('f-text', esc(f.post ? (state.lang === 'en' ? 'Story (optional)' : '正文（选填）') : t('review')), '<textarea id="f-text" class="input" rows="2" maxlength="1000" placeholder="' + esc(t(isFood ? 'reviewPhFood' : 'reviewPhTravel')) + '"></textarea>');
+    if (!f.post) h += '<div class="field"><span class="f-label">' + esc(t('photos')) + ' <small>· ' + esc(t('photoLimit', { n: MAX_PHOTOS })) + '</small></span><div class="photo-grid" id="f-photos"></div></div>';
     /* 人均只问吃的（筛选按人均）；旅行不问花费（用户 2026-10-26） */
-    if (isFood) h += fieldHTML('f-price', esc(t('priceFood')), '<input id="f-price" class="input" type="number" inputmode="decimal" min="0" step="0.5">');
+    if (isFood && !f.post) h += fieldHTML('f-price', esc(t('priceFood')), '<input id="f-price" class="input" type="number" inputmode="decimal" min="0" step="0.5">');
     /* 记录默认进“我的地图”，只问要不要分享到大地图 */
-    h += '<button type="button" class="switch-row" role="switch" data-action="f-share" aria-checked="' + share + '">' +
+    if (f.post && !f.editId) h += '<p class="f-hint">' + esc(state.lang === 'en' ? 'Public post · also saved to your footprints' : '公开分享 · 同时保存到个人足迹') + '</p>';
+    else h += '<button type="button" class="switch-row" role="switch" data-action="f-share" aria-checked="' + share + '">' +
       '<span class="sw-text"><b>' + esc(t('shareBig')) + '</b><small>' + esc(t('shareHint')) + '</small></span><span class="switch" aria-hidden="true"></span></button>';
     if (!me().name) h += '<div class="field" id="nick-field"' + (share ? '' : ' hidden') + '><label class="f-label" for="f-nick">' + esc(t('nickname')) + '</label><input id="f-nick" class="input" maxlength="20" autocomplete="nickname" placeholder="' + esc(t('nicknamePh')) + '"></div>';
-    if (placeFields) {
+    if (placeFields && !f.post) {
       var d0 = f.draft || {};
       h += '<details class="more"' + (f.editId && (d0.alt || d0.link) ? ' open' : '') + '><summary>' + esc(t('formMore')) + '</summary><div class="more-body">' +
         '<div class="field"><span class="f-label" id="lbl-prec">' + esc(t('precision')) + '</span><div class="seg" role="group" aria-labelledby="lbl-prec">' +
@@ -4240,7 +4246,7 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
     var submit = $('#f-submit');
     if (submit && !f.saving) { submit.disabled = !!f.mediaBusy; submit.textContent = t(f.mediaBusy ? 'mediaPreparing' : f.editId ? 'saveEdit' : 'publish'); }
   }
-  var DRAFT_FIELDS = [['f-nick', 'nick'], ['f-name', 'name'], ['f-alt', 'alt'], ['f-price', 'price'], ['f-text', 'text'], ['f-link', 'link']];
+  var DRAFT_FIELDS = [['f-title', 'title'], ['f-nick', 'nick'], ['f-name', 'name'], ['f-alt', 'alt'], ['f-price', 'price'], ['f-text', 'text'], ['f-link', 'link']];
   function captureFormDraft() {
     var f = state.form;
     if (!f || !$('#place-form')) return;
@@ -4281,14 +4287,15 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
       '<div class="add-search"><div class="search-box"><img class="search-symbol" src="assets/search-pin.png" alt=""><input id="q" class="input" type="search" autocomplete="off" placeholder="' + esc(t(isFood ? 'addSearchPhFood' : 'addSearchPhTravel')) + '" aria-label="' + esc(t('searchBtn')) + '" value="' + esc(state.query) + '">' +
       '</div><button type="button" class="btn add-pin" data-action="add-pin">' + ICON.pin + esc(t('addPin')) + '</button></div>' +
       '<p class="f-hint add-hint">' + esc(t('addHint')) + '</p>' +
-      '<button type="button" class="btn ghost block bulk-btn" data-action="bulk-start">' + ICON.camera + esc(t('bulkBtn')) + '</button>' +
+      (state.posting ? '' : '<button type="button" class="btn ghost block bulk-btn" data-action="bulk-start">' + ICON.camera + esc(t('bulkBtn')) + '</button>') +
       SEARCH_LISTS;
     queueOsmSearch();
     renderSearchResults();
     mountGoogle();
     setTimeout(function () { var q = $('#q'); if (q) q.focus(); }, 60);
   }
-  function openAdd() {
+  function openAdd(post) {
+    state.posting = post === true;
     rememberFeedSnap();
     state.view = 'add'; state.query = ''; state.form = null;
     render();
@@ -5053,6 +5060,7 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
     return /^(peek|half|full)$/.test(snap) ? snap : 'peek';
   }
   function goFeed(snap) {
+    state.posting = false;
     state.view = 'feed'; state.placeId = null; state.postId = null; state.placeBack = null; state.form = null; state.nearby = null;
     if (state.bulk && !state.bulk.saving) dropBulk();
     render();
@@ -5149,7 +5157,7 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
     var f = state.form, pid = f && f.placeId;
     if (f && f.saving) { toast(t('saveWorking')); return; }
     if (f) f.photos.forEach(function (ph) { if (!ph.existing && !store.hasPhotoURL(ph.id)) URL.revokeObjectURL(ph.url); });
-    state.form = null;
+    state.form = null; state.posting = false;
     if (pid && placeById(pid)) {
       state.view = 'place'; state.placeId = pid; render(); setSnap('half'); updateSelection();
     } else goFeed();
@@ -5267,7 +5275,7 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
     startNewPlace(loc, defaultPrecision(z), z >= 14 ? 60 : z >= 10 ? 800 : 15000);
   }
   function newForm(o) {
-    return Object.assign({ placeId: null, editId: null, loc: null, cat: null, precision: 'exact', rating: null, visibility: lsGet(LS_SHARE) === '1' ? 'public' : 'private', photos: [], draft: null, osm: '' }, o);
+    return Object.assign({ post: state.posting, placeId: null, editId: null, loc: null, cat: null, precision: 'exact', rating: null, visibility: state.posting || lsGet(LS_SHARE) === '1' ? 'public' : 'private', photos: [], draft: null, osm: '' }, o);
   }
   /* 新地点：先看附近有没有已经存在的同类地点，有就让用户先确认是不是同一个 */
   function startNewPlace(loc, precision, radius, prefill) {
@@ -5296,7 +5304,7 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
       placeId: p.id, editId: r.id, loc: { lng: p.lng, lat: p.lat }, cat: p.cat, precision: p.precision,
       rating: r.rating, visibility: r.visibility,
       photos: (r.photos || []).map(function (id) { return { id: id, existing: true }; }),
-      draft: { name: p.name, alt: p.altName, link: p.link, price: r.price ? String(r.price) : '', text: r.text }
+      draft: { name: p.name, alt: p.altName, link: p.link, price: r.price ? String(r.price) : '', title: r.title || '', text: r.text }
     });
     state.view = 'form';
     render();
@@ -5595,6 +5603,8 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
     var p0 = f.placeId ? placeById(f.placeId) : null;
     var placeFields = formHasPlaceFields(f, p0);
     var bad = null;
+    if (f.post && !(d.title || '').trim()) { toast(state.lang === 'en' ? 'Add a title' : '请写一个标题'); bad = $('#f-title'); }
+    if (f.post && !f.photos.length) { toast(state.lang === 'en' ? 'Add at least one photo' : '请至少添加一张图片'); if (!bad) { $('#f-photos').scrollIntoView({ block: 'center' }); return; } }
     /* 评分选填（用户 2026-10-28）：不打分也能保存，地图上是蓝点 */
     if (bad) { bad.focus({ preventScroll: true }); centerInPanel(bad, !reduceMotion); return; }
 
@@ -5615,7 +5625,7 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
     var price = parseFloat(d.price);
     var rv = {
       rating: f.rating, price: isFinite(price) && price > 0 ? Math.round(price * 100) / 100 : null,
-      text: (d.text || '').trim().slice(0, 1000), visibility: f.visibility
+      title: (d.title || '').trim().slice(0, 80) || null, text: (d.text || '').trim().slice(0, 1000), visibility: f.visibility
     };
     var newPhotos = f.photos.filter(function (ph) { return !ph.existing; });
     var keepPhotos = f.photos.filter(function (ph) { return ph.existing; }).map(function (ph) { return ph.id; });
@@ -5627,7 +5637,7 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
       var save = f.editId ? store.updateReview(f.editId, rv, keepPhotos, newPhotos, progress) : store.addReview(rv, newPhotos, progress);
       return save.then(function (res) { return { place: place, res: res }; });
     }).then(function (x) {
-      state.form = null;
+      state.form = null; state.posting = false;
       var shared = x.res.review.visibility === 'public';
       if (!f.editId) {
         /* 新记录直接进足迹 */
@@ -5639,7 +5649,8 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
       }
       if (!x.res.photosOk) setTimeout(function () { toast(t('photoFail')); }, 2600);
       refreshMap();
-      openPlace(x.place.id, { drop: !f.editId });
+      if (f.post) { state.tab = 'home'; state.scope = 'all'; renderFilters(); renderTabs(); goFeed(); }
+      else openPlace(x.place.id, { drop: !f.editId });
     }).catch(function (e) {
       if (window.console) console.warn('save:', e);
       f.saving = false;
@@ -6448,6 +6459,7 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
       case 'set-style': setBasemap(d.style); break;
       case 'campus': closeBSheet(); if (state.view === 'search') { toMapTab(); goFeed(); } flyTo([XMUM.lng, XMUM.lat], state.mode === 'travel' ? TRAVEL_ZOOM : 14.6); break;
       case 'locate': closeBSheet(); if (state.view === 'search') { toMapTab(); goFeed(); } locate(); break;
+      case 'new-post': if (requireLogin(function () { openAdd(true); })) openAdd(true); break;
       case 'add': if (requireLogin(openAdd)) openAdd(); break;
       case 'add-pin': startPick({}); break;
       case 'add-existing': startReview(d.id); break;
