@@ -221,6 +221,26 @@ def route_all(ctx, supabase=False):
 
 with sync_playwright() as p:
     browser = p.chromium.launch(**({'channel': os.environ['XUETUAN_TEST_BROWSER_CHANNEL']} if os.environ.get('XUETUAN_TEST_BROWSER_CHANNEL') else {}))
+    slowctx = browser.new_context(viewport={'width':390,'height':844})
+    route_all(slowctx, supabase=True)
+    slowctx.add_init_script('window.__holdDbReads=true')
+    slowpage = slowctx.new_page(); slowpage.goto(APP)
+    slowpage.wait_for_function('window.__map && window.__map.getSource("places") && window.__resumeDbReads && window.__resumeDbReads.length')
+    check('map initializes while account and records are still waiting', '正在加载分享' in slowpage.inner_text('#view'))
+    slowpage.evaluate('window.__holdDbReads=false;window.__resumeDbReads.splice(0).forEach(fn=>fn())')
+    slowpage.wait_for_function('!document.querySelector("#view").textContent.includes("正在加载分享")')
+    slowctx.close()
+    localpriv = browser.new_context(viewport={'width':390,'height':844})
+    route_all(localpriv)
+    localdata = {'version':2,'seeded':2,'profile':{'id':'privacy-me','name':'本地'},'areas':[],'wishlist':[],'places':[{'id':'privacy-place','name':'没起名的地方','mode':'travel','cat':'other','precision':'exact','lat':2.84,'lng':101.7,'createdBy':'privacy-me','createdAt':1}], 'reviews':[{'id':'privacy-review','placeId':'privacy-place','authorId':'privacy-me','text':'保留正文','rating':4,'photos':[],'visibility':'private','createdAt':1}]}
+    localpriv.add_init_script('localStorage.setItem("xmum-chiwan-map:data:v1",'+json.dumps(json.dumps(localdata))+')')
+    lp = localpriv.new_page();lp.goto(APP);lp.wait_for_function('window.__map && window.__map.getSource("places")');tab(lp,'foot');set_mode(lp,'travel')
+    check('legacy unnamed places display as unknown without rewriting their data', '未知' in lp.inner_text('.fi-place'))
+    lp.click('[data-action="visit-privacy"][data-id="privacy-review"][data-v="public"]')
+    lp.wait_for_function('JSON.parse(localStorage.getItem("xmum-chiwan-map:data:v1")).reviews[0].visibility==="public"')
+    check('local direct privacy toggle preserves review content',lp.evaluate('JSON.parse(localStorage.getItem("xmum-chiwan-map:data:v1")).reviews[0].text')=='保留正文' and lp.locator('#place-form').count()==0)
+    localpriv.close()
+    tilejson_calls.clear()
     ctx = browser.new_context(viewport={'width': 390, 'height': 844}, device_scale_factor=2, has_touch=True, accept_downloads=True, locale='zh-CN')
     route_all(ctx)
     # 打开时替用户滚 1 像素再滚回来（让华为浏览器收起顶上“相关搜索”那一行）：记下滚到过哪
@@ -252,10 +272,10 @@ with sync_playwright() as p:
     check('no right-side tool column, locate button kept', page.locator('.tools, [data-action="zoom-in"], [data-action="to-globe"], [data-action="basemap"]').count() == 0 and page.locator('.locate-btn').is_visible())
     acts = page.eval_on_selector_all('#map-ctrls button', 'els => els.map(e => e.dataset.action)')
     check('map controls keep search, destination mode and filter actions', acts == ['search', 'toggle-mode', 'filters'] and page.locator('.topbar, .search-bar, #loc-name, .mode-switch, #filters').count() == 0, acts)
-    check('map: small landscape pill switches to travel and filter is available', page.locator('#map-ctrls [data-action="toggle-mode"]').is_visible() and page.get_attribute('[data-action="toggle-mode"]', 'aria-label') == '切换到旅行地图' and page.locator('#map-ctrls [data-action="filters"]').is_visible())
+    check('map: small landscape pill switches to travel and filter is available', page.locator('#map-ctrls [data-action="toggle-mode"]').is_visible() and page.get_attribute('[data-action="toggle-mode"]', 'aria-label') == '切换到美景地图' and page.locator('#map-ctrls [data-action="filters"]').is_visible())
     ctl = page.evaluate('(() => { const c = document.querySelector("#map-ctrls").getBoundingClientRect(); return [c.top < 40, c.right <= innerWidth]; })()')
     check('map search bar fits the top edge', ctl == [True, True], ctl)
-    check('compact white destination pill, B pin search icon and new home/campus icons', page.evaluate('document.querySelector(".mode-btn").getBoundingClientRect().height') == 32 and '旅行' in page.inner_text('.mode-btn') and page.locator('.map-search img[src="assets/search-pin.png"]').count() == 1 and page.locator('.home-brand .app-logo img').count() == 1 and page.locator('.campus-btn .xmum-buildings').count() == 1)
+    check('compact white destination pill, B pin search icon and new home/campus icons', page.evaluate('document.querySelector(".mode-btn").getBoundingClientRect().height') == 32 and '美景' in page.inner_text('.mode-btn') and page.locator('.map-search img[src="assets/search-pin.png"]').count() == 1 and page.locator('.home-brand .app-logo img').count() == 1 and page.locator('.campus-btn .xmum-buildings').count() == 1)
     check('globe only for the world view, flat from country level down (zoom 7)', st['proj'] == {'type': ['interpolate', ['linear'], ['zoom'], 5, 'vertical-perspective', 7, 'mercator']}, st['proj'])
     check('labels patched to Chinese', 'name:zh' in json.dumps(st['label']), st['label'])
     check('shield labels untouched', st['shield'] == '{ref}', st['shield'])
@@ -464,19 +484,18 @@ with sync_playwright() as p:
     check('photo pins once zoomed in a bit: plain pin below 13, photo from 13', map_expr(ph_op, 11.9, ph_props) == 0 and map_expr(pin_op, 11.9, ph_props) == 1
           and map_expr(ph_op, 12, ph_props) == 1 and map_expr(pin_op, 12, ph_props) == 0, [map_expr(x, z, ph_props) for x in (ph_op, pin_op) for z in (12.9, 13)])
     sizes = [round(map_expr(ph_size, z, dict(ph_props, id='x')), 3) for z in (12, 12.5, 13, 14)]
-    check('photo size stays consistent at street zoom', sizes == [1.61, 1.61, 1.61, 1.61], sizes)
-    check('area / city photos show from district / city zoom', map_expr(ph_op, 9.9, {'photo': True, 'precision': 'area'}) == 0 and map_expr(ph_op, 10, {'photo': True, 'precision': 'area'}) == 1
-          and map_expr(ph_op, 6.9, {'photo': True, 'precision': 'city'}) == 0 and map_expr(ph_op, 7, {'photo': True, 'precision': 'city'}) == 1)
+    check('photos use the smaller food-style size ramp', sizes == [0.6, 0.8, 1.0, 1.15], sizes)
+    check('city and area photos also wait until street zoom', all(map_expr(ph_op,z,{'photo':True,'precision':pr})==0 for pr in ['city','area','exact'] for z in [7,10,11.99]) and all(map_expr(ph_op,12,{'photo':True,'precision':pr})==1 for pr in ['city','area','exact']))
     check('places without photos keep their pin at every zoom', all(map_expr(pin_op, z, {'photo': False, 'precision': 'exact'}) == 1 for z in (3, 12, 15.5, 18)))
     travel_props = dict(ph_props, mode='travel', precision='exact')
-    check('travel photos appear a little earlier at regional zoom 8.8; food keeps street zoom 12', map_expr(ph_op, 8.79, travel_props) == 0 and map_expr(ph_op, 8.8, travel_props) == 1 and map_expr(ph_op, 9, dict(travel_props, mode='food')) == 0)
-    check('travel city and area photos appear a little earlier at zoom 3.8 and 6.8', map_expr(ph_op, 3.8, dict(travel_props, precision='city')) == 1 and map_expr(ph_op, 6.8, dict(travel_props, precision='area')) == 1)
+    check('scenery exact photos wait until the same zoom 12 as food', map_expr(ph_op, 11.99, travel_props) == 0 and map_expr(ph_op, 12, travel_props) == 1)
+    check('food and scenery photos share visibility thresholds', all(map_expr(ph_op,z,dict(travel_props,mode='travel',precision=pr))==map_expr(ph_op,z,dict(travel_props,mode='food',precision=pr)) for pr in ['city','area','exact'] for z in [3.8,6.8,7,9,10,11.99,12,14]))
     check('photo size is identical for all precisions and both map modes at each zoom', all(len({round(map_expr(ph_size,z,dict(ph_props,mode=m,precision=pr)),4) for m in ['food','travel'] for pr in ['city','area','exact']})==1 for z in [4,7,8.8,10,12,16]))
-    check('clustering continues through street zoom with room for the largest photo', page.evaluate('window.__map.getSource("places").spec.clusterMaxZoom===18 && window.__map.getSource("places").spec.clusterRadius>=68*1.61'))
+    check('clustering continues through street zoom with room for the largest photo', page.evaluate('window.__map.getSource("places").spec.clusterMaxZoom===18 && window.__map.getSource("places").spec.clusterRadius>=68*1.15'))
 
 
     check('opened photo pin drawn on top at the same size', lays['pt-photo']['layout']['symbol-sort-key'][1] == ['==', ['get', 'id'], pid] and lays['pt-photo']['layout']['symbol-sort-key'][2] == 2
-          and abs(map_expr(ph_size, 13, ph_props) - 1.61) < 0.01 and abs(map_expr(ph_size, 13, dict(ph_props, id='x')) - 1.61) < 0.01, lays['pt-photo']['layout'])
+          and abs(map_expr(ph_size, 13, ph_props) - 1.0) < 0.01 and abs(map_expr(ph_size, 13, dict(ph_props, id='x')) - 1.0) < 0.01, lays['pt-photo']['layout'])
     page.evaluate('window.__map.jumpTo({zoom: 12})')
     page.wait_for_timeout(200)
     check('zoomed out on its page: still no red pin', page.locator('#map .sel-pin').count() == 0)
@@ -610,7 +629,7 @@ with sync_playwright() as p:
     page.wait_for_timeout(500)
     stored = page.evaluate('JSON.parse(localStorage.getItem("xmum-chiwan-map:data:v1"))')
     bare = [p_ for p_ in stored['places'] if abs(p_['lat'] - 2.91) < 1e-6]
-    check('score-only record saves with a placeholder name', len(bare) == 1 and bare[0]['name'] == '没起名的店' and bare[0]['cat'] == 'other' and page.inner_text('.place-head h2') == '没起名的店', bare)
+    check('score-only record saves with a placeholder name', len(bare) == 1 and bare[0]['name'] == '未知' and bare[0]['cat'] == 'other' and page.inner_text('.place-head h2') == '未知', bare)
     page.click('[data-action="del-review"]')
     page.click('[data-modal="yes"]')
     page.wait_for_timeout(400)
@@ -1723,7 +1742,7 @@ with sync_playwright() as p:
     pb.wait_for_function('document.querySelector("#toast") && document.querySelector("#toast").textContent.indexOf("存进足迹 3 个") !== -1', timeout=8000)
     pb.wait_for_timeout(200)
     stb = pb.evaluate('''(s1name) => { const d = JSON.parse(localStorage.getItem("xmum-chiwan-map:data:v1")), me = d.profile.id;
-      const mine = d.reviews.filter(r => r.authorId === me && !r.sample), np = d.places.find(p => p.name === "没起名的地方");
+      const mine = d.reviews.filter(r => r.authorId === me && !r.sample), np = d.places.find(p => p.name === "未知");
       return { mine: mine.map(r => [r.placeId, r.rating, r.photos.length, r.visibility, r.createdAt]), np: np && [np.mode, Math.round(np.lat * 100) / 100, np.lng],
         s1: d.places.filter(p => p.name === s1name).map(p => p.mode).sort(),
         t1: new Date("2026-09-01T12:00:00").getTime(), t2: new Date("2026-09-02T19:00:00").getTime(), t3: new Date("2026-08-30T12:00:00").getTime() }; }''', S1['name'])
@@ -2157,6 +2176,8 @@ with sync_playwright() as p:
     page6.click('[data-action="new-post"]')
     check('home composer starts with a location and no bulk-import detour', page6.locator('#q').count()==1 and page6.locator('[data-action="bulk-start"]').count()==0)
     page6.click('[data-action="add-pin"]')
+    page6.click('[data-action="pick-campus"]')
+    check('pick-campus returns to school without confirming the location', page6.is_visible('#pick') and page6.evaluate('Math.abs(window.__map.center.lng-101.7029)<0.00001 && Math.abs(window.__map.center.lat-2.8329)<0.00001'))
     page6.evaluate('window.__map.center={lng:102.05,lat:3.6};window.__map.zoom=17')
     page6.click('[data-action="pick-confirm"]')
     if page6.locator('[data-action="near-new"]').count(): page6.click('[data-action="near-new"]')
@@ -2191,6 +2212,67 @@ with sync_playwright() as p:
     check('editing preserves the post title on the server', page6.evaluate('(id)=>window.__sb.db.visits.find(v=>v.id===id).title',pv['id'])=='修改后的分享标题')
     tab(page6,'foot');foot_sub(page6,'mine');page6.wait_for_timeout(300)
     check('published post also belongs to my footprint map', page6.evaluate('(id)=>window.__map.getSource("places").data.features.some(f=>f.properties.id===id)',pv['place_id']))
+
+    # Visibility changes from footprints update only visibility, never replace the review.
+    privacy_before = page6.evaluate('(id)=>{const v=window.__sb.db.visits.find(v=>v.id===id);return JSON.stringify([v.title,v.text,v.rating,v.photos]);}',pv['id'])
+    page6.evaluate('window.__sbFailVisibility=true')
+    page6.click('[data-action="visit-privacy"][data-id="'+pv['id']+'"][data-v="private"]')
+    page6.wait_for_function('!document.querySelector(".visit-controls button").disabled')
+    check('failed quick privacy update retains its old public state',page6.evaluate('(id)=>window.__sb.db.visits.find(v=>v.id===id).visibility',pv['id'])=='public')
+    page6.evaluate('window.__sbFailVisibility=false')
+    page6.click('[data-action="visit-privacy"][data-id="'+pv['id']+'"][data-v="private"]')
+    page6.wait_for_function('(id)=>window.__sb.db.visits.find(v=>v.id===id).visibility==="private"',arg=pv['id'])
+    check('direct private toggle preserves title, rating, body and photos',page6.evaluate('(id)=>{const v=window.__sb.db.visits.find(v=>v.id===id);return JSON.stringify([v.title,v.text,v.rating,v.photos]);}',pv['id'])==privacy_before and page6.locator('#place-form').count()==0)
+    tab(page6,'home');page6.wait_for_timeout(400)
+    check('private record disappears from the public home feed',page6.locator('.post-card',has_text='修改后的分享标题').count()==0)
+    tab(page6,'foot');foot_sub(page6,'mine');page6.wait_for_timeout(200)
+    own_ids = page6.locator('.visit-controls [data-v="public"]').evaluate_all('els=>els.slice(0,2).map(e=>e.dataset.id)')
+    check('footprints offer multiple owned rows for batch operations',len(own_ids)==2)
+    other_visibility = page6.evaluate('(ids)=>JSON.stringify(window.__sb.db.visits.filter(v=>!ids.includes(v.id)).map(v=>[v.id,v.visibility]))',own_ids)
+    page6.click('[data-action="visit-multi"]')
+    for vid in own_ids: page6.click('[data-action="visit-select"][data-id="'+vid+'"]')
+    page6.click('[data-action="visit-bulk"][data-v="private"]')
+    page6.wait_for_function('(ids)=>window.__sb.db.visits.filter(v=>ids.includes(v.id)).every(v=>v.visibility==="private")',arg=own_ids)
+    page6.wait_for_function('!document.querySelector("[data-action=visit-multi]").disabled')
+    check('bulk privacy changes selected records only',page6.evaluate('(ids)=>JSON.stringify(window.__sb.db.visits.filter(v=>!ids.includes(v.id)).map(v=>[v.id,v.visibility]))',own_ids)==other_visibility)
+    page6.click('[data-action="visit-bulk"][data-v="public"]')
+    page6.wait_for_function('(ids)=>window.__sb.db.visits.filter(v=>ids.includes(v.id)).every(v=>v.visibility==="public")',arg=own_ids)
+    page6.wait_for_function('!document.querySelector("[data-action=visit-multi]").disabled')
+    check('selected footprints can be made public in one batch',len(own_ids)==2)
+    page6.screenshot(path=os.path.join(SHOTS,'17-footprint-privacy.png'))
+    page6.click('[data-action="visit-multi"]')
+    # Live home data, filters, and an update banner that does not interrupt scrolling.
+    tab(page6,'home');page6.wait_for_timeout(300)
+    page6.evaluate('''(pid)=>{ const d=window.__sb.db, now=Date.now();
+      d.places.push({...d.places.find(p=>p.id===pid),id:'hf-travel',mode:'travel',name:'新美景地点'});
+      [{id:'hf-food',place_id:pid,title:'首页新美食',rating:5,visibility:'public',updated_at:new Date(now).toISOString()},
+       {id:'hf-scenery',place_id:'hf-travel',title:'首页新美景',rating:3,visibility:'public',updated_at:new Date(now-1000).toISOString()},
+       {id:'hf-private',place_id:pid,title:'绝不公开的测试',rating:5,visibility:'private'},
+       {id:'hf-old',place_id:pid,title:'旧动态测试',rating:4.5,visibility:'public'}].forEach(r=>d.visits.push({user_id:d.visits.find(v=>v.place_id===pid).user_id,created_at:'2020-01-01T00:00:00Z',photos:['fixture.jpg'],text:'测试正文',...r}));
+    }''',pv['place_id'])
+    page6.evaluate('document.dispatchEvent(new Event("visibilitychange"))')
+    page6.wait_for_selector('.post-card:has-text("首页新美食")')
+    check('home detects new public posts and keeps private records out', page6.locator('.post-card',has_text='首页新美景').count()==1 and page6.locator('.post-card',has_text='绝不公开的测试').count()==0)
+    page6.click('[data-action="home-mode"][data-v="travel"]')
+    check('home scenery filter excludes food', page6.locator('.post-card',has_text='首页新美景').count()==1 and page6.locator('.post-card',has_text='首页新美食').count()==0)
+    page6.select_option('#home-min','4.5')
+    check('home rating filter combines with scenery', page6.locator('.post-card',has_text='首页新美景').count()==0 and '暂无符合筛选' in page6.inner_text('#view'))
+    page6.select_option('#home-min','0');page6.click('[data-action="home-mode"][data-v="all"]')
+    page6.select_option('#home-days','7')
+    check('home time uses posting activity while preserving original visit dates', page6.locator('.post-card',has_text='首页新美食').count()==1 and page6.locator('.post-card',has_text='旧动态测试').count()==0 and page6.evaluate('window.__sb.db.visits.find(v=>v.id==="hf-food").created_at.startsWith("2020")'))
+    page6.select_option('#home-sort','rating')
+    check('home rating sort puts high scores first', page6.locator('.post-card').first.locator('.pc-score [aria-label="5 分"]').count()==1)
+    page6.select_option('#home-sort','newest');page6.select_option('#home-days','0')
+    page6.evaluate('''()=>{const d=window.__sb.db, r=d.visits.find(v=>v.id==='hf-food');for(let i=0;i<12;i++)d.visits.push({...r,id:'hf-fill-'+i,title:'填充记录'+i});}''')
+    page6.click('[data-action="home-refresh"]');page6.wait_for_selector('.post-card:has-text("填充记录11")')
+    page6.evaluate('document.getElementById("view").scrollTop=450')
+    page6.evaluate('''()=>{const d=window.__sb.db,r=d.visits.find(v=>v.id==='hf-food');d.visits.push({...r,id:'hf-banner',title:'等待读完后再更新',updated_at:new Date(Date.now()+5000).toISOString()});document.dispatchEvent(new Event('visibilitychange'));}''')
+    page6.wait_for_selector('.home-updates:not([hidden])')
+    check('new home content waits behind a banner while reading', page6.locator('.post-card',has_text='等待读完后再更新').count()==0 and page6.evaluate('document.getElementById("view").scrollTop')>100)
+    page6.click('[data-action="home-apply"]')
+    check('tapping the update banner applies new cards', page6.locator('.post-card',has_text='等待读完后再更新').count()==1)
+    check('home filters fit mobile width', page6.evaluate('document.documentElement.scrollWidth<=innerWidth'))
+    page6.screenshot(path=os.path.join(SHOTS,'16-home-filters.png'))
 
     # 退出登录
     tab(page6, 'me')

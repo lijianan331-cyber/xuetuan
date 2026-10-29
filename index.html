@@ -17,6 +17,7 @@
 <link rel="preconnect" href="https://maps.gstatic.com">
 <!-- 网页字体不挡页面：先用手机自带字体画出来，字体到了再换（2026-10-27 提速） -->
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=ZCOOL+QingKe+HuangYou&display=swap" media="print" onload="this.media='all'">
+<link rel="preload" as="script" href="https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.js">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.css">
 <style>
 /* Layout: full-bleed map with floating controls; one panel that is a bottom sheet on phones and a left column on desktop.
@@ -305,6 +306,8 @@ body.picking .attrib { bottom: calc(env(safe-area-inset-bottom, 0px) + 122px); }
 }
 .pick-prec { font-size: 13px; color: var(--muted); text-align: center; }
 .pick-prec b { color: var(--ink); }
+.pick-campus { pointer-events: auto; position: absolute; top: max(14px, env(safe-area-inset-top, 0px)); right: max(14px, env(safe-area-inset-right, 0px)); width: 40px; height: 40px; border-radius: 50%; }
+.pick-campus img { width: 34px; height: 34px; object-fit: contain; }
 .pick-actions { display: grid; grid-template-columns: 1fr 1.6fr; gap: 8px; }
 
 /* ---------- panel (sheet on phones) ---------- */
@@ -375,6 +378,16 @@ body[data-snap="page"] .panel-body { padding-top: env(safe-area-inset-top, 0px);
 .sep { opacity: .5; }
 .fi-text { font-size: 13px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
 /* 列表里有照片的一条：照片放在左边代替头像（像美团的列表），多张时角上标张数 */
+.visit-row { position: relative; border-bottom: 1px solid var(--line); }
+.visit-row:last-child { border-bottom: 0; }
+.visit-row .feed-item { border-bottom: 0; padding-bottom: 5px; }
+.visit-controls { display: flex; align-items: center; gap: 4px; margin: 0 0 10px 96px; }
+.visit-controls button { border: 0; border-radius: 12px; padding: 4px 9px; font-size: 11px; color: var(--muted); background: var(--surface-2); }
+.visit-controls button[aria-pressed="true"] { color: #2E7DCB; background: #E8F4FE; }
+.visit-select { position: absolute; z-index: 2; left: 5px; top: 17px; width: 26px; height: 26px; border: 2px solid white; border-radius: 50%; background: #438BBD; color: white; padding: 0; }
+.visit-bulk { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 7px 0 10px; }
+.visit-bulk .btn { min-height: 30px; padding: 5px 9px; font-size: 12px; }
+.visit-bulk small { color: var(--muted); }
 .feed-item.with-pic { grid-template-columns: 84px minmax(0, 1fr); }
 .fi-pic { position: relative; width: 84px; height: 84px; border-radius: 10px; overflow: hidden; background: var(--surface-2); }
 .fi-pic img { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; }
@@ -663,6 +676,13 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
 .home-sec h2 { margin: 0; font-size: 16.5px; font-weight: 800; letter-spacing: -.01em; }
 .home-publish { margin-left: auto; gap: 4px; }
 .post-title { font-size: 21px; line-height: 1.4; margin: 14px 0 10px; overflow-wrap: anywhere; }
+.home-filters { display: flex; flex-direction: column; gap: 7px; margin-bottom: 10px; }
+.home-filter-row { display: flex; gap: 6px; align-items: center; }
+.home-filter-row .input { flex: 1; min-width: 0; height: 34px; padding: 5px 7px; font-size: 12px; }
+.home-filter-row .chip { padding: 6px 12px; font-size: 12px; }
+.home-refresh { margin-left: auto; min-height: 34px; padding: 4px 9px; font-size: 12px; }
+.home-updates { width: 100%; margin: 0 0 10px; }
+.home-privacy { margin: 0 0 12px; font-size: 11px; color: var(--muted); }
 .home-sec small { color: var(--muted); font-size: 12px; }
 .home-empty { padding: 4px 2px 16px; }
 .post-grid { list-style: none; margin: 0; padding: 0 0 8px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 8px; }
@@ -802,6 +822,7 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
     <button type="button" class="icon-btn campus-btn" data-action="campus" data-i18n-aria="toCampus" data-i18n-title="toCampus"><img class="xmum-buildings" src="assets/xmum-campus.png" width="34" height="34" alt=""></button>
 
     <div class="pick" id="pick" hidden>
+      <button type="button" class="icon-btn pick-campus" data-action="pick-campus" data-i18n-aria="toCampus" data-i18n-title="toCampus"><img src="assets/xmum-campus.png" width="34" height="34" alt=""></button>
       <div class="pick-hint" id="pick-hint"></div>
       <div class="pick-dot"></div>
       <div class="pick-pin"><svg viewBox="0 0 46 58"><path d="M23 56C18 46 4 36 4 21a19 19 0 0 1 38 0c0 15-14 25-19 35z" stroke="#fff" stroke-width="3"/><circle cx="23" cy="21" r="7" fill="#fff"/></svg></div>
@@ -1012,14 +1033,14 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
     zh: {
       tagline: '中国有美团，雪邦有雪团',
       foodAria: '吃：美食地图', travelAria: '玩：旅行地图',
-      food: '美食', travel: '旅行',
+      food: '美食', travel: '旅行', scenery: '美景',
       catAll: '全部',
       scoreAria: '{n} 分', legend: '评分',
       dist_walk: '步行 · 1.5km 内', dist_short: '短途打车 · 1.5–10km', dist_mid: '中距离 · 10–40km', dist_far: '更远 · 40km 以上',
       tier_walk: '步行可达', tier_short: '短途打车', tier_mid: '中距离', tier_far: '吉隆坡及更远',
       feedFoodAll: '大家最近在吃', feedTravelAll: '大家最近去了', feedFoodMine: '我吃过的', feedTravelMine: '我去过的', feedBothMine: '我的足迹',
       mine_food: '美食', mine_travel: '旅行', mine_both: '合并', savedAll: '全部', savedWant: '还没去过', mineShow: '显示', subBeen: '去过', subSaved: '想去', savedShow: '想去里', filterCat: '分类',
-      modeToTravel: '切换到旅行地图', modeToFood: '切换到美食地图', litCountries: '点亮国家', litN: '已去 {n} 国', worldFail: '国家边界没加载出来，等下再试',
+      modeToTravel: '切换到美景地图', modeToFood: '切换到美食地图', litCountries: '点亮国家', litN: '已去 {n} 国', worldFail: '国家边界没加载出来，等下再试',
       feedSavedFood: '想去吃的', feedSavedTravel: '想去的地方', placesFoodAll: '探索美食', placesTravelAll: '探索旅行', exploreHint: '点地图上的图钉看大家的评价；大家最近分享了什么在“首页”。',
       emptySaved: '还没有想去的地方，点“收藏”就会出现在这里。', emptyWant: '收藏的地方都去过了。', goExplore: '去探索',
       wish: '收藏', wished: '已收藏', wishAdded: '收藏了，在“足迹 · 想去”里能找到', wishRemoved: '取消收藏了',
@@ -1042,7 +1063,7 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
       photos: '照片（选填）', photoLimit: '最多 {n} 张', addPhoto: '加照片', photoReadFail: '这张图读不了，换一张试试',
       visPrivateShort: '仅自己',
       shareBig: '分享到大地图', shareHint: '不分享也会存进“足迹”', formMore: '更多：精度、原名、链接',
-      unnamedFood: '没起名的店', unnamedTravel: '没起名的地方',
+      unnamedFood: '未知', unnamedTravel: '未知',
       bulkBtn: '从照片批量加', bulkTitle: '从照片批量加', bulkReading: '正在读照片 {n}/{m}…',
       bulkSum: '{n} 张照片，分成 {g} 组，打了分的才保存。', bulkNoGps: '{n} 张读不到位置，按拍摄时间分了组，自己搜店名。',
       bulkTip: '位置多半是手机交给网页时去掉的，从文件管理里选（DCIM → Camera）也许能读到。', bulkFiles: '从文件管理选',
@@ -1115,14 +1136,14 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
     en: {
       tagline: 'A food & travel map by XMUM students',
       foodAria: 'Food map', travelAria: 'Travel map',
-      food: 'Food', travel: 'Travel',
+      food: 'Food', travel: 'Travel', scenery: 'Scenery',
       catAll: 'All',
       scoreAria: 'Score {n}', legend: 'Score',
       dist_walk: 'Walk · under 1.5 km', dist_short: 'Short ride · 1.5–10 km', dist_mid: 'Mid trip · 10–40 km', dist_far: 'Further · 40 km+',
       tier_walk: 'Walkable', tier_short: 'Short ride', tier_mid: 'Mid-distance', tier_far: 'KL & beyond',
       feedFoodAll: 'What people are eating', feedTravelAll: 'Where people went', feedFoodMine: 'Places I’ve eaten', feedTravelMine: 'Places I’ve been', feedBothMine: 'My footprints',
       mine_food: 'Food', mine_travel: 'Travel', mine_both: 'Both', savedAll: 'All', savedWant: 'Not been yet', mineShow: 'Show', subBeen: 'Been', subSaved: 'Wishlist', savedShow: 'Wishlist', filterCat: 'Category',
-      modeToTravel: 'Switch to the travel map', modeToFood: 'Switch to the food map', litCountries: 'Countries', litN: '{n} visited', worldFail: 'Couldn’t load country borders. Try again later.',
+      modeToTravel: 'Switch to the scenery map', modeToFood: 'Switch to the food map', litCountries: 'Countries', litN: '{n} visited', worldFail: 'Couldn’t load country borders. Try again later.',
       feedSavedFood: 'Food spots I saved', feedSavedTravel: 'Places I saved', placesFoodAll: 'Explore food', placesTravelAll: 'Explore travel', exploreHint: 'Tap a pin to see what people said. Recent posts are on Home.',
       emptySaved: 'Your wishlist is empty. Tap “Save” to keep places here.', emptyWant: 'You’ve been to every place you saved.', goExplore: 'Explore',
       wish: 'Save', wished: 'Saved', wishAdded: 'Saved. Find it under Footprints · Wishlist', wishRemoved: 'Removed from saved',
@@ -1145,7 +1166,7 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
       photos: 'Photos (optional)', photoLimit: 'up to {n}', addPhoto: 'Add photo', photoReadFail: 'Couldn’t read that image. Try another one',
       visPrivateShort: 'Private',
       shareBig: 'Share on the big map', shareHint: 'Either way it’s saved to Footprints', formMore: 'More: precision, other name, link',
-      unnamedFood: 'Unnamed spot', unnamedTravel: 'Unnamed place',
+      unnamedFood: 'Unknown', unnamedTravel: 'Unknown',
       bulkBtn: 'Add many from photos', bulkTitle: 'Add from photos', bulkReading: 'Reading photos {n}/{m}…',
       bulkSum: '{n} photos in {g} groups. Only scored ones are saved.', bulkNoGps: '{n} have no location, so they’re grouped by time. Search for each place.',
       bulkTip: 'Phones often strip the location when handing photos to a web page. Picking them from your file manager (DCIM → Camera) may keep it.', bulkFiles: 'Pick from files',
@@ -1237,7 +1258,7 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
   var state = {
     lang: 'zh', mode: 'food', tab: 'home', scope: 'all', cat: 'all', priceAbout: 0, minScore: 0, dist: 'any',
     view: 'feed', placeId: null, postId: null, placeBack: null, form: null, nearby: null, query: '',
-    posting: false, snap: 'peek', feedSnap: 'peek', picking: null, preview: null, bsheet: null, me: null, styleKey: 'light',
+    homeMode: 'all', homeDays: 0, homeMin: 0, homeSort: 'newest', bootLoading: true, posting: false, snap: 'peek', feedSnap: 'peek', picking: null, preview: null, bsheet: null, me: null, styleKey: 'light',
     mineBoth: false, countries: false, savedWant: false, mineSub: 'mine', homesOn: false, homes: null, homeBack: null, bulk: null
   };
   var map = null;
@@ -1410,7 +1431,7 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
         var r = {
           id: uid('r'), placeId: f.placeId, authorId: me.id, authorName: me.name || '',
           rating: f.rating, price: f.price, title: f.title || null, text: f.text, photos: newPhotos.map(function (ph) { return ph.id; }),
-          visibility: f.visibility, createdAt: f.createdAt || Date.now(), sample: false
+          visibility: f.visibility, createdAt: f.createdAt || Date.now(), updatedAt: Date.now(), sample: false
         };
         return putPhotos(newPhotos).then(function (photosOk) {
           data.reviews.push(r);
@@ -1439,6 +1460,12 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
         data.reviews = data.reviews.filter(function (x) { return x.id !== id; });
         (r.photos || []).forEach(forgetPhoto);
         return done({ placeRemoved: dropPlaceIfEmpty(r.placeId) });
+      },
+      setVisibility: function (ids, visibility) {
+        var rows = ids.map(function (id) { return find(data.reviews,id); });
+        if (!rows.length || rows.some(function (r) { return !r || r.authorId !== data.profile.id || r.sample; }) || ['private','public'].indexOf(visibility) === -1) return Promise.reject(new Error('not yours'));
+        rows.forEach(function (r) { r.visibility = visibility; r.updatedAt = Date.now(); });
+        return done(rows);
       },
       setSaved: function (placeId, saved) {
         data.wishlist = data.wishlist.filter(function (w) { return !(mineW(w) && w.placeId === placeId); });
@@ -1570,7 +1597,7 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
       return {
         id: r.id, placeId: r.place_id, authorId: r.user_id, authorName: author.name || '',
         rating: r.rating == null ? null : +r.rating, price: r.price == null ? null : +r.price, title: r.title || null, text: r.text, photos: r.photos || [],
-        visibility: r.visibility, createdAt: Date.parse(r.created_at), sample: false
+        visibility: r.visibility, createdAt: Date.parse(r.created_at), updatedAt: r.updated_at ? Date.parse(r.updated_at) : null, sample: false
       };
     }
     /* 看得见的家：公开的 + 我自己的（RLS 已经过滤好） */
@@ -1612,7 +1639,7 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
       return client.storage.from('photos').remove(paths.concat(paths.map(thumbPath))).then(function () {}, function () {});
     }
 
-    function loadAll() {
+    function loadAll(guard) {
       var uid = uidNow();
       return Promise.all([
         client.from('places').select('*').limit(10000),
@@ -1622,6 +1649,7 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
         /* 家这张表是后加的，读不到也别让整个应用打不开 */
         client.from('homes').select('user_id, city, lat, lng, is_public, owner:profiles(name)').limit(10000).then(function (r) { return r.error ? { data: [] } : r; }, function () { return { data: [] }; })
       ]).then(function (res) {
+        if (uid !== uidNow() || (guard && !guard())) return false;
         var places = ok(res[0]), visits = ok(res[1]), profile = ok(res[2]), wish = ok(res[3]);
         cache.homes = (res[4].data || []).map(homeFromRow);
         cache.places = places.map(placeFromRow);
@@ -1655,6 +1683,7 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
 
     return {
       mode: 'remote',
+      refresh: function (guard) { return loadAll(guard); },
       init: function () {
         client.auth.onAuthStateChange(function (event, s) {
           // 回调里不能直接再调 supabase，放到下一轮
@@ -1731,7 +1760,7 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
       addReview: function (f, newPhotos, progress) {
         return needLogin() || uploadPhotos(newPhotos, progress).then(function (up) {
           if (progress) progress('write');
-          var row = { place_id: f.placeId, rating: f.rating, price: f.price, text: f.text, title: f.title || null, visibility: f.visibility, photos: up.paths };
+          var row = { place_id: f.placeId, rating: f.rating, price: f.price, text: f.text, title: f.title || null, visibility: f.visibility, photos: up.paths, updated_at: new Date().toISOString() };
           if (f.createdAt) row.created_at = new Date(f.createdAt).toISOString();
           return client.from('visits').insert(row).select().single().then(ok).then(function (v) {
             var r = reviewFromRow(v, cache.profile);
@@ -1769,6 +1798,16 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
             cache.wishlist = cache.wishlist.filter(function (w) { return w.placeId !== r.placeId; });
           }
           return { placeRemoved: gone };
+        });
+      },
+      setVisibility: function (ids, visibility) {
+        var owner = uidNow(), rows = ids.map(function (id) { return find(cache.reviews,id); });
+        if (!owner || !rows.length || rows.some(function (r) { return !r || r.authorId !== owner; }) || ['private','public'].indexOf(visibility) === -1) return Promise.reject(new Error('not yours'));
+        return client.from('visits').update({visibility:visibility}).in('id',ids).eq('user_id',owner).select().then(ok).then(function (changed) {
+          if (uidNow() !== owner) return [];
+          changed.forEach(function (row) { var old = find(cache.reviews,row.id); if (old) Object.assign(old,reviewFromRow(row,cache.profile)); });
+          if (changed.length !== ids.length) throw new Error('incomplete visibility update');
+          return changed;
         });
       },
       setSaved: function (placeId, saved) {
@@ -2215,7 +2254,7 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
   }
   function catName(c) { return state.lang === 'en' ? c.en : c.zh; }
   function precLabel(k) { return t({ exact: 'precExact', area: 'precArea', city: 'precCity' }[k] || 'precExact'); }
-  function placeTitle(p) { return state.lang === 'en' ? (p.altName || p.name) : (p.name || p.altName); }
+  function placeTitle(p) { var name = state.lang === 'en' ? (p.altName || p.name) : (p.name || p.altName); return /^(没起名的地方|没起名的店|Unnamed spot|Unnamed place)$/i.test(name || '') ? t('unnamedTravel') : name; }
   function placeSub(p) {
     var main = placeTitle(p), other = state.lang === 'en' ? p.name : p.altName;
     return other && other !== main ? other : '';
@@ -2754,30 +2793,14 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
   /* 有照片的地点放大地图后显示成照片图钉，外框颜色仍然按评分。
      照片要先读出来画成小方块：只读地图上看得到、快放大到位的，最多同时读 3 张 */
   var PIN_PHOTO = 56;
-  /* 放大到多少级照片才出来：具体地点 12 级、片区 10 级、城市 7 级（用户 2026-10-27 嫌 15 级太晚、照片太小）。
-     到了这一级照片从图钉大小长出来，再放大一级长到正常大小；缩小时照片慢慢缩回图钉大小，再换回普通图钉。
-     都用整数级：地图只在整数级上计算这类样式，用半级会在 15 级那里突然变大变小 */
-  var PHOTO_ZOOM = { city: 7, area: 10, exact: 12 };
-  var TRAVEL_PHOTO_ZOOM = { city: 3.8, area: 6.8, exact: 8.8 };
-  function photoZoom(prec, mode) { var levels = mode === 'travel' ? TRAVEL_PHOTO_ZOOM : PHOTO_ZOOM; return levels[prec] || levels.exact; }
+  /* 所有地图、所有地点精度统一到街区级再显示照片。城市全景不混用大照片与数字圈。 */
+  var PHOTO_ZOOM = 12;
+  function photoZoom(prec, mode) { return PHOTO_ZOOM; }
   /* 差一级就到了才去读照片，世界地图上不白白下载 */
   function photoWanted(p) { return !map || map.getZoom() >= photoZoom(p.precision, p.mode) - 1; }
-  /* 同一个缩放级别，三种精度的值一样就直接给数字，不一样就按精度分 */
-  function byPrecision(fn) {
-    var v = ['city', 'area', 'exact'].map(function (pr) { return Math.round(fn(pr) * 1000) / 1000; });
-    return v[0] === v[1] && v[1] === v[2] ? v[0] : ['match', ['get', 'precision'], 'city', v[0], 'area', v[1], v[2]];
-  }
-  function byPlaceKind(fn) {
-    return ['match', ['get', 'mode'], 'travel', byPrecision(function (pr) { return fn(pr, 'travel'); }), byPrecision(function (pr) { return fn(pr, 'food'); })];
-  }
-  /* 有照片的地点到了照片级别取 onPhoto，其余取 k（照片层的不透明度、普通图钉和选中圆圈的淡出都用它） */
+  /* 所有地点在同一阈值切换；有可用缩略图才显示照片。 */
   function whenPhoto(onPhoto, k) {
-    var e = ['step', ['zoom'], k];
-    [3.8, 6.8, 7, 8.8, 10, 12].forEach(function (z) {
-      var v = byPlaceKind(function (pr, mode) { return z >= photoZoom(pr, mode) ? onPhoto : k; });
-      e.push(z, v === k ? k : ['case', ['==', ['get', 'photo'], true], v, k]);
-    });
-    return e;
+    return ['step', ['zoom'], k, PHOTO_ZOOM, ['case', ['==', ['get', 'photo'], true], onPhoto, k]];
   }
   /* 照片随地图缩放渐变，同一缩放级别大小一致，选中只置顶。 */
   /* 普通图钉的大小；正在看的那家大一圈（像谷歌地图那样，不再在针下面画圈，用户 2026-10-27） */
@@ -2786,8 +2809,8 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
     return ['interpolate', ['linear'], ['zoom'], 2, at(0.66), 12, at(0.85)];
   }
   function photoPinSize(selId) {
-    /* 所有地点共享屏幕尺寸；精度只决定何时出现照片，不参与照片大小。 */
-    return ['interpolate', ['linear'], ['zoom'], 3, 0.85, 7, 1.1, 10, 1.44, 11, 1.61];
+    /* 所有地点共享屏幕尺寸和出现时机。 */
+    return ['interpolate', ['linear'], ['zoom'], 7, 0.6, 12, 0.6, 13, 1, 14, 1.15];
   }
 
   var pinThumbs = new Map();   // 照片 id → 'loading' | canvas | false（读不了）
@@ -3014,7 +3037,7 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
   }
 
   var placeClusterProfiles = new WeakMap();
-  var PLACE_CLUSTER_RADIUS = 112; // 68px 照片画布 × 最大比例 1.61 ≈ 110px，避免展开后互相覆盖。
+  var PLACE_CLUSTER_RADIUS = 80; // 68px 画布 × 最大比例 1.15 ≈ 78px，与缩小后的照片匹配。
   function placeClusterMaxZoom() { return 18; }
   function addAppLayers() {
     var fonts = pickFonts();
@@ -3650,7 +3673,7 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
     var food = state.mode === 'food', n = activeFilterCount();
     var toKey = food ? 'modeToTravel' : 'modeToFood';
     var h = '<button type="button" class="map-search" data-action="search" aria-label="' + esc(t('searchBtn')) + '"><img src="assets/search-pin.png" alt=""><span>' + esc(t('mapSearchPh')) + '</span>' + CTRL_ICON.arrow + '</button>';
-    h += '<button type="button" class="icon-btn mode-btn" data-action="toggle-mode" aria-label="' + esc(t(toKey)) + '" title="' + esc(t(toKey)) + '">' + (food ? CTRL_ICON.landscape : CTRL_ICON.food) + '<span>' + esc(t(food ? 'travel' : 'food')) + '</span>' + CTRL_ICON.swap + '</button>';
+    h += '<button type="button" class="icon-btn mode-btn" data-action="toggle-mode" aria-label="' + esc(t(toKey)) + '" title="' + esc(t(toKey)) + '">' + (food ? CTRL_ICON.landscape : CTRL_ICON.food) + '<span>' + esc(t(food ? 'scenery' : 'food')) + '</span>' + CTRL_ICON.swap + '</button>';
     h += '<button type="button" class="icon-btn filter-btn" data-action="filters" aria-pressed="' + (n > 0) + '" aria-label="' + esc(t('filterBtn')) + '" title="' + esc(t('filterBtn')) + '">' + CTRL_ICON.filter + (n ? '<b>' + n + '</b>' : '') + '</button>';
     if (globeChipShown()) {
       var lit = state.countries && world.fc;
@@ -3972,6 +3995,7 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
     if (state.scope === 'mine' && state.mineBoth) key = 'feedBothMine';
     var h = '<div class="view-head"><div class="title-row"><h2 class="view-title" data-action="expand">' + esc(t(key)) + '</h2><span class="count">' + items.length + '</span>' +
       (state.tab === 'foot' ? '<button type="button" class="icon-btn flat foot-filter" data-action="foot-filters" aria-label="' + esc(t('filterBtn')) + '">' + CTRL_ICON.filter + '</button>' : '') + '</div></div>';
+    if (state.tab === 'foot' && state.scope === 'mine') h += visitBulkHTML(items);
     if (store.hasSamples() && state.scope === 'all') {
       h += '<div class="sample-note"><span>' + esc(t('samplesShown')) + '</span><button type="button" class="link-btn" data-action="clear-samples">' + esc(t('clearSamples')) + '</button></div>';
     }
@@ -3982,29 +4006,55 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
     view.innerHTML = h;
   }
 
-  function metaHTML(r) {
+  function metaHTML(r, hidePrivacy) {
     var parts = [];
     if (r.rating != null) parts.push(starsMiniHTML(r.rating));
     if (r.price) parts.push('<span>RM ' + fmtPrice(r.price) + '</span>');
-    if (r.visibility === 'private') parts.push('<span class="pill">' + esc(t('visPrivateShort')) + '</span>');
+    if (r.visibility === 'private' && !hidePrivacy) parts.push('<span class="pill">' + esc(t('visPrivateShort')) + '</span>');
     return parts.join('<span class="sep">·</span>');
+  }
+
+  var selectingVisits = false, selectedVisits = new Set(), visibilityBusy = false;
+  function visitPrivacyHTML(r) {
+    var en = state.lang === 'en';
+    return '<div class="visit-controls" role="group" aria-label="' + esc(en?'Visibility':'可见范围') + '">' + [['private',en?'Only me':'仅个人'],['public',en?'Public':'公开']].map(function (o) {
+      return '<button type="button" data-action="visit-privacy" data-id="' + esc(r.id) + '" data-v="' + o[0] + '" aria-pressed="' + (r.visibility === o[0]) + '"' + (visibilityBusy?' disabled':'') + '>' + esc(o[1]) + '</button>';
+    }).join('') + '</div>';
+  }
+  function visitBulkHTML(items) {
+    var en = state.lang === 'en', disabled = visibilityBusy?' disabled':'', n = selectedVisits.size;
+    return '<div class="visit-bulk"><button type="button" class="btn ghost" data-action="visit-multi"' + disabled + '>' + esc(selectingVisits?(en?'Done':'完成'):(en?'Select':'多选')) + '</button>' + (selectingVisits ?
+      '<button type="button" class="btn ghost" data-action="visit-all"' + disabled + '>' + esc(en?'Select all':'全选') + '</button><small>' + esc(en?n+' selected':'已选 '+n) + '</small>' +
+      [['public',en?'Make public':'设为公开'],['private',en?'Only me':'仅个人']].map(function (o) { return '<button type="button" class="btn ghost" data-action="visit-bulk" data-v="' + o[0] + '"' + (visibilityBusy || !n?' disabled':'') + '>' + esc(o[1]) + '</button>'; }).join('') : '') + (visibilityBusy?'<small>'+esc(en?'Saving…':'保存中…')+'</small>':'') + '</div>';
+  }
+  function changeVisitVisibility(ids, visibility) {
+    if (visibilityBusy || ['private','public'].indexOf(visibility) === -1) return;
+    ids = ids.filter(function (id) { var r=store.review(id); return r && isMine(r) && r.visibility !== visibility; });
+    if (!ids.length) return;
+    visibilityBusy = true;
+    var top = view.scrollTop, actor = me().id;
+    render(); view.scrollTop = top;
+    store.setVisibility(ids,visibility).then(function () { if (actor !== me().id) return; toast(state.lang === 'en'?'Visibility updated':visibility==='public'?'已设为公开':'已设为仅个人'); },function () { toast(t('saveFail')); }).then(function () {
+      visibilityBusy=false; refreshMap(); if(state.view==='feed') { var y=view.scrollTop; render(); view.scrollTop=y; }
+    });
   }
 
   /* 列表一条：有照片时第一张照片放在左边代替头像，多张时角上标张数；点进去看大图 */
   function feedItemHTML(r) {
     var p = placeById(r.placeId), c = catOf(p);
-    var name = authorLabel(r), from = authorFrom(r), meta = metaHTML(r), text = reviewText(r);
+    var ownControls = state.tab === 'foot' && state.scope === 'mine' && isMine(r);
+    var name = authorLabel(r), from = authorFrom(r), meta = metaHTML(r, ownControls), text = reviewText(r);
     var n = r.photos ? r.photos.length : 0;
     var lead = n ? '<span class="fi-pic"><img data-photo="' + esc(r.photos[0]) + '" data-small alt="">' +
       (n > 1 ? '<span class="fi-count">' + ICON.camera + n + '</span>' : '') + '</span>' : avatarHTML(name);
-    return '<li><button type="button" class="feed-item' + (n ? ' with-pic' : '') + '" data-action="open-place" data-id="' + esc(p.id) + '">' +
+    return '<li' + (ownControls ? ' class="visit-row"' : '') + '>' + (ownControls && selectingVisits ? '<button type="button" class="visit-select" data-action="visit-select" data-id="' + esc(r.id) + '" aria-label="' + esc(state.lang === 'en' ? 'Select record' : '选择这条记录') + '" aria-pressed="' + selectedVisits.has(r.id) + '">' + (selectedVisits.has(r.id) ? '✓' : '○') + '</button>' : '') + '<button type="button" class="feed-item' + (n ? ' with-pic' : '') + '" data-action="' + (ownControls && selectingVisits ? 'visit-select' : 'open-place') + '" data-id="' + esc(ownControls && selectingVisits ? r.id : p.id) + '">' +
       lead +
       '<span class="fi-main">' +
       '<span class="fi-who"><b>' + esc(name) + '</b>' + (from ? '<span class="muted">' + esc(t('fromPrefix') + from) + '</span>' : '') + '<span class="fi-time">' + esc(timeAgo(r.createdAt)) + '</span></span>' +
       '<span class="fi-place">' + catIconHTML(c) + '<span>' + esc(placeTitle(p)) + '</span>' + scoreHTML(stats(p).score) + (p.sample ? '<span class="badge">' + esc(t('sample')) + '</span>' : '') + '</span>' +
       (meta ? '<span class="fi-meta">' + meta + '</span>' : '') +
       (text ? '<span class="fi-text">' + esc(text) + '</span>' : '') +
-      '</span></button></li>';
+      '</span></button>' + (ownControls ? visitPrivacyHTML(r) : '') + '</li>';
   }
 
   /* 地点一行：搜索结果、附近已有、收藏列表都用这个。sub 和 right 是已经转义好的 HTML */
@@ -4023,10 +4073,46 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
   /* ================= 首页 =================
    * 上面一张地图预览（点了去探索），下面是大家最新分享的记录：两列图文卡片，点卡片看帖子。
    * 只放真实的公开记录，不放示例；没有就诚实地说没有（V2.0） */
+  function homeTime(r) { return r.updatedAt || r.createdAt; }
+  function homeEligible() { return store.reviews().filter(function (r) { return r.visibility === 'public' && !r.sample && r.photos && r.photos.length > 0 && placeById(r.placeId); }); }
   function homeReviews() {
-    return store.reviews().filter(function (r) { return r.visibility === 'public' && !r.sample && r.photos && r.photos.length > 0 && placeById(r.placeId); })
-      .sort(function (a, b) { return b.createdAt - a.createdAt; }).slice(0, 60);
+    var cutoff = state.homeDays ? Date.now() - state.homeDays * 86400000 : 0;
+    return homeEligible().filter(function (r) {
+      return (state.homeMode === 'all' || placeById(r.placeId).mode === state.homeMode) && (!cutoff || homeTime(r) >= cutoff) && (!state.homeMin || (r.rating != null && r.rating >= state.homeMin));
+    }).sort(function (a, b) { return (state.homeSort === 'rating' ? (b.rating == null ? -1 : b.rating) - (a.rating == null ? -1 : a.rating) : 0) || homeTime(b) - homeTime(a); }).slice(0, 60);
   }
+  function homeSelect(id, label, value, options) {
+    return '<select class="input" id="' + id + '" aria-label="' + esc(label) + '">' + options.map(function (o) { return '<option value="' + o[0] + '"' + (String(o[0]) === String(value) ? ' selected' : '') + '>' + esc(o[1]) + '</option>'; }).join('') + '</select>';
+  }
+  function homeFiltersHTML() {
+    var en = state.lang === 'en';
+    return '<div class="home-filters"><div class="home-filter-row">' + [['all',en?'All':'全部'],['food',t('food')],['travel',t('scenery')]].map(function (o) { return '<button type="button" class="chip" data-action="home-mode" data-v="' + o[0] + '" aria-pressed="' + (state.homeMode === o[0]) + '">' + esc(o[1]) + '</button>'; }).join('') +
+      '<button type="button" class="btn ghost home-refresh" data-action="home-refresh">' + esc(en?'Refresh':'刷新') + '</button></div><div class="home-filter-row">' +
+      homeSelect('home-days',en?'Time':'时间',state.homeDays,[[0,en?'All time':'全部时间'],[1,en?'24 hours':'最近24小时'],[7,en?'7 days':'最近7天'],[30,en?'30 days':'最近30天']]) +
+      homeSelect('home-min',en?'Rating':'评分',state.homeMin,[[0,en?'Any rating':'不限评分'],[3,en?'3+':'3分以上'],[4,en?'4+':'4分以上'],[4.5,en?'4.5+':'4.5分以上']]) +
+      homeSelect('home-sort',en?'Sort':'排序',state.homeSort,[['newest',en?'Newest':'最新动态'],['rating',en?'Top rated':'评分优先']]) + '</div></div>' +
+      '<button type="button" class="btn ghost home-updates" data-action="home-apply" hidden>' + esc(en?'New content · tap to update':'有新内容，点击更新') + '</button>' +
+      '<p class="home-privacy">' + esc(en?'Only public records with photos appear here. Private footprints stay private.':'仅展示带图片的公开记录，私人足迹不会自动公开。') + '</p>';
+  }
+  var homeSyncPromise = null, homeApplyRequested = false;
+  function homeVisible() { return !state.bootLoading && !document.hidden && state.tab === 'home' && state.view === 'feed' && !state.picking; }
+  function homeSignature() { return JSON.stringify(homeEligible().map(function (r) { return [r.id, homeTime(r), r.title, r.text, r.rating, r.photos]; })); }
+  function refreshHome(force) {
+    if (!homeVisible()) return Promise.resolve();
+    homeApplyRequested = homeApplyRequested || !!force;
+    if (homeSyncPromise) return homeSyncPromise;
+    var before = homeSignature(), refreshButton = $('[data-action="home-refresh"]');
+    if (refreshButton) { refreshButton.disabled = true; refreshButton.textContent = state.lang === 'en' ? 'Refreshing…' : '刷新中…'; }
+    homeSyncPromise = (store.refresh ? store.refresh(homeVisible) : Promise.resolve()).then(function () {
+      if (!homeVisible()) return;
+      if (homeApplyRequested || (before !== homeSignature() && view.scrollTop < 100)) { render(); view.scrollTop = 0; }
+      else if (before !== homeSignature()) { var btn = $('.home-updates'); if (btn) btn.hidden = false; }
+      refreshMap();
+    }).catch(function () { if (homeApplyRequested) toast(t('loadFail')); }).then(function () { homeSyncPromise = null; homeApplyRequested = false; var button = $('[data-action="home-refresh"]'); if (button) { button.disabled = false; button.textContent = state.lang === 'en' ? 'Refresh' : '刷新'; } });
+    return homeSyncPromise;
+  }
+  setInterval(function () { if (homeVisible()) refreshHome(false); }, 45000);
+  document.addEventListener('visibilitychange', function () { if (homeVisible()) refreshHome(false); });
   function renderHome() {
     var items = homeReviews(), h = '';
     if (isMobile()) {
@@ -4037,7 +4123,8 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
         '<div class="home-attrib">' + $('.attrib').innerHTML + '</div></div>';
     }
     h += '<div class="home-sec"><h2>' + esc(t('latest')) + '</h2><button type="button" class="btn primary small home-publish" data-action="new-post">' + ICON.pen + esc(state.lang === 'en' ? 'Post' : '发帖') + '</button></div>';
-    if (!items.length) h += '<div class="empty home-empty"><p>' + esc(t('latestEmpty')) + '</p><button type="button" class="link-btn" data-action="add">' + esc(t('goRecord')) + '</button></div>';
+    h += homeFiltersHTML();
+    if (!items.length) h += '<div class="empty home-empty"><p>' + esc(state.bootLoading ? (state.lang === 'en' ? 'Loading shares…' : '正在加载分享…') : (state.homeMode !== 'all' || state.homeDays || state.homeMin) ? (state.lang === 'en' ? 'No shares match these filters.' : '暂无符合筛选的分享。') : t('latestEmpty')) + '</p><button type="button" class="link-btn" data-action="add">' + esc(t('goRecord')) + '</button></div>';
     else h += '<ul class="post-grid">' + items.map(postCardHTML).join('') + '</ul>';
     view.innerHTML = h;
   }
@@ -4057,7 +4144,7 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
     return '<li class="post-card"><button type="button" class="pc-open" data-action="open-post" data-id="' + esc(r.id) + '">' +
       '<span class="pc-cover">' + cover + '</span><span class="pc-body"><span class="pc-place">' + esc(r.title || placeTitle(p)) + '</span>' +
       (score ? '<span class="pc-score">' + score + '</span>' : '') +
-      '<span class="pc-who">' + avatarHTML(name) + '<span>' + esc(name) + ' · ' + esc(timeAgo(r.createdAt)) + '</span></span></span></button>' +
+      '<span class="pc-who">' + avatarHTML(name) + '<span>' + esc(name) + ' · ' + esc(timeAgo(homeTime(r))) + '</span></span></span></button>' +
       saveBtnHTML(p.id, true) + '</li>';
   }
 
@@ -5078,6 +5165,7 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
       renderFilters();
       return;
     }
+    if (tab !== 'foot') { selectingVisits = false; selectedVisits.clear(); }
     state.tab = tab;
     state.homesOn = false;
     state.preview = null; state.homes = null;
@@ -5216,6 +5304,7 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
     if (isMobile()) setSnap('hidden');
     updatePickUI();
     syncNavGuard();
+    requestAnimationFrame(function () { if (map && state.picking) { map.resize(); if (map.triggerRepaint) map.triggerRepaint(); } });
     if (state.picking.home) {
       if (map.getZoom() > 10) map.easeTo({ zoom: 9, duration: reduceMotion ? 0 : 600 });
     } else if ((state.picking.mode || state.mode) === 'food' && map.getZoom() < 15 && !state.picking.repick) {
@@ -6413,7 +6502,15 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
         state.mineBoth = false;
         setMode(state.mode === 'food' ? 'travel' : 'food');
         break;
-      case 'tab': setTab(d.tab); break;
+      case 'tab': setTab(d.tab); if (d.tab === 'home') refreshHome(true); break;
+      case 'visit-multi': if (!visibilityBusy) { selectingVisits=!selectingVisits; selectedVisits.clear(); var vy=view.scrollTop; render(); view.scrollTop=vy; } break;
+      case 'visit-select': if (!visibilityBusy && store.review(d.id) && isMine(store.review(d.id))) { if(selectedVisits.has(d.id))selectedVisits.delete(d.id);else selectedVisits.add(d.id); var sy=view.scrollTop;render();view.scrollTop=sy; } break;
+      case 'visit-all': if (!visibilityBusy) { var all=feedReviews().filter(isMine); var allOn=all.length && all.every(function(r){return selectedVisits.has(r.id);}); all.forEach(function(r){if(allOn)selectedVisits.delete(r.id);else selectedVisits.add(r.id);});var ay=view.scrollTop;render();view.scrollTop=ay; } break;
+      case 'visit-privacy': changeVisitVisibility([d.id],d.v); break;
+      case 'visit-bulk': changeVisitVisibility(Array.from(selectedVisits),d.v); break;
+      case 'home-mode': state.homeMode = ['all','food','travel'].indexOf(d.v) !== -1 ? d.v : 'all'; render(); view.scrollTop = 0; break;
+      case 'home-refresh': refreshHome(true); break;
+      case 'home-apply': render(); view.scrollTop = 0; break;
       /* 足迹标题旁边的 去过 / 想去 */
       case 'foot-filters': openBSheet('filters'); break;
       case 'mine-sub':
@@ -6461,6 +6558,7 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
       case 'add-existing': startReview(d.id); break;
       case 'pick-cancel': cancelPick(); break;
       case 'pick-confirm': confirmPick(); break;
+      case 'pick-campus': if (map) { map.resize(); map.jumpTo({center:[XMUM.lng,XMUM.lat],zoom:15.5,padding:{top:0,bottom:0,left:0,right:0}}); updatePickUI(); } break;
       case 'expand': if (isMobile()) setSnap(state.snap === 'peek' ? 'half' : state.snap === 'half' ? 'full' : 'half'); break;
       case 'goto-area': closeBSheet(); if (state.view === 'search') { toMapTab(); goFeed(); } gotoArea(d.id); break;
       case 'save-area': closeBSheet(); openAreaDialog(); break;
@@ -6617,8 +6715,15 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
   syncViewport();
   nudgeBrowserBars();
 
+  document.addEventListener('change', function (e) {
+    var key = {'home-days':'homeDays','home-min':'homeMin','home-sort':'homeSort'}[e.target.id];
+    if (!key) return;
+    state[key] = key === 'homeSort' ? (e.target.value === 'rating' ? 'rating' : 'newest') : Number(e.target.value) || 0;
+    render(); view.scrollTop = 0;
+  });
   /* ================= boot ================= */
   store.onAuthChange(function () {
+    selectedVisits.clear(); selectingVisits = false;
     var next = afterAuth;
     afterAuth = null;
     if (next && store.signedIn()) {
@@ -6633,23 +6738,21 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
     renderChrome();
     refreshMap();
   });
-  /* 底图样式跟读数据同时去取，不用等数据回来（2026-10-27 提速） */
-  (function () { var v = loadView(); loadStyle(v && STYLE_URLS[v.styleKey] ? v.styleKey : state.styleKey).catch(function () {}); })();
-  store.init().catch(function () { toast(t('loadFail')); }).then(function () {
-    var savedView = loadView();
-    if (savedView) {
-      if (savedView.lang === 'en' || savedView.lang === 'zh') state.lang = savedView.lang;
-      if (savedView.mode === 'travel' || savedView.mode === 'food') state.mode = savedView.mode;
-      if (STYLE_URLS[savedView.styleKey]) state.styleKey = savedView.styleKey;
-      state.mineBoth = savedView.mineBoth === true; state.countries = savedView.countries === true; state.homesOn = false;
-    }
-    applyStaticI18n();
-    renderChrome();
-    render();
-    setSnap(feedSnapNow('peek'));
-    perfStart();
-    initMap();
+  var savedView = loadView();
+  if (savedView) {
+    if (savedView.lang === 'en' || savedView.lang === 'zh') state.lang = savedView.lang;
+    if (savedView.mode === 'travel' || savedView.mode === 'food') state.mode = savedView.mode;
+    if (STYLE_URLS[savedView.styleKey]) state.styleKey = savedView.styleKey;
+    state.mineBoth = savedView.mineBoth === true; state.countries = savedView.countries === true; state.homesOn = false;
+  }
+  var dataReady = store.init().catch(function () { toast(t('loadFail')); });
+  applyStaticI18n(); renderChrome(); render(); setSnap(feedSnapNow('peek')); perfStart(); initMap();
+  dataReady.then(function () {
+    state.bootLoading = false;
+    if (state.view === 'form') captureFormDraft();
+    renderChrome(); refreshMap(); render();
   });
+
 })();
 </script>
 </body>

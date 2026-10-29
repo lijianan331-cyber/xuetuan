@@ -52,6 +52,7 @@
   Query.prototype.update = function (row) { this.op = 'update'; this.payload = row; this.wantRows = false; return this; };
   Query.prototype.delete = function () { this.op = 'delete'; this.wantRows = false; return this; };
   Query.prototype.eq = function (k, v) { this.filters.push([k, v, 'eq']); return this; };
+  Query.prototype.in = function (k, v) { this.filters.push([k,v,'in']); return this; };
   Query.prototype.gte = function (k, v) { this.filters.push([k, v, 'gte']); return this; };
   Query.prototype.lte = function (k, v) { this.filters.push([k, v, 'lte']); return this; };
   Query.prototype.order = function () { return this; };
@@ -59,11 +60,12 @@
   Query.prototype.single = function () { this.one = 'single'; this.wantRows = true; return this; };
   Query.prototype.maybeSingle = function () { this.one = 'maybe'; this.wantRows = true; return this; };
   Query.prototype.match = function (row) {
-    return this.filters.every(function (f) { return f[2] === 'gte' ? row[f[0]] >= f[1] : f[2] === 'lte' ? row[f[0]] <= f[1] : row[f[0]] === f[1]; });
+    return this.filters.every(function (f) { return f[2] === 'in' ? f[1].indexOf(row[f[0]]) !== -1 : f[2] === 'gte' ? row[f[0]] >= f[1] : f[2] === 'lte' ? row[f[0]] <= f[1] : row[f[0]] === f[1]; });
   };
   Query.prototype.run = function () {
     var self = this, t = db[this.table], rows, now = new Date().toISOString();
     calls.push([this.table, this.op]);
+    if (this.table === 'visits' && this.op === 'update' && window.__sbFailVisibility && this.payload && Object.keys(this.payload).length === 1 && this.payload.visibility) return err('test visibility unavailable');
     if (this.table === 'visits' && this.op === 'insert' && window.__sbFailVisit) return err('test visit unavailable');
     if (this.op === 'upsert') {
       // 只有 homes 用：按 user_id 覆盖；和数据库触发器一样把位置取整到 0.1 度
@@ -114,6 +116,7 @@
   };
   Query.prototype.then = function (a, b) {
     var self = this;
+    if (window.__holdDbReads && self.op === 'select') return new Promise(function (resolve) { (window.__resumeDbReads || (window.__resumeDbReads = [])).push(function () { resolve(self.run()); }); }).then(a,b);
     return new Promise(function (resolve) { setTimeout(function () { resolve(self.run()); }, 5); }).then(a, b);
   };
 
