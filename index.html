@@ -201,11 +201,11 @@ body[data-snap="full"] .map-ctrls button { pointer-events: none; }
   transition: bottom .34s cubic-bezier(.2, .8, .2, 1);
 }
 .locate-btn svg { width: 18px; height: 18px; }
-/* 回 XMUM：搜索框下方右上角，筛选在下一行。 */
+/* 回 XMUM：放在地图筛选按钮下方。 */
 .campus-btn {
   position: absolute; z-index: 9;
   right: max(12px, env(safe-area-inset-right, 0px));
-  top: calc(env(safe-area-inset-top, 0px) + 74px); bottom: auto;
+  top: calc(env(safe-area-inset-top, 0px) + 162px); bottom: auto;
   width: 34px; height: 34px; border-radius: 50%;
 }
 body[data-snap="full"] .campus-btn { opacity: 0; pointer-events: none; }
@@ -589,6 +589,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
 .bk-own { display: flex; gap: 8px; align-items: center; }
 .bk-own .input { flex: 1; min-width: 0; }
 .bk-card .stars-input { padding: 0; }
+textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
 .bk-merge { align-self: flex-start; font-size: 12.5px; }
 .bk-tip { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; margin: 0 0 12px; padding: 10px 12px; border-radius: 12px; background: var(--surface-2); color: var(--muted); font-size: 13px; }
 .bk-tip p { margin: 0; }
@@ -1090,7 +1091,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       about: '地图数据 © OpenStreetMap 贡献者，底图来自 OpenFreeMap。',
       searchBtn: '搜索', searchPh: '搜店名、地名', mapSearchPh: '搜索餐厅、地点…', footprintShow: '足迹类型', noResults: '没找到。可以自己加上去。',
       addSearchPhFood: '输入店名搜索', addSearchPhTravel: '输入地名搜索', addPin: '地图选点',
-      addPinLong: '搜不到？在地图上选点', addHint: '先搜名字。学校附近的小店搜不到的话，点“地图选点”自己标。',
+      addPinLong: '在地图上选点', addHint: '先搜名字。学校附近的小店搜不到的话，点“地图选点”自己标。',
       addNoResult: '地图上没搜到这个名字。',
       poiFood: '餐厅', poiPlace: '地点', quickRate: '去过？打个分就记进足迹', quickRateFood: '吃过？打个分就记进足迹', quickRateHint: '下一步还能写评论、加照片，都是选填。',
       searchLocal: '雪团里的', searchOsm: '地图上的地点', searchGoogle: '谷歌地图上的', googleLoading: '正在连接谷歌…', googleSearching: '正在搜索谷歌…', bulkOtherPlace: '搜索其他地点', googleEmpty: '谷歌没有找到这个地点，试试店名加城市。', googleUnavailable: '谷歌暂时连接不上，其他搜索仍可用。', googleAuth: '此网站的谷歌搜索暂未获授权，其他搜索仍可用。', googleLimit: '本设备今天的谷歌搜索已达 60 次，明天恢复。', googleOff: '此链接已关闭谷歌搜索。', googleRetry: '重试谷歌', googleOpen: '去 Google 地图搜', osmMin: '再多打一个字，就会去地图上搜', osmLoading: '正在搜…', osmMore: '还在找更多…',
@@ -1193,7 +1194,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       about: 'Map data © OpenStreetMap contributors. Base map by OpenFreeMap.',
       searchBtn: 'Search', searchPh: 'Search places', mapSearchPh: 'Search restaurants, places…', footprintShow: 'Footprints', noResults: 'Nothing found. You can add it yourself.',
       addSearchPhFood: 'Search by name', addSearchPhTravel: 'Search a place', addPin: 'Pick on map',
-      addPinLong: 'Can’t find it? Pick it on the map', addHint: 'Search by name first. If a small stall doesn’t show up, use “Pick on map”.',
+      addPinLong: 'Pick on the map', addHint: 'Search by name first. If a small stall doesn’t show up, use “Pick on map”.',
       addNoResult: 'Nothing on the map with that name.',
       poiFood: 'Restaurant', poiPlace: 'Place', quickRate: 'Been here? Score it to add it to Footprints', quickRateFood: 'Eaten here? Score it to add it to Footprints', quickRateHint: 'Photos and notes are optional on the next step.',
       searchLocal: 'On XueTuan', searchOsm: 'Places on the map', searchGoogle: 'On Google Maps', googleLoading: 'Connecting to Google…', googleSearching: 'Searching Google…', bulkOtherPlace: 'Search another place', googleEmpty: 'No Google results. Try the place name and city.', googleUnavailable: 'Google is temporarily unavailable. Other search still works.', googleAuth: 'Google search is not authorized for this site. Other search still works.', googleLimit: 'This device has used its 60 Google searches today. Resets tomorrow.', googleOff: 'Google search is disabled by this URL.', googleRetry: 'Retry Google', googleOpen: 'Search Google Maps', osmMin: 'Type one more character to search the map', osmLoading: 'Searching…', osmMore: 'Looking for more…',
@@ -4166,7 +4167,9 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       '<form id="place-form" class="form" novalidate>';
     if (p && !placeFields) h += '<div class="form-place">' + catIconHTML(catOf(p)) + '<b>' + esc(placeTitle(p)) + '</b></div>';
     if (placeFields) {
-      h += fieldHTML('f-name', esc(t('name')), '<input id="f-name" class="input" maxlength="60" placeholder="' + esc(t(isFood ? 'namePhFood' : 'namePhTravel')) + '">');
+      if (/^g\//.test(f.osm)) h += '<div id="g-form-detail" class="g-search"></div>';
+      h += fieldHTML('f-name', esc(t('name')), '<input id="f-name" class="input" maxlength="60"' + (f.lockedName ? ' readonly' : '') + ' placeholder="' + esc(t(isFood ? 'namePhFood' : 'namePhTravel')) + '">');
+      if (/^g\//.test(f.osm)) h += '<p class="f-hint">' + esc(state.lang === 'en' ? 'Please check and complete the name above.' : '请核对并补全上方名称。') + '</p>';
       h += '<div class="f-loc"><span>' + esc(t('location')) + '：' + f.loc.lat.toFixed(5) + ', ' + f.loc.lng.toFixed(5) + '</span><button type="button" class="link-btn" data-action="repick">' + esc(t('repick')) + '</button></div>';
       h += '<div class="field"><span class="f-label" id="lbl-cat">' + esc(t('category')) + '</span><div class="chips-wrap one-line" role="group" aria-labelledby="lbl-cat">' +
         CATS[state.mode].map(function (c) {
@@ -4179,7 +4182,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     h += fieldHTML('f-text', esc(t('review')), '<textarea id="f-text" class="input" rows="2" maxlength="1000" placeholder="' + esc(t(isFood ? 'reviewPhFood' : 'reviewPhTravel')) + '"></textarea>');
     h += '<div class="field"><span class="f-label">' + esc(t('photos')) + ' <small>· ' + esc(t('photoLimit', { n: MAX_PHOTOS })) + '</small></span><div class="photo-grid" id="f-photos"></div></div>';
     /* 人均只问吃的（筛选按人均）；旅行不问花费（用户 2026-10-26） */
-    if (isFood) h += fieldHTML('f-price', esc(t('priceFood')), '<input id="f-price" class="input" type="number" inputmode="decimal" min="0" step="0.5" placeholder="12">');
+    if (isFood) h += fieldHTML('f-price', esc(t('priceFood')), '<input id="f-price" class="input" type="number" inputmode="decimal" min="0" step="0.5">');
     /* 记录默认进“我的地图”，只问要不要分享到大地图 */
     h += '<button type="button" class="switch-row" role="switch" data-action="f-share" aria-checked="' + share + '">' +
       '<span class="sw-text"><b>' + esc(t('shareBig')) + '</b><small>' + esc(t('shareHint')) + '</small></span><span class="switch" aria-hidden="true"></span></button>';
@@ -4199,6 +4202,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     view.innerHTML = h;
     renderFormPhotos();
     restoreFormDraft();
+    if (/^g\//.test(f.osm)) mountGoogleFormDetail(f);
     /* 分类只占一行，横着滑；预选的那个滑到看得见的地方 */
     var row = $('#place-form .chips-wrap.one-line'), sel = row && row.querySelector('[aria-pressed="true"]');
     if (sel) row.scrollLeft += sel.getBoundingClientRect().left - row.getBoundingClientRect().left - 18;
@@ -4594,6 +4598,22 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     var lng = typeof pl.location.lng === 'function' ? pl.location.lng() : pl.location.lng;
     if (!isFinite(lat) || !isFinite(lng)) return null;
     return { osm: 'g/' + pl.id, gid: pl.id, name: q, alt: '', lng: round6(lng), lat: round6(lat), mode: state.mode, cat: null, precision: 'exact', where: '', google: true };
+  }
+  /* 谷歌组件自己显示完整店名；搜索词仍可修改，避免把残缺词锁死。 */
+  function mountGoogleFormDetail(f) {
+    var slot = $('#g-form-detail');
+    if (!slot) return;
+    loadGoogle().then(function () {
+      if (!slot.isConnected || state.form !== f) return;
+      var card = document.createElement('gmp-place-details-compact');
+      card.setAttribute('orientation', 'horizontal');
+      var req = document.createElement('gmp-place-details-place-request');
+      req.place = f.osm.slice(2);
+      card.appendChild(req);
+      card.appendChild(document.createElement('gmp-place-standard-content'));
+      card.addEventListener('gmp-error', function () { slot.hidden = true; });
+      slot.replaceChildren(card);
+    }, function () { slot.hidden = true; });
   }
   /* 预览里放谷歌的地点卡片（店名、照片、评分、地址都是谷歌画的） */
   function mountGoogleDetail(r) {
@@ -5237,7 +5257,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
       .filter(function (x) { return x.d <= radius; })
       .sort(function (a, b) { return a.d - b.d; })
       .slice(0, 4);
-    state.form = newForm({ loc: loc, cat: prefill.cat || null, precision: precision, osm: prefill.osm || '', rating: prefill.rating == null ? null : prefill.rating, draft: prefill.name ? { name: prefill.name, alt: prefill.alt || '' } : null });
+    state.form = newForm({ loc: loc, cat: prefill.cat || null, precision: precision, osm: prefill.osm || '', lockedName: !!prefill.name && !!prefill.osm && !/^g\//.test(prefill.osm), rating: prefill.rating == null ? null : prefill.rating, draft: prefill.name ? { name: prefill.name, alt: prefill.alt || '' } : null });
     if (near.length) { state.nearby = near; state.view = 'nearby'; } else state.view = 'form';
     render();
     setSnap('full');
@@ -5776,6 +5796,9 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     var d = new Date(ts), sameYear = d.getFullYear() === new Date().getFullYear();
     return d.toLocaleDateString(state.lang === 'en' ? 'en-MY' : 'zh-CN', sameYear ? { month: 'short', day: 'numeric', weekday: 'short' } : { year: 'numeric', month: 'short', day: 'numeric' });
   }
+  function bulkCommentHTML(g) {
+    return '<textarea class="input bk-comment" rows="1" data-bk-comment="' + g.i + '" maxlength="1000" placeholder="' + esc(t('review')) + '" aria-label="' + esc(t('review')) + '">' + esc(g.comment || '') + '</textarea>';
+  }
   function bulkCardHTML(g) {
     var h = '<li class="bk-card" id="bk-' + g.i + '"><div class="bk-photos">' + g.photos.map(function (p, j) {
       return '<div class="bk-ph" data-on="' + p.on + '"><button type="button" class="bk-preview" data-action="bulk-preview" data-i="' + g.i + '" data-j="' + j + '" aria-label="' + esc(t('photoPreview')) + '">' +
@@ -5792,7 +5815,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
         '<div class="chips-wrap bk-names" id="bk-found-' + g.i + '">' + bulkFoundHTML(g) + '</div>' +
         '<div class="g-search bk-google" id="bk-google-' + g.i + '" hidden></div>' +
         '<p class="f-hint bk-need" id="bk-need-' + g.i + '"' + (g.rating != null && g.pick < 0 ? '' : ' hidden') + '>' + esc(t('bulkNeed')) + '</p>';
-      return h + starsInputHTML('bk-rate-' + g.i, g.rating, 'bulk', 'bk-meta-' + g.i) + '</li>';
+      return h + starsInputHTML('bk-rate-' + g.i, g.rating, 'bulk', 'bk-meta-' + g.i) + bulkCommentHTML(g) + '</li>';
     }
     h += '<div class="chips-wrap bk-names">';
     if (!g.cands) h += '<span class="f-hint">' + esc(t('bulkLooking')) + '</span>';
@@ -5806,7 +5829,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     if (g.cands && g.pick === -1) {
       h += '<div class="bk-own"><input class="input" data-bk-name="' + g.i + '" maxlength="60" autocomplete="off" placeholder="' + esc(t(g.mode === 'food' ? 'namePhFood' : 'namePhTravel')) + '" value="' + esc(g.name) + '"></div>';
     }
-    return h + starsInputHTML('bk-rate-' + g.i, g.rating, 'bulk', 'bk-meta-' + g.i) + '</li>';
+    return h + starsInputHTML('bk-rate-' + g.i, g.rating, 'bulk', 'bk-meta-' + g.i) + bulkCommentHTML(g) + '</li>';
   }
   /* 记到吃还是玩：跟着选中的店自动换（店的分类），用户点过就按用户的 */
   function bulkModeSegHTML(g) {
@@ -5926,6 +5949,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     cur.photos.forEach(function (p) { p.on = p.on && onTop < MAX_PHOTOS; if (p.on) onTop++; });
     top.photos = top.photos.concat(cur.photos);
     if (top.rating == null && cur.rating != null) top.rating = cur.rating;
+    if (cur.comment) top.comment = [top.comment, cur.comment].filter(Boolean).join('\n').slice(0, 1000);
     top.time = Math.min(top.time, cur.time);
     if (top.noLoc && !cur.noLoc) { top.noLoc = false; top.lat = cur.lat; top.lng = cur.lng; top.cands = cur.cands; top.pick = cur.pick; top.name = top.name || cur.name; }
     else if (top.pick < 0 && cur.pick >= 0) { top.cands = cur.cands; top.pick = cur.pick; top.found = cur.found; top.q = cur.q; }
@@ -6077,7 +6101,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
           }, function (e) { toast(t(e && e.message === 'gifTooBig' ? 'gifTooBig' : 'photoReadFail')); });
         });
       }, Promise.resolve()).then(function () {
-        return store.addReview({ placeId: p.id, rating: g.rating, price: null, text: '', visibility: b.share ? 'public' : 'private', createdAt: g.time }, photos);
+        return store.addReview({ placeId: p.id, rating: g.rating, price: null, text: (g.comment || '').trim(), visibility: b.share ? 'public' : 'private', createdAt: g.time }, photos);
       });
     });
   }
@@ -6465,6 +6489,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
     if (el.id === 'f-name') { onNameForCat(state.form, el.value); return; }
     if (el.id === 'q') { state.query = el.value; queueOsmSearch(); renderSearchResults(); queueGoogle(); }
     else if (el.id === 'home-q') { homeQ.q = el.value; queueHomeSearch(); renderHomeResults(); }
+    else if (el.dataset && el.dataset.bkComment != null) { var bc = state.bulk && state.bulk.groups && state.bulk.groups[+el.dataset.bkComment]; if (bc) bc.comment = el.value; }
     else if (el.dataset && el.dataset.bkName != null) { var bg = state.bulk && state.bulk.groups && state.bulk.groups[+el.dataset.bkName]; if (bg) bg.name = el.value; }
     else if (el.dataset && el.dataset.bkQ != null) { var bq = state.bulk && state.bulk.groups && state.bulk.groups[+el.dataset.bkQ]; if (bq) { bq.q = el.value; bulkFind(bq); } }
     else if (el.dataset && el.dataset.pf) {
