@@ -2202,6 +2202,22 @@ with sync_playwright() as p:
     check('remote: the last unsave removes the empty place', not any(p_['id'] == 'p-b-pub' for p_ in page6.evaluate('window.__sb.db.places')))
     check('remote: cannot save a place I cannot see', page6.evaluate('window.supabase.createClient().from("wishlist").insert({ user_id: "%s", place_id: "p-b-priv" }).then(r => !!r.error)' % A))
 
+    # Website sharing is available without login and excludes private card/auth URL data.
+    tab(page6,'home')
+    page6.click('[data-action="app-share"]')
+    app_url=page6.input_value('#app-share-link')
+    check('home share button opens a copyable website link without personal card data',app_url.split('?')[0]==APP and 'card=' not in app_url and page6.locator('a[href^="https://wa.me/?text="]').count()==1)
+    page6.evaluate('()=>{Object.defineProperty(navigator,"share",{configurable:true,value:d=>{window.__appShared=d;return Promise.resolve();}});Object.defineProperty(navigator,"clipboard",{configurable:true,value:{writeText:s=>{window.__appCopied=s;return Promise.resolve();}}});}')
+    page6.click('[data-action="app-share-copy"]')
+    check('copy website shares only the app address',page6.evaluate('window.__appCopied')==app_url)
+    page6.click('[data-action="app-share-system"]')
+    check('system share receives the app URL and title',page6.evaluate('window.__appShared.url')==app_url and page6.evaluate('window.__appShared.title')=='雪团 XueTuan')
+    page6.evaluate('()=>{Object.defineProperty(navigator,"share",{configurable:true,value:undefined});}')
+    page6.click('[data-action="app-share-system"]')
+    check('unsupported system sharing falls back to copying without losing the page',page6.locator('#app-share-link').is_visible() and page6.evaluate('window.__appCopied')==app_url)
+    page6.screenshot(path=os.path.join(SHOTS,'26-app-share.png'))
+    page6.click('[data-modal="no"]')
+
     # Home composer: a single visit powers both the public post and private footprint ownership.
     tab(page6, 'home')
     page6.click('[data-action="new-post"]')

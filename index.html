@@ -654,6 +654,7 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
 }
 .home-search img { flex: none; border-radius: 8px; }
 .home-search svg { flex: none; width: 17px; height: 17px; color: var(--accent); }
+.home-share { flex: none; width: 36px; height: 36px; color: var(--food); }
 .home-search span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* 地图预览就是那张地图，挪进这张卡片；上面盖一个透明按钮，点了去探索，手指上下划照样滚页面 */
 .home-map { position: relative; height: 188px; margin: 2px 0 4px; border-radius: 16px; overflow: hidden; background: #E4EEF8; }
@@ -4219,11 +4220,12 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
     var items = homeReviews(), h = '';
     if (isMobile()) {
       h += '<div class="home-top"><div class="home-brand"><span class="app-logo" role="img" aria-label="雪团"><img src="assets/app-icon-sheet.png" alt=""></span><b>雪团</b></div>' +
-        '<button type="button" class="home-search" data-action="search">' + '<img src="assets/search-pin.png" width="24" height="24" alt=""><span>' + esc(t('searchPh')) + '</span></button></div>' +
+        '<button type="button" class="home-search" data-action="search">' + '<img src="assets/search-pin.png" width="24" height="24" alt=""><span>' + esc(t('searchPh')) + '</span></button>' + appShareButton() + '</div>' +
         '<div class="home-map" id="home-map"><button type="button" class="home-map-btn" data-action="tab" data-tab="explore" aria-label="' + esc(t('openMap')) + '">' +
         '<span class="hm-pill">' + CTRL_ICON.compass + esc(t('openMap')) + '</span></button>' +
         '<div class="home-attrib">' + $('.attrib').innerHTML + '</div></div>';
     }
+    if (!isMobile()) h += '<div style="display:flex;justify-content:flex-end">' + appShareButton() + '</div>';
     h += '<div class="home-sec"><h2>' + esc(t('latest')) + '</h2><button type="button" class="btn primary small home-publish" data-action="new-post">' + ICON.pen + esc(state.lang === 'en' ? 'Post' : '发帖') + '</button></div>';
     h += homeFiltersHTML();
     if (!items.length) h += '<div class="empty home-empty"><p>' + esc(state.bootLoading ? (state.lang === 'en' ? 'Loading shares…' : '正在加载分享…') : (state.homeMode !== 'all' || state.homeDays || state.homeMin) ? (state.lang === 'en' ? 'No shares match these filters.' : '暂无符合筛选的分享。') : t('latestEmpty')) + '</p><button type="button" class="link-btn" data-action="add">' + esc(t('goRecord')) + '</button></div>';
@@ -5042,6 +5044,34 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
 
   /* 本地版的测试账号：点一下就换成另一个人 */
   var shareCard = null;
+  function appShareButton() {
+    return '<button type="button" class="icon-btn flat home-share" data-action="app-share" aria-label="' + esc(state.lang === 'en' ? 'Share XueTuan' : '分享雪团') + '"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3m-4 4 4-4 4 4M6 11H4v10h16V11h-2"/></svg></button>';
+  }
+  function appShareURL() {
+    var url = new URL(location.href), token = url.searchParams.get('_vercel_share');
+    url.search = ''; url.hash = '';
+    if (token) url.searchParams.set('_vercel_share', token);
+    return url.href;
+  }
+  function openAppShare() {
+    var en = state.lang === 'en', url = appShareURL();
+    openModal('<div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="app-share-title"><h3 id="app-share-title">' + esc(en ? 'Share XueTuan' : '把雪团分享给朋友') + '</h3><p class="f-hint">' + esc(en ? 'Discover food and scenery with your classmates.' : '一起发现同学推荐的美食和美景。') + '</p><input id="app-share-link" class="input" readonly aria-label="' + esc(en ? 'Website link' : '网站链接') + '" value="' + esc(url) + '"><div class="btn-row"><button type="button" class="btn primary" data-action="app-share-system">' + esc(en ? 'More apps' : '系统分享') + '</button><button type="button" class="btn" data-action="app-share-copy">' + esc(en ? 'Copy link' : '复制链接') + '</button><a class="btn" href="https://wa.me/?text=' + encodeURIComponent('雪团 XueTuan · ' + url) + '" target="_blank" rel="noopener noreferrer">WhatsApp</a></div><p class="f-hint">' + esc(en ? 'WeChat / Instagram: copy the link and paste it in a chat. Available system share apps depend on your phone.' : '微信 / Instagram：复制链接后粘贴到聊天中；系统分享中的应用以手机实际支持为准。') + '</p><button type="button" class="btn ghost" data-modal="no">' + esc(en ? 'Close' : '关闭') + '</button></div>');
+  }
+  function copyAppShare() {
+    function fallback() {
+      var input = $('#app-share-link'); if (!input) return;
+      input.focus(); input.select(); input.setSelectionRange(0,input.value.length);
+      var copied = false; try { copied = document.execCommand('copy'); } catch (e) {}
+      toast(copied ? (state.lang === 'en' ? 'Link copied' : '链接已复制，可以粘贴给朋友了') : (state.lang === 'en' ? 'Long-press the selected link to copy' : '长按选中的链接，选择复制'));
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(appShareURL()).then(function () { toast(state.lang === 'en' ? 'Link copied' : '链接已复制，可以粘贴给朋友了'); },fallback);
+    else fallback();
+  }
+  function sendAppShare() {
+    if (!navigator.share) { copyAppShare(); return; }
+    try { Promise.resolve(navigator.share({title:'雪团 XueTuan',text:state.lang === 'en' ? 'Discover food and scenery with classmates.' : '一起发现同学推荐的美食和美景。',url:appShareURL()})).catch(function (e) { if (!e || e.name !== 'AbortError') copyAppShare(); }); }
+    catch (e) { copyAppShare(); }
+  }
   function shareSnapshot(includePrivate) {
     var ids = new Set();
     store.reviews().forEach(function (r) { if (isMine(r) && !r.sample && (includePrivate || r.visibility === 'public')) ids.add(r.placeId); });
@@ -6798,6 +6828,9 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
       case 'home-mode': state.homeMode = ['all','food','travel'].indexOf(d.v) !== -1 ? d.v : 'all'; render(); view.scrollTop = 0; break;
       case 'home-filters': setHomeFiltersOpen(!state.homeFiltersOpen); break;
       case 'my-share': openMyShare(); break;
+      case 'app-share': openAppShare(); break;
+      case 'app-share-copy': copyAppShare(); break;
+      case 'app-share-system': sendAppShare(); break;
       case 'share-theme': if (shareCard && shareCard.own) { shareCard.theme = d.v === 'stats' ? 'stats' : 'atlas'; render(); } break;
       case 'share-card': sendShareCard(); break;
       case 'save-share-card': saveShareCard(); break;
