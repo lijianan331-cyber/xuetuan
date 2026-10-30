@@ -1580,9 +1580,10 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
    */
   function remoteStore(client) {
     var ANON = { id: null, name: '', country: '', region: '', city: '', district: '' };
-    var cache = { places: [], reviews: [], wishlist: [], homes: [], profile: ANON };
+    var cache = { places: [], reviews: [], wishlist: [], homes: [], profile: ANON, admin: false };
     var session = null, email = '';
     var photoURLs = new Map();
+    var photoExpiries = new Map(), photoRequests = new Map();
     var listeners = [];
 
     function uidNow() { return session ? session.user.id : null; }
@@ -1627,8 +1628,9 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
       return photos.reduce(function (chain, ph) { return chain.then(function () {
         var path = photoPath(ph.id);
         if (ph.uploadedPath === path) { done++; if (progress) progress('upload', done, photos.length); return path; }
+        ph.uploadError = null;
         /* 原图和小图并行；仍等待上传确认后再保存记录。 */
-        function upload(p, blob, type) { return bucket.upload(p, blob, { contentType: type, upsert: false }).then(function (res) { return !res.error; }, function () { return false; }); }
+        function upload(p, blob, type) { return bucket.upload(p, blob, { contentType: type, upsert: false }).then(function (res) { if (p === path && res.error) ph.uploadError = res.error; return !res.error; }, function (e) { if (p === path) ph.uploadError = e; return false; }); }
         return Promise.all([upload(path, ph.blob, mediaType(path)), ph.thumb ? upload(thumbPath(path), ph.thumb, 'image/jpeg') : Promise.resolve(false)]).then(function (res) {
           done++; if (progress) progress('upload', done, photos.length);
           if (!res[0]) {
@@ -1642,7 +1644,7 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
         });
       }).then(function (path) { paths.push(path); }); }, Promise.resolve()).then(function () {
         var good = paths.filter(Boolean);
-        return { paths: good, ok: good.length === photos.length };
+        return { paths: good, ok: good.length === photos.length, error: (photos.filter(function (ph) { return ph.uploadError; })[0] || {}).uploadError };
       });
     }
     function removePhotos(paths) {
@@ -1659,11 +1661,13 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
         uid ? client.from('profiles').select('*').eq('id', uid).maybeSingle() : Promise.resolve({ data: null }),
         uid ? client.from('wishlist').select('*') : Promise.resolve({ data: [] }),
         /* 家这张表是后加的，读不到也别让整个应用打不开 */
-        client.from('homes').select('user_id, city, lat, lng, is_public, owner:profiles(name)').limit(10000).then(function (r) { return r.error ? { data: [] } : r; }, function () { return { data: [] }; })
+        client.from('homes').select('user_id, city, lat, lng, is_public, owner:profiles(name)').limit(10000).then(function (r) { return r.error ? { data: [] } : r; }, function () { return { data: [] }; }),
+        uid ? client.rpc('xuetuan_is_admin').then(function (r) { return !r.error && r.data === true; }, function () { return false; }) : Promise.resolve(false)
       ]).then(function (res) {
         if (uid !== uidNow() || (guard && !guard())) return false;
         var places = ok(res[0]), visits = ok(res[1]), profile = ok(res[2]), wish = ok(res[3]);
         cache.homes = (res[4].data || []).map(homeFromRow);
+        cache.admin = res[5] === true;
         cache.places = places.map(placeFromRow);
         cache.reviews = visits.map(function (v) { return reviewFromRow(v); });
         cache.profile = uid ? Object.assign({}, ANON, profile || {}, { id: uid }) : ANON;
@@ -1674,6 +1678,7 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
       var before = uidNow();
       session = s;
       email = s && s.user ? s.user.email || '' : '';
+      if (before !== uidNow()) { cache.admin = false; photoURLs.forEach(function (u) { if (/^blob:/.test(u)) URL.revokeObjectURL(u); }); photoURLs.clear(); photoExpiries.clear(); photoRequests.clear(); }
       return before !== uidNow();
     }
 
@@ -1695,6 +1700,19 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
 
     return {
       mode: 'remote',
+      isAdmin: function () { return cache.admin; },
+      moderateVisit: function (id, decision) {
+        return client.rpc('xuetuan_moderate_visit', { visit_id:id, decision:decision }).then(ok).then(function (result) {
+          cache.reviews = cache.reviews.filter(function (r) { return r.id !== id; });
+          return client.storage.from('photos').remove(result.files || []).then(function (r) { return { banned:result.banned, mediaOk:!r.error }; }, function () { return { banned:result.banned, mediaOk:false }; });
+        });
+      },
+      cleanModerationMedia: function () {
+        return client.rpc('xuetuan_moderation_pending').then(ok).then(function (paths) {
+          if (!paths.length) return 0;
+          return client.storage.from('photos').remove(paths).then(ok).then(function () { return paths.length; });
+        });
+      },
       refresh: function (guard) { return loadAll(guard); },
       init: function () {
         client.auth.onAuthStateChange(function (event, s) {
@@ -1744,11 +1762,19 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
       /* small：小图地址。以前传的照片没有小图，图片加载失败时由显示的地方退回原图 */
       photoURL: function (id, small) {
         var key = small ? id + THUMB_KEY : id;
-        if (photoURLs.has(key)) return Promise.resolve(photoURLs.get(key));
+        if (photoURLs.has(key) && (!photoExpiries.has(key) || photoExpiries.get(key) > Date.now())) return Promise.resolve(photoURLs.get(key));
         if (id.indexOf('/') === -1) return photoStore.get(id).then(function (b) { return b ? URL.createObjectURL(b) : null; });
-        var u = client.storage.from('photos').getPublicUrl(small ? thumbPath(id) : id).data.publicUrl;
-        photoURLs.set(key, u);
-        return Promise.resolve(u);
+        if (photoRequests.has(key)) return photoRequests.get(key);
+        var actor = uidNow();
+        var request = client.storage.from('photos').createSignedUrl(small ? thumbPath(id) : id, 300).then(function (res) {
+          // Older uploads may have no thumbnail. Try the same authorized original, never a public URL.
+          return small && res.error ? client.storage.from('photos').createSignedUrl(id, 300) : res;
+        }).then(function (res) {
+          if (actor !== uidNow() || res.error || !res.data || !res.data.signedUrl) return null;
+          photoURLs.set(key, res.data.signedUrl); photoExpiries.set(key, Date.now() + 240000);
+          return res.data.signedUrl;
+        }, function () { return null; }).then(function (u) { if (photoRequests.get(key) === request) photoRequests.delete(key); return u; });
+        photoRequests.set(key, request); return request;
       },
       hasPhotoURL: function (id) { return photoURLs.has(id); },
 
@@ -1771,7 +1797,7 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
       },
       addReview: function (f, newPhotos, progress) {
         return needLogin() || uploadPhotos(newPhotos, progress).then(function (up) {
-          if (!up.ok) throw new Error('photo-upload');
+          if (!up.ok) throw up.error || new Error('photo-upload');
           if (progress) progress('write');
           var row = { place_id: f.placeId, rating: f.rating, price: f.price, text: f.text, title: f.title || null, visibility: f.visibility, photos: up.paths, updated_at: new Date().toISOString() };
           if (f.createdAt) row.created_at = new Date(f.createdAt).toISOString();
@@ -1786,7 +1812,7 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
         var r = find(cache.reviews, id);
         if (!r) return Promise.reject(new Error('missing'));
         return needLogin() || uploadPhotos(newPhotos, progress).then(function (up) {
-          if (!up.ok) throw new Error('photo-upload');
+          if (!up.ok) throw up.error || new Error('photo-upload');
           if (progress) progress('write');
           var dropped = (r.photos || []).filter(function (p) { return keepPhotos.indexOf(p) === -1; });
           var row = { rating: patch.rating, price: patch.price, text: patch.text, title: patch.title || null, visibility: patch.visibility, photos: keepPhotos.concat(up.paths) };
@@ -1927,7 +1953,15 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
 
   /* 有 Supabase 配置就用线上版；地址里加 ?local 或者 supabase 库没加载出来时用本地版 */
   /* 店名搜索查的是 Supabase 里的公共地点库，本地版也能用 */
-  var sbClient = window.supabase && window.supabase.createClient && SUPABASE_URL ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
+  function browserDeviceId() {
+    var saved = lsGet('xuetuan:browser-device:v1');
+    if (/^[a-f0-9-]{36}$/i.test(saved || '')) return saved;
+    var bytes = new Uint8Array(16); crypto.getRandomValues(bytes); bytes[6] = (bytes[6] & 15) | 64; bytes[8] = (bytes[8] & 63) | 128;
+    var h = Array.from(bytes).map(function (x) { return x.toString(16).padStart(2,'0'); }).join('');
+    saved = h.slice(0,8)+'-'+h.slice(8,12)+'-'+h.slice(12,16)+'-'+h.slice(16,20)+'-'+h.slice(20);
+    lsSet('xuetuan:browser-device:v1',saved); return saved;
+  }
+  var sbClient = window.supabase && window.supabase.createClient && SUPABASE_URL ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { global: { headers: { 'x-xuetuan-device': browserDeviceId() } } }) : null;
   var store = (function () {
     var forceLocal = /[?&]local(=|&|$)/.test(location.search) || window.XUETUAN_LOCAL;
     if (!forceLocal && sbClient) return remoteStore(sbClient);
@@ -2068,6 +2102,32 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
     return got ? got.slice() : [];
   }
   function isMine(r) { return r.authorId === me().id; }
+  function isModerator() { return !!(store.isAdmin && store.isAdmin()); }
+  function moderationControl(r) {
+    return isModerator() && r.visibility === 'public' ? '<button type="button" class="link-btn danger" data-action="moderation" data-id="' + esc(r.id) + '">' + esc(state.lang === 'en' ? 'Moderate' : '管理内容') + '</button>' : '';
+  }
+  function securitySaveError(e) {
+    var msg = String(e && e.message || e || '');
+    if (/XUETUAN_.*BLOCKED/.test(msg)) return state.lang === 'en' ? 'Publishing is restricted for this account or browser.' : '该账号或浏览器已被限制发布。';
+    if (/XUETUAN_RATE_LIMIT/.test(msg)) return state.lang === 'en' ? 'Too many requests. Please try later.' : '操作太频繁，请稍后再试；草稿仍保留。';
+    if (/XUETUAN_RELOAD_REQUIRED/.test(msg)) return state.lang === 'en' ? 'Refresh to use the updated security settings.' : '防护已更新，请刷新页面后再操作。';
+    return state.lang === 'en' ? 'Save failed. Your draft is kept; please try again.' : '保存失败，草稿仍保留，请稍后重试。';
+  }
+  function openModeration(id) {
+    var r = store.review(id);
+    if (!isModerator() || !r || r.visibility !== 'public') return;
+    openModal('<div class="modal-card" role="dialog" aria-modal="true"><h3>' + esc(state.lang === 'en' ? 'Moderate public content' : '管理公开内容') + '</h3><p>' + esc(state.lang === 'en' ? 'Remove this post and its media. A browser ban can be bypassed by clearing data or changing browsers.' : '删除会移除这条内容及其图片。封禁限制账号及已记录的浏览器标识；清除数据或更换浏览器可能绕过浏览器限制。') + '</p><button type="button" class="btn danger" data-action="moderation-confirm" data-id="' + esc(id) + '" data-decision="delete">' + esc(state.lang === 'en' ? 'Delete content and media' : '删除内容和图片') + '</button><button type="button" class="btn danger" data-action="moderation-confirm" data-id="' + esc(id) + '" data-decision="delete_and_ban">' + esc(state.lang === 'en' ? 'Delete and ban author' : '删除并封禁作者') + '</button><button type="button" class="btn ghost" data-modal="no">' + esc(t('cancel')) + '</button></div>');
+  }
+  var moderationBusy = false;
+  function moderateVisit(id, decision) {
+    if (!isModerator() || moderationBusy) return;
+    moderationBusy = true;
+    $$('#modal button').forEach(function (b) { b.disabled = true; });
+    store.moderateVisit(id,decision).then(function (r) {
+      closeModal(); refreshMap(); goFeed();
+      toast(r.mediaOk ? (state.lang === 'en' ? 'Content removed' : r.banned ? '内容已删除，作者及已记录浏览器已封禁' : '内容和图片已删除') : (state.lang === 'en' ? 'Post removed; retry media cleanup in My account.' : '内容已删除，图片清理失败，可在“我的”重试清理'));
+    }, function (e) { toast(securitySaveError(e)); $$('#modal button').forEach(function (b) { b.disabled = false; }); }).then(function () { moderationBusy = false; });
+  }
   /* 三种地图：all = 探索（公开记录），mine = 我的足迹，saved = 收藏（公开记录 + 我自己的） */
   function scopedReviews(placeId, scope) {
     scope = scope || state.scope;
@@ -4270,7 +4330,7 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
     if (r.title) h += '<h1 class="post-title">' + esc(r.title) + '</h1>';
     if (text) h += '<p class="post-text">' + esc(text) + '</p>';
     h += '<ul class="near-list post-place">' + placeRowHTML(p, 'post-place', esc(catName(c)) + ' · ' + esc(t('distFrom', { d: fmtDist(haversine(XMUM, p)) })), '<span class="near-cta">' + esc(t('postPlace')) + '</span>') + '</ul>';
-    h += '<div class="actions post-actions">' + saveBtnHTML(p.id, false) + '</div>';
+    h += '<div class="actions post-actions">' + saveBtnHTML(p.id, false) + moderationControl(r) + '</div>';
     view.innerHTML = h;
   }
 
@@ -4351,7 +4411,7 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
       }).join('') + '</div>' : '') +
       (isMine(r) ? '<div class="rv-actions"><button type="button" class="link-btn" data-action="edit-review" data-id="' + esc(r.id) + '">' + esc(t('edit')) + '</button>' +
         '<button type="button" class="link-btn danger" data-action="del-review" data-id="' + esc(r.id) + '">' + esc(t('del')) + '</button></div>' : '') +
-      '</div></li>';
+      moderationControl(r) + '</div></li>';
   }
 
   function fieldHTML(id, label, control) {
@@ -5025,7 +5085,7 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
       : '<button type="button" class="btn small" data-action="export">' + esc(t('exportData')) + '</button>' +
         '<button type="button" class="btn small" data-action="import">' + esc(t('importData')) + '</button>' +
         (store.hasSamples() ? '<button type="button" class="btn small ghost" data-action="clear-samples">' + esc(t('clearSamples')) + '</button>' : '');
-    var h = meHeadHTML() + '<button type="button" class="btn home-set-btn" data-action="my-share">' + CTRL_ICON.arrow + esc(state.lang === 'en' ? 'Share my footprints' : '分享我的足迹') + '</button>' +
+    var h = meHeadHTML() + (isModerator() ? '<div class="field"><b>' + esc(state.lang === 'en' ? 'Administrator' : '管理员') + '</b><p class="f-hint">' + esc(state.lang === 'en' ? 'Open a public post to moderate it.' : '进入公开帖子或点评，可删除内容、图片并封禁作者。') + '</p><button type="button" class="btn small" data-action="moderation-clean">' + esc(state.lang === 'en' ? 'Retry media cleanup' : '重试待删除图片清理') + '</button></div>' : '') + '<button type="button" class="btn home-set-btn" data-action="my-share">' + CTRL_ICON.arrow + esc(state.lang === 'en' ? 'Share my footprints' : '分享我的足迹') + '</button>' +
       '<div class="form">' + account + testAccountsHTML() + personal +
       '<div class="field"><span class="f-label">' + esc(t('language')) + '</span><div class="seg">' +
       '<button type="button" data-action="set-lang" data-lang="zh" aria-pressed="' + (state.lang === 'zh') + '">中文</button>' +
@@ -5115,7 +5175,9 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
       '<input class="input share-link" id="share-link" readonly aria-label="' + esc(en ? 'Share link' : '分享链接') + '" value="' + esc(card.url) + '">' + (!card.own ? '<button type="button" class="btn primary" data-action="tab" data-tab="home">' + esc(en ? 'Explore XueTuan' : '打开雪团，一起发现') + '</button>' : '');
     var canvas = $('#share-canvas');
     drawShareCard(canvas, d, en);
-    canvas.toBlob(function (blob) { if (shareCard === card && canvas.isConnected) card.blob = blob; }, 'image/png');
+    var saveButton = $('[data-action="save-share-card"]');
+    if (saveButton) saveButton.disabled = true;
+    canvas.toBlob(function (blob) { if (shareCard === card && canvas.isConnected) { card.blob = blob; if (saveButton) saveButton.disabled = !blob; } }, 'image/png');
   }
   function drawShareCard(canvas, d, en) {
     var g = canvas.getContext('2d');
@@ -6060,7 +6122,7 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
       f.saving = false;
       frozen.forEach(function (el) { el.disabled = false; }); status.remove();
       if (btn) { btn.disabled = false; btn.textContent = t(f.editId ? 'saveEdit' : 'publish'); }
-      toast(t('saveFail'));
+      toast(securitySaveError(e));
     });
   }
 
@@ -6828,6 +6890,9 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
       case 'home-mode': state.homeMode = ['all','food','travel'].indexOf(d.v) !== -1 ? d.v : 'all'; render(); view.scrollTop = 0; break;
       case 'home-filters': setHomeFiltersOpen(!state.homeFiltersOpen); break;
       case 'my-share': openMyShare(); break;
+      case 'moderation': openModeration(d.id); break;
+      case 'moderation-confirm': moderateVisit(d.id,d.decision); break;
+      case 'moderation-clean': if (isModerator()) store.cleanModerationMedia().then(function (n) { toast(state.lang === 'en' ? 'Media cleanup complete: ' + n : '图片清理完成：' + n); }, function (e) { toast(securitySaveError(e)); }); break;
       case 'app-share': openAppShare(); break;
       case 'app-share-copy': copyAppShare(); break;
       case 'app-share-system': sendAppShare(); break;

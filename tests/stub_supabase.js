@@ -129,13 +129,25 @@
   window.__sbLogout = function () { session = null; emit('SIGNED_OUT'); };
 
   window.supabase = {
-    createClient: function (url, key) {
+    createClient: function (url, key, opts) {
+      if (opts) window.__sb.options = opts;
       window.__sb.url = url; window.__sb.key = key;
       return {
         from: function (table) { return new Query(table); },
         /* 地点库搜索：名字里包含关键词就算搜到 */
         rpc: function (name, args) {
           calls.push(['rpc', name, args]);
+          if (name === 'xuetuan_is_admin') return Promise.resolve({data:uid() === window.__sbAdmin,error:null});
+          if (name === 'xuetuan_moderate_visit') {
+            if (!uid() || uid() !== window.__sbAdmin) return Promise.resolve(err('Admin required'));
+            var rv=db.visits.find(function(r){return r.id===args.visit_id && r.visibility==='public';});
+            if (!rv) return Promise.resolve(err('Public post not found'));
+            var paths=(rv.photos||[]).concat((rv.photos||[]).map(function(p){return p.replace(/\.(jpg|gif|mp4|mov|webm)$/i,'_t.jpg');}));
+            if(args.decision==='delete_and_ban') window.__sbBanned=rv.user_id;
+            db.visits=db.visits.filter(function(r){return r.id!==rv.id;});window.__sb.db.visits=db.visits;
+            return Promise.resolve({data:{files:paths,banned:args.decision==='delete_and_ban'},error:null});
+          }
+          if (name === 'xuetuan_moderation_pending') return uid()===window.__sbAdmin ? Promise.resolve({data:[],error:null}) : Promise.resolve(err('Admin required'));
           if (name !== 'search_poi') return Promise.resolve(err('no such function'));
           var q = String(args.q || '').toLowerCase();
           var rows = (window.__poi || []).filter(function (r) { return r.name.toLowerCase().indexOf(q) !== -1; });
@@ -169,6 +181,11 @@
               },
               remove: function (paths) { paths.forEach(function (p) { delete files[p]; }); return Promise.resolve({ data: [], error: null }); },
               getPublicUrl: function (path) { return { data: { publicUrl: 'https://example.invalid/storage/v1/object/public/' + bucket + '/' + path } }; }
+              ,createSignedUrl: function (path, expiry) {
+                calls.push(['sign',path,expiry]);
+                if(window.__sbSignFail)return Promise.resolve(err('not allowed'));
+                return Promise.resolve({data:{signedUrl:'https://example.invalid/storage/v1/object/sign/'+bucket+'/'+path+'?token=synthetic'},error:null});
+              }
             };
           }
         }

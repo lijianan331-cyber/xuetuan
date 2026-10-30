@@ -1,3 +1,8 @@
 tests/
 docs/
 CLAUDE.md
+AGENTS.md
+supabase/
+scripts/
+.github/
+.env*

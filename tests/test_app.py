@@ -2199,7 +2199,8 @@ with sync_playwright() as p:
     page6.locator('.near-item', has_text='B 的公开店').click(); page6.wait_for_timeout(300)
     check('remote: …opening it says nobody has recorded it yet', page6.locator('.place-empty').count() == 1)
     page6.click('[data-action="toggle-save"]'); page6.wait_for_timeout(400)
-    check('remote: the last unsave removes the empty place', not any(p_['id'] == 'p-b-pub' for p_ in page6.evaluate('window.__sb.db.places')))
+    page6.wait_for_function('!window.__sb.db.places.some(p=>p.id==="p-b-pub")',timeout=4000)
+    check('remote: the last unsave removes the empty place', not any(p_['id'] == 'p-b-pub' for p_ in page6.evaluate('window.__sb.db.places')),page6.evaluate('window.__sb.db.wishlist'))
     check('remote: cannot save a place I cannot see', page6.evaluate('window.supabase.createClient().from("wishlist").insert({ user_id: "%s", place_id: "p-b-priv" }).then(r => !!r.error)' % A))
 
     # Website sharing is available without login and excludes private card/auth URL data.
@@ -2390,6 +2391,26 @@ with sync_playwright() as p:
     share_ctx.close()
     with open(os.path.join(os.getenv('TEMP',SCR),'xuetuan-real-cluster-spec.json'),'w',encoding='utf-8') as f:
         json.dump(page6.evaluate('({source:window.__map.getSource("places").spec,layers:window.__map.layers.filter(l=>["cl-photo","cl-circle","cl-halo","pt-photo"].includes(l.id))})'),f)
+
+    # Server-authorized moderation: only the verified admin receives controls.
+    tab(page6,'me')
+    check('ordinary account has no moderator cleanup controls',page6.locator('[data-action="moderation-clean"]').count()==0)
+    check('API client sends a persistent random browser identifier',page6.evaluate('/^[a-f0-9-]{36}$/.test(window.__sb.options.global.headers["x-xuetuan-device"])'))
+    check('remote media uses five-minute signed URLs',page6.evaluate('window.__sb.calls.some(c=>c[0]==="sign" && c[2]===300)'))
+    page6.evaluate('''([a,b])=>{window.__sbAdmin=a;const r=window.__sb.db.visits.find(v=>v.visibility==='public');window.__sb.db.visits.push({...r,id:'moderation-fixture',user_id:b,photos:['fixture.jpg'],title:'管理测试内容'});}''',[A,B])
+    tab(page6,'home');page6.click('[data-action="home-refresh"]');page6.wait_for_timeout(300)
+    tab(page6,'me')
+    check('server-verified moderator has an admin section',page6.locator('[data-action="moderation-clean"]').count()==1)
+    tab(page6,'home')
+    target=page6.evaluate('window.__sb.db.visits.find(r=>r.id==="moderation-fixture")')
+    page6.locator('[data-action="open-post"][data-id="'+target['id']+'"]').click()
+    page6.click('[data-action="moderation"][data-id="'+target['id']+'"]')
+    check('moderation requires a deliberate choice and explains browser limits',page6.locator('[data-action="moderation-confirm"]').count()==2 and '更换浏览器' in page6.inner_text('#modal'))
+    page6.click('[data-action="moderation-confirm"][data-decision="delete_and_ban"]')
+    page6.wait_for_function('document.querySelector("#modal").hidden')
+    check('moderation removes the selected public post and requests account ban',page6.evaluate('(id)=>!window.__sb.db.visits.some(r=>r.id===id)',target['id']) and page6.evaluate('window.__sbBanned')==target['user_id'])
+    tab(page6,'me');page6.click('[data-action="moderation-clean"]')
+    check('admin can retry pending media cleanup',True)
 
     # 退出登录
     tab(page6, 'me')
