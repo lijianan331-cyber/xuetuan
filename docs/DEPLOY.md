@@ -54,7 +54,59 @@ Supabase 自带的发信服务**只能发给项目团队成员的邮箱**（就�
 
 搜店名时先查 Supabase 里的 `poi` 表，再用 Photon（OpenStreetMap）补城市和国外的地方。
 
-- 数据：马来西亚的 [Overture Maps](https://overturemaps.org) 开放地点数据（release 2026-10-21.0，许可 CDLA-Permissive-2.0），约 26.6 万个餐厅、咖啡店、景点、商场、住宿。
-- 文件放在仓库的 `poi-data` 分支（`data/my-*.tsv`），生成脚本的筛选条件写在那个分支的 README 里。
+- 数据：[Overture Maps](https://overturemaps.org) 开放地点数据（release 2026-10-21.0，许可 CDLA-Permissive-2.0），共约 54 万个地点：
+  - 马来西亚全国、新加坡全国：餐厅、咖啡店、景点、商场、住宿；
+  - 东京、大阪、京都、曼谷、清迈、普吉：只有吃的店。
+  - 其他地方（比如美国）靠 Photon。
+- 文件放在仓库的 `poi-data` 分支（`data/*.tsv`），筛选条件写在那个分支的 README 里，新加坡、日本、泰国这批的生成脚本在 `scripts/`。
 - 表结构和搜索函数 `search_poi` 在 `supabase/migrations/20261025121500_poi_search.sql`。表只读，谁都能查，不能写。
-- 重新导入：临时开启 `http` 扩展，用 `extensions.http_get('https://raw.githubusercontent.com/<owner>/xuetuan/poi-data/data/my-000.tsv')` 读文件，按 `\t` 拆列后 `insert ... on conflict (id) do nothing`，导完删掉 `http` 扩展。
+- 导入：在 SQL Editor 里运行 `poi-data` 分支的 `scripts/import.sql`。它临时开启 `http` 扩展，用 `extensions.http_get` 从 raw.githubusercontent.com 读文件，按 `\t` 拆列后 `insert ... on conflict (id) do nothing`，导完删掉 `http` 扩展。要导别的文件就改脚本里的文件名列表。
+
+## 谷歌地图搜索（Places UI Kit）
+
+1. Google Cloud 项目 xuetuan 绑结算账号，启用 Maps JavaScript API、Places API (New) 和 **Places UI Kit**（`placewidgets.googleapis.com`）。
+2. 凭据 → API 密钥：API 限制勾上面三个；应用限制选“网站”，加 `https://xuetuan.vercel.app/*` 、分支预览 `https://xuetuan-git-claude-project-thread-ze8a57-ganan1.vercel.app/*` 和 `https://raw.githack.com/*`（浏览器跨站只发域名，不发路径，所以 githack 只能写到域名）。
+3. 密钥写在 `index.html` 的 `GOOGLE_KEY`。网页里的谷歌密钥本来就是公开的，靠第 2 步的网站限制保护。
+4. 建议在结算里设预算提醒。
+
+
+### 谷歌搜索不出现时（2026-10-28）
+
+搜索两个字以上后，「谷歌地图上的」现在保留状态说明，不再悄悄隐藏：
+- 连接失败 / 超时：点「重试谷歌」；其他来源仍可搜索。
+- 当天 60 次用完：说明次日恢复，不重置计数绕过上限；也可用「去 Google 地图搜」打开官方地图。
+- 授权失败：核对当前完整域名是否在这把 key 的网站限制内，API 限制是否包含 Maps JavaScript API、Places API (New)、Places UI Kit。不要取消密钥限制。
+- `?nogoogle`：明确提示该网址关闭了谷歌搜索；去掉参数后重新打开。
+- Vercel 分支预览若要求登录，需先通过 Vercel 的正常登录；这与雪团内部登录、Google Cloud 的网站授权是三件不同的事。
+
+代码等待 Google 自定义元素注册后才设置请求，避免把属性写进尚未升级的空元素。脚本和请求均有超时；失败不会把整个页面会话永久禁用。旧请求的结果/错误不覆盖新词。
+
+
+### 搜索预热和图片添加
+
+普通搜索/添加页打开时会预加载 Maps JavaScript 的 places 库；图片地点输入框聚焦时也会预热。此时不挂地点查询组件、不记查询次数。停止输入 400ms 后，才挂载官方 UI Kit 并记一次；普通搜索和所有图片组共用同一台设备每天 60 次的上限。网络和谷歌服务本身的耗时仍不能保证。
+
+没有 GPS 的图片直接在地点搜索下显示谷歌结果；有 GPS 的图片可点「搜索其他地点」。默认偏好该照片或相近日期的照片位置。选中谷歌地点时，Google 的店名/评分/照片仍只显示在官方组件内，不读取进雪团；记录名先用自己输入的搜索词，可在已有记录编辑流程里调整。
+
+### 首页帖子标题（2026-10-29）
+部署包含首页发帖功能的版本前先应用 `20261029093501_visit_post_title.sql`。只给 visits 新增可为空、最多 80 字符的 title；沿用现有 user_id、place_id 和 RLS。图片/标题必填是首页发帖入口的前端校验，地图普通添加继续允许无图片记录。已在项目 pshxrwfjcbvqlixdxlzs 应用并检查字段和 RLS。
+
+### 首页刷新与快捷可见性（2026-10-29）
+首页刷新复用 RLS 过滤后的读取，前台首页每 45 秒轮询，支持手动刷新与回到前台检查；未启用系统推送或新增 Realtime publication。快捷可见性只更新 visits.visibility，批量操作同时按记录 ID 和当前 user_id 过滤；无需新数据库迁移。原有匿名账号/归属权限保留。
+
+### 地图聚合与足迹分享（2026-10-29）
+同坐标地点仅在前端合成标记，保留全部原地点/评价；街区级聚合有封面时显示照片和照片总数，点击选择具体地点。`python tests/test_app.py` 后可运行 `python tests/test_map_clusters.py`，用真实 MapLibre 5.24.0 检查聚合表达式、同坐标和参数更新；后者在临时目录缓存公开 CDN 脚本，仅使用合成测试数据。
+
+分享卡是 URL 内的统计快照，不是实时公开主页；无需数据库迁移。默认只统计本人公开记录，私人记录数量须主动勾选；链接无坐标、照片、点评、账号 ID，用户可保存图片或自行调用系统分享。快照数字可由发送者修改，不作认证成绩或排名。分支预览网址仍受 Vercel 分享权限约束，当前页面有分享参数时会沿用，登录回调等参数不会加入分享链接。
+
+
+### 防护与内容管理（2026-10-30）
+先部署支持 createSignedUrl 和浏览器标识请求头的客户端，再应用 20261030064731_security_hardening.sql，最后把已验证的管理员 auth.users.id 加入 xuetuan_guard.admins（不要公开邮箱/账号列表）。线上启用经用户明确同意。不要在旧客户端上先切私人桶，否则旧页照片会失效；旧标签页可能需要刷新。
+
+照片授权链接 300 秒、客户端缓存 240 秒，过期后重新取授权。公开转私人后，既有授权链接最多仍可用 300 秒，已下载/缓存的文件无法收回。管理仅针对公开内容；服务器把待删除图片加入专用队列，管理员不能借此读取其他私人照片。网络中断时，内容已经移除，“我的→重试待删除图片清理”可继续清文件。管理操作保留审计记录。
+
+浏览器标识是设备本地随机 UUID，并非硬件标识。清除数据、换浏览器、伪造新标识可以绕过浏览器封禁；账号封禁独立生效，已有会话也无法继续写入。只记录启用后发生写入的浏览器，不承诺追溯旧设备。限流按账号和操作类别：新增记录/地点每分钟60、每天300；记录修改每分钟240、每天2000；图片及小图合计每分钟180、每天1200；家乡修改每分钟30、每天100；其余受保护写入每分钟120、每天1000。固定时间窗原子计数，批量导入会消耗额度。不能把账号限流描述成全站IP限流或防DDoS保证；多账号滥用仍需进一步配置认证验证码、流量监控和托管平台防火墙。
+
+验证：安装测试依赖 @electric-sql/pglite@0.3.14 至临时目录，用 node tests/test_security.mjs <pglite/dist/index.js绝对路径> 跑真实 PostgreSQL 权限/封禁/限流检查；python tests/test_app.py 检查界面与签名链接。安全头由 vercel.json 配置，保留 Google 组件、定位与文件选择兼容性；本轮未宣称完整CSP脚本白名单或独立渗透测试。
+
+本轮已在 pshxrwfjcbvqlixdxlzs 启用并完成线上匿名上传/发布及权限拒绝验证，临时验证账号/图片已清理。旧页面请刷新后使用。补充检查：node tests/test_media_urls.mjs、python tests/test_security_headers.py。匿名访问相关 advisor 提示对应产品已授权的匿名使用模式；密码泄露检查未开启仍是后台待配置项，当前主要使用匿名与 Google 登录。

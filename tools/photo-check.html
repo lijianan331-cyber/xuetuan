@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>照片位置检查</title>
+<style>
+  :root { color-scheme: only light; --blue: #2E7DCB; --ink: #1b2a3a; --muted: #6b7a8c; --line: #e3e9f0; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #f5f8fb; color: var(--ink); font: 15px/1.5 system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; }
+  main { max-width: 560px; margin: 0 auto; padding: 20px 16px 40px; }
+  h1 { font-size: 20px; margin: 0 0 6px; }
+  p { margin: 0 0 12px; color: var(--muted); }
+  label.pick { display: block; text-align: center; background: var(--blue); color: #fff; font-weight: 600; padding: 14px; border-radius: 12px; margin: 16px 0; }
+  input[type=file] { display: none; }
+  .sum { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 14px; margin-bottom: 12px; }
+  .sum b { font-size: 22px; color: var(--blue); }
+  ul { list-style: none; padding: 0; margin: 0; }
+  li { background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; font-size: 13px; word-break: break-all; }
+  li .no { color: #c0392b; }
+  li .yes { color: #1e8e3e; }
+  a { color: var(--blue); }
+</style>
+</head>
+<body>
+<main>
+  <h1>照片位置检查</h1>
+  <p>选几张在店里、景点拍的照片（可以多选），看看手机给网页的照片里有没有拍摄地点和时间。照片只在你手机上读，不会上传。</p>
+  <label class="pick">选照片（可多选）<input id="f" type="file" accept="image/*" multiple></label>
+  <p>如果弹出的选择器里有“相册”和“文件 / 文件管理”两种，两种都试一下，有的会把位置去掉。</p>
+  <div id="out"></div>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/exifr@7.1.3/dist/full.umd.js"></script>
+<script>
+  var out = document.getElementById('out');
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  document.getElementById('f').addEventListener('change', function (e) {
+    var files = [].slice.call(e.target.files || []);
+    if (!files.length) return;
+    out.innerHTML = '<p>正在读 ' + files.length + ' 张…</p>';
+    Promise.all(files.map(function (f) {
+      return exifr.parse(f)
+        .catch(function () { return null; })
+        .then(function (x) { return { f: f, x: x || {} }; });
+    })).then(function (rows) {
+      var withGps = rows.filter(function (r) { return typeof r.x.latitude === 'number' && typeof r.x.longitude === 'number'; });
+      var withTime = rows.filter(function (r) { return r.x.DateTimeOriginal || r.x.CreateDate || r.x.ModifyDate; });
+      var spots = {};
+      withGps.forEach(function (r) { spots[r.x.latitude.toFixed(3) + ',' + r.x.longitude.toFixed(3)] = 1; });
+      var h = '<div class="sum">共 ' + rows.length + ' 张：有位置的 <b>' + withGps.length + '</b> 张，有拍摄时间的 ' + withTime.length + ' 张' +
+        (withGps.length ? '，大约 ' + Object.keys(spots).length + ' 个不同的地方' : '') + '。</div><ul>';
+      rows.forEach(function (r) {
+        var x = r.x, t = x.DateTimeOriginal || x.CreateDate || x.ModifyDate;
+        var gps = typeof x.latitude === 'number'
+          ? '<span class="yes">有位置</span> <a target="_blank" rel="noopener" href="https://www.google.com/maps?q=' + x.latitude.toFixed(6) + ',' + x.longitude.toFixed(6) + '">' + x.latitude.toFixed(5) + ', ' + x.longitude.toFixed(5) + '</a>'
+          : '<span class="no">没有位置</span>';
+        h += '<li>' + esc(r.f.name) + '（' + Math.round(r.f.size / 1024) + ' KB, ' + esc(r.f.type || '?') + '）<br>' + gps +
+          ' · ' + (t ? esc(new Date(t).toLocaleString('zh-CN')) : '没有时间') + (x.Model ? ' · ' + esc(x.Model) : '') + '</li>';
+      });
+      out.innerHTML = h + '</ul>';
+    });
+  });
+</script>
+</body>
+</html>

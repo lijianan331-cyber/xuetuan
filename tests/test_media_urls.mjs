@@ -1,0 +1,18 @@
+import fs from 'node:fs';
+import assert from 'node:assert/strict';
+const html=fs.readFileSync('index.html','utf8');
+const source=html.slice(html.indexOf('  function remoteStore(client)'),html.indexOf('  function browserDeviceId()'));
+const factory=new Function('lsGet','lsSet','LS_AREAS','THUMB_KEY','photoStore',source+';return remoteStore;')(()=>null,()=>{},'areas','#t',{get:()=>Promise.resolve(null)});
+let calls=[],deny=false;
+const store=factory({storage:{from:()=>({createSignedUrl:async(path,ttl)=>{calls.push([path,ttl]);return deny||path.endsWith('_t.jpg')?{error:{message:'not found'}}:{data:{signedUrl:'https://synthetic.invalid/signed/'+path+'?token=test'}};}})}});
+const photo='aaaaaaaa-0000-4000-8000-000000000001/ph-old.jpg';
+assert.ok((await store.photoURL(photo,true)).includes('/signed/'+photo));
+assert.deepEqual(calls.map(c=>c[0]),[photo.replace('.jpg','_t.jpg'),photo]);
+assert.ok(calls.every(c=>c[1]===300));
+await store.photoURL(photo,true);assert.equal(calls.length,2);
+const now=Date.now;Date.now=()=>now()+241000;
+await store.photoURL(photo,true);assert.equal(calls.length,4);
+deny=true;Date.now=()=>now()+500000;
+assert.equal(await store.photoURL(photo,true),null);
+Date.now=now;
+console.log('PASS signed media: missing thumbnails use authorized original; 300s expiry, cache refresh and denied access fail closed');
