@@ -767,13 +767,18 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
 .modal-card p { margin: 0; }
 .lightbox { position: fixed; top: 0; right: 0; bottom: 0; left: 0; z-index: 80; display: grid; place-items: center; background: rgba(6, 12, 18, .93); }
 .lightbox img, .lightbox video { max-width: min(92vw, 1200px); max-height: 84vh; border-radius: 10px; object-fit: contain; }
+.lightbox img { touch-action: pan-y pinch-zoom; }
 .lightbox [hidden] { display: none; }
 .lb-btn { position: absolute; width: 46px; height: 46px; padding: 0; border: 0; border-radius: 50%; background: rgba(255, 255, 255, .14); color: #fff; font-size: 22px; display: grid; place-items: center; }
 .lb-close { top: calc(env(safe-area-inset-top, 0px) + 14px); right: max(14px, env(safe-area-inset-right, 0px)); }
 .lb-prev { left: max(14px, env(safe-area-inset-left, 0px)); top: 50%; transform: translateY(-50%); }
 .lb-next { right: max(14px, env(safe-area-inset-right, 0px)); top: 50%; transform: translateY(-50%); }
-.lb-count { position: absolute; left: 50%; bottom: calc(env(safe-area-inset-bottom, 0px) + 18px); transform: translateX(-50%); color: #fff; font-size: 13px; font-weight: 600; }
-.lb-comment { position: absolute; bottom: calc(env(safe-area-inset-bottom, 0px) + 48px); left: 12%; right: 12%; max-height: 18vh; overflow-y: auto; color: white; background: rgba(0,0,0,.55); border-radius: 10px; padding: 9px 12px; font-size: 13px; white-space: pre-wrap; }
+.lb-navigation { position: absolute; z-index: 3; left: 50%; bottom: calc(env(safe-area-inset-bottom, 0px) + 14px); transform: translateX(-50%); display: flex; align-items: center; gap: 18px; }
+.lb-navigation .lb-btn { position: static; transform: none; background: rgba(22,36,49,.9); border: 1px solid rgba(255,255,255,.4); font-size: 30px; }
+.lb-count { color: #fff; font-size: 13px; font-weight: 600; min-width: 44px; text-align: center; }
+.lb-status { position: absolute; z-index: 2; top: 20%; left: 12%; right: 12%; text-align: center; color: #fff; padding: 10px; background: rgba(6,12,18,.8); border-radius: 10px; }
+.lb-status .link-btn { color: #a4d9ff; margin-left: 8px; }
+.lb-comment { position: absolute; bottom: calc(env(safe-area-inset-bottom, 0px) + 82px); left: 8%; right: 8%; max-height: 18vh; overflow-y: auto; color: white; background: rgba(0,0,0,.55); border-radius: 10px; padding: 9px 12px; font-size: 13px; white-space: pre-wrap; }
 .lightbox:has(.lb-comment:not([hidden])) > img, .lightbox:has(.lb-comment:not([hidden])) > video { max-height: 65vh; margin-bottom: 9vh; }
 .drop-pulse { width: 18px; height: 18px; border-radius: 50%; background: var(--accent); animation: drop-pulse 1.4s ease-out 1 forwards; }
 @keyframes drop-pulse {
@@ -866,9 +871,12 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
   <img id="lb-img" alt="">
   <video id="lb-vid" muted loop autoplay playsinline hidden></video>
   <button type="button" class="lb-btn lb-close" data-action="lb-close" data-i18n-aria="close">✕</button>
-  <button type="button" class="lb-btn lb-prev" id="lb-prev" data-action="lb-prev" aria-label="‹">‹</button>
-  <button type="button" class="lb-btn lb-next" id="lb-next" data-action="lb-next" aria-label="›">›</button>
-  <div class="lb-count" id="lb-count"></div>
+  <div class="lb-navigation" id="lb-navigation">
+    <button type="button" class="lb-btn lb-prev" id="lb-prev" data-action="lb-prev" aria-label="上一张">‹</button>
+    <div class="lb-count" id="lb-count" aria-live="polite"></div>
+    <button type="button" class="lb-btn lb-next" id="lb-next" data-action="lb-next" aria-label="下一张">›</button>
+  </div>
+  <div class="lb-status" id="lb-status" role="status" hidden><span id="lb-status-text"></span><button type="button" class="link-btn" id="lb-retry" data-action="lb-retry" hidden>重试</button></div>
   <div class="lb-comment" id="lb-comment" hidden></div>
 </div>
 <input type="file" id="f-file" accept="image/*,video/*" multiple hidden>
@@ -1777,6 +1785,7 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
         }, function () { return null; }).then(function (u) { if (photoRequests.get(key) === request) photoRequests.delete(key); return u; });
         photoRequests.set(key, request); return request;
       },
+      invalidatePhotoURL: function (id) { [id,id+THUMB_KEY].forEach(function (k) { if (!/^blob:/.test(photoURLs.get(k) || '')) { photoURLs.delete(k); photoExpiries.delete(k); photoRequests.delete(k); } }); },
       hasPhotoURL: function (id) { return photoURLs.has(id); },
 
       /* ---- 写 ---- */
@@ -2440,6 +2449,7 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
       if (PERF) { map.on('move', perfMoved); map.on('style.load', perfHook); perfHook(); if (!GMAP) map.on('idle', perfMark); }
       map.on('idle', function () { if (!glyphsWarmed) setTimeout(warmGlyphs, 800); collectBaseNames(); updateHomePlacement(); });
       map.on('zoom', function () { if (state.picking) updatePickUI(); });
+      map.on('dragstart', function () { if (state.picking && state.picking.selected) { state.picking.selected = null; updatePickUI(); } });
       map.on('error', function (e) { if (window.console) console.warn('map:', e && e.error ? e.error.message : e); });
     }).catch(function () { showMapError(); });
   }
@@ -3322,22 +3332,25 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
   }
 
   function placeIdAt(pt) {
-    var layers = ['pt-photo', 'pt-pin'].filter(function (id) { return map.getLayer(id); });
+    var layers = ['pt-photo', 'pt-pin', 'pt-label'].filter(function (id) { return map.getLayer(id); });
     var hits = layers.length ? map.queryRenderedFeatures([[pt.x - 12, pt.y - 12], [pt.x + 12, pt.y + 10]], { layers: layers }) : [];
     for (var i = 0; i < hits.length; i++) if (hits[i].properties && hits[i].properties.id) return hits[i].properties.id;
     return null;
   }
   function onMapClick(e) {
     if (state.picking) {
-      /* 加一家时点到地图上已有的地点、或底图上的店名：直接打开它的卡片，在卡片上打分添加，不用再搜 */
-      if (!state.picking.repick && !state.picking.home && state.picking.bulkGroup == null) {
+      if (!state.picking.home) {
         var pid = placeIdAt(e.point), poi0 = !pid && basePoiAt(e.point);
         if (pid || poi0) {
-          cancelPick();
-          if (pid) openPlace(pid, { fly: false }); else openBasePoi(poi0);
+          var existing = pid ? placeById(pid) : osmExisting(poi0);
+          var picked = existing ? { place:existing.id, name:placeTitle(existing), alt:existing.altName || '', osm:existing.osm || '', lat:existing.lat, lng:existing.lng, mode:existing.mode, cat:existing.cat, precision:existing.precision } : poi0;
+          state.picking.selected = picked;
+          map.easeTo({ center:[picked.lng,picked.lat], padding:{top:0,bottom:0,left:0,right:0}, duration:reduceMotion?0:250 });
+          updatePickUI();
           return;
         }
       }
+      state.picking.selected = null; updatePickUI();
       var c = map.getContainer();
       map.panBy([e.point.x - c.clientWidth / 2, e.point.y - c.clientHeight / 2], { duration: 350 });
       return;
@@ -3346,16 +3359,16 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
     var box = [[e.point.x - 12, e.point.y - 12], [e.point.x + 12, e.point.y + 10]];
     var hits = layers.length ? map.queryRenderedFeatures(box, { layers: layers }) : [];
     if (hits.length) {
-      var f = hits[0];
+      var f = hits.find(function (x) { return map.getZoom() >= PHOTO_ZOOM && x.layer && (x.layer.id === 'pt-photo' || x.layer.id === 'cl-photo'); }) || hits[0];
       if (f.properties && f.properties.cluster) {
         var src = map.getSource('places');
-        if (map.getZoom() >= CLUSTER_PHOTO_ZOOM) { openPlaceCluster(src, f.properties.cluster_id); return; }
+        if (map.getZoom() >= CLUSTER_PHOTO_ZOOM) { openPlaceCluster(src, f.properties.cluster_id, f.layer && f.layer.id === 'cl-photo'); return; }
         clusterZoom(src, f.properties.cluster_id).then(function (z) {
           map.easeTo({ center: f.geometry.coordinates, zoom: (z == null ? map.getZoom() + 2 : z) + 0.4, duration: reduceMotion ? 0 : 600, padding: mapPadding() });
         });
       } else if (f.properties && f.properties.id) {
         var members = []; try { members = JSON.parse(f.properties.memberIds || '[]'); } catch (err) {}
-        if (members.length > 1) { showPlaceGroup(members); return; }
+        if (members.length > 1) { showPlaceGroup(members, f.layer && f.layer.id === 'cl-photo'); return; }
         openPlace(f.properties.id, { fly: false });
         if (f.layer && f.layer.id === 'pt-photo') openPlacePhotos(f.properties.id);
       }
@@ -3384,19 +3397,20 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
     });
   }
   var clusterTap = 0;
-  function showPlaceGroup(ids) {
+  function showPlaceGroup(ids, photos) {
     ids = ids.filter(function (id, i) { var p = placeById(id); return p && inScope(p) && passesFilters(p) && ids.indexOf(id) === i; });
     if (!ids.length) return;
-    if (ids.length === 1) { openPlace(ids[0], { fly: false }); return; }
-    rememberFeedSnap(); state.clusterPlaces = ids; state.view = 'cluster'; render(); setSnap('half');
+    if (ids.length === 1) { openPlace(ids[0], { fly: false }); if (photos) openPlacePhotos(ids[0]); return; }
+    rememberFeedSnap(); state.clusterPlaces = ids; state.view = 'cluster'; render(); setSnap('full');
+    if (photos) openClusterPhotos();
   }
-  function openPlaceCluster(src, id) {
+  function openPlaceCluster(src, id, photos) {
     var seq = ++clusterTap, tab = state.tab, scope = state.scope, mode = state.mode;
     clusterLeaves(src, id).then(function (features) {
       if (seq !== clusterTap || state.tab !== tab || state.scope !== scope || state.mode !== mode || state.picking || map.getSource('places') !== src) return;
       var ids = [];
       features.forEach(function (f) { var pr = f.properties || {}, members = [pr.id]; try { members = JSON.parse(pr.memberIds || '[]'); if (!members.length) members = [pr.id]; } catch (e) {} members.forEach(function (id) { if (ids.indexOf(id) === -1) ids.push(id); }); });
-      showPlaceGroup(ids);
+      showPlaceGroup(ids, photos);
     });
   }
   function openHomesAt(hits) {
@@ -5321,7 +5335,8 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
     var places = (state.clusterPlaces || []).map(placeById).filter(function (p) { return p && inScope(p) && passesFilters(p); });
     if (!places.length) { goFeed(); return; }
     view.innerHTML = '<div class="view-top"><button type="button" class="icon-btn flat" data-action="back" aria-label="' + esc(t('back')) + '">' + ICON.back + '</button><h2 class="view-title">' + esc(state.lang === 'en' ? places.length + ' nearby places' : '这里有 ' + places.length + ' 个地点') + '</h2></div>' +
-      '<p class="f-hint">' + esc(state.lang === 'en' ? 'Choose a place to see its photos and reviews.' : '位置相近，选择地点查看照片和点评。') + '</p><ul class="near-list cluster-list">' + places.map(function (p) {
+      '<p class="f-hint">' + esc(state.lang === 'en' ? 'Choose a place to see its photos and reviews.' : '位置相近，选择地点查看照片和点评。') + '</p>' +
+      (places.some(function (p) { return placePhotos(p).length; }) ? '<button type="button" class="btn small" data-action="cluster-photos">' + esc(state.lang === 'en' ? 'View all photos' : '查看全部照片') + '</button>' : '') + '<ul class="near-list cluster-list">' + places.map(function (p) {
         return placeRowHTML(p, 'open-place', esc(catName(catOf(p))) + ' · ' + esc(state.lang === 'en' ? placePhotos(p).length + ' photos' : placePhotos(p).length + ' 张照片'), stats(p).score != null ? scoreHTML(stats(p).score) : '');
       }).join('') + '</ul>';
   }
@@ -5687,7 +5702,9 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
   function updatePickUI() {
     var home = state.picking && state.picking.home;
     var mode = state.picking && state.picking.mode || state.mode;
-    $('#pick-hint').textContent = t(home ? 'homePickHint' : mode === 'food' ? 'pickHintFood' : 'pickHintTravel');
+    var selected = state.picking && state.picking.selected;
+    $('#pick-hint').textContent = selected ? (state.lang === 'en' ? 'Selected: ' : '已选：') + selected.name : t(home ? 'homePickHint' : mode === 'food' ? 'pickHintFood' : 'pickHintTravel') + (home ? '' : state.lang === 'en' ? ' · Or tap a business name/icon.' : ' · 也可以直接点店名或图标');
+    $('[data-action="pick-confirm"]').textContent = selected ? (state.lang === 'en' ? 'Choose this place' : '选择这家') : t('confirmSpot');
     var prec = $('#pick-prec');
     if (mode === 'travel' && map && !home) {
       prec.innerHTML = esc(t('pickPrecision', { p: '§' })).replace('§', '<b>' + esc(precLabel(map.getZoom() >= 14 ? 'exact' : map.getZoom() >= 9 ? 'area' : 'city')) + '</b>');
@@ -5710,18 +5727,21 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
     setSnap(state.view === 'feed' ? feedSnapNow() : state.view === 'place' ? 'half' : 'full');
   }
   function confirmPick() {
-    var loc = pickLngLat(), z = map.getZoom(), ctx = state.picking || {};
+    var loc = pickLngLat(), z = map.getZoom(), ctx = state.picking || {}, selected = ctx.selected;
+    if (selected) loc = {lat:selected.lat,lng:selected.lng};
     endPick();
-    if (ctx.post && state.form) {
-      Object.assign(state.form, { placeId: null, osm: '', lockedName: false, loc: loc, precision: defaultPrecision(z) });
-      state.form.draft = Object.assign({}, state.form.draft, { name: '', alt: '' });
+    if ((ctx.post || ctx.repick) && state.form && !state.form.editId && selected) {
+      if (selected.mode !== state.mode) setMode(selected.mode,{noFly:true});
+      Object.assign(state.form, { placeId:selected.place || null, osm:selected.osm || '', lockedName:true, loc:loc, precision:selected.precision || 'exact', cat:selected.cat || null });
+      state.form.draft = Object.assign({}, state.form.draft, {name:selected.name,alt:selected.alt || ''});
       returnPostComposer(); return;
     }
     if (ctx.bulkGroup != null && state.bulk && state.bulk.groups[ctx.bulkGroup]) {
       var g = state.bulk.groups[ctx.bulkGroup];
       clearTimeout(g.timer); g.seq = (g.seq || 0) + 1; g.finding = false;
-      g.name = g.name || g.q || ''; g.lat = loc.lat; g.lng = loc.lng; g.precision = g.mode === 'food' || z >= 14 ? 'exact' : z >= 9 ? 'area' : 'city';
-      g.cands = []; g.pick = -1; g.noLoc = false; g.searchingPlace = false; g.touched = true;
+      g.name = selected ? selected.name : g.name || g.q || ''; g.lat = loc.lat; g.lng = loc.lng; g.precision = selected ? selected.precision || 'exact' : g.mode === 'food' || z >= 14 ? 'exact' : z >= 9 ? 'area' : 'city';
+      if (selected && !g.modeSet) g.mode = selected.mode;
+      g.cands = selected ? [selected] : []; g.list = g.cands; g.pick = selected ? 0 : -1; g.noLoc = false; g.searchingPlace = false; g.touched = true;
       state.view = 'bulk'; render(); setSnap('full'); view.scrollTop = ctx.scroll || 0;
       return;
     }
@@ -5738,6 +5758,16 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
       state.view = 'form'; render(); setSnap('full');
       return;
     }
+    if (selected) {
+      if (selected.mode !== state.mode) setMode(selected.mode,{noFly:true});
+      if (selected.place) startReview(selected.place);
+      else startNewPlace(loc,selected.precision || 'exact',0,Object.assign({},selected,{lockedName:true}));
+      return;
+    }
+    if (ctx.post && state.form) {
+      Object.assign(state.form, { placeId:null, osm:'', lockedName:false, loc:loc, precision:defaultPrecision(z) });
+      state.form.draft = Object.assign({},state.form.draft,{name:'',alt:''});returnPostComposer();return;
+    }
     startNewPlace(loc, defaultPrecision(z), z >= 14 ? 60 : z >= 10 ? 800 : 15000);
   }
   function newForm(o) {
@@ -5752,7 +5782,7 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
       .sort(function (a, b) { return a.d - b.d; })
       .slice(0, 4);
     var postDraft = state.form && state.form.post ? state.form : null;
-    var placePatch = { placeId: null, loc: loc, cat: prefill.cat || null, precision: precision, osm: prefill.osm || '', lockedName: !!prefill.name && !!prefill.osm && !/^g\//.test(prefill.osm) };
+    var placePatch = { placeId: null, loc: loc, cat: prefill.cat || null, precision: precision, osm: prefill.osm || '', lockedName: !!prefill.lockedName || (!!prefill.name && !!prefill.osm && !/^g\//.test(prefill.osm)) };
     state.form = postDraft ? Object.assign(postDraft, placePatch, { draft: Object.assign({}, postDraft.draft, { name: prefill.name || '', alt: prefill.alt || '' }) }) : newForm(Object.assign(placePatch, { rating: prefill.rating == null ? null : prefill.rating, draft: prefill.name ? { name: prefill.name, alt: prefill.alt || '' } : null }));
     if (near.length) { state.nearby = near; state.view = 'nearby'; } else state.view = 'form';
     render();
@@ -6795,6 +6825,16 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
     lb = { ids: ids, i: Math.max(0, ids.indexOf(photo)), place: id };
     $('#lightbox').hidden = false; showLightbox(); syncNavGuard();
   }
+  function openClusterPhotos() {
+    var ids = [], places = {};
+    (state.clusterPlaces || []).forEach(function (id) {
+      var p = placeById(id); if (!p || !inScope(p) || !passesFilters(p)) return;
+      placePhotos(p).forEach(function (photo) { if (ids.indexOf(photo) === -1) { ids.push(photo); places[photo] = id; } });
+    });
+    if (!ids.length) return;
+    lb = { ids: ids, i: 0, placeIds: places };
+    $('#lightbox').hidden = false; showLightbox(); syncNavGuard();
+  }
   function openFormPhoto(id) {
     var f = state.form; if (!f) return;
     var photos = f.photos.slice(), ids = photos.map(function (ph) { return ph.id; });
@@ -6815,15 +6855,27 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
     if (lb.photos && lb.ownedURLs) lb.photos.forEach(function (p) { if (lb.ownedURLs.indexOf(p.url) !== -1) delete p.url; });
     if (lb.ownedURLs) lb.ownedURLs = [];
     var multi = lb.ids.length > 1;
+    $('#lb-navigation').hidden = !multi;
     $('#lb-prev').hidden = !multi; $('#lb-next').hidden = !multi;
+    $('#lb-prev').setAttribute('aria-label', state.lang === 'en' ? 'Previous photo' : '上一张');
+    $('#lb-next').setAttribute('aria-label', state.lang === 'en' ? 'Next photo' : '下一张');
     $('#lb-count').textContent = multi ? (lb.i + 1) + ' / ' + lb.ids.length : '';
     var id = lb.ids[lb.i], clip = isClip(id), img = $('#lb-img'), vid = $('#lb-vid');
-    var comment = $('#lb-comment'), review = lb.place && scopedReviews(lb.place).find(function (r) { return (r.photos || []).indexOf(id) !== -1; });
-    comment.textContent = review ? [review.authorName, review.rating == null ? '' : fmtScore(review.rating) + ' / 5', review.text].filter(Boolean).join(' · ') : '';
+    var place = lb.place || (lb.placeIds && lb.placeIds[id]);
+    var comment = $('#lb-comment'), review = place && scopedReviews(place).find(function (r) { return (r.photos || []).indexOf(id) !== -1; });
+    comment.textContent = review ? [lb.placeIds ? placeTitle(placeById(place)) : '', authorLabel(review), review.rating == null ? '' : fmtScore(review.rating) + ' / 5', review.text].filter(Boolean).join(' · ') : '';
     comment.hidden = !comment.textContent;
     img.hidden = clip; vid.hidden = !clip;
     if (clip) img.removeAttribute('src'); else { vid.pause(); vid.removeAttribute('src'); }
     var draft = lb.photos && lb.photos.find(function (ph) { return ph.id === id && !ph.existing; });
+    var status = $('#lb-status'), retry = $('#lb-retry');
+    status.hidden = false; retry.hidden = true; retry.textContent = state.lang === 'en' ? 'Retry' : '重试';
+    $('#lb-status-text').textContent = state.lang === 'en' ? 'Loading…' : '加载中…';
+    function current() { return request === lbRequest && !$('#lightbox').hidden && lb.ids[lb.i] === id; }
+    function loaded() { if (current()) status.hidden = true; }
+    function failed() { if (!current()) return; status.hidden = false; retry.hidden = false; $('#lb-status-text').textContent = state.lang === 'en' ? 'Could not load this photo.' : '这张图片暂时没加载出来'; }
+    img.onload = loaded; vid.onloadeddata = loaded; vid.onerror = failed;
+    if (!clip) img.removeAttribute('src');
     var pending = null;
     if (draft && draft.file && !draft.url) {
       /* 批量预览只解码一张适合屏幕的大图，原文件留给保存。 */
@@ -6837,20 +6889,49 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
         }).catch(function () { return draft.preview || null; });
       } else { draft.url = URL.createObjectURL(draft.file); lb.ownedURLs.push(draft.url); }
     }
-    img.onerror = draft && draft.preview ? function () { if (request === lbRequest && !$('#lightbox').hidden) { img.onerror = null; img.src = draft.preview; } } : null;
+    var previewTried = false;
+    img.onerror = function () { if (!current()) return; if (!previewTried && draft && draft.preview) { previewTried = true; img.src = draft.preview; } else failed(); };
     (pending || (draft ? Promise.resolve(draft.url) : store.photoURL(id))).then(function (u) {
       if (request !== lbRequest || $('#lightbox').hidden || lb.ids[lb.i] !== id) return;
-      if (!clip) { img.src = u || ''; return; }
-      vid.src = u || '';
+      if (!u) { failed(); return; }
+      if (!clip) { img.src = u; return; }
+      vid.src = u;
       var pr = vid.play();
       if (pr && pr.catch) pr.catch(function () {});
-    });
+    }).catch(failed);
   }
+  function moveLightbox(delta) { if ($('#lightbox').hidden || lb.ids.length < 2) return; lb.i = (lb.i + delta + lb.ids.length) % lb.ids.length; showLightbox(); }
+  (function lightboxGestures() {
+    var box = $('#lightbox'), start = null, suppressUntil = 0;
+    box.addEventListener('touchstart', function (e) {
+      start = null;
+      if (e.touches.length !== 1 || lb.ids.length < 2 || e.target.closest('button, video, .lb-comment') || (window.visualViewport && visualViewport.scale > 1.01)) return;
+      start = { x:e.touches[0].clientX, y:e.touches[0].clientY, index:lb.i, request:lbRequest, horizontal:false };
+    }, { passive:true });
+    box.addEventListener('touchmove', function (e) {
+      if (!start) return;
+      if (e.touches.length !== 1 || (e.scale && e.scale !== 1)) { start = null; return; }
+      var dx=e.touches[0].clientX-start.x,dy=e.touches[0].clientY-start.y;
+      if (Math.abs(dy)>14 && Math.abs(dy)>Math.abs(dx)) { start=null; return; }
+      if (Math.abs(dx)>12 && Math.abs(dx)>Math.abs(dy)*1.2) { start.horizontal=true; if(e.cancelable)e.preventDefault(); }
+    }, { passive:false });
+    box.addEventListener('touchend', function (e) {
+      var s=start;start=null;
+      if(!s || !s.horizontal || !e.changedTouches.length || lb.i!==s.index || lbRequest!==s.request)return;
+      var dx=e.changedTouches[0].clientX-s.x;
+      if(Math.abs(dx)<42)return;
+      suppressUntil=performance.now()+350;moveLightbox(dx<0?1:-1);
+    }, { passive:true });
+    box.addEventListener('touchcancel',function(){start=null;},{passive:true});
+    box.addEventListener('click',function(e){if(performance.now()<suppressUntil && !e.target.closest('button')){e.preventDefault();e.stopPropagation();}},true);
+    document.addEventListener('keydown',function(e){if(!box.hidden && (e.key==='ArrowLeft'||e.key==='ArrowRight')){e.preventDefault();moveLightbox(e.key==='ArrowLeft'?-1:1);}});
+  })();
   function closeLightbox() {
     lbRequest++;
     (lb.ownedURLs || []).forEach(function (u) { URL.revokeObjectURL(u); });
     lb = { ids: [], i: 0 };
     $('#lb-img').onerror = null;
+    $('#lb-img').onload = null; $('#lb-vid').onloadeddata = null; $('#lb-vid').onerror = null; $('#lb-status').hidden = true;
     $('#lightbox').hidden = true; $('#lb-img').removeAttribute('src');
     var vid = $('#lb-vid'); vid.pause(); vid.removeAttribute('src'); vid.hidden = true;
     syncNavGuard();
@@ -6963,7 +7044,7 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
       case 'add-existing': startReview(d.id); break;
       case 'pick-cancel': cancelPick(); break;
       case 'pick-confirm': confirmPick(); break;
-      case 'pick-campus': if (map) { map.resize(); map.jumpTo({center:[XMUM.lng,XMUM.lat],zoom:15.5,padding:{top:0,bottom:0,left:0,right:0}}); updatePickUI(); } break;
+      case 'pick-campus': if (map) { if(state.picking)state.picking.selected=null; map.resize(); map.jumpTo({center:[XMUM.lng,XMUM.lat],zoom:15.5,padding:{top:0,bottom:0,left:0,right:0}}); updatePickUI(); } break;
       case 'expand': if (isMobile()) setSnap(state.snap === 'peek' ? 'half' : state.snap === 'half' ? 'full' : 'half'); break;
       case 'goto-area': closeBSheet(); if (state.view === 'search') { toMapTab(); goFeed(); } gotoArea(d.id); break;
       case 'save-area': closeBSheet(); openAreaDialog(); break;
@@ -7032,8 +7113,10 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
       case 'export': exportData(); break;
       case 'import': if (requireLogin()) $('#import-file').click(); break;
       case 'lb-close': closeLightbox(); break;
-      case 'lb-prev': lb.i = (lb.i - 1 + lb.ids.length) % lb.ids.length; showLightbox(); break;
-      case 'lb-next': lb.i = (lb.i + 1) % lb.ids.length; showLightbox(); break;
+      case 'lb-prev': moveLightbox(-1); break;
+      case 'lb-next': moveLightbox(1); break;
+      case 'lb-retry': if (store.invalidatePhotoURL) store.invalidatePhotoURL(lb.ids[lb.i]); showLightbox(); break;
+      case 'cluster-photos': openClusterPhotos(); break;
     }
   });
 
