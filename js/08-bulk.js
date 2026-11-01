@@ -12,7 +12,7 @@
     var list = Array.prototype.slice.call(files || []).filter(isMediaFile);
     if (!list.length) return;
     dropBulk();
-    var b = state.bulk = { total: list.length, read: 0, items: [], groups: null, noGps: 0, share: lsGet(LS_SHARE) === '1', saving: null, error: false, urls: [], rejected: [] };
+    var b = state.bulk = { total: list.length, read: 0, items: [], groups: null, noGps: 0, share: !isGuest() && lsGet(LS_SHARE) === '1', saving: null, error: false, urls: [], rejected: [] };
     rememberFeedSnap();
     state.view = 'bulk'; state.form = null;
     render();

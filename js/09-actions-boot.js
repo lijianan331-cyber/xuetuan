@@ -335,8 +335,8 @@
       case 'visit-multi': if (!visibilityBusy) { selectingVisits=!selectingVisits; selectedVisits.clear(); var vy=view.scrollTop; render(); view.scrollTop=vy; } break;
       case 'visit-select': if (!visibilityBusy && store.review(d.id) && isMine(store.review(d.id))) { if(selectedVisits.has(d.id))selectedVisits.delete(d.id);else selectedVisits.add(d.id); var sy=view.scrollTop;render();view.scrollTop=sy; } break;
       case 'visit-all': if (!visibilityBusy) { var all=feedReviews().filter(isMine); var allOn=all.length && all.every(function(r){return selectedVisits.has(r.id);}); all.forEach(function(r){if(allOn)selectedVisits.delete(r.id);else selectedVisits.add(r.id);});var ay=view.scrollTop;render();view.scrollTop=ay; } break;
-      case 'visit-privacy': changeVisitVisibility([d.id],d.v); break;
-      case 'visit-bulk': changeVisitVisibility(Array.from(selectedVisits),d.v); break;
+      case 'visit-privacy': if (d.v === 'public' && guestBlocked()) break; changeVisitVisibility([d.id],d.v); break;
+      case 'visit-bulk': if (d.v === 'public' && guestBlocked()) break; changeVisitVisibility(Array.from(selectedVisits),d.v); break;
       case 'home-mode': state.homeMode = ['all','food','travel'].indexOf(d.v) !== -1 ? d.v : 'all'; render(); view.scrollTop = 0; break;
       case 'home-filters': setHomeFiltersOpen(!state.homeFiltersOpen); break;
       case 'my-share': openMyShare(); break;
@@ -365,6 +365,7 @@
       case 'open-post': openPost(d.id); break;
       case 'person': openPerson(d.uid); break;
       case 'page-public':
+        if (!store.pagePublic(me().id) && guestBlocked()) break;
         store.updateProfile({ page_public: !store.pagePublic(me().id) }).then(function () { if (state.view === 'feed' && state.tab === 'me') { var y = view.scrollTop; render(); view.scrollTop = y; } }, function () { toast(t('saveFail')); });
         break;
       case 'post-place': openPostPlace(d.id); break;
@@ -390,6 +391,7 @@
         break;
       case 'home-public':
         var mh = store.myHome();
+        if (mh && !mh.public && guestBlocked()) break;
         if (mh) store.setHome({ city: mh.city, lat: mh.lat, lng: mh.lng, public: !mh.public }).then(function () { afterHomeChange(); render(); }, function () { toast(t('saveFail')); });
         break;
       case 'countries': state.countries = !state.countries; syncCountries(); renderFilters(); saveView(); break;
@@ -442,6 +444,7 @@
       case 'f-cat': state.form.cat = d.cat; state.form.catSrc = 'user'; setPressed('[data-action="f-cat"]', 'cat', d.cat); if ($('#cat-guess')) $('#cat-guess').hidden = true; break;
       case 'f-prec': state.form.precision = d.prec; setPressed('[data-action="f-prec"]', 'prec', d.prec); break;
       case 'f-share':
+        if (state.form.visibility !== 'public' && guestBlocked()) break;
         state.form.visibility = state.form.visibility === 'public' ? 'private' : 'public';
         el.setAttribute('aria-checked', String(state.form.visibility === 'public'));
         if ($('#nick-field')) $('#nick-field').hidden = state.form.visibility !== 'public';
@@ -461,6 +464,7 @@
       case 'bulk-merge': bulkMerge(+d.i); break;
       case 'bulk-mode': bulkSetMode(+d.i, d.v); break;
       case 'bulk-share':
+        if (!state.bulk.share && guestBlocked()) break;
         state.bulk.share = !state.bulk.share;
         el.setAttribute('aria-checked', String(state.bulk.share));
         if ($('#bk-nick-field')) $('#bk-nick-field').hidden = !state.bulk.share;

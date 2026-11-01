@@ -487,6 +487,7 @@
     setSnap('full');
   }
   function openPostComposer() {
+    if (guestBlocked()) return;
     if (resumeFormDraft(true)) return;
     rememberFeedSnap();
     state.posting = true; state.form = newForm(); state.view = 'form';

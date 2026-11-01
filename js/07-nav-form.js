@@ -349,7 +349,7 @@
   }
   function newForm(o) {
     /* rating0：打开表单时带进来的分（地点页上直接点的星），没改过不算草稿内容 */
-    return Object.assign({ post: state.posting, placeId: null, editId: null, loc: null, cat: null, precision: 'exact', rating: null, rating0: o && o.rating != null ? o.rating : null, visibility: state.posting || lsGet(LS_SHARE) === '1' ? 'public' : 'private', photos: [], draft: null, osm: '' }, o);
+    return Object.assign({ post: state.posting, placeId: null, editId: null, loc: null, cat: null, precision: 'exact', rating: null, rating0: o && o.rating != null ? o.rating : null, visibility: !isGuest() && (state.posting || lsGet(LS_SHARE) === '1') ? 'public' : 'private', photos: [], draft: null, osm: '' }, o);
   }
   /* 新地点：先看附近有没有已经存在的同类地点，有就让用户先确认是不是同一个 */
   function startNewPlace(loc, precision, radius, prefill) {

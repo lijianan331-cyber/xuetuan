@@ -1546,6 +1546,14 @@
     for (var i = 0; i < list.length; i++) if (list[i].userId === userId) return list[i];
     return null;
   }
+  /* 游客号（没绑定谷歌）只能存私密：分享到大地图、公开家乡、个人主页都要先绑定（2026-11-01 有人用 30 个游客号刷屏） */
+  function isGuest() { return !!(store.isAnon && store.isAnon()); }
+  function guestBlocked() {
+    if (!isGuest()) return false;
+    var en = state.lang === 'en';
+    openModal('<div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="guest-title"><h3 id="guest-title">' + esc(en ? 'Link Google to share' : '绑定谷歌后才能分享') + '</h3><p class="f-hint">' + esc(en ? 'Guest accounts can only keep private records. Link Google to share to the big map; everything you saved stays.' : '游客号只能存给自己看的记录。绑定谷歌后就能分享到大地图，已经存的记录都还在。') + '</p><div class="btn-row"><button type="button" class="btn primary" data-action="link-google">' + esc(en ? 'Link Google' : '绑定谷歌') + '</button><button type="button" class="btn ghost" data-modal="no">' + esc(en ? 'Not now' : '先不用') + '</button></div></div>');
+    return true;
+  }
   /* 个人主页：作者自己打开了才能点进（自己的总能点，看看别人眼里的样子） */
   function canOpenPerson(id) { return !!id && id !== 'sample' && (id === me().id || store.pagePublic(id)); }
   function personAttr(id) { return canOpenPerson(id) ? ' data-action="person" data-uid="' + esc(id) + '"' : ''; }
