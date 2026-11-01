@@ -228,7 +228,7 @@
               ctx.drawImage(img, 0, 0, W, H); ctx.restore();
               g.sky = looksLikeSky(ctx.getImageData(0, 0, W, H).data, W, H);
               var c = g.pick >= 0 && g.cands ? g.cands[g.pick] : null;
-              if (g.sky && !g.modeSet && !(c && c.place) && g.mode !== 'travel') { g.mode = 'travel'; updateBulkMode(g); }
+              if (g.sky && !g.modeSet && !g.touched && !(c && c.place) && g.mode !== 'travel') { g.mode = 'travel'; updateBulkMode(g); }
             } catch (e) { /* 读不了像素就算了 */ }
             img.src = ''; done();
           };

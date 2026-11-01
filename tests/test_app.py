@@ -1495,7 +1495,7 @@ with sync_playwright() as p:
     add(pbg)
     ga = os.path.join(SHOTS, 'google-bulk-a.jpg'); gb = os.path.join(SHOTS, 'google-bulk-b.jpg'); gg = os.path.join(SHOTS, 'google-bulk-gps.jpg')
     Image.new('RGB', (120, 90), (180, 120, 70)).save(ga, 'JPEG')
-    Image.new('RGB', (120, 90), (80, 150, 190)).save(gb, 'JPEG')
+    Image.new('RGB', (120, 90), (150, 110, 160)).save(gb, 'JPEG')
     Image.new('RGB', (120, 90), (120, 150, 90)).save(gg, 'JPEG')
     pbg.evaluate('window.__exif={"google-bulk-gps.jpg":{DateTimeOriginal:"2026-01-01T12:00:00",latitude:3.15,longitude:101.71}}')
     with pbg.expect_file_chooser() as gfc:
@@ -1535,7 +1535,7 @@ with sync_playwright() as p:
     pbg.wait_for_function('!document.querySelector(".bk-card") && document.querySelector("#toast").textContent.includes("存进足迹")', timeout=8000)
     gpdata = pbg.evaluate('JSON.parse(localStorage.getItem("xmum-chiwan-map:data:v1"))')
     gpnew = [x for x in gpdata['places'] if x.get('name', '').startswith('katsu photo')]
-    check('google bulk: saved Google IDs/coordinates and query labels, private photos/scores retained', sorted((x['osm'],x['name'],x['mode']) for x in gpnew) == [('g/gK1','katsu photo first','travel'),('g/gOtherPhoto','katsu photo second','food')] and sorted(r['rating'] for r in gpdata['reviews'] if r['placeId'] in [x['id'] for x in gpnew]) == [3.5,4] and all(r['visibility']=='private' and len(r['photos'])==1 for r in gpdata['reviews'] if r['placeId'] in [x['id'] for x in gpnew]))
+    check('google bulk: saved Google IDs/coordinates and query labels, private photos/scores retained', sorted((x['osm'],x['name'],x['mode']) for x in gpnew) == [('g/gK1','katsu photo first','travel'),('g/gOtherPhoto','katsu photo second','food')] and sorted(r['rating'] for r in gpdata['reviews'] if r['placeId'] in [x['id'] for x in gpnew]) == [3.5,4] and all(r['visibility']=='private' and len(r['photos'])==1 for r in gpdata['reviews'] if r['placeId'] in [x['id'] for x in gpnew]), (sorted((x['osm'],x['name'],x['mode']) for x in gpnew), [(r['rating'], r['visibility'], len(r['photos'])) for r in gpdata['reviews'] if r['placeId'] in [x['id'] for x in gpnew]]))
     pbg.close()
     ctxg.close()
     # 谷歌加载不了（本地文件、密钥不让用）：这一块不出，原来的搜索照常
@@ -1789,7 +1789,7 @@ with sync_playwright() as p:
     bfiles = []
     for i_, n_ in enumerate(['a1.jpg', 'a2.jpg', 'b1.jpg', 'c1.jpg', 'c2.jpg']):
         fp_ = os.path.join(SHOTS, n_)
-        Image.new('RGB', (1200, 900), (60 + 40 * i_, 120, 200)).save(fp_, 'JPEG')
+        Image.new('RGB', (1200, 900), (200, 100 + 20 * i_, 60)).save(fp_, 'JPEG')
         bfiles.append(fp_)
     add(pb)
     check('bulk: the add page offers adding many from photos', pb.locator('[data-action="bulk-start"]').is_visible())
