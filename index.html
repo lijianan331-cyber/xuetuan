@@ -695,7 +695,7 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
 .home-top { position: sticky; top: 0; z-index: 3; display: flex; align-items: center; gap: 10px; padding: 12px 0 10px; background: var(--surface); }
 .home-brand { flex: none; display: flex; align-items: center; gap: 7px; }
 .home-brand .brand-badge { width: 30px; height: 30px; font-size: 11px; }
-.home-brand b { font-family: var(--font-display); font-weight: 400; font-size: 23px; line-height: 1; color: var(--food); color: color-mix(in srgb, var(--food) 90%, #fff); } /* 首页“雪团”比主色浅一点点（用户 2026-11-01） */
+.home-brand b { font-family: var(--font-display); font-weight: 400; font-size: 23px; line-height: 1; color: #2A9BEC; } /* 首页“雪团”和 logo 同一种亮天蓝，像搜索框的地图 logo（用户 2026-11-01） */
 .home-search {
   flex: 1; min-width: 0; height: 36px; display: flex; align-items: center; gap: 7px; padding: 0 14px; border: 0; border-radius: 999px;
   background: var(--surface-2); color: var(--muted); font-size: 13.5px; text-align: left;
@@ -3198,11 +3198,8 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
   var homePlacement = null;
   function updateHomePlacement() {
     if (!map || !map.getLayer('home-pin')) return;
-    var home = state.scope === 'mine' && homesShown() && store.myHome(), raised = false;
-    if (home && map.project) {
-      var p = map.project([home.lng, home.lat]);
-      raised = map.queryRenderedFeatures([[p.x - 35, p.y - 35], [p.x + 35, p.y + 35]], { layers: ['cl-circle','pt-pin','pt-photo','cl-photo'] }).length > 0;
-    }
+    /* 小房子就画在家的位置，不再挪到旁边（用户 2026-11-01：挪开加连线太怪）；盖在数字圈上面 */
+    var raised = false;
     if (homePlacement === raised) return;
     homePlacement = raised;
     if (raised && !map.hasImage('home-me-raised')) map.addImage('home-me-raised', drawHome(true, true), { pixelRatio: DPR });
@@ -3979,7 +3976,7 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
     }
     $('#map-ctrls').innerHTML = h;
     /* 旅行大地图左上角：红针是什么、有几位，点一下收起 / 显示；没人公开家乡就不出 */
-    var publicHomes = hometownMode(), ownHome = state.tab === 'foot' && state.scope === 'mine' && !!store.myHome();
+    var publicHomes = hometownMode(), ownHome = false; /* 我的家开关挪进筛选了 */
     var homeLabel = publicHomes ? (state.lang === 'en' ? 'Back to explore' : '返回探索') : (state.lang === 'en' ? 'Show my hometown' : '显示我的家乡');
     $('#map-chips').innerHTML = publicHomes || ownHome ? '<button type="button" class="map-chip' + (publicHomes ? '' : ' homes-switch') + '" data-action="' + (publicHomes ? 'homes-toggle' : 'mine-home-toggle') + '" aria-label="' + esc(homeLabel) + '" title="' + esc(homeLabel) + '" aria-pressed="' + (publicHomes ? state.homesOn : state.mineHomeOn) + '">' + (publicHomes ? ICON.back + esc(homeLabel) : ICON.home) + '</button>' : '';
   }
@@ -4154,6 +4151,9 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
       if (mine) {
         h += '<div class="field"><span class="f-label">' + esc(t('mineShow')) + '</span><div class="chips-wrap">' +
           ['food', 'travel', 'both'].map(function (v) { return '<button type="button" class="chip" data-action="mine-mode" data-v="' + v + '" aria-pressed="' + (mineView() === v) + '">' + esc(t('mine_' + v)) + '</button>'; }).join('') + '</div></div>';
+        /* 我的家（小房子）开关放在筛选里（用户 2026-11-01），地图上不再单独一个按钮 */
+        if (store.myHome()) h += '<button type="button" class="switch-row" role="switch" data-action="mine-home-toggle" aria-checked="' + state.mineHomeOn + '">' +
+          '<span class="sw-text"><b>' + esc(state.lang === 'en' ? 'Show my home' : '显示我的家') + '</b><small>' + esc(state.lang === 'en' ? 'A little house on your hometown' : '在家乡的位置放一个小房子') + '</small></span><span class="switch" aria-hidden="true"></span></button>';
       } else {
         if (state.scope === 'saved') {
           h += '<div class="field"><span class="f-label">' + esc(t('savedShow')) + '</span><div class="chips-wrap">' +
@@ -7345,7 +7345,7 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
         if (map) flyTo([108, 12], 3);
         break;
       case 'homes-toggle': closeBSheet(); state.homesOn = !state.homesOn; goFeed(); refreshMap(); renderFilters(); saveView(); toast(t(state.homesOn ? 'homesOpened' : 'homesClosed')); break;
-      case 'mine-home-toggle': state.mineHomeOn = !state.mineHomeOn; refreshMap(); renderFilters(); saveView(); toast(state.lang === 'en' ? (state.mineHomeOn ? 'My hometown shown' : 'My hometown hidden') : (state.mineHomeOn ? '已显示我的家乡' : '已隐藏我的家乡')); break;
+      case 'mine-home-toggle': state.mineHomeOn = !state.mineHomeOn; refreshMap(); renderFilters(); saveView(); if (state.bsheet) renderBSheet(); toast(state.lang === 'en' ? (state.mineHomeOn ? 'My hometown shown' : 'My hometown hidden') : (state.mineHomeOn ? '已显示我的家乡' : '已隐藏我的家乡')); break;
       case 'home-set': openHomeSet(); break;
       case 'acct': switchAccount(d.id); break;
       case 'acct-add': addAccount(); break;
