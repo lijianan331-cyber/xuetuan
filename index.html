@@ -695,6 +695,8 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
 .home-top { position: sticky; top: 0; z-index: 3; display: flex; align-items: center; gap: 10px; padding: 12px 0 10px; background: var(--surface); }
 .home-brand { flex: none; display: flex; align-items: center; gap: 7px; }
 .home-brand .brand-badge { width: 30px; height: 30px; font-size: 11px; }
+.draft-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 0 0 12px; padding: 8px 12px; border-radius: 12px; background: color-mix(in srgb, var(--food) 9%, var(--surface, #fff)); font-size: 13px; color: var(--muted, #5b6b7b); }
+.draft-bar .link-btn { font-size: 13px; }
 .home-brand b { font-family: var(--font-display); font-weight: 400; font-size: 23px; line-height: 1; color: #2A9BEC; } /* 首页“雪团”和 logo 同一种亮天蓝，像搜索框的地图 logo（用户 2026-11-01） */
 .home-search {
   flex: 1; min-width: 0; height: 36px; display: flex; align-items: center; gap: 7px; padding: 0 14px; border: 0; border-radius: 999px;
@@ -4619,6 +4621,7 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
     var h = '<div class="view-top"><button type="button" class="icon-btn flat" data-action="form-cancel" aria-label="' + esc(t('back')) + '">' + ICON.back + '</button><h2 class="view-title">' + esc(title) + '</h2>' +
       '<button type="submit" form="place-form" class="btn primary small" id="f-submit">' + esc(t(f.editId ? 'saveEdit' : 'publish')) + '</button></div>' +
       '<form id="place-form" class="form" novalidate>';
+    if (f.restored && !f.editId) h += '<div class="draft-bar" id="draft-bar"><span>' + esc(state.lang === 'en' ? 'Your unfinished draft' : '上次没写完的草稿') + '</span><button type="button" class="link-btn" data-action="draft-discard">' + esc(state.lang === 'en' ? 'Start over' : '清空重来') + '</button></div>';
     if (f.relocate && !f.post) {
       /* 编辑记录：不再有名称框；地点可以像新加时一样重新搜、或在地图上选（用户 2026-11-01） */
       if (/^g\//.test(f.osm || '')) h += '<div id="g-form-detail" class="g-search"></div>';
@@ -4708,6 +4711,101 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
     DRAFT_FIELDS.forEach(function (pair) { var el = $('#' + pair[0]); if (el && d[pair[1]]) el.value = d[pair[1]]; });
   }
 
+  /* 草稿（用户 2026-11-01）：新加记录、发帖时写的东西随时存在本机；意外退出、按了返回，下次点加号接着填。
+     文字、打分、地点存 localStorage；照片原图和小图存 IndexedDB（键 draft:照片id）。
+     保存成功或点“清空重来”才删。编辑已有记录不存（内容本来就在）。只留最近一份 */
+  var LS_DRAFT = 'xuetuan:draft:v1';
+  var DRAFT_PH = 'draft:';
+  function draftKey() { var u = me(); return LS_DRAFT + ':' + ((u && u.id) || 'local'); }
+  function readFormDraft() { try { var o = JSON.parse(lsGet(draftKey()) || 'null'); return o && typeof o === 'object' ? o : null; } catch (e) { return null; } }
+  function formHasContent(f) {
+    var d = f.draft || {};
+    return !!(f.photos.length || f.mediaBusy || (f.rating != null && f.rating !== f.rating0) || ['title', 'text', 'price', 'nick'].some(function (k) { return String(d[k] || '').trim(); }));
+  }
+  var draftLast = '';
+  function saveFormDraft() {
+    var f = state.form;
+    if (!f || f.editId || f.saving) return;
+    if (state.view === 'form') captureFormDraft();
+    if (!formHasContent(f)) { if (f.drafted) clearFormDraft(); return; }
+    var o = {};
+    Object.keys(f).forEach(function (k) { if (k !== 'photos' && k !== 'saving' && k !== 'mediaBusy' && k !== 'restored' && k.charAt(0) !== '_') o[k] = f[k]; });
+    o.photos = f.photos.filter(function (ph) { return !ph.existing && ph.blob; }).map(function (ph) {
+      if (!ph._dk) {
+        ph._dk = true;
+        photoStore.put(DRAFT_PH + ph.id, ph.blob);
+        if (ph.thumb) photoStore.put(DRAFT_PH + ph.id + THUMB_KEY, ph.thumb);
+      }
+      /* 后台传完了再记一笔，下次接着用不用再传 */
+      if (ph._up && !ph.uploadedPath && !ph._dw) { ph._dw = true; ph._up.then(function () { saveFormDraft(); }, function () {}); }
+      return { id: ph.id, up: ph.uploadedPath || '', thumb: !!ph.thumb };
+    });
+    o.mode = f.placeId && placeById(f.placeId) ? placeById(f.placeId).mode : state.mode;
+    var json;
+    try { json = JSON.stringify(o); } catch (e) { return; }
+    if (json === draftLast) return;
+    var old = readFormDraft();
+    if (old && old.photos) old.photos.forEach(function (m) {
+      if (!o.photos.some(function (n) { return n.id === m.id; })) { photoStore.del(DRAFT_PH + m.id); photoStore.del(DRAFT_PH + m.id + THUMB_KEY); }
+    });
+    draftLast = json; f.drafted = true;
+    lsSet(draftKey(), json);
+  }
+  function clearFormDraft() {
+    var old = readFormDraft();
+    if (old && old.photos) old.photos.forEach(function (m) { photoStore.del(DRAFT_PH + m.id); photoStore.del(DRAFT_PH + m.id + THUMB_KEY); });
+    try { localStorage.removeItem(draftKey()); } catch (e) { /* ignore */ }
+    draftLast = '';
+    if (state.form) { state.form.drafted = false; state.form.photos.forEach(function (ph) { ph._dk = false; }); }
+  }
+  function loadDraftPhoto(m) {
+    return Promise.all([photoStore.get(DRAFT_PH + m.id), m.thumb ? photoStore.get(DRAFT_PH + m.id + THUMB_KEY) : null]).then(function (r) {
+      if (!r[0]) return null;
+      /* 没确认传完的换个新名字重传（同名再传会被拒） */
+      var ext = (m.id.match(/\.\w+$/) || [''])[0];
+      var ph = { id: m.up ? m.id : uid('ph') + ext, blob: r[0], thumb: r[1] || null, url: URL.createObjectURL(r[0]) };
+      ph.preview = ph.thumb ? URL.createObjectURL(ph.thumb) : ph.url;
+      if (m.up) { ph.uploadedPath = m.up; ph._dk = true; }
+      return ph;
+    }, function () { return null; });
+  }
+  /* 点加号 / 发帖时有草稿就接着上次的；返回 true 表示接手了 */
+  function resumeFormDraft(postOnly) {
+    var o = readFormDraft();
+    if (!o || (postOnly && !o.post)) return false;
+    if (o.placeId && !placeById(o.placeId)) o.placeId = null;
+    if (!o.post && !o.placeId && !(o.loc && isFinite(o.loc.lat) && isFinite(o.loc.lng))) { clearFormDraft(); return false; }
+    var metas = o.photos || [];
+    delete o.photos;
+    rememberFeedSnap();
+    Promise.all(metas.map(loadDraftPhoto)).then(function (list) {
+      var f = newForm(Object.assign({}, o, { photos: list.filter(Boolean), restored: true, drafted: true }));
+      if (o.mode && o.mode !== state.mode && !f.placeId) setMode(o.mode, { noFly: true });
+      state.posting = !!f.post; state.form = f; state.view = 'form';
+      draftLast = '';
+      render(); setSnap('full');
+      saveFormDraft();
+      if (store.preupload) store.preupload(f.photos.filter(function (ph) { return !ph.uploadedPath; }));
+      toast(state.lang === 'en' ? 'Picking up your unfinished draft' : '接着上次没写完的');
+    });
+    return true;
+  }
+  function discardFormDraft() {
+    var f = state.form;
+    confirmBox(state.lang === 'en' ? 'Clear this draft and start over?' : '清空这份草稿，重新开始？', state.lang === 'en' ? 'Clear' : '清空').then(function (ok) {
+      if (!ok || state.form !== f) return;
+      clearFormDraft();
+      if (f) f.photos.forEach(releaseFormPreview);
+      state.form = null;
+      if (f && f.post) { state.posting = true; state.form = newForm(); state.view = 'form'; render(); setSnap('full'); }
+      else openAdd();
+    });
+  }
+  /* 写着的时候每两秒看一眼有没有变化；切到后台、关页面时马上存 */
+  setInterval(function () { if (state.form && !document.hidden) saveFormDraft(); }, 2000);
+  document.addEventListener('visibilitychange', function () { if (document.hidden) saveFormDraft(); });
+  window.addEventListener('pagehide', function () { saveFormDraft(); });
+
   function renderNearby() {
     var h = '<div class="view-top"><button type="button" class="icon-btn flat" data-action="nearby-back" aria-label="' + esc(t('back')) + '">' + ICON.back + '</button><h2 class="view-title">' + esc(t('nearbyTitle')) + '</h2></div>' +
       '<ul class="near-list">' + state.nearby.map(function (x) {
@@ -4743,6 +4841,7 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
     setTimeout(function () { var q = $('#q'); if (q) q.focus(); }, 60);
   }
   function openAdd(post) {
+    if (post !== true && !state.form && resumeFormDraft(false)) return;
     state.posting = post === true;
     rememberFeedSnap();
     state.view = 'add'; state.query = ''; state.form = null;
@@ -4750,6 +4849,7 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
     setSnap('full');
   }
   function openPostComposer() {
+    if (resumeFormDraft(true)) return;
     rememberFeedSnap();
     state.posting = true; state.form = newForm(); state.view = 'form';
     render(); setSnap('full');
@@ -5856,6 +5956,7 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
   function formCancel() {
     var f = state.form, pid = f && f.placeId;
     if (f && f.saving) { toast(t('saveWorking')); return; }
+    if (f && !f.editId) { saveFormDraft(); if (f.drafted) setTimeout(function () { toast(state.lang === 'en' ? 'Draft kept: tap + to continue' : '草稿已存，下次点加号接着写'); }, 0); }
     if (f) f.photos.forEach(releaseFormPreview);
     state.form = null; state.posting = false;
     if (pid && placeById(pid)) {
@@ -5998,7 +6099,8 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
     startNewPlace(loc, defaultPrecision(z), z >= 14 ? 60 : z >= 10 ? 800 : 15000);
   }
   function newForm(o) {
-    return Object.assign({ post: state.posting, placeId: null, editId: null, loc: null, cat: null, precision: 'exact', rating: null, visibility: state.posting || lsGet(LS_SHARE) === '1' ? 'public' : 'private', photos: [], draft: null, osm: '' }, o);
+    /* rating0：打开表单时带进来的分（地点页上直接点的星），没改过不算草稿内容 */
+    return Object.assign({ post: state.posting, placeId: null, editId: null, loc: null, cat: null, precision: 'exact', rating: null, rating0: o && o.rating != null ? o.rating : null, visibility: state.posting || lsGet(LS_SHARE) === '1' ? 'public' : 'private', photos: [], draft: null, osm: '' }, o);
   }
   /* 新地点：先看附近有没有已经存在的同类地点，有就让用户先确认是不是同一个 */
   function startNewPlace(loc, precision, radius, prefill) {
@@ -6400,6 +6502,7 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
         : f.editId ? store.updateReview(f.editId, rv, keepPhotos, newPhotos, progress) : store.addReview(rv, newPhotos, progress);
       return save.then(function (res) { return { place: place, res: res }; });
     }).then(function (x) {
+      if (!f.editId) clearFormDraft();
       f.photos.forEach(releaseFormPreview);
       state.form = null; state.posting = false;
       var shared = x.res.review.visibility === 'public';
@@ -7395,6 +7498,7 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
       case 'edit-review': startEdit(d.id); break;
       case 'del-review': deleteReview(d.id); break;
       case 'form-cancel': formCancel(); break;
+      case 'draft-discard': discardFormDraft(); break;
       case 'repick': captureFormDraft(); startPick({ repick: true }); break;
       case 'f-cat': state.form.cat = d.cat; state.form.catSrc = 'user'; setPressed('[data-action="f-cat"]', 'cat', d.cat); if ($('#cat-guess')) $('#cat-guess').hidden = true; break;
       case 'f-prec': state.form.precision = d.prec; setPressed('[data-action="f-prec"]', 'prec', d.prec); break;
