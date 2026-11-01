@@ -314,6 +314,14 @@ body.picking .attrib { bottom: calc(env(safe-area-inset-bottom, 0px) + 122px); }
 }
 .pick-prec { font-size: 13px; color: var(--muted); text-align: center; }
 .pick-prec b { color: var(--ink); }
+.pick-search { pointer-events: auto; position: absolute; top: max(14px, env(safe-area-inset-top, 0px)); left: max(14px, env(safe-area-inset-left, 0px)); right: calc(max(14px, env(safe-area-inset-right, 0px)) + 50px); z-index: 2; }
+.pick-search .search-box { background: var(--surface); border-radius: 999px; box-shadow: var(--shadow); }
+.pick-search .input { height: 42px; }
+.pick-results { list-style: none; margin: 6px 0 0; padding: 4px 0; background: var(--surface); border-radius: 14px; box-shadow: var(--shadow); max-height: 46vh; overflow: auto; }
+.pick-results button { display: block; width: 100%; padding: 9px 14px; border: 0; background: none; text-align: left; font: inherit; color: var(--ink); cursor: pointer; }
+.pick-results button b { display: block; font-size: 14.5px; font-weight: 600; }
+.pick-results button small { display: block; font-size: 12px; color: var(--muted); margin-top: 1px; }
+.pick-results .muted { padding: 9px 14px; font-size: 13px; color: var(--muted); }
 .pick-campus { pointer-events: auto; position: absolute; top: max(14px, env(safe-area-inset-top, 0px)); right: max(14px, env(safe-area-inset-right, 0px)); width: 40px; height: 40px; border-radius: 50%; }
 .pick-campus img { width: 34px; height: 34px; object-fit: contain; }
 .pick-actions { display: grid; grid-template-columns: 1fr 1.6fr; gap: 8px; }
@@ -898,6 +906,10 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
 
     <div class="pick" id="pick" hidden>
       <button type="button" class="icon-btn pick-campus" data-action="pick-campus" data-i18n-aria="toCampus" data-i18n-title="toCampus"><img src="assets/xmum-campus.png" width="34" height="34" alt=""></button>
+      <div class="pick-search" id="pick-search">
+        <div class="search-box"><img class="search-symbol" src="assets/search-pin.png" alt=""><input id="pick-q" class="input" type="search" autocomplete="off" enterkeyhint="search" maxlength="60" placeholder="搜城市、街区，地图飞过去" aria-label="搜城市、街区"></div>
+        <ul class="pick-results" id="pick-results" hidden></ul>
+      </div>
       <div class="pick-hint" id="pick-hint"></div>
       <div class="pick-dot"></div>
       <div class="pick-pin"><svg viewBox="0 0 46 58"><path d="M23 56C18 46 4 36 4 21a19 19 0 0 1 38 0c0 15-14 25-19 35z" stroke="#fff" stroke-width="3"/><circle cx="23" cy="21" r="7" fill="#fff"/></svg></div>
@@ -4679,7 +4691,7 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
     view.innerHTML = h;
     renderFormPhotos();
     restoreFormDraft();
-    if (/^g\//.test(f.osm)) { mountGoogleFormDetail(f); googleCatForForm(f); }
+    if (/^g\//.test(f.osm)) { mountGoogleFormDetail(f); googleCatForForm(f); googleAreaHint(f); }
     /* 分类只占一行，横着滑；预选的那个滑到看得见的地方 */
     var row = $('#place-form .chips-wrap.one-line'), sel = row && row.querySelector('[aria-pressed="true"]');
     if (sel) row.scrollLeft += sel.getBoundingClientRect().left - row.getBoundingClientRect().left - 18;
@@ -5218,18 +5230,36 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
     return null;
   }
   window.__googleTypesCat = googleTypesCat; /* 测试用 */
-  var googleCats = new Map();
-  function fetchGoogleCat(gid) {
-    if (googleCats.has(gid)) return googleCats.get(gid);
+  var googleTypes = new Map();
+  function fetchGoogleTypes(gid) {
+    if (googleTypes.has(gid)) return googleTypes.get(gid);
     var job = loadGoogle().then(function () { return google.maps.importLibrary('places'); }).then(function (lib) {
       var Place = (lib && lib.Place) || (google.maps.places && google.maps.places.Place);
       if (!Place) return null;
       var pl = new Place({ id: gid });
-      return pl.fetchFields({ fields: ['types'] }).then(function () { return googleTypesCat(pl.types); });
-    }).catch(function () { googleCats.delete(gid); return null; });
-    googleCats.set(gid, job);
+      return pl.fetchFields({ fields: ['types'] }).then(function () { return (pl.types || []).map(function (x) { return String(x).toLowerCase(); }); });
+    }).catch(function () { googleTypes.delete(gid); return null; });
+    googleTypes.set(gid, job);
     return job;
   }
+  function fetchGoogleCat(gid) { return fetchGoogleTypes(gid).then(function (ty) { return ty ? googleTypesCat(ty) : null; }); }
+  /* 谷歌说它是吃的还是玩的（用户 2026-11-01：批量加的海边日落被记成美食）：
+     有餐厅、咖啡、酒吧这类就是美食；景点、海滩、公园、自然、博物馆、城市这类就是旅行；都不像就不说 */
+  var G_FOOD = /restaurant|^food$|food_|cafe|coffee|bakery|^bar$|_bar$|pub|meal_|tea|dessert|ice_cream|juice|diner|bistro|hawker|food_court/;
+  var G_TRAVEL = /tourist_attraction|natural_feature|^park$|_park$|beach|museum|zoo|aquarium|campground|hiking|landmark|monument|island|lake|mountain|waterfall|garden|scenic|observation|marina|temple|church|mosque|shrine|castle|historical|cultural|art_gallery|^locality$|administrative_area|sublocality|neighborhood|country|colloquial_area|airport|ski|national_park/;
+  function googleTypesMode(types) {
+    types = (types || []).map(function (x) { return String(x).toLowerCase(); });
+    if (types.some(function (x) { return G_FOOD.test(x); })) return 'food';
+    if (types.some(function (x) { return G_TRAVEL.test(x); })) return 'travel';
+    return null;
+  }
+  window.__googleTypesMode = googleTypesMode; /* 测试用 */
+  /* 选到的是城市、地区（比如“尼亚加拉瀑布”市），位置是市中心，不是那个景点 */
+  function googleTypesArea(types) {
+    return (types || []).some(function (x) { return /^(locality|political|administrative_area_level_\d|sublocality(_level_\d)?|neighborhood|country|colloquial_area|postal_town)$/.test(x); }) &&
+      !(types || []).some(function (x) { return G_FOOD.test(x) || /tourist_attraction|natural_feature|establishment|point_of_interest/.test(x); });
+  }
+  window.__googleTypesArea = googleTypesArea; /* 测试用 */
   function googleCatForForm(f) {
     var gid = f.osm.slice(2), p = f.placeId ? placeById(f.placeId) : null;
     if (p || f.catSrc === 'user' || f.gcatFor === gid || (state.mode !== 'food')) return;
@@ -5238,6 +5268,20 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
       if (!c || state.form !== f || f.osm !== 'g/' + gid || f.catSrc === 'user') return;
       if (catNoteFor(f)) suggestCat(f, c, 'google');
       else { f.cat = c; f.catSrc = 'google'; } /* 发帖没有分类那一行：悄悄记上 */
+    });
+  }
+  /* 选到的是城市 / 地区（用户 2026-11-01：选了“尼亚加拉瀑布”，定位在市区街道上）：提醒一句 */
+  function googleAreaHint(f) {
+    var gid = f.osm.slice(2);
+    if (f.placeId && placeById(f.placeId)) return;
+    fetchGoogleTypes(gid).then(function (ty) {
+      var slot = $('#g-form-detail');
+      if (!ty || !googleTypesArea(ty) || state.form !== f || f.osm !== 'g/' + gid || !slot || $('#area-hint')) return;
+      var hint = document.createElement('p');
+      hint.className = 'f-hint area-hint'; hint.id = 'area-hint';
+      hint.innerHTML = esc(state.lang === 'en' ? 'This is a whole city or area, so the pin sits at its centre. For a spot (a waterfall, a shop), search its own name or ' : '这是一个城市 / 地区，位置在它的中心。想定在具体景点（比如瀑布）就搜景点自己的名字，或') +
+        '<button type="button" class="link-btn" data-action="area-repick">' + esc(state.lang === 'en' ? 'pick it on the map' : '在地图上点位置') + '</button>';
+      slot.insertAdjacentElement('afterend', hint);
     });
   }
   /* 添加时直接由谷歌组件显示店名，避免把搜索词展示成店名输入框。 */
@@ -6013,6 +6057,7 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
     if (!map) { toast(t('mapFail')); return; }
     rememberFeedSnap();
     state.picking = ctx || {};
+    resetPickSearch();
     document.body.classList.add('picking');
     $('#pick').hidden = false;
     if (isMobile()) setSnap('hidden');
@@ -6038,7 +6083,51 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
       prec.hidden = false;
     } else prec.hidden = true;
   }
+  /* 地图选点上面的搜索（用户 2026-11-01）：搜城市、街区、路名，地图飞过去，针还是自己挪。
+     用 Photon（免费），离地图中心近的排前面；不直接选点 */
+  var pickQ = { timer: 0, seq: 0, results: [] };
+  function pickZoom(r) { return r.precision === 'city' ? 12 : r.precision === 'area' ? 14.5 : 16.5; }
+  function renderPickResults(status) {
+    var box = $('#pick-results');
+    if (!box) return;
+    var en = state.lang === 'en';
+    if (status === 'idle') { box.hidden = true; box.innerHTML = ''; return; }
+    box.hidden = false;
+    if (status === 'loading' && !pickQ.results.length) { box.innerHTML = '<li class="muted">' + esc(en ? 'Searching…' : '搜索中…') + '</li>'; return; }
+    if (!pickQ.results.length) { box.innerHTML = '<li class="muted">' + esc(status === 'fail' ? (en ? 'Search failed, try again' : '搜索失败，再试一次') : (en ? 'Nothing found' : '没找到')) + '</li>'; return; }
+    box.innerHTML = pickQ.results.map(function (r, k) {
+      return '<li><button type="button" data-action="pick-go" data-k="' + k + '"><b>' + esc(r.name) + '</b>' + (r.where ? '<small>' + esc(r.where) + '</small>' : '') + '</button></li>';
+    }).join('');
+  }
+  function queuePickSearch(q) {
+    clearTimeout(pickQ.timer);
+    var seq = ++pickQ.seq;
+    q = (q || '').trim();
+    if (q.length < 2) { pickQ.results = []; renderPickResults('idle'); return; }
+    renderPickResults('loading');
+    pickQ.timer = setTimeout(function () {
+      var c = map ? map.getCenter() : XMUM;
+      withTimeout(photonSearch(q, { lat: c.lat, lng: c.lng }), SEARCH_TIMEOUT).then(function (rs) {
+        if (seq !== pickQ.seq) return;
+        pickQ.results = (rs || []).slice(0, 6);
+        renderPickResults('done');
+      }, function () { if (seq === pickQ.seq) { pickQ.results = []; renderPickResults('fail'); } });
+    }, 250);
+  }
+  function pickGo(k) {
+    var r = pickQ.results[k];
+    if (!r || !map) return;
+    var q = $('#pick-q'); if (q) { q.value = r.name; q.blur(); }
+    renderPickResults('idle');
+    map.flyTo({ center: [r.lng, r.lat], zoom: pickZoom(r), essential: true, duration: reduceMotion ? 0 : 1100 });
+  }
+  function resetPickSearch() {
+    clearTimeout(pickQ.timer); pickQ.seq++; pickQ.results = [];
+    var q = $('#pick-q'); if (q) { q.value = ''; q.placeholder = state.lang === 'en' ? 'Search a city or area to fly there' : '搜城市、街区，地图飞过去'; }
+    renderPickResults('idle');
+  }
   function endPick() {
+    resetPickSearch();
     state.picking = null;
     document.body.classList.remove('picking');
     $('#pick').hidden = true;
@@ -6560,6 +6649,7 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
       b.groups = groupPhotos(b);
       render();
       findNames(b);
+      bulkSkyGuess(b);
     }, function () {
       if (state.bulk !== b) return;
       b.error = true;
@@ -6701,15 +6791,68 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
      现在默认美食（用户 2026-10-31：奶茶被自动记到旅行，没注意很麻烦）；只有自己记过的地点，
      或附近找到的是很明确的景点（海岛、自然、古迹、玩乐活动）才自动换成旅行；不对自己点着改 */
   var BULK_TRAVEL_CATS = ['island', 'nature', 'culture', 'fun'];
-  function bulkAutoMode(c) {
+  function bulkAutoMode(c, g) {
+    if (c && c.place) return c.mode;
+    if (g && g.sky) return 'travel';
     if (!c) return 'food';
-    if (c.place) return c.mode;
     return c.mode === 'travel' && BULK_TRAVEL_CATS.indexOf(c.cat) !== -1 ? 'travel' : 'food';
   }
   function bulkChoose(g, k) {
     var c = k >= 0 && g.cands ? g.cands[k] : null;
     g.pick = c ? k : -1;
-    if (!g.modeSet) g.mode = bulkAutoMode(c);
+    if (!g.modeSet) g.mode = bulkAutoMode(c, g);
+  }
+  /* 不用模型的简单判断（用户 2026-11-01）：照片上面三分之一大片是平滑的天空 / 海
+     （蓝、或日落那种暖色渐变），下面不是近拍的一大盘东西 → 先放旅行。只看 24×24 的小图，几乎不占内存。
+     宁可漏判也别把奶茶记成旅行（用户 2026-10-31），所以条件收得很紧；点一下随时改 */
+  function skyScore(px, w, h) {
+    var top = Math.floor(h / 3), sky = 0, blues = 0, n = 0, rough = 0;
+    for (var y = 0; y < top; y++) for (var x = 0; x < w; x++) {
+      var i = (y * w + x) * 4, r = px[i], gg = px[i + 1], bb = px[i + 2];
+      var mx = Math.max(r, gg, bb), mn = Math.min(r, gg, bb), v = mx / 255, sat = mx ? (mx - mn) / mx : 0;
+      var blue = bb > r + 18 && bb >= gg - 8 && v > 0.35;          /* 蓝天、海 */
+      var grey = sat < 0.2 && v > 0.45 && bb >= r - 6;             /* 偏冷的云 */
+      var dusk = r > bb + 25 && r >= gg && v > 0.4 && sat > 0.25 && sat < 0.85; /* 日落那段暖色 */
+      if (blue) blues++;
+      if (blue || grey || dusk) sky++;
+      if (x + 1 < w) { var j = i + 4; rough += Math.abs(r - px[j]) + Math.abs(gg - px[j + 1]) + Math.abs(bb - px[j + 2]); }
+      n++;
+    }
+    return { blue: blues / n, sky: sky / n, rough: rough / n / 3 };
+  }
+  /* 一定要有不少蓝（白桌子、暖色墙、一盘橙色的菜都不算），再加上整体像天空、比较平滑 */
+  function looksLikeSky(px, w, h) {
+    var sc = skyScore(px, w, h);
+    return sc.blue >= 0.4 && sc.sky >= 0.75 && sc.rough < 14;
+  }
+  window.__looksLikeSky = looksLikeSky; /* 测试用 */
+  function bulkSkyGuess(b) {
+    var cv = document.createElement('canvas'), W = 24, H = 24, ctx;
+    cv.width = W; cv.height = H;
+    try { ctx = cv.getContext('2d', { willReadFrequently: true }); } catch (e) { return; }
+    if (!ctx) return;
+    (b.groups || []).reduce(function (chain, g) {
+      return chain.then(function () {
+        var ph = g.photos[0];
+        if (state.bulk !== b || !ph || !ph.url || ph.clip || g.modeSet) return;
+        return new Promise(function (done) {
+          var img = new Image();
+          img.onload = function () {
+            try {
+              ctx.save(); ctx.clearRect(0, 0, W, H);
+              if (ph.rot) { ctx.translate(W / 2, H / 2); ctx.rotate(ph.rot * Math.PI / 180); ctx.translate(-W / 2, -H / 2); }
+              ctx.drawImage(img, 0, 0, W, H); ctx.restore();
+              g.sky = looksLikeSky(ctx.getImageData(0, 0, W, H).data, W, H);
+              var c = g.pick >= 0 && g.cands ? g.cands[g.pick] : null;
+              if (g.sky && !g.modeSet && !(c && c.place) && g.mode !== 'travel') { g.mode = 'travel'; updateBulkMode(g); }
+            } catch (e) { /* 读不了像素就算了 */ }
+            img.src = ''; done();
+          };
+          img.onerror = function () { done(); };
+          img.src = ph.url;
+        });
+      });
+    }, Promise.resolve());
   }
   function bulkDate(ts) {
     var d = new Date(ts), sameYear = d.getFullYear() === new Date().getFullYear();
@@ -6846,6 +6989,12 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
         var p = store.places().find(function (p) { return p.osm === r.osm && p.mode === r.mode; });
         if (p) { r.place = p.id; r.name = placeTitle(p); r.cat = p.cat; }
         bulkTake(g, r);
+        /* 谷歌说是景点就切到旅行、是餐厅就切回美食；自己点过美食/旅行就不动 */
+        if (!p && /^g\//.test(r.osm || '')) fetchGoogleTypes(r.osm.slice(2)).then(function (ty) {
+          var m = ty && googleTypesMode(ty);
+          if (!m || g.modeSet || state.bulk !== b || g.cands[g.pick] !== r) return;
+          if (g.mode !== m) { g.mode = r.mode = m; updateBulkMode(g); }
+        });
       }
     });
   }
@@ -7500,6 +7649,14 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
       case 'form-cancel': formCancel(); break;
       case 'draft-discard': discardFormDraft(); break;
       case 'repick': captureFormDraft(); startPick({ repick: true }); break;
+      case 'pick-go': pickGo(+d.k); break;
+      case 'area-repick':
+        /* 城市不当地点用：去掉谷歌的城市 id，名字留着，到地图上点具体位置 */
+        if (!state.form) break;
+        if (formKeepsDraft(state.form)) { choosePostLocation(true); break; }
+        captureFormDraft();
+        Object.assign(state.form, { osm: '', lockedName: false, placeId: null });
+        startPick({ repick: true }); break;
       case 'f-cat': state.form.cat = d.cat; state.form.catSrc = 'user'; setPressed('[data-action="f-cat"]', 'cat', d.cat); if ($('#cat-guess')) $('#cat-guess').hidden = true; break;
       case 'f-prec': state.form.precision = d.prec; setPressed('[data-action="f-prec"]', 'prec', d.prec); break;
       case 'f-share':
@@ -7568,6 +7725,7 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
     var el = e.target;
     if (el.id === 'flt-price') { setPriceAbout(el, false); return; }
     if (el.id === 'f-name') { onNameForCat(state.form, el.value); return; }
+    if (el.id === 'pick-q') { queuePickSearch(el.value); return; }
     if (el.id === 'q') { state.query = el.value; queueOsmSearch(); renderSearchResults(); queueGoogle(); }
     else if (el.id === 'home-q') { homeQ.q = el.value; queueHomeSearch(); renderHomeResults(); }
     else if (el.dataset && el.dataset.bkComment != null) { var bc = state.bulk && state.bulk.groups && state.bulk.groups[+el.dataset.bkComment]; if (bc) bc.comment = el.value; }
@@ -7598,6 +7756,7 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
     else if (!key && state.tab !== 'home') setTab('home');
   }
   document.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' && e.target && e.target.id === 'pick-q') { e.preventDefault(); if (pickQ.results.length) pickGo(0); return; }
     if (e.key === 'Escape') stepBack(true);
   });
   /* 手机的返回键 / 侧边返回手势：不在首页时，在浏览器历史里垫一条，

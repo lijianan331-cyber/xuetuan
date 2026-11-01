@@ -2580,8 +2580,37 @@ with sync_playwright() as p:
     pd.click('[data-action="back"]'); pd.wait_for_timeout(150)
     add(pd); pd.wait_for_timeout(200)
     check('draft: next + is a fresh add search again', pd.locator('#q').count() == 1 and pd.locator('#place-form').count() == 0)
-    # 地点页点星星打开、没改就退出：不算草稿
-    pd.click('[data-action="back"]'); pd.wait_for_timeout(150)
+    # 地图选点上面的搜索：搜城市飞过去，针还是自己挪（用户 2026-11-01）
+    pd.click('[data-action="add-pin"]'); pd.wait_for_timeout(150)
+    check('pick search: a search box sits on top of the map pick', pd.locator('#pick-q').is_visible() and pd.locator('#pick-results').is_hidden())
+    pd.fill('#pick-q', 'Singapura'); pd.wait_for_selector('#pick-results [data-action="pick-go"]', timeout=4000)
+    names = pd.locator('#pick-results [data-action="pick-go"] b').all_inner_texts()
+    check('pick search: Photon results listed', len(names) >= 1 and names[0] == 'Singapura', names)
+    pd.screenshot(path=os.path.join(SHOTS, '15-pick-search.png'))
+    pd.locator('#pick-results [data-action="pick-go"]').nth(1).click(); pd.wait_for_timeout(200)
+    mv = pd.evaluate('(() => { const c = window.__map.calls.filter(c => c[0] === "move").slice(-1)[0]; return c && c[1]; })()')
+    check('pick search: tapping a city flies there, still picking', bool(mv) and abs(mv['center'][0] - 103.852) < 0.01 and mv['zoom'] == 12 and pd.locator('#pick').is_visible() and pd.locator('#pick-results').is_hidden(), mv)
+    pd.click('[data-action="pick-cancel"]'); pd.wait_for_timeout(150)
+    add(pd); pd.wait_for_timeout(150); pd.click('[data-action="add-pin"]'); pd.wait_for_timeout(100)
+    check('pick search: box is empty again next time', pd.input_value('#pick-q') == '')
+    pd.click('[data-action="pick-cancel"]'); pd.wait_for_timeout(150)
+    # 美食 / 旅行的简单判断，不用模型
+    sky = pd.evaluate("""(() => {
+      const mk = (top, bottom) => { const a = new Uint8ClampedArray(24*24*4); for (let y = 0; y < 24; y++) for (let x = 0; x < 24; x++) { const c = y < 8 ? top(x, y) : bottom(x, y), i = (y*24+x)*4; a[i]=c[0]; a[i+1]=c[1]; a[i+2]=c[2]; a[i+3]=255; } return a; };
+      const f = window.__looksLikeSky;
+      return [
+        f(mk(() => [110, 170, 235], () => [40, 90, 120]), 24, 24),
+        f(mk((x, y) => y < 4 ? [120, 140, 190] : [235, 150, 90], () => [30, 40, 60]), 24, 24),
+        f(mk(() => [215, 120, 60], () => [210, 110, 50]), 24, 24),
+        f(mk(() => [245, 245, 242], () => [200, 120, 70]), 24, 24),
+        f(mk((x) => x % 2 ? [20, 60, 200] : [240, 200, 40], () => [90, 60, 40]), 24, 24)
+      ];
+    })()""")
+    check('bulk: blue sky / sea and a sunset sky look like travel; orange food, a white table and busy colours do not', sky == [True, True, False, False, False], sky)
+    gm = pd.evaluate('[window.__googleTypesMode(["tourist_attraction","point_of_interest"]), window.__googleTypesMode(["beach","natural_feature"]), window.__googleTypesMode(["japanese_restaurant","restaurant","food"]), window.__googleTypesMode(["cafe","tourist_attraction"]), window.__googleTypesMode(["store"])]')
+    check('bulk: Google types decide food or travel (food wins when both)', gm == ['travel', 'travel', 'food', 'food', None], gm)
+    ga = pd.evaluate('[window.__googleTypesArea(["locality","political"]), window.__googleTypesArea(["administrative_area_level_2","political"]), window.__googleTypesArea(["tourist_attraction","natural_feature","point_of_interest","establishment"]), window.__googleTypesArea(["restaurant","food"])]')
+    check('add: a Google city / area pick is flagged (Niagara Falls the city), a sight or shop is not', ga == [True, True, False, False], ga)
     check('draft: no page errors', not errorsd, errorsd)
     ctxdr.close()
 
