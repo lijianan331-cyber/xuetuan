@@ -280,6 +280,10 @@ with sync_playwright() as p:
         countFont: m.layers.find(l => l.id === 'cl-count').layout['text-font'],
         labelFont: m.layers.find(l => l.id === 'pt-label').layout['text-font'],
         intro: m.calls.filter(c => c[0] === 'move').map(c => c[1]) } }''')
+    mf = json.load(open(os.path.join(ROOT, 'manifest.webmanifest'), encoding='utf-8'))
+    check('add-to-home-screen: manifest, Apple icon and full-screen tags present, icons exist', page.locator('link[rel="manifest"]').count() == 1 and page.locator('link[rel="apple-touch-icon"]').count() == 1
+          and page.get_attribute('meta[name="apple-mobile-web-app-capable"]', 'content') == 'yes' and mf['display'] == 'standalone' and mf['short_name'] == '雪团'
+          and all(os.path.exists(os.path.join(ROOT, i['src'])) for i in mf['icons']) and os.path.exists(os.path.join(ROOT, 'assets/icon-180.png')))
     check('app layers added', st['layers'] == ['lib-dot', 'lib-label', 'cl-halo', 'hometown-pin', 'cl-circle', 'cl-count', 'cl-photo', 'home-pin', 'pt-pin', 'pt-photo', 'pt-label', 'me-halo', 'me-dot'], st['layers'])
     check('parsed sample rows', len(SAMPLE_ROWS) >= 60 and len(FOOD_S) >= 30, len(SAMPLE_ROWS))
     want_imgs = len({'none' if x['rating'] is None else x['rating'] * 10 for x in FOOD_S})
@@ -1377,7 +1381,11 @@ with sync_playwright() as p:
       }
       def('gmp-place-search', Search); def('gmp-place-text-search-request', class extends Plain {}); def('gmp-place-standard-content', class extends Plain {});
       def('gmp-place-details-compact', Details); def('gmp-place-details-place-request', class extends Plain {});
-      window.google = { maps: { importLibrary: function () { return Promise.resolve({}); } } };
+      class Place {
+        constructor(o) { this.id = o.id; }
+        fetchFields(o) { calls.push(['fields', this.id, o.fields]); this.types = (window.__gtypes || {})[this.id] || []; return Promise.resolve({ place: this }); }
+      }
+      window.google = { maps: { importLibrary: function () { return Promise.resolve({}); }, places: { Place: Place } } };
       var cb = (document.currentScript.src.match(/callback=([^&]+)/) || [])[1];
       setTimeout(function () { window[cb](); }, 0);
     })();'''
@@ -1409,18 +1417,23 @@ with sync_playwright() as p:
     pg.fill('#q', 'zzz nothing'); pg.wait_for_timeout(900)
     check('google: no results stays visible with explanation and Google Maps link', pg.locator('#g-search').is_visible() and '没有找到' in pg.inner_text('#g-search') and pg.locator('#g-search a[href*="google.com/maps/search"]').count() == 1)
     pg.fill('#q', 'katsu'); pg.wait_for_timeout(900)
+    pg.evaluate('window.__gtypes = {gK1: ["japanese_restaurant", "restaurant", "food", "point_of_interest"]}')
     pg.screenshot(path=os.path.join(SHOTS, '05g-google-search.png'))
     pg.evaluate('(() => { const e = new Event("gmp-select"); e.place = document.querySelector("gmp-place-search").places[0]; document.querySelector("gmp-place-search").dispatchEvent(e); })()')
     pg.wait_for_timeout(400)
     check('google: picking shows Google’s own place card, a red pin and scores', pg.locator('#g-detail gmp-place-details-compact').count() == 1 and pg.evaluate('window.__gcalls.slice(-1)[0]') == ['details', 'gK1'] and pg.locator('#map .sel-pin').count() == 1 and pg.locator('[data-commit="preview-score"]').count() == 1 and '距 XMUM' in pg.inner_text('#view'), pg.inner_text('#view')[:100])
     rate(pg, 4, '[data-commit="preview-score"]')
     pg.wait_for_timeout(300)
+    pg.wait_for_function('document.querySelector("#cat-guess") && !document.querySelector("#cat-guess").hidden', timeout=3000)
+    check('google: shop type from Google preselects 日料 with a note, asking only for the types field', pg.get_attribute('[data-action="f-cat"][data-cat="jp"]', 'aria-pressed') == 'true'
+          and pg.inner_text('#cat-guess') == '按谷歌上的店铺类型选了「日料」，不对就点别的' and [c for c in pg.evaluate('window.__gcalls') if c[0] == 'fields'] == [['fields', 'gK1', ['types']]], pg.evaluate('window.__gcalls'))
+    check('google types map to our categories', pg.evaluate('''[["korean_restaurant","restaurant"],["korean_barbecue_restaurant"],["bubble_tea_store"],["coffee_shop","cafe"],["chinese_restaurant"],["hot_pot_restaurant","chinese_restaurant"],["fast_food_restaurant"],["malaysian_restaurant"],["restaurant","food"]].map(window.__googleTypesCat)''') == ['kr', 'bbq', 'cafe', 'cafe', 'cn', 'hotpot', 'west', 'malay', None])
     check('google: selected shop is shown by Google, no editable query-name field', pg.locator('#g-form-detail gmp-place-details-compact').count() == 1 and pg.locator('#f-name').count() == 0 and stars_val(pg) == '4' and '请核对' not in pg.inner_text('#view'))
     pg.click('#f-submit')
     pg.wait_for_timeout(500)
     stored = pg.evaluate('JSON.parse(localStorage.getItem("xmum-chiwan-map:data:v1"))')
     kl = [p_ for p_ in stored['places'] if p_['osm'] == 'g/gK1']
-    check('google: place saved with the Google place id', len(kl) == 1 and kl[0]['osm'] == 'g/gK1' and kl[0]['mode'] == 'food' and kl[0]['lat'] == 2.828698, kl)
+    check('google: place saved with the Google place id and the Google-based category', len(kl) == 1 and kl[0]['osm'] == 'g/gK1' and kl[0]['mode'] == 'food' and kl[0]['lat'] == 2.828698 and kl[0]['cat'] == 'jp', kl)
     pg.click('[data-action="search"]') if pg.locator('[data-action="search"]').count() else None
     tab(pg, 'explore'); pg.click('#map-ctrls [data-action="search"]'); pg.fill('#q', 'katsu'); pg.wait_for_timeout(900)
     pg.evaluate('(() => { const e = new Event("gmp-select"); e.place = document.querySelector("gmp-place-search").places[0]; document.querySelector("gmp-place-search").dispatchEvent(e); })()')

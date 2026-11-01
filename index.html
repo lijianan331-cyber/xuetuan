@@ -7,6 +7,14 @@
 <meta name="description" content="雪团：厦马同学自己的吃喝玩乐地图。记录去过的地方、打分、拍照，收藏想去的地方。">
 <meta name="theme-color" content="#FFFFFF">
 <meta name="color-scheme" content="only light">
+<!-- 加到手机桌面（iPhone：Safari 分享 → 添加到主屏幕）：用雪团图标、全屏打开 -->
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="assets/icon-180.png">
+<link rel="icon" type="image/png" sizes="192x192" href="assets/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="雪团">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <!-- 底图瓦片、地点库、地名搜索：提前连上，第一次加载和第一次搜索少等一会儿 -->
@@ -1132,7 +1140,7 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
       category: '分类（选填）', precision: '标到哪一级',
       precExact: '具体地点', precArea: '一片区域', precCity: '整个城市',
       precHint: '吃饭的店标到门口；旅行可以只标城市，放大时会显示成一个范围。',
-      catGuessing: '正在看照片认是哪一类…', catGuessed: '看照片像「{c}」，不对就点别的', catByName: '按店名选了「{c}」，不对就点别的', catNoGuess: '照片没认出来', optional: '选填', rating: '评分', ratingHint: '点或左右拖星星，可以打半颗；拖到最左是 0 分（踩雷）。', errRating: '打个分再发布', starsNone: '还没打分',
+      catGuessing: '正在看照片认是哪一类…', catGuessed: '看照片像「{c}」，不对就点别的', catByName: '按店名选了「{c}」，不对就点别的', catByGoogle: '按谷歌上的店铺类型选了「{c}」，不对就点别的', catNoGuess: '照片没认出来', optional: '选填', rating: '评分', ratingHint: '点或左右拖星星，可以打半颗；拖到最左是 0 分（踩雷）。', errRating: '打个分再发布', starsNone: '还没打分',
       priceFood: '人均（RM，选填）',
       review: '评论（选填）', reviewPhFood: '写评论', reviewPhTravel: '写评论',
       photos: '照片（选填）', photoLimit: '最多 {n} 张', addPhoto: '加照片', photoReadFail: '这张图读不了，换一张试试',
@@ -1235,7 +1243,7 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
       category: 'Category (optional)', precision: 'How precise',
       precExact: 'Exact spot', precArea: 'An area', precCity: 'Whole city',
       precHint: 'Pin restaurants at the door. Trips can be city-level and show as an area when zoomed in.',
-      catGuessing: 'Reading the photo…', catGuessed: 'Looks like {c} from the photo. Tap another if wrong.', catByName: 'Picked {c} from the name. Tap another if wrong.', catNoGuess: 'Could not tell from the photo', optional: 'optional', rating: 'Score', ratingHint: 'Tap or drag the stars; half stars work. All the way left is 0 (avoid).', errRating: 'Give it a score first', starsNone: 'Not scored yet',
+      catByGoogle: 'Picked {c} from the shop type on Google. Tap another to change.', catGuessing: 'Reading the photo…', catGuessed: 'Looks like {c} from the photo. Tap another if wrong.', catByName: 'Picked {c} from the name. Tap another if wrong.', catNoGuess: 'Could not tell from the photo', optional: 'optional', rating: 'Score', ratingHint: 'Tap or drag the stars; half stars work. All the way left is 0 (avoid).', errRating: 'Give it a score first', starsNone: 'Not scored yet',
       priceFood: 'Per person (RM, optional)',
       review: 'Review (optional)', reviewPhFood: 'Write a review', reviewPhTravel: 'Write a review',
       photos: 'Photos (optional)', photoLimit: 'up to {n}', addPhoto: 'Add photo', photoReadFail: 'Couldn’t read that image. Try another one',
@@ -4668,7 +4676,7 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
     view.innerHTML = h;
     renderFormPhotos();
     restoreFormDraft();
-    if (/^g\//.test(f.osm)) mountGoogleFormDetail(f);
+    if (/^g\//.test(f.osm)) { mountGoogleFormDetail(f); googleCatForForm(f); }
     /* 分类只占一行，横着滑；预选的那个滑到看得见的地方 */
     var row = $('#place-form .chips-wrap.one-line'), sel = row && row.querySelector('[aria-pressed="true"]');
     if (sel) row.scrollLeft += sel.getBoundingClientRect().left - row.getBoundingClientRect().left - 18;
@@ -5093,6 +5101,44 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
     var lng = typeof pl.location.lng === 'function' ? pl.location.lng() : pl.location.lng;
     if (!isFinite(lat) || !isFinite(lng)) return null;
     return { osm: 'g/' + pl.id, gid: pl.id, name: q, alt: '', lng: round6(lng), lat: round6(lat), mode: state.mode, cat: null, precision: 'exact', where: '', google: true };
+  }
+  /* 按谷歌的店铺类型分类（用户 2026-11-01）：选了谷歌上的店，就问一次它的 types（Place Details Essentials，
+     每月 1 万次免费），对上日料、韩餐这些就预选。同一家店只问一次。 */
+  var GOOGLE_TYPE_CATS = [
+    ['hotpot', /hot_pot|shabu/], ['bbq', /barbecue|yakiniku|korean_barbecue/], ['kr', /korean/], ['jp', /japanese|sushi|ramen|izakaya|udon|tonkatsu/],
+    ['cn', /chinese|dim_sum|cantonese|sichuan|hunan|taiwanese|hong_kong/], ['mamak', /indian|pakistani|mamak/], ['malay', /malaysian|indonesian|nyonya|peranakan/],
+    ['sweet', /dessert|ice_cream|bakery|confectioner|donut|cake|chocolate/], ['cafe', /bubble_tea|tea_house|juice|coffee|cafe|smoothie|^bar$|wine_bar|pub/],
+    ['pretty', /brunch|breakfast_restaurant/],
+    ['west', /fast_food|hamburger|pizza|steak|american|italian|western|french|mexican|spanish|greek|mediterranean|sandwich/],
+    ['street', /food_court|hawker|night_market|street_food/]
+  ];
+  function googleTypesCat(types) {
+    types = (types || []).map(function (x) { return String(x).toLowerCase(); });
+    for (var i = 0; i < GOOGLE_TYPE_CATS.length; i++) if (types.some(function (x) { return GOOGLE_TYPE_CATS[i][1].test(x); })) return GOOGLE_TYPE_CATS[i][0];
+    return null;
+  }
+  window.__googleTypesCat = googleTypesCat; /* 测试用 */
+  var googleCats = new Map();
+  function fetchGoogleCat(gid) {
+    if (googleCats.has(gid)) return googleCats.get(gid);
+    var job = loadGoogle().then(function () { return google.maps.importLibrary('places'); }).then(function (lib) {
+      var Place = (lib && lib.Place) || (google.maps.places && google.maps.places.Place);
+      if (!Place) return null;
+      var pl = new Place({ id: gid });
+      return pl.fetchFields({ fields: ['types'] }).then(function () { return googleTypesCat(pl.types); });
+    }).catch(function () { googleCats.delete(gid); return null; });
+    googleCats.set(gid, job);
+    return job;
+  }
+  function googleCatForForm(f) {
+    var gid = f.osm.slice(2), p = f.placeId ? placeById(f.placeId) : null;
+    if (p || f.catSrc === 'user' || f.gcatFor === gid || (state.mode !== 'food')) return;
+    f.gcatFor = gid;
+    fetchGoogleCat(gid).then(function (c) {
+      if (!c || state.form !== f || f.osm !== 'g/' + gid || f.catSrc === 'user') return;
+      if (catNoteFor(f)) suggestCat(f, c, 'google');
+      else { f.cat = c; f.catSrc = 'google'; } /* 发帖没有分类那一行：悄悄记上 */
+    });
   }
   /* 添加时直接由谷歌组件显示店名，避免把搜索词展示成店名输入框。 */
   function mountGoogleFormDetail(f) {
@@ -6264,10 +6310,10 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
     var row = $('#place-form .chips-wrap.one-line'), sel = row && row.querySelector('[aria-pressed="true"]');
     if (sel) row.scrollLeft += sel.getBoundingClientRect().left - row.getBoundingClientRect().left - 18;
     var el = $('#cat-guess');
-    if (el) { el.textContent = t(src === 'name' ? 'catByName' : 'catGuessed', { c: catName(c) }) + (extra || ''); el.hidden = false; }
+    if (el) { el.textContent = t(src === 'name' ? 'catByName' : src === 'google' ? 'catByGoogle' : 'catGuessed', { c: catName(c) }) + (extra || ''); el.hidden = false; }
   }
   function onNameForCat(f, name) {
-    if (!catNoteFor(f)) return;
+    if (!catNoteFor(f) || f.catSrc === 'google') return;
     var c = nameCat(name);
     if (c) { if (c !== f.cat || f.catSrc !== 'name') suggestCat(f, c, 'name'); }
     else if (f.catSrc === 'name') { var el = $('#cat-guess'); if (el) el.hidden = true; f.catSrc = 'name-old'; }
@@ -6903,10 +6949,12 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
     var key = c ? (keep && c.place ? c.place : (c.osm || c.place || '')) + ':' + mode : '';
     var p0 = keep && c.place ? placeById(c.place) : key && made[key] ? placeById(made[key]) : null;
     var name = (c ? c.name : g.name.trim()) || t(mode === 'food' ? 'unnamedFood' : 'unnamedTravel');
-    var step = p0 ? Promise.resolve(p0) : store.addPlace({
-      mode: mode, cat: (keep && c.cat) || 'other', precision: g.precision || 'exact', lat: round6(c ? c.lat : g.lat), lng: round6(c ? c.lng : g.lng),
+    /* 谷歌上的店：按谷歌的店铺类型分；地点库带来的旧“日韩”按店名分 */
+    var gcat = !p0 && mode === 'food' && c && !c.cat && /^g\//.test(c.osm || '') ? fetchGoogleCat(c.osm.slice(2)) : Promise.resolve(null);
+    var step = p0 ? Promise.resolve(p0) : gcat.then(function (gc) { return store.addPlace({
+      mode: mode, cat: gc || (keep && normCat(c.cat, c.name)) || 'other', precision: g.precision || 'exact', lat: round6(c ? c.lat : g.lat), lng: round6(c ? c.lng : g.lng),
       name: name.slice(0, 60), altName: String((c && c.alt) || '').slice(0, 60), link: '', osm: (c && c.osm) || ''
-    });
+    }); });
     return step.then(function (p) {
       if (key) made[key] = p.id;
       var photos = [];
@@ -7023,10 +7071,11 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
   /* 还不在雪团的地方（搜索结果、底图上的店）先收藏：建一个没有记录的地点，放进想去 */
   function savePreview(r) {
     var p0 = osmExisting(r);
-    var step = p0 ? Promise.resolve(p0) : store.addPlace({
-      mode: r.mode, cat: normCat(r.cat, r.name) || 'other', precision: r.mode === 'food' ? 'exact' : r.precision, lat: r.lat, lng: r.lng,
+    var gcat = !p0 && !r.cat && r.mode === 'food' && /^g\//.test(r.osm || '') ? fetchGoogleCat(r.osm.slice(2)) : Promise.resolve(null);
+    var step = p0 ? Promise.resolve(p0) : gcat.then(function (gc) { return store.addPlace({
+      mode: r.mode, cat: gc || normCat(r.cat, r.name) || 'other', precision: r.mode === 'food' ? 'exact' : r.precision, lat: r.lat, lng: r.lng,
       name: String(r.name || t(r.mode === 'food' ? 'unnamedFood' : 'unnamedTravel')).slice(0, 60), altName: String(r.alt || '').slice(0, 60), link: '', osm: r.osm || ''
-    });
+    }); });
     step.then(function (p) {
       return store.isSaved(p.id) ? p : store.setSaved(p.id, true).then(function () { return p; });
     }).then(function (p) {
