@@ -96,7 +96,7 @@
   function renderPost() {
     var r = store.review(state.postId), p = r && placeById(r.placeId);
     if (!p || (r.visibility !== 'public' && !isMine(r))) { goFeed(); return; }
-    var name = authorLabel(r), from = authorFrom(r), text = reviewText(r), c = catOf(p);
+    var name = authorLabel(r), from = '', text = reviewText(r), c = catOf(p);
     var h = '<div class="view-top"><button type="button" class="icon-btn flat" data-action="back" aria-label="' + esc(t('back')) + '">' + ICON.back + '</button></div>';
     if (r.photos && r.photos.length) h += '<div class="photo-strip">' + r.photos.map(function (id) {
       return '<button type="button" class="ph" data-action="photo" data-id="' + esc(id) + '" data-group="post"><img data-photo="' + esc(id) + '" data-small alt=""></button>';
@@ -225,7 +225,7 @@
   }
 
   function reviewHTML(r) {
-    var name = authorLabel(r), from = authorFrom(r), meta = metaHTML(r), text = reviewText(r), go = canOpenPerson(r.authorId);
+    var name = authorLabel(r), from = '', meta = metaHTML(r), text = reviewText(r), go = canOpenPerson(r.authorId);
     return '<li class="review">' + (go ? '<button type="button" class="who-link rv-av"' + personAttr(r.authorId) + ' aria-label="' + esc(personLabel(name)) + '">' + avatarHTML(name) + '</button>' : avatarHTML(name)) + '<div class="rv-main">' +
       '<div class="rv-who">' + (go ? '<button type="button" class="who-link rv-name"' + personAttr(r.authorId) + ' tabindex="-1" aria-hidden="true"><b>' + esc(name) + '</b></button>' : '<b>' + esc(name) + '</b>') + (from ? '<span class="muted">' + esc(t('fromPrefix') + from) + '</span>' : '') + '<span class="fi-time">' + esc(timeAgo(r.createdAt)) + '</span></div>' +
       (meta ? '<div class="rv-meta">' + meta + '</div>' : '') +

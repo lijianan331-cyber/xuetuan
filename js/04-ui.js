@@ -638,7 +638,7 @@
   function feedItemHTML(r) {
     var p = placeById(r.placeId), c = catOf(p);
     var ownControls = state.tab === 'foot' && state.scope === 'mine' && isMine(r);
-    var name = authorLabel(r), from = isMine(r) ? '' : authorFrom(r), meta = metaHTML(r, ownControls), text = reviewText(r);
+    var name = authorLabel(r), from = '', meta = metaHTML(r, ownControls), text = reviewText(r);
     var n = r.photos ? r.photos.length : 0;
     var lead = n ? '<span class="fi-pic"><img data-photo="' + esc(r.photos[0]) + '" data-small alt="">' +
       (n > 1 ? '<span class="fi-count">' + ICON.camera + n + '</span>' : '') + '</span>' : avatarHTML(name);

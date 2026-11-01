@@ -2019,7 +2019,7 @@ with sync_playwright() as p:
     tab(page6, 'home'); page6.wait_for_timeout(300)
     check('remote: home shows other people’s public posts with their name', page6.locator('.post-card', has_text='小B').count() == 1 and page6.locator('.post-card', has_text='秘密').count() == 0)
     via_home(page6, '小B', to_place=False)
-    check('remote: the post says where they are from', '小B' in page6.inner_text('.post-who') and '来自 Klang' in page6.inner_text('.post-who') and page6.inner_text('.post-text') == '好吃', page6.inner_text('#view')[:200])
+    check('remote: the post no longer shows where they are from', '小B' in page6.inner_text('.post-who') and '来自' not in page6.inner_text('.post-who') and page6.inner_text('.post-text') == '好吃', page6.inner_text('#view')[:200])
     page6.click('[data-action="back"]'); page6.wait_for_timeout(200)
     page6.evaluate('window.__sbNoAnon = true')
     add(page6)
