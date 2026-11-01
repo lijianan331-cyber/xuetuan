@@ -221,7 +221,7 @@
   var SCORE_STEPS = [0, 3, 4];
   var DIST_STEPS = ['any'].concat(DIST_TIERS.map(function (x) { return x.id; }));
   function activeFilterCount() {
-    if (state.scope === 'mine') return 0;
+    if (state.scope === 'mine' || state.scope === 'person') return 0;
     return (state.scope === 'saved' && state.savedWant ? 1 : 0) + (state.cat !== 'all' ? 1 : 0) + (state.minScore ? 1 : 0) + (state.dist !== 'any' ? 1 : 0) + (state.priceAbout ? 1 : 0);
   }
   var CTRL_ICON = {
@@ -241,10 +241,11 @@
     var toKey = food ? 'modeToTravel' : 'modeToFood';
     /* 搜索条右边原来是个斜箭头（像外链），换成放大镜；美食 / 美景两段都写出来，亮的那段是现在这张图（2026-11-01 精修） */
     var h = '<button type="button" class="map-search" data-action="search" aria-label="' + esc(t('searchBtn')) + '"><img src="assets/search-pin.png" alt=""><span>' + esc(t('mapSearchPh')) + '</span>' + CTRL_ICON.search + '</button>';
-    h += '<button type="button" class="icon-btn mode-btn" data-action="toggle-mode" aria-label="' + esc(t(toKey)) + '" title="' + esc(t(toKey)) + '">' +
+    /* 个人主页的地图美食美景一起看，不用切换和筛选 */
+    if (state.scope !== 'person') h += '<button type="button" class="icon-btn mode-btn" data-action="toggle-mode" aria-label="' + esc(t(toKey)) + '" title="' + esc(t(toKey)) + '">' +
       '<span class="mode-opt' + (food ? ' on' : '') + '">' + CTRL_ICON.food + '<span>' + esc(t('food')) + '</span></span>' +
       '<span class="mode-opt' + (food ? '' : ' on') + '">' + CTRL_ICON.landscape + '<span>' + esc(t('scenery')) + '</span></span></button>';
-    h += '<button type="button" class="icon-btn filter-btn" data-action="filters" aria-pressed="' + (n > 0) + '" aria-label="' + esc(t('filterBtn')) + '" title="' + esc(t('filterBtn')) + '">' + CTRL_ICON.filter + (n ? '<b>' + n + '</b>' : '') + '</button>';
+    if (state.scope !== 'person') h += '<button type="button" class="icon-btn filter-btn" data-action="filters" aria-pressed="' + (n > 0) + '" aria-label="' + esc(t('filterBtn')) + '" title="' + esc(t('filterBtn')) + '">' + CTRL_ICON.filter + (n ? '<b>' + n + '</b>' : '') + '</button>';
     if (globeChipShown()) {
       var lit = state.countries && world.fc;
       h += '<button type="button" class="icon-btn globe-btn" data-action="countries" aria-pressed="' + state.countries + '" aria-label="' + esc(t('litCountries')) + '" title="' + esc(t('litCountries')) + '">' + CTRL_ICON.globe + (lit ? '<b>' + world.litCount + '</b>' : '') + '</button>';
@@ -484,6 +485,7 @@
     if (wasInCard) stage.insertBefore(mapEl, stage.firstChild);
     if (v === 'feed') renderFeed();
     else if (v === 'post') renderPost();
+    else if (v === 'person') renderPerson();
     else if (v === 'place') renderPlace();
     else if (v === 'form') renderForm();
     else if (v === 'nearby') renderNearby();
@@ -611,7 +613,7 @@
     var en = state.lang === 'en';
     return '<div class="visit-controls" role="group" aria-label="' + esc(en?'Visibility':'可见范围') + '">' + [['private',en?'Only me':'仅个人'],['public',en?'Public':'公开']].map(function (o) {
       return '<button type="button" data-action="visit-privacy" data-id="' + esc(r.id) + '" data-v="' + o[0] + '" aria-pressed="' + (r.visibility === o[0]) + '"' + (visibilityBusy?' disabled':'') + '>' + esc(o[1]) + '</button>';
-    }).join('') + '</div>';
+    }).join('') + '<button type="button" class="visit-edit" data-action="edit-review" data-id="' + esc(r.id) + '">' + esc(en?'Edit':'编辑') + '</button></div>';
   }
   function visitBulkHTML(items) {
     var en = state.lang === 'en', disabled = visibilityBusy?' disabled':'', n = selectedVisits.size;
@@ -636,7 +638,7 @@
   function feedItemHTML(r) {
     var p = placeById(r.placeId), c = catOf(p);
     var ownControls = state.tab === 'foot' && state.scope === 'mine' && isMine(r);
-    var name = authorLabel(r), from = authorFrom(r), meta = metaHTML(r, ownControls), text = reviewText(r);
+    var name = authorLabel(r), from = isMine(r) ? '' : authorFrom(r), meta = metaHTML(r, ownControls), text = reviewText(r);
     var n = r.photos ? r.photos.length : 0;
     var lead = n ? '<span class="fi-pic"><img data-photo="' + esc(r.photos[0]) + '" data-small alt="">' +
       (n > 1 ? '<span class="fi-count">' + ICON.camera + n + '</span>' : '') + '</span>' : avatarHTML(name);

@@ -88,7 +88,7 @@
     return '<li class="post-card"><button type="button" class="pc-open" data-action="open-post" data-id="' + esc(r.id) + '">' +
       '<span class="pc-cover">' + cover + '</span><span class="pc-body"><span class="pc-place">' + esc(r.title || placeTitle(p)) + '</span>' +
       (score ? '<span class="pc-score">' + score + '</span>' : '') +
-      '<span class="pc-who">' + avatarHTML(name) + '<span>' + esc(name) + ' · ' + esc(timeAgo(homeTime(r))) + '</span></span></span></button>' +
+      '<span class="pc-who"' + personAttr(r.authorId) + '>' + avatarHTML(name) + '<span>' + esc(name) + ' · ' + esc(timeAgo(homeTime(r))) + '</span></span></span></button>' +
       saveBtnHTML(p.id, true) + '</li>';
   }
 
@@ -101,7 +101,10 @@
     if (r.photos && r.photos.length) h += '<div class="photo-strip">' + r.photos.map(function (id) {
       return '<button type="button" class="ph" data-action="photo" data-id="' + esc(id) + '" data-group="post"><img data-photo="' + esc(id) + '" data-small alt=""></button>';
     }).join('') + '</div>';
-    h += '<div class="post-who">' + avatarHTML(name) + '<span class="pw-text"><b>' + esc(name) + '</b><small>' + (from ? esc(t('fromPrefix') + from) + ' · ' : '') + esc(timeAgo(r.createdAt)) + '</small></span></div>';
+    var pw = avatarHTML(name) + '<span class="pw-text"><b>' + esc(name) + '</b><small>' + (from ? esc(t('fromPrefix') + from) + ' · ' : '') + esc(timeAgo(r.createdAt)) + '</small></span>';
+    h += canOpenPerson(r.authorId)
+      ? '<button type="button" class="post-who who-link"' + personAttr(r.authorId) + ' aria-label="' + esc(personLabel(name)) + '">' + pw + '<i class="pw-go" aria-hidden="true">›</i></button>'
+      : '<div class="post-who">' + pw + '</div>';
     var sc = [];
     if (r.rating != null) sc.push(starsMiniHTML(r.rating) + '<b style="color:' + scoreColor(r.rating) + '">' + fmtScore(r.rating) + '</b>');
     if (r.price) sc.push('<span>RM ' + fmtPrice(r.price) + ' ' + esc(t(p.mode === 'food' ? 'perPerson' : 'costLabel')) + '</span>');
@@ -111,6 +114,27 @@
     if (text) h += '<p class="post-text">' + esc(text) + '</p>';
     h += '<ul class="near-list post-place">' + placeRowHTML(p, 'post-place', esc(catName(c)) + ' · ' + esc(t('distFrom', { d: fmtDist(haversine(XMUM, p)) })), '<span class="near-cta">' + esc(t('postPlace')) + '</span>') + '</ul>';
     h += '<div class="actions post-actions">' + saveBtnHTML(p.id, false) + moderationControl(r) + '</div>';
+    view.innerHTML = h;
+  }
+
+  function personLabel(name) { return state.lang === 'en' ? 'Open ' + name + '’s page' : '进入' + name + '的主页'; }
+  /* 个人主页：头像、名字、来自哪、去过多少地方，下面是他分享到大地图的帖子；地图上只有他的点 */
+  function renderPerson() {
+    var id = state.person && state.person.id, en = state.lang === 'en';
+    if (!id) { goFeed(); return; }
+    var mine = id === me().id, all = store.reviews().filter(function (r) { return r.authorId === id; });
+    var rs = all.filter(function (r) { return r.visibility === 'public' && placeById(r.placeId); }).sort(function (a, b) { return homeTime(b) - homeTime(a); });
+    var name = mine ? (me().name || t('you')) : (all[0] && all[0].authorName) || t('anon');
+    var hm = homeOf(id), from = hm && hm.public ? hm.city : '';
+    var ps = personPlaces(), food = ps.filter(function (p) { return p.mode === 'food'; }).length, scen = ps.length - food;
+    var h = '<div class="view-top"><button type="button" class="icon-btn flat" data-action="back" aria-label="' + esc(t('back')) + '">' + ICON.back + '</button></div>';
+    h += '<div class="person-head">' + avatarHTML(name) + '<div class="ph-text"><h1>' + esc(name) + '</h1>' +
+      (from ? '<small>' + esc(t('fromPrefix') + from) + '</small>' : '') + '</div></div>';
+    h += '<div class="person-stats"><span><b>' + food + '</b>' + esc(en ? 'food' : '美食') + '</span><span><b>' + scen + '</b>' + esc(en ? 'scenery' : '美景') + '</span><span><b>' + rs.length + '</b>' + esc(en ? 'posts' : '分享') + '</span></div>';
+    if (mine && !store.pagePublic(id)) h += '<p class="f-hint person-note">' + esc(en ? 'Only you can open this page now. Turn it on in Me so classmates can.' : '现在只有你自己点得进来；在“我的”里打开后，同学点你的名字也能进来。') + '</p>';
+    else h += '<p class="f-hint person-note">' + esc(en ? 'Only places shared to the big map are shown.' : '只显示分享到大地图的记录。') + '</p>';
+    h += rs.length ? '<ul class="post-grid">' + rs.map(postCardHTML).join('') + '</ul>'
+      : '<p class="f-hint">' + esc(en ? 'Nothing shared to the big map yet.' : '还没有分享到大地图的记录。') + '</p>';
     view.innerHTML = h;
   }
 
@@ -201,9 +225,9 @@
   }
 
   function reviewHTML(r) {
-    var name = authorLabel(r), from = authorFrom(r), meta = metaHTML(r), text = reviewText(r);
-    return '<li class="review">' + avatarHTML(name) + '<div class="rv-main">' +
-      '<div class="rv-who"><b>' + esc(name) + '</b>' + (from ? '<span class="muted">' + esc(t('fromPrefix') + from) + '</span>' : '') + '<span class="fi-time">' + esc(timeAgo(r.createdAt)) + '</span></div>' +
+    var name = authorLabel(r), from = authorFrom(r), meta = metaHTML(r), text = reviewText(r), go = canOpenPerson(r.authorId);
+    return '<li class="review">' + (go ? '<button type="button" class="who-link rv-av"' + personAttr(r.authorId) + ' aria-label="' + esc(personLabel(name)) + '">' + avatarHTML(name) + '</button>' : avatarHTML(name)) + '<div class="rv-main">' +
+      '<div class="rv-who">' + (go ? '<button type="button" class="who-link rv-name"' + personAttr(r.authorId) + ' tabindex="-1" aria-hidden="true"><b>' + esc(name) + '</b></button>' : '<b>' + esc(name) + '</b>') + (from ? '<span class="muted">' + esc(t('fromPrefix') + from) + '</span>' : '') + '<span class="fi-time">' + esc(timeAgo(r.createdAt)) + '</span></div>' +
       (meta ? '<div class="rv-meta">' + meta + '</div>' : '') +
       (text ? '<p class="rv-text">' + esc(text) + '</p>' : '') +
       (r.photos && r.photos.length ? '<div class="rv-photos">' + r.photos.map(function (id) {

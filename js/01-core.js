@@ -398,7 +398,7 @@
     lang: 'zh', mode: 'food', tab: 'home', scope: 'all', cat: 'all', priceAbout: 0, minScore: 0, dist: 'any',
     view: 'feed', placeId: null, postId: null, placeBack: null, form: null, nearby: null, query: '',
     homeMode: 'all', homeDays: HOME_DAYS, homeMin: 0, homeSort: 'newest', homeFiltersOpen: false, bootLoading: true, posting: false, snap: 'peek', feedSnap: 'peek', picking: null, preview: null, bsheet: null, me: null, styleKey: 'light',
-    mineBoth: false, countries: false, savedWant: false, mineSub: 'mine', homesOn: false, mineHomeOn: false, homes: null, homeBack: null, clusterPlaces: null, bulk: null
+    person: null, personBack: null, mineBoth: false, countries: false, savedWant: false, mineSub: 'mine', homesOn: false, mineHomeOn: false, homes: null, homeBack: null, clusterPlaces: null, bulk: null
   };
   var map = null;
   var lastRenderedView = null;
@@ -629,6 +629,11 @@
         else delete data.homes[data.profile.id];
         return done(this.myHome());
       },
+      /* 别人能不能点进这个人的主页（他自己在“我的”里开，默认关） */
+      pagePublic: function (id) {
+        var a = [data.profile].concat(data.others).filter(function (x) { return x && x.id === id; })[0];
+        return !!(a && a.page_public);
+      },
       updateProfile: function (patch) {
         Object.keys(patch).forEach(function (k) { data.profile[k] = patch[k]; });
         data.reviews.forEach(function (r) { if (r.authorId === data.profile.id) r.authorName = data.profile.name || ''; });
@@ -746,7 +751,7 @@
     function reviewFromRow(r, author) {
       author = author || r.author || {};
       return {
-        id: r.id, placeId: r.place_id, authorId: r.user_id, authorName: author.name || '',
+        id: r.id, placeId: r.place_id, authorId: r.user_id, authorName: author.name || '', authorPage: !!author.page_public,
         rating: r.rating == null ? null : +r.rating, price: r.price == null ? null : +r.price, title: r.title || null, text: r.text, photos: r.photos || [],
         visibility: r.visibility, createdAt: Date.parse(r.created_at), updatedAt: r.updated_at ? Date.parse(r.updated_at) : null, sample: false
       };
@@ -802,7 +807,7 @@
       var uid = uidNow();
       return Promise.all([
         client.from('places').select('*').limit(10000),
-        client.from('visits').select('*, author:profiles(name)').order('created_at', { ascending: false }).limit(10000),
+        client.from('visits').select('*, author:profiles(name, page_public)').order('created_at', { ascending: false }).limit(10000),
         uid ? client.from('profiles').select('*').eq('id', uid).maybeSingle() : Promise.resolve({ data: null }),
         uid ? client.from('wishlist').select('*') : Promise.resolve({ data: [] }),
         /* 家这张表是后加的，读不到也别让整个应用打不开 */
@@ -1056,11 +1061,15 @@
           return home;
         });
       },
+      pagePublic: function (id) {
+        if (id && id === uidNow()) return !!cache.profile.page_public;
+        return cache.reviews.some(function (r) { return r.authorId === id && r.authorPage; });
+      },
       updateProfile: function (patch) {
         if (!uidNow()) return Promise.reject(new Error('login required'));
         Object.keys(patch).forEach(function (k) { cache.profile[k] = patch[k]; profilePatch[k] = patch[k]; });
         cache.reviews.forEach(function (r) {
-          if (r.authorId === uidNow()) r.authorName = cache.profile.name || '';
+          if (r.authorId === uidNow()) { r.authorName = cache.profile.name || ''; r.authorPage = !!cache.profile.page_public; }
         });
         clearTimeout(profileTimer);
         profileTimer = setTimeout(flushProfile, 400);
@@ -1313,6 +1322,7 @@
     return reviewsOf(placeId).filter(function (r) {
       if (scope === 'mine') return isMine(r);
       if (scope === 'saved') return r.visibility === 'public' || isMine(r);
+      if (scope === 'person') return r.visibility === 'public' && !!state.person && r.authorId === state.person.id;
       return r.visibility === 'public';
     });
   }
@@ -1489,10 +1499,10 @@
     return 'far';
   }
   /* 我的地图选“合并”时吃和玩一起显示 */
-  function modeOk(p) { return p.mode === state.mode || (state.scope === 'mine' && state.mineBoth); }
+  function modeOk(p) { return p.mode === state.mode || (state.scope === 'mine' && state.mineBoth) || state.scope === 'person'; }
   function passesFilters(p, s) {
     if (!modeOk(p)) return false;
-    if (state.scope === 'mine') return true; /* 我的地图只分美食 / 旅行，不用分类和筛选 */
+    if (state.scope === 'mine' || state.scope === 'person') return true; /* 我的地图只分美食 / 旅行，不用分类和筛选 */
     if (state.cat !== 'all' && !catMatch(p, state.cat)) return false;
     s = s || stats(p);
     if (state.priceAbout && !priceFits(s.avgPrice, state.priceAbout)) return false;
@@ -1500,7 +1510,7 @@
     if (state.mode === 'food' && state.dist !== 'any' && distTier(p) !== state.dist) return false;
     return true;
   }
-  function filtersActive() { return state.scope !== 'mine' && ((state.scope === 'saved' && state.savedWant) || state.cat !== 'all' || !!state.priceAbout || !!state.minScore || state.dist !== 'any'); }
+  function filtersActive() { return state.scope !== 'mine' && state.scope !== 'person' && ((state.scope === 'saved' && state.savedWant) || state.cat !== 'all' || !!state.priceAbout || !!state.minScore || state.dist !== 'any'); }
   function catOf(p) {
     var list = CATS[p.mode] || CATS.food;
     for (var i = 0; i < list.length; i++) if (list[i].id === p.cat) return list[i];
@@ -1536,6 +1546,9 @@
     for (var i = 0; i < list.length; i++) if (list[i].userId === userId) return list[i];
     return null;
   }
+  /* 个人主页：作者自己打开了才能点进（自己的总能点，看看别人眼里的样子） */
+  function canOpenPerson(id) { return !!id && id !== 'sample' && (id === me().id || store.pagePublic(id)); }
+  function personAttr(id) { return canOpenPerson(id) ? ' data-action="person" data-uid="' + esc(id) + '"' : ''; }
   function authorFrom(r) { var h = r.authorId && homeOf(r.authorId); return h && h.public ? h.city : ''; }
   function homeName(h) { return h.userId === me().id ? (me().name || t('you')) : (h.name || t('anon')); }
   function reviewText(r) { return state.lang === 'en' && r.textEn ? r.textEn : (r.text || ''); }

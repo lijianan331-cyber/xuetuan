@@ -363,6 +363,10 @@
       /* 我的里点“去过 / 想去”的数字：去足迹的那一边 */
       case 'foot-sub': state.mineSub = d.v; setTab('foot'); break;
       case 'open-post': openPost(d.id); break;
+      case 'person': openPerson(d.uid); break;
+      case 'page-public':
+        store.updateProfile({ page_public: !store.pagePublic(me().id) }).then(function () { if (state.view === 'feed' && state.tab === 'me') { var y = view.scrollTop; render(); view.scrollTop = y; } }, function () { toast(t('saveFail')); });
+        break;
       case 'post-place': openPostPlace(d.id); break;
       case 'save-place': { var spl = d.id; if (requireLogin(function () { savePlace(spl); })) savePlace(spl); break; }
       case 'save-preview': { var spv = state.preview; if (spv && requireLogin(function () { savePreview(spv); })) savePreview(spv); break; }
@@ -460,6 +464,7 @@
         state.bulk.share = !state.bulk.share;
         el.setAttribute('aria-checked', String(state.bulk.share));
         if ($('#bk-nick-field')) $('#bk-nick-field').hidden = !state.bulk.share;
+        lsSet(LS_SHARE, state.bulk.share ? '1' : '0');
         break;
       case 'bulk-save': bulkSave(); break;
       case 'bulk-files': {

@@ -13,6 +13,12 @@
   }
   function goFeed(snap) {
     state.posting = false;
+    /* 在别人的主页里：“回到首页”就是回到他的主页 */
+    if (state.person && state.scope === 'person') {
+      state.view = 'person'; state.placeId = null; state.postId = null; state.placeBack = null; state.form = null; state.nearby = null;
+      render(); setSnap('half'); updateSelection();
+      return;
+    }
     state.view = 'feed'; state.placeId = null; state.postId = null; state.placeBack = null; state.form = null; state.nearby = null;
     if (state.bulk && !state.bulk.saving) dropBulk();
     render();
@@ -25,6 +31,10 @@
   function setTab(tab) {
     if (state.form && state.form.saving) { toast(t('saveWorking')); return; }
     if (state.bsheet) closeBSheet();
+    if (state.person) {
+      state.person = null; state.personBack = null;
+      if (tab === state.tab) { state.scope = scopeOfTab(tab); renderFilters(); refreshMap(); goFeed(); return; }
+    }
     if (tab === state.tab) {
       if (state.view !== 'feed') goFeed();
       else if (view.scrollTo) view.scrollTo({ top: 0, behavior: reduceMotion ? 'auto' : 'smooth' });
@@ -72,7 +82,7 @@
       state.tab = 'foot'; state.scope = state.mineSub = 'mine'; renderFilters(); refreshMap();
     }
     rememberFeedSnap();
-    state.view = 'place'; state.placeId = id; state.form = null; state.placeBack = null;
+    state.view = 'place'; state.placeId = id; state.form = null; state.placeBack = state.scope === 'person' ? { person: true } : null;
     render();
     setSnap(opts.photo && placePhotos(p).length ? 'full' : 'half');
     updateSelection();
@@ -87,10 +97,12 @@
   }
   function back() {
     if (state.view === 'add' && formKeepsDraft(state.form)) { returnPostComposer(); return; }
+    if (state.view === 'person') { leavePerson(); return; }
+    if (state.view === 'place' && state.placeBack && state.placeBack.person) { goFeed(); return; }
     if (state.view === 'place' && state.placeBack) {
       var pb = state.placeBack;
       state.tab = pb.tab;
-      var scope = scopeOfTab(pb.tab);
+      var scope = state.person && state.scope === 'person' ? 'person' : scopeOfTab(pb.tab);
       if (scope !== state.scope) { state.scope = scope; renderFilters(); refreshMap(); }
       openPost(pb.postId);
       return;
@@ -105,6 +117,44 @@
     else if (state.view === 'bulk') leaveBulk();
     else if (state.view === 'nearby') { if (formKeepsDraft(state.form)) returnPostComposer(); else { state.form = null; goFeed(); } }
     else if (state.view === 'home') leaveHomeSet();
+    else goFeed();
+  }
+  /* 个人主页：点作者名字 / 头像进去（他在“我的”里打开了才行），地图只放他分享到大地图的记录，美食美景一起。
+     返回回到点进来之前的那一页 */
+  function openPerson(id) {
+    if (!canOpenPerson(id)) return;
+    if (state.form && state.form.saving) { toast(t('saveWorking')); return; }
+    if (state.bsheet) closeBSheet();
+    if (!state.person || state.person.id !== id || !state.personBack) {
+      state.personBack = { tab: state.tab, view: state.view, placeId: state.placeId, postId: state.postId, placeBack: state.placeBack };
+    }
+    state.person = { id: id };
+    state.tab = 'explore'; state.scope = 'person'; state.homesOn = false; state.preview = null; state.homes = null;
+    renderFilters(); refreshMap();
+    goFeed();
+    fitPerson();
+  }
+  function personPlaces() {
+    var seen = {};
+    return store.reviews().filter(function (r) { return state.person && r.authorId === state.person.id && r.visibility === 'public'; })
+      .map(function (r) { return placeById(r.placeId); }).filter(function (p) { if (!p || seen[p.id]) return false; seen[p.id] = true; return true; });
+  }
+  function fitPerson() {
+    var ps = personPlaces();
+    if (!map || !ps.length) return;
+    /* 把他所有分享过的地点框进来 */
+    var w = 180, s = 90, e = -180, n = -90;
+    ps.forEach(function (p) { w = Math.min(w, p.lng); e = Math.max(e, p.lng); s = Math.min(s, p.lat); n = Math.max(n, p.lat); });
+    if (ps.length === 1) { flyTo([ps[0].lng, ps[0].lat], ps[0].precision === 'city' ? 9 : 14); return; }
+    try { map.fitBounds([[w, s], [e, n]], { padding: mapPadding(), maxZoom: 15, duration: reduceMotion ? 0 : 600 }); } catch (err) { /* 太大框不住就不动 */ }
+  }
+  function leavePerson() {
+    var b = state.personBack || { tab: 'home', view: 'feed' };
+    state.person = null; state.personBack = null;
+    state.tab = b.tab; state.scope = scopeOfTab(b.tab);
+    renderFilters(); refreshMap();
+    if (b.view === 'post' && store.review(b.postId)) openPost(b.postId);
+    else if (b.view === 'place' && placeById(b.placeId)) { openPlace(b.placeId, { fly: false }); if (b.placeBack && state.view === 'place') state.placeBack = b.placeBack; }
     else goFeed();
   }
   function formCancel() {

@@ -557,7 +557,7 @@
     /* 以前这里有“来自哪”四个输入框，没什么用，去掉了（以后改成在旅行地图上设“我的家”） */
     var personal = !signedIn ? '' :
       '<div class="field"><label class="f-label" for="pf-name">' + esc(t('nickname')) + '</label><input id="pf-name" class="input" data-pf="name" maxlength="20" value="' + esc(pf.name) + '" placeholder="' + esc(t('nicknamePh')) + '"></div>' +
-      homeFieldHTML();
+      homeFieldHTML() + pageFieldHTML();
     var dataButtons = remote
       ? (signedIn ? '<button type="button" class="btn small" data-action="export">' + esc(t('exportData')) + '</button>' +
           '<button type="button" class="btn small" data-action="import">' + esc(t('importData')) + '</button>' +
@@ -788,6 +788,16 @@
         '<button type="button" class="switch-row" role="switch" data-action="home-public" aria-checked="' + h.public + '">' +
         '<span class="sw-text"><b>' + esc(t('homePublic')) + '</b><small>' + esc(h.public ? t('homePublicOn', { c: h.city }) : t('homePublicOff')) + '</small></span><span class="switch" aria-hidden="true"></span></button>';
     return '<div class="field" id="home-field"><span class="f-label">' + esc(t('myHome')) + '</span>' + body + '</div>';
+  }
+  /* 个人主页开关（默认关）：开了以后，同学点你的名字 / 头像能进你的主页，只看到你分享到大地图的记录 */
+  function pageFieldHTML() {
+    var on = store.pagePublic(me().id), en = state.lang === 'en';
+    return '<div class="field" id="page-field"><span class="f-label">' + esc(en ? 'My page' : '我的主页') + '</span>' +
+      '<button type="button" class="switch-row" role="switch" data-action="page-public" aria-checked="' + on + '">' +
+      '<span class="sw-text"><b>' + esc(en ? 'Let classmates open my page' : '别人能点进我的主页') + '</b><small>' + esc(on
+        ? (en ? 'Tapping your name shows your shared places on a map' : '点你的名字能看到你分享到大地图的记录')
+        : (en ? 'Off: your name can’t be tapped' : '关着：别人点你的名字没反应')) + '</small></span><span class="switch" aria-hidden="true"></span></button>' +
+      '<button type="button" class="link-btn" data-action="person" data-uid="' + esc(me().id) + '">' + esc(en ? 'See how it looks' : '看看我的主页') + '</button></div>';
   }
   /* 点了地图上的小房子：谁的家、在哪 */
   function renderPlaceCluster() {
