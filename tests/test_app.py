@@ -51,10 +51,13 @@ WORLD = open(os.path.join(SCR, 'fixtures', 'countries-110m.json'), encoding='utf
 TOPOJSON = open(os.path.join(SCR, 'fixtures', 'topojson-client.min.js'), encoding='utf-8').read()
 results = []
 
+# 应用的全部源码（index.html + js/*.js），给按文本找东西的检查用
+import glob
+APP_SRC = '\n'.join(open(f, encoding='utf-8').read() for f in [os.path.join(ROOT, 'index.html')] + sorted(glob.glob(os.path.join(ROOT, 'js', '*.js'))))
 # 示例数据直接从 index.html 里读，加减示例时测试不用跟着改数字
 import math, re
 SAMPLE_ROWS = []
-for m in re.finditer(r"^    \['(s-[^']+)', '(food|travel)', '(\w+)', '\w+', (-?[\d.]+), (-?[\d.]+), '([^']*)', .*, (\d+|null), (\d+|null)\],?$", open(os.path.join(ROOT, 'index.html'), encoding='utf-8').read(), re.M):
+for m in re.finditer(r"^    \['(s-[^']+)', '(food|travel)', '(\w+)', '\w+', (-?[\d.]+), (-?[\d.]+), '([^']*)', .*, (\d+|null), (\d+|null)\],?$", APP_SRC, re.M):
     SAMPLE_ROWS.append({'id': m.group(1), 'mode': m.group(2), 'cat': m.group(3), 'lat': float(m.group(4)), 'lng': float(m.group(5)), 'name': m.group(6), 'rating': None if m.group(7) == 'null' else int(m.group(7)), 'price': None if m.group(8) == 'null' else int(m.group(8))})
 def dist_m(lat, lng, lat0=2.8329, lng0=101.7029):
     r = math.pi / 180
@@ -182,9 +185,13 @@ def map_expr(e, z, props):
         return map_expr(a[0], z, props) * map_expr(a[1], z, props)
     raise ValueError(op)
 
+VERBOSE = '-v' in sys.argv
+
 def check(name, cond, extra=''):
     results.append((name, bool(cond), extra))
-    print(('PASS ' if cond else 'FAIL ') + name + ('' if cond else '  -> ' + str(extra)))
+    # 默认只打印失败的项，省输出（加 -v 才把 PASS 也打出来）
+    if not cond or VERBOSE:
+        print(('PASS ' if cond else 'FAIL ') + name + ('' if cond else '  -> ' + str(extra)), flush=True)
 
 def route_all(ctx, supabase=False):
     def handler(route):
@@ -2616,9 +2623,15 @@ with sync_playwright() as p:
 
     browser.close()
 
+# 拆开的文件：index.html 引用的 css/js 都在，且按序号顺序加载
+_idx = open(os.path.join(ROOT, 'index.html'), encoding='utf-8').read()
+_js = re.findall(r'<script src="(js/[^"]+)"></script>', _idx)
+check('split: index.html links css/app.css and every js file in order', 'href="css/app.css"' in _idx and _js == sorted(_js) and len(_js) >= 9 and all(os.path.exists(os.path.join(ROOT, f)) for f in _js + ['css/app.css']) and sorted(_js) == sorted('js/' + f for f in os.listdir(os.path.join(ROOT, 'js'))), _js)
+
 print()
-print('errors:', errors)
-print('errors2:', errors2)
+from collections import Counter
+print('errors:', dict(Counter(errors)))
+print('errors2:', dict(Counter(errors2)))
 fails = [r for r in results if not r[1]]
 print(f'{len(results) - len(fails)}/{len(results)} passed')
 

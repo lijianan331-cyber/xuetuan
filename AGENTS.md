@@ -5,7 +5,7 @@
 用户命名约定：本 GitHub / Vercel 版本叫 **A**；另一套 Codex Sites 版本叫 **B**，两者代码和数据库不自动同步。
 
 ## 现在的状态（2026-10-28）
-- 全部代码在 `index.html`（MapLibre 固定 5.24.0）。后台是 Supabase（项目 `pshxrwfjcbvqlixdxlzs`，新加坡），建表 / 改表的 SQL 在 `supabase/migrations/`。
+- 代码在 `index.html` + `css/app.css` + `js/*.js`（2026-11-01 从一个 index.html 拆开，内容没改；见 CLAUDE.md）。MapLibre 固定 5.24.0。后台是 Supabase（项目 `pshxrwfjcbvqlixdxlzs`，新加坡），建表 / 改表的 SQL 在 `supabase/migrations/`。
 - 最新工作在分支 `claude/project-thread-ze8a57`（PR #7 → main，还没合并；用户说「上线」才合并）。在这个分支上接着做，或从它开新分支。
 - 预览（连正式数据库）：https://xuetuan-git-claude-project-thread-ze8a57-ganan1.vercel.app ；正式站 https://xuetuan.vercel.app 跟着 main。
 - 测试：`pip install playwright==1.63.0 pillow` 后 `python tests/test_app.py`，要全部通过；新功能加检查。用假的 MapLibre / Supabase（`tests/stub_*.js`），不连网。「last form row can scroll above the tab bar」这一项以前就时好时坏。
