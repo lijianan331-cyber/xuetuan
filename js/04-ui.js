@@ -168,7 +168,7 @@
 
     panel.addEventListener('touchstart', function (e) {
       touch = null;
-      if (!isMobile() || drag || state.snap === 'page' || e.touches.length !== 1 || e.target.closest('#grip, input, textarea, select, .stars-input')) return;
+      if (!isMobile() || drag || state.snap === 'page' || e.touches.length !== 1 || e.target.closest('#grip, input, textarea, select, .stars-input, .bk-map, .ph-edit, .bk-ph')) return;
       touch = { x: e.touches[0].clientX, y: e.touches[0].clientY, sheet: null };
     }, { passive: true });
     panel.addEventListener('touchmove', function (e) {

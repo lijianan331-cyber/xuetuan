@@ -256,7 +256,7 @@
     var h = '<li class="bk-card" id="bk-' + g.i + '"><div class="bk-photos">' + g.photos.map(function (p, j) {
       return '<div class="bk-ph" data-on="' + p.on + '"><button type="button" class="bk-preview" data-action="bulk-preview" data-i="' + g.i + '" data-j="' + j + '" aria-label="' + esc(t('photoPreview')) + '">' +
         '<img src="' + esc(p.url) + '" alt="" loading="lazy" decoding="async"' + (p.rot ? ' style="transform:rotate(' + p.rot + 'deg)"' : '') + '></button><button type="button" class="bk-check" data-action="bulk-ph" data-i="' + g.i + '" data-j="' + j + '" aria-label="' + esc(state.lang === 'en' ? 'Include this photo' : '是否导入这张照片') + '" aria-pressed="' + p.on + '">' + (p.on ? '✓' : '○') + '</button></div>';
-    }).join('') + '</div>';
+    }).join('') + '</div>' + (g.photos.length > 1 ? '<p class="bk-sort-hint">' + esc(state.lang === 'en' ? 'Hold a photo and drag to reorder · first is the cover' : '按住照片拖动换顺序，第一张是封面') + '</p>' : '');
     var meta = g.noLoc ? bulkDate(g.time) + ' ' + bulkClock(g.time) + ' · ' + t('bulkPhotos', { n: g.photos.length }) + ' · ' + t('bulkNoLoc')
       : bulkDate(g.time) + ' · ' + t('bulkPhotos', { n: g.photos.length });
     h += '<div class="bk-head"><div class="bk-meta" id="bk-meta-' + g.i + '">' + esc(meta) + '</div>' + bulkModeSegHTML(g) + '</div>';
@@ -294,7 +294,8 @@
       var dt = Math.abs(o.time - g.time);
       if (dt <= 36 * 3600 * 1000 && (!best || dt < best.dt)) best = { dt: dt, c: { lat: o.lat, lng: o.lng } };
     });
-    return best ? best.c : searchCenter();
+    /* 照片没有位置：用自己的位置或学校，不用地图中心（卡片里的小地图刚飞去别的城市，会把搜索也带偏） */
+    return best ? best.c : state.me ? { lat: state.me.lat, lng: state.me.lng } : { lat: XMUM.lat, lng: XMUM.lng };
   }
   /* 选中的地点：一个小牌子，再点一下取消；谷歌的店名在谷歌自己画的卡片里 */
   function bulkPlaceHTML(g) {
@@ -383,13 +384,14 @@
     });
   }
 
-  /* 卡片里的小地图就是那张地图：手机上挪进正在搜的那张卡片（不另开一张，省内存），
-     只看不点（点了会跳去地点页）。蓝点是照片拍的地方，小红点是谷歌搜到的，大红针是选中的 */
+  /* 卡片里的小地图就是那张地图：手机上挪进选好店的那张卡片（不另开一张，省内存），
+     能拖能缩放，点了不跳页。蓝点是照片拍的地方，小红点是谷歌搜到的，大红针是选中的 */
   var bkMap = { g: null, marks: [] };
   function bulkMapUpdate(g) {
     if (!map || !window.maplibregl || !maplibregl.Marker) return;
-    var want = g && state.bulk && state.bulk.groups.indexOf(g) !== -1 && ((g.q || '').trim().length >= 2 || g.showMap);
-    if (!want) { if (bkMap.g === g) bulkMapOff(); return; }
+    /* 用户 2026-11-01：搜的时候只出店名列表；点了一个店名才出地图，用来核对（照片拍的地方 + 选中的店） */
+    var want = g && state.bulk && state.bulk.groups.indexOf(g) !== -1 && g.showMap && !(g.q || '').trim();
+    if (!want) { if (bkMap.g === g) { var keep = g.showMap; bulkMapOff(); g.showMap = keep; } return; }
     if (bkMap.g && bkMap.g !== g) { var old = $('#bk-map-' + bkMap.g.i); if (old) old.hidden = true; bkMap.g.showMap = false; }
     bkMap.g = g;
     /* 电脑上地图本来就在旁边，不用挪，只在大地图上标出来 */
@@ -606,3 +608,82 @@
     });
   }
 
+
+  /* 照片按住拖动换顺序（用户 2026-11-01）：第一张是封面。加一笔、编辑、发帖、批量加的照片都能挪。
+     手指按住约 0.3 秒再拖（直接滑还是滚动页面）；电脑上按下拖一点就开始 */
+  var phDrag = null, phDragClick = 0;
+  function phSortItem(el) { return el && el.closest ? el.closest('#f-photos .ph-edit:not(.ph-busy), .bk-photos .bk-ph') : null; }
+  function phSortItems(list) { return Array.prototype.filter.call(list.children, function (x) { return x.matches('.ph-edit:not(.ph-busy), .bk-ph'); }); }
+  function phDragStart(d) {
+    if (phDrag !== d || d.on) return;
+    if ((d.form && (!state.form || state.form.saving)) || (!d.form && (!state.bulk || state.bulk.saving))) { phDrag = null; return; }
+    if (phSortItems(d.list).length < 2) { phDrag = null; return; }
+    d.on = true;
+    var r = d.item.getBoundingClientRect();
+    d.gx = d.x - r.left; d.gy = d.y - r.top;
+    d.item.classList.add('ph-dragging');
+    if (navigator.vibrate) try { navigator.vibrate(8); } catch (e) {}
+  }
+  function phDragMove(d, x, y) {
+    var it = d.item;
+    it.style.transform = '';
+    var sib = phSortItems(d.list).filter(function (s) { return s !== it; });
+    for (var k = 0; k < sib.length; k++) {
+      var r = sib[k].getBoundingClientRect();
+      if (x >= r.left && x <= r.right && y >= r.top && y <= r.bottom) {
+        var all = phSortItems(d.list), from = all.indexOf(it), to = all.indexOf(sib[k]);
+        d.list.insertBefore(it, from < to ? sib[k].nextSibling : sib[k]);
+        break;
+      }
+    }
+    var n = it.getBoundingClientRect();
+    it.style.transform = 'translate(' + (x - d.gx - n.left) + 'px,' + (y - d.gy - n.top) + 'px)';
+  }
+  function phDragEnd(d) {
+    phDrag = null;
+    clearTimeout(d.timer);
+    if (!d.on) return;
+    phDragClick = Date.now();
+    d.item.classList.remove('ph-dragging'); d.item.style.transform = '';
+    var items = phSortItems(d.list);
+    if (d.form) {
+      var f = state.form; if (!f) return;
+      var ids = items.map(function (x) { var b = x.querySelector('[data-id]'); return b ? b.dataset.id : ''; });
+      f.photos.sort(function (a, b) { return ids.indexOf(String(a.id)) - ids.indexOf(String(b.id)); });
+      renderFormPhotos();
+      if (!f.editId) saveFormDraft();
+    } else {
+      var g = state.bulk && state.bulk.groups && state.bulk.groups[d.gi]; if (!g) return;
+      var order = items.map(function (x) { return +x.querySelector('[data-j]').dataset.j; });
+      if (order.length !== g.photos.length) return;
+      g.photos = order.map(function (j) { return g.photos[j]; });
+      updateBulkCard(g);
+    }
+  }
+  document.addEventListener('pointerdown', function (e) {
+    if (e.button > 0 || phDrag) return;
+    var item = phSortItem(e.target);
+    if (!item || e.target.closest('.ph-del, .bk-check')) return;
+    var form = !!item.closest('#f-photos'), j = item.querySelector('[data-i]');
+    var d = phDrag = { item: item, list: item.parentNode, form: form, gi: j ? +j.dataset.i : -1, x: e.clientX, y: e.clientY, pid: e.pointerId, mouse: e.pointerType === 'mouse', on: false };
+    if (!d.mouse) d.timer = setTimeout(function () { phDragStart(d); }, 300);
+  });
+  document.addEventListener('pointermove', function (e) {
+    var d = phDrag;
+    if (!d || e.pointerId !== d.pid) return;
+    if (!d.on) {
+      var far = Math.abs(e.clientX - d.x) + Math.abs(e.clientY - d.y) > 8;
+      if (far && d.mouse) phDragStart(d);
+      else if (far) { clearTimeout(d.timer); phDrag = null; return; }
+      if (!d.on) return;
+    }
+    e.preventDefault();
+    phDragMove(d, e.clientX, e.clientY);
+  });
+  /* 拖起来以后不让页面跟着滚 */
+  document.addEventListener('touchmove', function (e) { if (phDrag && phDrag.on && e.cancelable) e.preventDefault(); }, { passive: false });
+  document.addEventListener('pointerup', function (e) { if (phDrag && e.pointerId === phDrag.pid) phDragEnd(phDrag); });
+  document.addEventListener('pointercancel', function (e) { if (phDrag && e.pointerId === phDrag.pid) phDragEnd(phDrag); });
+  /* 拖完松手那一下不算“点开大图” */
+  document.addEventListener('click', function (e) { if (Date.now() - phDragClick < 400 && phSortItem(e.target)) { e.preventDefault(); e.stopPropagation(); } }, true);
+  document.addEventListener('contextmenu', function (e) { if (phSortItem(e.target)) e.preventDefault(); });

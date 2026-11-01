@@ -257,7 +257,8 @@
         list.appendChild(document.createElement('gmp-place-attribution'));
         var req = document.createElement('gmp-place-text-search-request');
         req.setAttribute('max-result-count', '5');
-        req.locationBias = { lat: c.lat, lng: c.lng }; req.textQuery = q;
+        /* 只给一个点时谷歌几乎不管远近（搜 mitto 跑到瑞士去）：给一个 50 公里的圈（谷歌允许的最大），附近的排前面，远的照样能搜到 */
+        req.locationBias = { center: { lat: c.lat, lng: c.lng }, radius: 50000 }; req.textQuery = q;
         list.appendChild(req);
         var done = false, timeout;
         function current() { return box.isConnected && list.isConnected && slot.querySelector('gmp-place-search') === list && context.query().trim() === q; }

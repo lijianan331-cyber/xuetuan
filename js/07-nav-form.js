@@ -689,6 +689,7 @@
     if (!f.editId && f.takenAt && f.takenAt < Date.now() - 3600000) rv.createdAt = f.takenAt;
     var newPhotos = f.photos.filter(function (ph) { return !ph.existing; });
     var keepPhotos = f.photos.filter(function (ph) { return ph.existing; }).map(function (ph) { return ph.id; });
+    rv.photoOrder = f.photos.map(function (ph) { return ph.existing ? { k: ph.id } : { n: newPhotos.indexOf(ph) }; });
     /* 照片和地点同时传，不用等地点存完再传照片 */
     if (store.preupload) store.preupload(newPhotos);
     var placeStep = !placeData ? Promise.resolve(p0) : p0 ? store.updatePlace(p0.id, placeData) : store.addPlace(placeData);

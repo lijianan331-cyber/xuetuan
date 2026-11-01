@@ -137,7 +137,9 @@
   var PLACE_CLUSTER_RADIUS = 80; // 保留聚合留白，防止相邻封面相互覆盖。
   var CLUSTER_PHOTO_ZOOM = PHOTO_ZOOM;
   function whenClusterPhoto(photo, circle) { return ['step', ['zoom'], circle, CLUSTER_PHOTO_ZOOM, ['case', ['!=', ['get', 'photoRef'], ''], photo, circle]]; }
-  function placeClusterMaxZoom() { return 18; }
+  /* 放大到街道（17 级起）就不再合并：隔壁两家店各自一个照片针，针尖在店的真实位置（用户 2026-11-01：nomu 和隔壁南洋 cafe 被合成一个“2”）。
+     再往外才合并，免得照片框互相盖住 */
+  function placeClusterMaxZoom() { return 16; }
   function addAppLayers() {
     var fonts = pickFonts();
     /* 数字圈用雪团的浅冰蓝，不跟着旅行地图变深（用户 2026-10-28） */
@@ -306,6 +308,7 @@
     return null;
   }
   function onMapClick(e) {
+    if (mapEl.parentNode && mapEl.parentNode.classList.contains('bk-map')) return; /* 批量加卡片里的小地图：可以拖、缩放核对位置，点了不跳去别的页面 */
     if (state.picking) {
       if (!state.picking.home) {
         var pid = placeIdAt(e.point), poi0 = !pid && basePoiAt(e.point);

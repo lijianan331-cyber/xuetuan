@@ -195,7 +195,7 @@
       catGuessing: '正在看照片认是哪一类…', catGuessed: '看照片像「{c}」，不对就点别的', catByName: '按店名选了「{c}」，不对就点别的', catByGoogle: '按谷歌上的店铺类型选了「{c}」，不对就点别的', catNoGuess: '照片没认出来', optional: '选填', rating: '评分', ratingHint: '点或左右拖星星，可以打半颗；拖到最左是 0 分（踩雷）。', errRating: '打个分再发布', starsNone: '还没打分',
       priceFood: '人均（RM，选填）',
       review: '评论（选填）', reviewPhFood: '写评论', reviewPhTravel: '写评论',
-      photos: '照片（选填）', photoLimit: '最多 {n} 张', addPhoto: '加照片', photoReadFail: '这张图读不了，换一张试试',
+      photos: '照片（选填）', photoLimit: '最多 {n} 张 · 按住拖动排序，第一张是封面', addPhoto: '加照片', photoReadFail: '这张图读不了，换一张试试',
       visPrivateShort: '仅自己',
       shareBig: '分享到大地图', shareHint: '不分享也会存进“足迹”', formMore: '更多：精度、原名、链接',
       unnamedFood: '未知', unnamedTravel: '未知',
@@ -298,7 +298,7 @@
       catByGoogle: 'Picked {c} from the shop type on Google. Tap another to change.', catGuessing: 'Reading the photo…', catGuessed: 'Looks like {c} from the photo. Tap another if wrong.', catByName: 'Picked {c} from the name. Tap another if wrong.', catNoGuess: 'Could not tell from the photo', optional: 'optional', rating: 'Score', ratingHint: 'Tap or drag the stars; half stars work. All the way left is 0 (avoid).', errRating: 'Give it a score first', starsNone: 'Not scored yet',
       priceFood: 'Per person (RM, optional)',
       review: 'Review (optional)', reviewPhFood: 'Write a review', reviewPhTravel: 'Write a review',
-      photos: 'Photos (optional)', photoLimit: 'up to {n}', addPhoto: 'Add photo', photoReadFail: 'Couldn’t read that image. Try another one',
+      photos: 'Photos (optional)', photoLimit: 'up to {n} · hold and drag to reorder, first is the cover', addPhoto: 'Add photo', photoReadFail: 'Couldn’t read that image. Try another one',
       visPrivateShort: 'Private',
       shareBig: 'Share on the big map', shareHint: 'Either way it’s saved to Footprints', formMore: 'More: precision, other name, link',
       unnamedFood: 'Unknown', unnamedTravel: 'Unknown',
@@ -585,7 +585,7 @@
         return putPhotos(newPhotos).then(function (photosOk) {
           (r.photos || []).forEach(function (pid) { if (keepPhotos.indexOf(pid) === -1) forgetPhoto(pid); });
           ['rating', 'price', 'title', 'text', 'visibility'].forEach(function (k) { if (patch[k] !== undefined) r[k] = patch[k]; });
-          r.photos = keepPhotos.concat(newPhotos.map(function (ph) { return ph.id; }));
+          r.photos = orderPhotos(keepPhotos, newPhotos.map(function (ph) { return ph.id; }), patch.photoOrder);
           r.authorName = data.profile.name || '';
           r.updatedAt = Date.now();
           persist();
@@ -962,7 +962,7 @@
           if (!up.ok) throw up.error || new Error('photo-upload');
           if (progress) progress('write');
           var dropped = (r.photos || []).filter(function (p) { return keepPhotos.indexOf(p) === -1; });
-          var row = { rating: patch.rating, price: patch.price, text: patch.text, title: patch.title || null, visibility: patch.visibility, photos: keepPhotos.concat(up.paths) };
+          var row = { rating: patch.rating, price: patch.price, text: patch.text, title: patch.title || null, visibility: patch.visibility, photos: orderPhotos(keepPhotos, up.paths, patch.photoOrder) };
           return client.from('visits').update(row).eq('id', id).select().single().then(ok).then(function (v) {
             removePhotos(dropped);
             Object.assign(r, reviewFromRow(v, cache.profile));
@@ -981,7 +981,7 @@
           var dropped = (r.photos || []).filter(function (p) { return keepPhotos.indexOf(p) === -1; });
           var made = r._movedTo && r._movedTo.placeId === placeId ? Promise.resolve(r._movedTo) : client.from('visits').insert({
             place_id: placeId, rating: patch.rating, price: patch.price, text: patch.text, title: patch.title || null, visibility: patch.visibility,
-            photos: keepPhotos.concat(up.paths), created_at: new Date(r.createdAt).toISOString(), updated_at: new Date().toISOString()
+            photos: orderPhotos(keepPhotos, up.paths, patch.photoOrder), created_at: new Date(r.createdAt).toISOString(), updated_at: new Date().toISOString()
           }).select().single().then(ok).then(function (v) { r._movedTo = reviewFromRow(v, cache.profile); return r._movedTo; });
           return made.then(function (nr) {
             return client.from('visits').delete().eq('id', id).then(ok).then(function () {
@@ -1539,6 +1539,14 @@
   function authorFrom(r) { var h = r.authorId && homeOf(r.authorId); return h && h.public ? h.city : ''; }
   function homeName(h) { return h.userId === me().id ? (me().name || t('you')) : (h.name || t('anon')); }
   function reviewText(r) { return state.lang === 'en' && r.textEn ? r.textEn : (r.text || ''); }
+  /* 编辑时照片的先后（第一张是封面）：原有的和新加的可以混着排，order 里 k = 原来的照片，n = 第几张新照片 */
+  function orderPhotos(keep, added, order) {
+    if (!order || !order.length) return keep.concat(added);
+    var out = [];
+    order.forEach(function (o) { var v = o.k != null ? (keep.indexOf(o.k) >= 0 ? o.k : null) : added[o.n]; if (v && out.indexOf(v) < 0) out.push(v); });
+    keep.concat(added).forEach(function (v) { if (out.indexOf(v) < 0) out.push(v); });
+    return out;
+  }
   /* 头像颜色从一组配好的颜色里挑（按名字固定），不会再出现橄榄绿、土黄这种和蓝白不搭的色；没名字是浅灰蓝（2026-11-01 精修） */
   var AVATAR_COLORS = ['#5B8DEF', '#45A7C4', '#7C6FE0', '#E0719E', '#EF9A5A', '#4FB08A', '#3F7DC0', '#A77AD6', '#E5868A', '#2FA3A0'];
   function avatarHTML(name) {

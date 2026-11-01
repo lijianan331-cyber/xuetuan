@@ -24,7 +24,9 @@
   --font-ui: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "PingFang SC", "HarmonyOS Sans SC", "MiSans", "Hiragino Sans GB", "Noto Sans SC", "Microsoft YaHei", system-ui, sans-serif;
   --font-display: "ZCOOL QingKe HuangYou", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
   --sheet-peek: 138px;
-  color-scheme: light;
+  /* 写“light dark”是告诉手机浏览器这页自己管深色，它就不会强行把整页压暗（华为浏览器深色模式下会这样，看不清）；
+     界面本身还是一直蓝白，这里的颜色都写死了，不跟着系统变 */
+  color-scheme: light dark;
 }
 /* 深色只在明确要的时候用（现在没有入口）；手机开了深色模式也保持蓝白 */
 :root[data-theme="dark"] {
@@ -576,13 +578,13 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
 /* 谷歌的搜索列表：谷歌自己画（带谷歌标志，不能遮），只把字体、底色调成和我们一样 */
 .g-search .sec-title { margin: 16px 0 6px; }
 #search-local:empty + .g-search .sec-title { margin-top: 4px; }
-.g-search gmp-place-search { display: block; color-scheme: light; --gmp-mat-font-family: inherit; }
+.g-search gmp-place-search { display: block; color-scheme: light dark; --gmp-mat-font-family: inherit; }
 .g-search .g-status { margin: 6px 0; color: var(--muted); font-size: 12px; overflow-wrap: anywhere; }
 .g-search .g-actions { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; margin: 6px 0 12px; font-size: 12px; }
 .g-search .g-actions .f-hint { flex-basis: 100%; margin: 0; }
 .bk-google .g-list { max-height: 300px; overflow: auto; overscroll-behavior: contain; }
 .bk-google .sec-title { font-size: 12px; }
-.g-detail gmp-place-details-compact { display: block; color-scheme: light; --gmp-mat-font-family: inherit; }
+.g-detail gmp-place-details-compact { display: block; color-scheme: light dark; --gmp-mat-font-family: inherit; }
 .g-head .tags { margin-top: 8px; }
 .or-line { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 12.5px; }
 .or-line::before, .or-line::after { content: ""; flex: 1; height: 1px; background: var(--line); }
@@ -618,6 +620,11 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
 .bk-ph img { display: block; width: 100%; height: 100%; object-fit: cover; transition: opacity .15s; }
 .bk-ph[data-on="false"] img { opacity: .35; }
 .bk-ph[data-on="true"]::after { content: ""; position: absolute; inset: 0; border-radius: 10px; box-shadow: inset 0 0 0 2px var(--accent); pointer-events: none; }
+.bk-sort-hint { margin: 4px 0 0; color: var(--muted); font-size: 11.5px; }
+/* 按住拖动换顺序：不要长按弹出“保存图片”，拖起来的那张浮在上面 */
+.ph-edit, .bk-ph { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+.ph-edit img, .bk-ph img { -webkit-user-drag: none; }
+.ph-edit.ph-dragging, .bk-ph.ph-dragging { z-index: 5; box-shadow: 0 10px 24px rgba(24, 56, 92, .28); }
 .bk-preview { display: block; width: 100%; height: 100%; padding: 0; border: 0; background: none; }
 .bk-check { position: absolute; z-index: 1; top: 2px; right: 2px; width: 24px; height: 24px; border: 1px solid white; border-radius: 50%; background: rgba(35,55,72,.65); color: white; padding: 0; font-size: 16px; }
 .bk-check[aria-pressed="true"] { background: #438bbd; }
@@ -631,7 +638,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
 .bk-place .chip b { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: inherit; }
 .bk-place .chip small { flex: none; font-size: 11px; font-weight: 600; opacity: .75; }
 .bk-gcard { align-self: stretch; }
-.bk-gcard gmp-place-details-compact { display: block; color-scheme: light; --gmp-mat-font-family: inherit; }
+.bk-gcard gmp-place-details-compact { display: block; color-scheme: light dark; --gmp-mat-font-family: inherit; }
 .bk-known:empty { display: none; }
 .bk-known .chip b { font-weight: inherit; }
 .bk-known .chip small { font-size: 11px; opacity: .75; }
@@ -641,7 +648,7 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
 .bk-pin { flex: none; width: 46px; height: 46px; border-radius: 12px; background: var(--accent-soft); color: var(--accent); }
 .bk-pin svg { width: 20px; height: 20px; }
 .bk-map { position: relative; height: 168px; border-radius: 12px; overflow: hidden; background: #E4EEF8; }
-.bk-map #map { position: absolute; inset: 0; border-radius: inherit; pointer-events: none; }
+.bk-map #map { position: absolute; inset: 0; border-radius: inherit; touch-action: none; }
 .bk-mk-photo { width: 18px; height: 18px; border: 3px solid #fff; border-radius: 50%; background: #1A73E8; box-shadow: 0 1px 4px rgba(0, 0, 0, .45); pointer-events: none; }
 .bk-mk-res { width: 13px; height: 13px; border: 2px solid #fff; border-radius: 50%; background: #EA4335; box-shadow: 0 1px 3px rgba(0, 0, 0, .4); pointer-events: none; }
 .bk-card .stars-input { padding: 0; }
