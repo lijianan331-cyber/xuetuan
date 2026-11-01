@@ -30,7 +30,7 @@
       homeSelect('home-sort',en?'Sort':'排序',state.homeSort,[['newest',en?'Newest':'最新动态'],['rating',en?'Top rated':'评分优先']]) + '</div></div>' +
       '<button type="button" class="btn ghost home-refresh" data-action="home-refresh">' + esc(en?'Refresh':'刷新') + '</button></div></div>' +
       '<button type="button" class="btn ghost home-updates" data-action="home-apply" hidden>' + esc(en?'New content · tap to update':'有新内容，点击更新') + '</button>' +
-      '<p class="home-privacy">' + esc(en?'Only public records with photos appear here. Private footprints stay private.':'仅展示带图片的公开记录，私人足迹不会自动公开。') + '</p>';
+      '<p class="home-privacy">' + ICON_LOCK + esc(en?'Only public records with photos appear here. Private footprints stay private.':'仅展示带图片的公开记录，私人足迹不会自动公开。') + '</p>';
   }
   var homeSyncPromise = null, homeApplyRequested = false;
   function homeVisible() { return !state.bootLoading && !document.hidden && state.tab === 'home' && state.view === 'feed' && !state.picking; }
@@ -63,8 +63,11 @@
     if (!isMobile()) h += '<div style="display:flex;justify-content:flex-end">' + appShareButton() + '</div>';
     h += '<div class="home-sec"><h2>' + esc(t('latest')) + '</h2><button type="button" class="btn primary small home-publish" data-action="new-post">' + ICON.pen + esc(state.lang === 'en' ? 'Post' : '发帖') + '</button></div>';
     h += homeFiltersHTML();
-    if (!items.length) h += '<div class="empty home-empty"><p>' + esc(state.bootLoading ? (state.lang === 'en' ? 'Loading shares…' : '正在加载分享…') : (state.homeMode !== 'all' || state.homeDays !== HOME_DAYS || state.homeMin) ? (state.lang === 'en' ? 'No shares match these filters.' : '暂无符合筛选的分享。') : homeEligible().length ? (state.lang === 'en' ? 'No new shares in the last month.' : '最近一个月还没有新的分享。') : t('latestEmpty')) + '</p>' +
-      (!state.bootLoading && state.homeDays && homeEligible().length ? '<button type="button" class="link-btn" data-action="home-all-time">' + esc(state.lang === 'en' ? 'See older shares' : '看更早的分享') + '</button>' : '') +
+    /* 首次加载：先放四张灰卡片占位（不再是一行字 + 空白），加载完换成真卡片 */
+    if (!items.length && state.bootLoading) h += '<ul class="post-grid skeleton" aria-hidden="true">' + '<li class="post-card"><span class="sk-cover"></span><span class="sk-line"></span><span class="sk-line short"></span></li>'.repeat(4) + '</ul>' +
+      '<p class="sk-note" role="status">' + esc(state.lang === 'en' ? 'Loading shares…' : '正在加载分享…') + '</p>';
+    else if (!items.length) h += '<div class="empty home-empty">' + mascotHTML() + '<p>' + esc((state.homeMode !== 'all' || state.homeDays !== HOME_DAYS || state.homeMin) ? (state.lang === 'en' ? 'No shares match these filters.' : '暂无符合筛选的分享。') : homeEligible().length ? (state.lang === 'en' ? 'No new shares in the last month.' : '最近一个月还没有新的分享。') : t('latestEmpty')) + '</p>' +
+      (state.homeDays && homeEligible().length ? '<button type="button" class="link-btn" data-action="home-all-time">' + esc(state.lang === 'en' ? 'See older shares' : '看更早的分享') + '</button>' : '') +
       '<button type="button" class="link-btn" data-action="add">' + esc(t('goRecord')) + '</button></div>';
     else h += '<ul class="post-grid">' + items.map(postCardHTML).join('') + '</ul>';
     view.innerHTML = h;
@@ -179,7 +182,8 @@
     if (!scopedReviews(p.id, 'saved').length) { view.innerHTML = h + '<p class="place-empty">' + esc(t('placeEmpty')) + '</p>'; bindHero(); return; }
     h += '<div class="stats">' +
       '<div class="stat"><b>' + (s.score != null ? '<span class="score-big" style="color:' + scoreColor(s.score) + '">' + fmtScore(s.score) + '</span>' : '—') + '</b><small>' + esc(scoreLabel(s)) + '</small></div>' +
-      '<div class="stat"><b>' + (s.avgPrice ? 'RM ' + fmtPrice(s.avgPrice) : '—') + '</b><small>' + esc(t(p.mode === 'food' ? 'perPerson' : 'costLabel')) + '</small></div>' +
+      /* 旅行不记花费（用户 2026-10-26）：没有花费就不放这一格，不再显示“花费 —” */
+      (p.mode === 'food' || s.avgPrice ? '<div class="stat"><b>' + (s.avgPrice ? 'RM ' + fmtPrice(s.avgPrice) : '—') + '</b><small>' + esc(t(p.mode === 'food' ? 'perPerson' : 'costLabel')) + '</small></div>' : '') +
       '<div class="stat"><b>' + s.count + '</b><small>' + esc(t('reviewsLabel')) + '</small></div></div>';
     h += '<h3 class="sec-title">' + esc(t('reviewsTitle')) + '</h3><ul class="reviews">' + reviews.map(reviewHTML).join('') + '</ul>';
     view.innerHTML = h;

@@ -1539,11 +1539,27 @@
   function authorFrom(r) { var h = r.authorId && homeOf(r.authorId); return h && h.public ? h.city : ''; }
   function homeName(h) { return h.userId === me().id ? (me().name || t('you')) : (h.name || t('anon')); }
   function reviewText(r) { return state.lang === 'en' && r.textEn ? r.textEn : (r.text || ''); }
+  /* 头像颜色从一组配好的颜色里挑（按名字固定），不会再出现橄榄绿、土黄这种和蓝白不搭的色；没名字是浅灰蓝（2026-11-01 精修） */
+  var AVATAR_COLORS = ['#5B8DEF', '#45A7C4', '#7C6FE0', '#E0719E', '#EF9A5A', '#4FB08A', '#3F7DC0', '#A77AD6', '#E5868A', '#2FA3A0'];
   function avatarHTML(name) {
     var str = String(name || '?').trim();
     var ch = Array.from(str)[0] || '?', h = 0;
     for (var i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) % 360;
-    return '<span class="avatar" style="--h:' + h + '" aria-hidden="true">' + esc(ch.toUpperCase()) + '</span>';
+    var color = ch === '?' ? '#AEBDCC' : AVATAR_COLORS[h % AVATAR_COLORS.length];
+    return '<span class="avatar" style="--av:' + color + '" aria-hidden="true">' + esc(ch.toUpperCase()) + '</span>';
+  }
+  var ICON_LOCK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2.5"/><path d="M8.5 11V8a3.5 3.5 0 0 1 7 0v3"/></svg>';
+  /* 雪团子：logo 里那颗眨眼的小雪球，画成矢量；首页没有分享时用（开屏动画在 index.html 里有同样的一颗） */
+  function mascotHTML() {
+    return '<svg class="mascot" viewBox="0 0 100 100" aria-hidden="true">' +
+      '<defs><radialGradient id="mascot-g" cx="38%" cy="32%" r="72%"><stop offset="0" stop-color="#fff"/><stop offset=".62" stop-color="#F3F8FD"/><stop offset="1" stop-color="#D5E5F4"/></radialGradient></defs>' +
+      '<ellipse cx="50" cy="91" rx="26" ry="4.5" fill="#2E7DCB" opacity=".14"/>' +
+      '<circle cx="50" cy="52" r="37" fill="url(#mascot-g)"/>' +
+      '<circle cx="38.5" cy="50" r="5" fill="#1E3350"/><circle cx="40.2" cy="48.3" r="1.6" fill="#fff"/>' +
+      '<path d="M56.5 51.2q5.6-6.4 11.4 0" fill="none" stroke="#1E3350" stroke-width="3.4" stroke-linecap="round"/>' +
+      '<path d="M42 59.5h16a8 7.4 0 0 1-16 0z" fill="#1E3350"/><ellipse cx="50" cy="64.4" rx="4" ry="2.2" fill="#F28BA0"/>' +
+      '<ellipse cx="30.5" cy="60" rx="6" ry="3.6" fill="#F6A9B8" opacity=".8"/><ellipse cx="69.5" cy="60" rx="6" ry="3.6" fill="#F6A9B8" opacity=".8"/>' +
+      '<path d="M84 9c1 6.6 2.8 8.4 9.4 9.4-6.6 1-8.4 2.8-9.4 9.4-1-6.6-2.8-8.4-9.4-9.4 6.6-1 8.4-2.8 9.4-9.4z" fill="#8CC4F2"/></svg>';
   }
   function catIconHTML(c) { return '<i class="cat-ic" aria-hidden="true">' + c.emoji + '</i>'; }
   function accentColor() { return getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#2E7DCB'; }

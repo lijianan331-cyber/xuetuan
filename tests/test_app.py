@@ -244,6 +244,7 @@ with sync_playwright() as p:
     slowpage = slowctx.new_page(); slowpage.goto(APP)
     slowpage.wait_for_function('window.__map && window.__map.getSource("places") && window.__resumeDbReads && window.__resumeDbReads.length')
     check('map initializes while account and records are still waiting', '正在加载分享' in slowpage.inner_text('#view'))
+    check('home: while shares load, four placeholder cards show (no 去记录 button yet)', slowpage.locator('#view .post-grid.skeleton .post-card').count() == 4 and slowpage.locator('#view [data-action="add"]').count() == 0)
     slowpage.evaluate('window.__holdDbReads=false;window.__resumeDbReads.splice(0).forEach(fn=>fn())')
     slowpage.wait_for_function('!document.querySelector("#view").textContent.includes("正在加载分享")')
     slowctx.close()
@@ -1357,7 +1358,7 @@ with sync_playwright() as p:
     page3.wait_for_timeout(400)
     page3.screenshot(path=os.path.join(SHOTS, '11-mobile-dark.png'))
     bg3 = page3.evaluate('[getComputedStyle(document.getElementById("panel")).backgroundColor, getComputedStyle(document.getElementById("tabbar")).backgroundColor, getComputedStyle(document.querySelector(".filter-btn")).color]')
-    check('phone in dark mode: app stays blue and white', bg3[0] == 'rgb(255, 255, 255)' and bg3[1] == 'rgb(255, 255, 255)' and bg3[2] == 'rgb(46, 125, 203)', bg3)
+    check('phone in dark mode: app stays blue and white', bg3[0] == 'rgb(255, 255, 255)' and re.match(r'rgba?\(255, 255, 255(, 0\.9\d*)?\)$', bg3[1]) is not None and bg3[2] == 'rgb(46, 125, 203)', bg3)
     ctx3.close()
 
     # narrow phone
@@ -1369,7 +1370,7 @@ with sync_playwright() as p:
     page4.wait_for_timeout(400)
     page4.screenshot(path=os.path.join(SHOTS, '12a-mobile-360-home.png'))
     tab(page4, 'explore')
-    tb = page4.evaluate('(() => { const c = document.querySelector("#map-ctrls").getBoundingClientRect(), l = document.querySelector(".locate-btn").getBoundingClientRect(), x = document.querySelector(".campus-btn").getBoundingClientRect(); return [c.right <= innerWidth, c.bottom < l.top, document.documentElement.scrollWidth <= document.documentElement.clientWidth, Math.abs(x.right-c.right)<1 && x.width===34 && x.top >= document.querySelector(".filter-btn").getBoundingClientRect().bottom && x.bottom < l.top]; })()')
+    tb = page4.evaluate('(() => { const c = document.querySelector("#map-ctrls").getBoundingClientRect(), l = document.querySelector(".locate-btn").getBoundingClientRect(), x = document.querySelector(".campus-btn").getBoundingClientRect(); return [c.right <= innerWidth, c.bottom < l.top, document.documentElement.scrollWidth <= document.documentElement.clientWidth, Math.abs(x.right-c.right)<1 && x.width===38 && x.top >= document.querySelector(".filter-btn").getBoundingClientRect().bottom && x.bottom < l.top]; })()')
     check('map buttons fit a 360px phone (XMUM top-right, clear of search and filters)', tb == [True, True, True, True], tb)
     page4.screenshot(path=os.path.join(SHOTS, '12-mobile-360.png'))
     ctx4.close()
@@ -1900,10 +1901,16 @@ with sync_playwright() as p:
     pb.evaluate('window.__map.center={lng:110,lat:30}')
     pb.click('[data-action="pick-cancel"]')
     check('cancel bulk map picking retains the previous place and draft',pb.locator('[data-bk-name]').count()==0 and stars_val(pb,'#bk-rate-0')=='4')
-    pb.click('#bk-save');pb.wait_for_timeout(800)
+    pb.click('#bk-save'); t_bk = time.time()
+    # 照片处理完才写点评：等它真的写好（最多 5 秒），不靠固定等 0.8 秒（整套测试一起跑时机器忙，0.8 秒有时不够）
+    try:
+        pb.wait_for_function('(() => { const d = JSON.parse(localStorage.getItem("xmum-chiwan-map:data:v1") || "{}"); return (d.places || []).some(p => p.lat === 3.2 && p.lng === 101.9) && (d.reviews || []).some(r => r.text === "第一条\\n第二条"); })()', timeout=5000)
+    except Exception:
+        pass
+    t_bk = round(time.time() - t_bk, 2)
     manual = pb.evaluate('JSON.parse(localStorage.getItem("xmum-chiwan-map:data:v1")).places.find(p=>p.lat===3.2 && p.lng===101.9)')
     check('bulk map coordinates are saved only on import confirmation',manual and manual['lat']==3.2 and manual['lng']==101.9 and manual['mode']=='travel',manual)
-    check('bulk: comment saved with the review', pb.evaluate('(id) => JSON.parse(localStorage.getItem("xmum-chiwan-map:data:v1")).reviews.some(r => r.placeId === id && r.text === "第一条\\n第二条")', manual['id']) if manual else False)
+    check('bulk: comment saved with the review', pb.evaluate('(id) => JSON.parse(localStorage.getItem("xmum-chiwan-map:data:v1")).reviews.some(r => r.placeId === id && r.text === "第一条\\n第二条")', manual['id']) if manual else False, 'saved after %ss' % t_bk)
     check('bulk: no page errors', not errorsb, errorsb)
     ctxb.close()
 
@@ -2620,6 +2627,73 @@ with sync_playwright() as p:
     check('add: a Google city / area pick is flagged (Niagara Falls the city), a sight or shop is not', ga == [True, True, False, False], ga)
     check('draft: no page errors', not errorsd, errorsd)
     ctxdr.close()
+
+    # 2026-11-01 界面精修 + 开屏动画（雪团扔过来，椰林和 XMUM 楼被雪盖白，再进首页）
+    ctxui = browser.new_context(viewport={'width': 375, 'height': 780}, has_touch=True)
+    route_all(ctxui)
+    errorsui = []
+    pu = ctxui.new_page(); pu.on('pageerror', lambda e: errorsui.append(str(e)))
+    pu.goto(APP)
+    pu.wait_for_function('window.__map && window.__map.getSource("places")', timeout=8000)
+    check('splash: automated browsers skip it unless ?splash', pu.evaluate('!document.getElementById("splash") && !document.documentElement.classList.contains("splash-on")'))
+    t0 = time.time(); pu.goto(APP + '?splash')
+    sp0 = pu.evaluate('(() => { const s = document.getElementById("splash"); return [!!s && getComputedStyle(s).display !== "none", document.documentElement.classList.contains("splash-on"), document.querySelectorAll("#sp-flakes i").length > 20, !!(s && s.querySelector(".sp-ball")), !!(s && s.querySelectorAll(".sp-scene .sp-frost").length), !!(s && s.querySelector(".sp-brand img"))]; })()')
+    check('splash: ?splash shows the snowball, palms + campus scene, snowflakes and logo', sp0 == [True] * 6, sp0)
+    pu.wait_for_function('!document.getElementById("splash")', timeout=7000)
+    sp1 = [round(time.time() - t0, 1), pu.evaluate('document.documentElement.className.includes("splash")')]
+    check('splash: ends by itself in about 3 s and hands over to the app', sp1[0] < 5.5 and not sp1[1], sp1)
+    pu.goto(APP + '?splash'); pu.wait_for_timeout(250)
+    t1 = time.time(); pu.click('#splash')
+    pu.wait_for_function('!document.getElementById("splash")', timeout=3000)
+    check('splash: a tap skips it', time.time() - t1 < 1.5, round(time.time() - t1, 2))
+    # 同一个标签页只播一次（模拟真手机：不是自动化浏览器）
+    ctxsp = browser.new_context(viewport={'width': 375, 'height': 780})
+    route_all(ctxsp)
+    ctxsp.add_init_script('Object.defineProperty(navigator, "webdriver", { get: () => false })')
+    psp = ctxsp.new_page(); psp.goto(APP)
+    first = psp.evaluate('!!document.getElementById("splash")')
+    psp.wait_for_function('!document.getElementById("splash")', timeout=7000)
+    psp.reload(); psp.wait_for_timeout(300)
+    again = psp.evaluate('!!document.getElementById("splash")')
+    check('splash: plays when the app opens, not again on reload in the same tab', first and not again, [first, again])
+    ctxsp.close()
+    # 系统设了“减少动态效果”：不扔球不下雪，直接是盖了雪的校园，很快进入
+    ctxrm = browser.new_context(viewport={'width': 375, 'height': 780}, reduced_motion='reduce')
+    route_all(ctxrm)
+    prm = ctxrm.new_page(); prm.goto(APP + '?splash')
+    rm = prm.evaluate('(() => { const b = document.querySelector(".sp-ball"), f = document.querySelector(".sp-frost"); return [!!document.getElementById("splash"), b ? getComputedStyle(b).display : null, document.querySelectorAll("#sp-flakes i").length, f ? +getComputedStyle(f).opacity : null]; })()')
+    check('splash: reduced motion = no thrown ball or snowfall, just the snowy campus', rm[:3] == [True, 'none', 0] and rm[3] is not None and rm[3] > 0.8, rm)
+    prm.wait_for_function('!document.getElementById("splash")', timeout=3500)
+    ctxrm.close()
+    pu.goto(APP)
+    pu.wait_for_function('window.__map && window.__map.getSource("places")', timeout=8000); pu.wait_for_timeout(300)
+    # 地图上的美食 / 美景：两个字都在，当前的那个是实心蓝
+    tab(pu, 'explore'); set_mode(pu, 'food')
+    mo = [pu.inner_text('.mode-btn .mode-opt.on').strip()]
+    set_mode(pu, 'travel'); mo.append(pu.inner_text('.mode-btn .mode-opt.on').strip()); set_mode(pu, 'food')
+    check('map switch shows both 美食 and 美景, the current one filled', mo == ['美食', '美景'] and pu.locator('.mode-btn .mode-opt').count() == 2, mo)
+    tb2 = pu.evaluate('[...document.querySelectorAll("#tabbar .tab svg")].map(s => getComputedStyle(s).backgroundColor !== "rgba(0, 0, 0, 0)")')
+    check('tab bar: only the current tab icon sits on a soft pill', tb2 == [False, True, False, False], tb2)
+    # 旅行地点没有“花费”，美食地点有人均
+    open_place(pu, '金门', '金门大桥')
+    st = pu.evaluate('(() => { const s = document.querySelector("#view .stats"); return s ? s.innerText : null; })()')
+    check('travel place: stats have no cost column', st is not None and not any(w in st for w in ('花费', '人均', 'RM')), st)
+    open_place(pu, '芙蓉烧包')
+    st2 = pu.evaluate('(() => { const s = document.querySelector("#view .stats"); return s ? s.innerText : null; })()')
+    check('food place: stats keep 人均', st2 is not None and '人均' in st2, st2)
+    # 首页没有分享：雪团子 + 一句话 + 去记录
+    tab(pu, 'home')
+    check('home: empty feed shows the snowball mascot and 去记录', pu.locator('#view .home-empty .mascot').count() == 1 and pu.locator('#view .home-empty [data-action="add"]').count() == 1)
+    # “我的”：浅灰底 + 白色分组卡片；没起名的头像是浅灰蓝；别的页面还是白底
+    tab(pu, 'me')
+    mg = pu.evaluate('[document.documentElement.dataset.page, getComputedStyle(document.getElementById("panel")).backgroundColor, getComputedStyle(document.querySelector("#view .form > .field")).backgroundColor, document.querySelector("#view .me-head .avatar").getAttribute("style")]')
+    check('me: grouped page (soft grey, white cards), unnamed avatar is light grey-blue', mg[0] == 'me' and mg[1] == 'rgb(243, 246, 250)' and mg[2] == 'rgb(255, 255, 255)' and '#AEBDCC' in (mg[3] or ''), mg)
+    tab(pu, 'explore')
+    check('me: grey background stays on the me page only', pu.evaluate('document.documentElement.dataset.page !== "me" && getComputedStyle(document.getElementById("panel")).backgroundColor === "rgb(255, 255, 255)"'))
+    av = pu.evaluate('["小雪", "阿团", "Mei", "z", "林"].map(n => { const d = document.createElement("div"); d.innerHTML = avatarHTML(n); return d.firstChild.style.getPropertyValue("--av"); })')
+    check('avatars pick from the blue-white friendly palette (no olive / mud colours)', all(c in ('#5B8DEF', '#45A7C4', '#7C6FE0', '#E0719E', '#EF9A5A', '#4FB08A', '#3F7DC0', '#A77AD6', '#E5868A', '#2FA3A0') for c in av), av)
+    check('ui polish: no page errors', not errorsui, errorsui)
+    ctxui.close()
 
     browser.close()
 
