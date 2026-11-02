@@ -140,14 +140,29 @@
   /* 放大到街道（17 级起）就不再合并：隔壁两家店各自一个照片针，针尖在店的真实位置（用户 2026-11-01：nomu 和隔壁南洋 cafe 被合成一个“2”）。
      再往外才合并，免得照片框互相盖住 */
   function placeClusterMaxZoom() { return 16; }
+  /* 学校是例外（用户 2026-11-02：LY3 那排店和 D6 太早合成一个数）：看着学校一带时合并的范围小一点，
+     LY3 和 D6（相距约 350 米，15 级约 74 像素）在 15 级还分开，再缩小才合并；离开学校一带恢复原来的范围 */
+  var CAMPUS_CLUSTER_RADIUS = 68;
+  function placeClusterRadius() {
+    if (!map || !map.getCenter) return PLACE_CLUSTER_RADIUS;
+    var c = map.getCenter();
+    return haversine(XMUM, { lat: c.lat, lng: c.lng }) < 2500 ? CAMPUS_CLUSTER_RADIUS : PLACE_CLUSTER_RADIUS;
+  }
+  function placeClusterProfile() { return placeClusterMaxZoom() + ':' + placeClusterRadius(); }
+  function syncPlaceCluster() {
+    var src = map && map.getSource && map.getSource('places'), want = placeClusterProfile();
+    if (!src || typeof src.setClusterOptions !== 'function' || placeClusterProfiles.get(src) === want) return;
+    placeClusterProfiles.set(src, want);
+    Promise.resolve(src.setClusterOptions({ cluster: true, clusterMaxZoom: placeClusterMaxZoom(), clusterRadius: placeClusterRadius() })).catch(function () { placeClusterProfiles.delete(src); });
+  }
   function addAppLayers() {
     var fonts = pickFonts();
     /* 数字圈用雪团的浅冰蓝，不跟着玩乐地图变深（用户 2026-10-28） */
     var accent = CLUSTER_BLUE;
     homePlacement = null;
-    map.addSource('places', { type: 'geojson', data: placesGeoJSON(), cluster: true, clusterMaxZoom: placeClusterMaxZoom(), clusterRadius: PLACE_CLUSTER_RADIUS,
+    map.addSource('places', { type: 'geojson', data: placesGeoJSON(), cluster: true, clusterMaxZoom: placeClusterMaxZoom(), clusterRadius: placeClusterRadius(),
       clusterProperties: { photoRef: [['case', ['!=', ['accumulated'], ''], ['accumulated'], ['get', 'photoRef']], ['get', 'photoRef']], photoTotal: ['+', ['get', 'photoCount']], locationCount: ['+', ['get', 'locationCount']] } });
-    placeClusterProfiles.set(map.getSource('places'), placeClusterMaxZoom());
+    placeClusterProfiles.set(map.getSource('places'), placeClusterProfile());
     map.addSource('me', { type: 'geojson', data: meFC() });
     map.addSource('homes', { type: 'geojson', data: homesFC(), cluster: true, clusterMaxZoom: 11, clusterRadius: 36, clusterProperties: { students: ['+', ['get', 'students']] } });
     /* 地点库里的店：放大后才出，小圆点 + 店名，垫在所有图钉下面 */
@@ -223,10 +238,7 @@
 
   function refreshMap() {
     var src = map && map.getSource && map.getSource('places');
-    if (src && typeof src.setClusterOptions === 'function' && placeClusterProfiles.get(src) !== placeClusterMaxZoom()) {
-      placeClusterProfiles.set(src, placeClusterMaxZoom());
-      Promise.resolve(src.setClusterOptions({ cluster: true, clusterMaxZoom: placeClusterMaxZoom(), clusterRadius: PLACE_CLUSTER_RADIUS })).catch(function () { placeClusterProfiles.delete(src); });
-    }
+    syncPlaceCluster();
     if (src) src.setData(placesGeoJSON());
     refreshLib();
     queueLib();

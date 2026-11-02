@@ -89,6 +89,7 @@
   var viewTimer = null, lastGlobeChip = false;
   function onMoveEnd() {
     clearTimeout(viewTimer); viewTimer = setTimeout(saveView, 400);
+    syncPlaceCluster();
     queueLib();
     ensurePinThumbs();
     updateSelPin();

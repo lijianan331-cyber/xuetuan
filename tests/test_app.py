@@ -554,6 +554,11 @@ with sync_playwright() as p:
     check('food and scenery photos share visibility thresholds', all(map_expr(ph_op,z,dict(travel_props,mode='travel',precision=pr))==map_expr(ph_op,z,dict(travel_props,mode='food',precision=pr)) for pr in ['city','area','exact'] for z in [3.8,6.8,7,9,10,11.99,12,14]))
     check('photo size is identical for all precisions and both map modes at each zoom', all(len({round(map_expr(ph_size,z,dict(ph_props,mode=m,precision=pr)),4) for m in ['food','travel'] for pr in ['city','area','exact']})==1 for z in [4,7,8.8,10,12,16]))
     check('clustering continues through street zoom with room for photo frames', page.evaluate('window.__map.getSource("places").spec.clusterMaxZoom===16 && window.__map.getSource("places").spec.clusterRadius>=68*window.__map.getLayer("pt-photo").layout["icon-size"]'))
+    cr = page.evaluate('''(() => { const m = window.__map, c = m.getCenter(), z = m.getZoom(), out = [];
+      m.jumpTo({center: [101.7040, 2.8300], zoom: 15}); onMoveEnd(); out.push(m.getSource("places").spec.clusterRadius);
+      m.jumpTo({center: [101.6869, 3.1390], zoom: 15}); onMoveEnd(); out.push(m.getSource("places").spec.clusterRadius);
+      m.jumpTo({center: [c.lng, c.lat], zoom: z}); onMoveEnd(); return out; })()''')
+    check('campus exception: around XMUM places merge later (smaller cluster radius, LY3 and D6 stay apart at zoom 15); elsewhere unchanged', cr == [68, 80], cr)
     cl_op = page.evaluate('window.__map.getLayer("cl-circle").paint["circle-opacity"]')
     check('single and grouped covers appear together at the same zoom', all(map_expr(cl_op,z,{'photoRef':'cover'}) == 1-map_expr(ph_op,z,ph_props) for z in [10,11.99,12,12.5,13,14,18]) and map_expr(cl_op,18,{'photoRef':''})==1)
     check('group covers share the same fixed size and viewport alignment',page.evaluate('''(()=>{const a=window.__map.getLayer('pt-photo').layout,b=window.__map.getLayer('cl-photo').layout;return a['icon-size']===b['icon-size']&&a['icon-pitch-alignment']==='viewport'&&b['icon-pitch-alignment']==='viewport';})()'''))
