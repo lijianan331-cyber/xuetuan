@@ -634,6 +634,20 @@
         var a = [data.profile].concat(data.others).filter(function (x) { return x && x.id === id; })[0];
         return !!(a && a.page_public);
       },
+      /* 头像照片（2026-11-02）：没有就用名字第一个字 */
+      avatarOf: function (id) {
+        var a = [data.profile].concat(data.others).filter(function (x) { return x && x.id === id; })[0];
+        return (a && a.avatar) || '';
+      },
+      setAvatar: function (out) {
+        var id = uid('av'), old = data.profile.avatar;
+        photoStore.put(id + THUMB_KEY, out.thumb);
+        return photoStore.put(id, out.blob).then(function () {
+          data.profile.avatar = id; persistSoon();
+          if (old) { photoStore.del && photoStore.del(old); photoURLs.delete(old); photoURLs.delete(old + THUMB_KEY); }
+          return id;
+        });
+      },
       updateProfile: function (patch) {
         Object.keys(patch).forEach(function (k) { data.profile[k] = patch[k]; });
         data.reviews.forEach(function (r) { if (r.authorId === data.profile.id) r.authorName = data.profile.name || ''; });
@@ -751,7 +765,7 @@
     function reviewFromRow(r, author) {
       author = author || r.author || {};
       return {
-        id: r.id, placeId: r.place_id, authorId: r.user_id, authorName: author.name || '', authorPage: !!author.page_public,
+        id: r.id, placeId: r.place_id, authorId: r.user_id, authorName: author.name || '', authorPage: !!author.page_public, authorAvatar: author.avatar || '',
         rating: r.rating == null ? null : +r.rating, price: r.price == null ? null : +r.price, title: r.title || null, text: r.text, photos: r.photos || [],
         visibility: r.visibility, createdAt: Date.parse(r.created_at), updatedAt: r.updated_at ? Date.parse(r.updated_at) : null, sample: false
       };
@@ -807,7 +821,10 @@
       var uid = uidNow();
       return Promise.all([
         client.from('places').select('*').limit(10000),
-        client.from('visits').select('*, author:profiles(name, page_public)').order('created_at', { ascending: false }).limit(10000),
+        /* 头像列是 2026-11-02 加的，数据库还没加时退回不带头像的读法 */
+        client.from('visits').select('*, author:profiles(name, page_public, avatar)').order('created_at', { ascending: false }).limit(10000).then(function (r) {
+          return r.error ? client.from('visits').select('*, author:profiles(name, page_public)').order('created_at', { ascending: false }).limit(10000) : r;
+        }),
         uid ? client.from('profiles').select('*').eq('id', uid).maybeSingle() : Promise.resolve({ data: null }),
         uid ? client.from('wishlist').select('*') : Promise.resolve({ data: [] }),
         /* 家这张表是后加的，读不到也别让整个应用打不开 */
@@ -1060,6 +1077,27 @@
           cache.homes.push(home);
           return home;
         });
+      },
+      avatarOf: function (id) {
+        if (id && id === uidNow()) return cache.profile.avatar || '';
+        for (var i = 0; i < cache.reviews.length; i++) if (cache.reviews[i].authorId === id && cache.reviews[i].authorAvatar) return cache.reviews[i].authorAvatar;
+        return '';
+      },
+      setAvatar: function (out) {
+        var uid = uidNow(), old = cache.profile.avatar;
+        if (!uid) return Promise.reject(new Error('login required'));
+        var path = uid + '/avatar-' + Date.now().toString(36) + '.jpg', bucket = client.storage.from('photos');
+        return bucket.upload(path, out.blob, { contentType: 'image/jpeg', upsert: false }).then(ok).then(function () {
+          return bucket.upload(thumbPath(path), out.thumb, { contentType: 'image/jpeg', upsert: false }).then(function () {}, function () {});
+        }).then(function () {
+          return client.from('profiles').update({ avatar: path }).eq('id', uid).then(ok);
+        }).then(function () {
+          photoURLs.set(path, URL.createObjectURL(out.blob)); photoURLs.set(path + THUMB_KEY, URL.createObjectURL(out.thumb));
+          cache.profile.avatar = path;
+          cache.reviews.forEach(function (r) { if (r.authorId === uid) r.authorAvatar = path; });
+          if (old && old !== path) removePhotos([old]);
+          return path;
+        }, function (e) { bucket.remove([path, thumbPath(path)]).then(function () {}, function () {}); throw e; });
       },
       pagePublic: function (id) {
         if (id && id === uidNow()) return !!cache.profile.page_public;
@@ -1493,6 +1531,12 @@
     { id: 'mid', max: 40000 },
     { id: 'far', max: Infinity }
   ];
+  /* XMUM 校园大致的长方形范围（北边的路、东边 Persiaran Sunsuria、南边 Jalan Sunsuria，用户 2026-11-02 截图里量的）。
+     框里的地点不说“距 XMUM 多少米”，就写“XMUM” */
+  var XMUM_BOX = { s: 2.8290, n: 2.8372, w: 101.6978, e: 101.7086 };
+  function inCampus(p) { return !!p && p.lat >= XMUM_BOX.s && p.lat <= XMUM_BOX.n && p.lng >= XMUM_BOX.w && p.lng <= XMUM_BOX.e; }
+  function distLabel(p) { return inCampus(p) ? 'XMUM' : t('distFrom', { d: fmtDist(haversine(XMUM, p)) }); }
+  window.__distLabel = distLabel; /* 测试用 */
   function distTier(p) {
     var d = haversine(XMUM, p);
     for (var i = 0; i < DIST_TIERS.length; i++) if (d <= DIST_TIERS[i].max) return DIST_TIERS[i].id;
@@ -1570,7 +1614,10 @@
   }
   /* 头像颜色从一组配好的颜色里挑（按名字固定），不会再出现橄榄绿、土黄这种和蓝白不搭的色；没名字是浅灰蓝（2026-11-01 精修） */
   var AVATAR_COLORS = ['#5B8DEF', '#45A7C4', '#7C6FE0', '#E0719E', '#EF9A5A', '#4FB08A', '#3F7DC0', '#A77AD6', '#E5868A', '#2FA3A0'];
-  function avatarHTML(name) {
+  /* userId 有头像照片就显示照片（图片由 hydrateAvatars 填上），没有就是名字第一个字 */
+  function avatarHTML(name, userId) {
+    var av = userId && store && store.avatarOf ? store.avatarOf(userId) : '';
+    if (av) return '<span class="avatar has-photo" aria-hidden="true"><img data-avatar="' + esc(av) + '" alt=""></span>';
     var str = String(name || '?').trim();
     var ch = Array.from(str)[0] || '?', h = 0;
     for (var i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) % 360;

@@ -730,7 +730,7 @@
       mode: p0 ? p0.mode : state.mode, cat: f.cat || 'other', precision: f.precision, lat: f.loc.lat, lng: f.loc.lng,
       name: ((d.name || '').trim() || (p0 && p0.name) || t((p0 ? p0.mode : state.mode) === 'food' ? 'unnamedFood' : 'unnamedTravel')).slice(0, 60), altName: (d.alt || '').trim().slice(0, 60), link: safeURL(d.link), osm: f.osm
     } : null;
-    var price = parseFloat(d.price);
+    var price = ((p0 ? p0.mode : state.mode) === 'food') ? parseFloat(d.price) : NaN;
     var rv = {
       rating: f.rating, price: isFinite(price) && price > 0 ? Math.round(price * 100) / 100 : null,
       title: (d.title || '').trim().slice(0, 80) || null, text: (d.text || '').trim().slice(0, 1000), visibility: f.visibility
@@ -767,6 +767,7 @@
       if (!x.res.photosOk) setTimeout(function () { toast(t('photoFail')); }, 2600);
       refreshMap();
       if (f.post) { state.tab = 'home'; state.scope = 'all'; renderFilters(); renderTabs(); goFeed(); }
+      else if (f.fromPost && store.review(x.res.review.id)) openPost(x.res.review.id); /* 从帖子里点的编辑，改完回到帖子 */
       else openPlace(x.place.id, { drop: !f.editId });
     }).catch(function (e) {
       if (window.console) console.warn('save:', e);

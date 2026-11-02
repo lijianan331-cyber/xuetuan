@@ -527,6 +527,20 @@
     });
   }
   /* 带 data-small 的用小图，小图打不开（以前传的照片没有小图）就换原图 */
+  /* 头像照片：页面上出现 img[data-avatar] 就去拿地址（各处 innerHTML 都不用自己管） */
+  function hydrateAvatars(root) {
+    $$('img[data-avatar]:not([data-av-done])', root || document).forEach(function (img) {
+      img.setAttribute('data-av-done', '');
+      store.photoURL(img.dataset.avatar, true).then(function (u) {
+        if (u) { img.onerror = function () { img.onerror = null; store.photoURL(img.dataset.avatar).then(function (f) { if (f && f !== u) img.src = f; }); }; img.src = u; }
+        else if (img.parentElement) img.parentElement.classList.add('missing');
+      });
+    });
+  }
+  if (window.MutationObserver) {
+    var avTimer = 0;
+    new MutationObserver(function () { if (!avTimer) avTimer = setTimeout(function () { avTimer = 0; hydrateAvatars(); }, 0); }).observe(document.documentElement, { childList: true, subtree: true });
+  }
   function hydratePhotos(root) {
     hydrateGoogleTitles(root);
     $$('img[data-photo]', root).forEach(function (img) {
@@ -641,7 +655,7 @@
     var name = authorLabel(r), from = '', meta = metaHTML(r, ownControls), text = reviewText(r);
     var n = r.photos ? r.photos.length : 0;
     var lead = n ? '<span class="fi-pic"><img data-photo="' + esc(r.photos[0]) + '" data-small alt="">' +
-      (n > 1 ? '<span class="fi-count">' + ICON.camera + n + '</span>' : '') + '</span>' : avatarHTML(name);
+      (n > 1 ? '<span class="fi-count">' + ICON.camera + n + '</span>' : '') + '</span>' : avatarHTML(name, r.authorId);
     return '<li' + (ownControls ? ' class="visit-row"' : '') + '>' + (ownControls && selectingVisits ? '<button type="button" class="visit-select" data-action="visit-select" data-id="' + esc(r.id) + '" aria-label="' + esc(state.lang === 'en' ? 'Select record' : '选择这条记录') + '" aria-pressed="' + selectedVisits.has(r.id) + '">' + (selectedVisits.has(r.id) ? '✓' : '○') + '</button>' : '') + '<button type="button" class="feed-item' + (n ? ' with-pic' : '') + '" data-action="' + (ownControls && selectingVisits ? 'visit-select' : 'open-place') + '" data-id="' + esc(ownControls && selectingVisits ? r.id : p.id) + '">' +
       lead +
       '<span class="fi-main">' +
@@ -661,7 +675,7 @@
   }
   function savedItemHTML(p) {
     var s = stats(p);
-    var sub = esc(catName(catOf(p))) + ' · ' + esc(t('distFrom', { d: fmtDist(haversine(XMUM, p)) }));
+    var sub = esc(catName(catOf(p))) + ' · ' + esc(distLabel(p));
     return placeRowHTML(p, 'open-place', sub, s.score != null ? scoreHTML(s.score) : '<span class="near-cta muted">' + esc(t('noRating')) + '</span>');
   }
 

@@ -982,3 +982,15 @@ button.post-who { width: 100%; }
 .campus-hours span { color: var(--muted); }
 .campus-hours b { font-weight: 600; white-space: pre-line; font-variant-numeric: tabular-nums; }
 .campus-hours small { color: var(--muted); font-size: 11.5px; }
+.post-own { margin-left: auto; display: flex; gap: 18px; padding-right: 4px; }
+.post-own .link-btn { font-size: 15px; font-weight: 600; min-height: 36px; }
+.ph-edit-btn { width: 100%; border: 0; background: none; padding: 0; text-align: left; color: inherit; font: inherit; cursor: pointer; }
+.ph-edit-btn .ph-text { flex: 1; min-width: 0; }
+.ph-pen { flex: none; font-size: 14px; font-weight: 600; color: var(--accent); }
+.pf-preview { display: flex; justify-content: center; margin: 4px 0 12px; }
+.pf-preview .avatar { width: 56px; height: 56px; font-size: 22px; }
+.avatar.has-photo { overflow: hidden; background: var(--line, #e3eaf1); }
+.avatar.has-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.pf-av-btn { border: 0; background: none; padding: 0; display: flex; flex-direction: column; align-items: center; gap: 6px; color: var(--accent); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+.pf-av-btn .avatar { width: 64px; height: 64px; font-size: 24px; }
+.pf-av-btn i { font-style: normal; }

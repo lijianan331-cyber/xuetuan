@@ -35,6 +35,55 @@
       '<button type="submit" class="btn primary">' + esc(t('save')) + '</button></div></form>');
     setTimeout(function () { var i = $('#area-name'); if (i) i.focus(); }, 30);
   }
+  /* 改名字：个人主页点头像/名字打开（头像现在是名字的第一个字，改名字头像跟着变） */
+  function openProfileDialog() {
+    var en = state.lang === 'en', name = me().name || '';
+    openModal('<form class="modal-card" id="profile-form"><h3>' + esc(en ? 'Your name' : '修改名字') + '</h3>' +
+      '<div class="pf-preview"><button type="button" class="pf-av-btn" data-action="pf-avatar-pick" aria-label="' + esc(en ? 'Change photo' : '换头像照片') + '"><span id="pf-preview">' + avatarHTML(name || '?', me().id) + '</span><i>' + esc(en ? 'Change photo' : '换照片') + '</i></button>' +
+      '<input id="pf-avatar-file" type="file" accept="image/*" hidden></div>' +
+      '<input id="pf-dialog-name" class="input" maxlength="20" autocomplete="nickname" value="' + esc(name) + '" placeholder="' + esc(t('nicknamePh')) + '">' +
+      '<p class="f-hint">' + esc(en ? 'Tap the avatar to use a photo. Without one, it shows the first letter of your name.' : '点头像可以换成照片；没有照片时显示名字的第一个字。') + '</p>' +
+      '<div class="btn-row end"><button type="button" class="btn ghost" data-modal="no">' + esc(t('cancel')) + '</button>' +
+      '<button type="submit" class="btn primary">' + esc(t('save')) + '</button></div></form>');
+    setTimeout(function () { var i = $('#pf-dialog-name'); if (i) { i.focus(); i.select(); } }, 30);
+  }
+  /* 头像照片裁成正中的正方形：400px 原图 + 120px 小图 */
+  function squareAvatar(file) {
+    return new Promise(function (resolve, reject) {
+      var img = new Image(), u = URL.createObjectURL(file);
+      img.onload = function () {
+        URL.revokeObjectURL(u);
+        var side = Math.min(img.naturalWidth, img.naturalHeight), sx = (img.naturalWidth - side) / 2, sy = (img.naturalHeight - side) / 2;
+        function enc(n) {
+          var cv = document.createElement('canvas'); cv.width = cv.height = Math.min(n, side);
+          cv.getContext('2d').drawImage(img, sx, sy, side, side, 0, 0, cv.width, cv.height);
+          return new Promise(function (ok2, bad) { cv.toBlob(function (b) { if (b) ok2(b); else bad(new Error('encode')); }, 'image/jpeg', 0.85); });
+        }
+        Promise.all([enc(400), enc(120)]).then(function (b) { resolve({ blob: b[0], thumb: b[1] }); }, reject);
+      };
+      img.onerror = function () { URL.revokeObjectURL(u); reject(new Error('decode')); };
+      img.src = u;
+    });
+  }
+  var pendingAvatar = null;
+  function pickAvatarFile(file) {
+    if (!file || !/^image\//.test(file.type)) return;
+    squareAvatar(file).then(function (out) {
+      pendingAvatar = out;
+      var pv = $('#pf-preview');
+      if (pv) pv.innerHTML = '<span class="avatar has-photo" aria-hidden="true"><img src="' + URL.createObjectURL(out.thumb) + '" alt=""></span>';
+    }, function () { toast(state.lang === 'en' ? 'Could not read this photo' : '这张照片读不出来，换一张试试'); });
+  }
+  function saveProfileDialog() {
+    var i = $('#pf-dialog-name'), name = (i && i.value || '').trim().slice(0, 20), btn = $('#profile-form [type="submit"]');
+    if (!name) { i.focus(); return; }
+    if (btn) btn.disabled = true;
+    var av = pendingAvatar ? store.setAvatar(pendingAvatar) : Promise.resolve();
+    av.then(function () { pendingAvatar = null; return store.updateProfile({ name: name }); }).then(function () {
+      closeModal(false); toast(t('updated')); refreshMap();
+      if (state.view === 'feed' || state.view === 'person') { var y = view.scrollTop; render(); view.scrollTop = y; }
+    }, function () { if (btn) btn.disabled = false; toast(t('saveFail')); });
+  }
   function saveArea() {
     var name = ($('#area-name') && $('#area-name').value || '').trim();
     if (!name) { $('#area-name').focus(); return; }
@@ -306,7 +355,7 @@
     var btn = $('#bsheet-card .bsheet-foot .btn.primary');
     if (btn) btn.textContent = t('filterShow', { n: store.places().filter(function (p) { return inScope(p) && passesFilters(p); }).length });
   }
-  document.addEventListener('change', function (e) { if (e.target.id === 'flt-price') setPriceAbout(e.target, true); });
+  document.addEventListener('change', function (e) { if (e.target.id === 'flt-price') setPriceAbout(e.target, true); if (e.target.id === 'pf-avatar-file') { pickAvatarFile(e.target.files && e.target.files[0]); e.target.value = ''; } });
   function refilter() {
     renderFilters(); refreshMap();
     if (state.view === 'feed') render();
@@ -428,7 +477,9 @@
       case 'copy-coords': copyCoords(d.c); break;
       case 'photo': openLightbox(d.id, d.group); break;
       case 'hero-zoom': { var hs = $('#hero-track'); if (hs && state.placeId) openPlacePhotos(state.placeId, hs.children[heroIndex()].dataset.id); break; }
-      case 'edit-review': startEdit(d.id); break;
+      case 'edit-profile': pendingAvatar = null; openProfileDialog(); break;
+      case 'pf-avatar-pick': $('#pf-avatar-file').click(); break;
+      case 'edit-review': { var fromPost = state.view === 'post'; startEdit(d.id); if (fromPost && state.form) state.form.fromPost = true; } break;
       case 'del-review': deleteReview(d.id); break;
       case 'form-cancel': formCancel(); break;
       case 'draft-discard': discardFormDraft(); break;
@@ -488,6 +539,7 @@
       case 'near-pick': state.form.placeId = d.id; state.view = 'form'; render(); break;
       case 'near-new': state.view = 'form'; render(); break;
       case 'osm-pick': pickOsm(+d.i); break;
+      case 'campus-pick': pickResult(campusHits[+d.i]); break;
       case 'login': openLogin(); break;
       case 'login-google': (store.isAnon && store.isAnon() ? store.linkGoogle() : store.signInWithGoogle()).catch(function (err) { toast(t('loginFail', { m: (err && err.message) || '' })); }); break;
       case 'logout': store.signOut().catch(function () {}); break;
@@ -506,6 +558,7 @@
   document.addEventListener('submit', function (e) {
     if (e.target.id === 'place-form') submitForm(e);
     else if (e.target.id === 'area-form') { e.preventDefault(); saveArea(); }
+    else if (e.target.id === 'profile-form') { e.preventDefault(); saveProfileDialog(); }
     else if (e.target.id === 'login-form') { e.preventDefault(); sendLoginLink(); }
   });
   document.addEventListener('input', function (e) {
@@ -513,6 +566,7 @@
     if (el.id === 'flt-price') { setPriceAbout(el, false); return; }
     if (el.id === 'f-name') { onNameForCat(state.form, el.value); return; }
     if (el.id === 'pick-q') { queuePickSearch(el.value); return; }
+    if (el.id === 'pf-dialog-name') { var pv = $('#pf-preview'); if (pv && !pendingAvatar && !store.avatarOf(me().id)) pv.innerHTML = avatarHTML(el.value.trim() || '?'); return; }
     if (el.id === 'q') { state.query = el.value; queueOsmSearch(); renderSearchResults(); queueGoogle(); }
     else if (el.id === 'home-q') { homeQ.q = el.value; queueHomeSearch(); renderHomeResults(); }
     else if (el.dataset && el.dataset.bkComment != null) { var bc = state.bulk && state.bulk.groups && state.bulk.groups[+el.dataset.bkComment]; if (bc) bc.comment = el.value; }

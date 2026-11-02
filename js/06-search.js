@@ -512,10 +512,10 @@
     var coords = r.lat.toFixed(6) + ',' + r.lng.toFixed(6);
     var tags = '<span class="tag">' + catIconHTML(c) + esc(generic ? t(r.mode === 'food' ? 'poiFood' : 'poiPlace') : catName(c)) + '</span>' +
       (r.where ? '<span class="tag">' + esc(r.where) + '</span>' : '') +
-      '<span class="tag">' + esc(t('distFrom', { d: fmtDist(haversine(XMUM, r)) })) + '</span>';
+      '<span class="tag">' + esc(distLabel(r)) + '</span>';
     /* 谷歌搜到的：店名、照片、评分在谷歌画的卡片里，我们只加距离 */
     var head = r.google
-      ? '<div class="place-head g-head"><div class="g-detail" id="g-detail"></div><div class="tags"><span class="tag">' + esc(t('distFrom', { d: fmtDist(haversine(XMUM, r)) })) + '</span></div></div>'
+      ? '<div class="place-head g-head"><div class="g-detail" id="g-detail"></div><div class="tags"><span class="tag">' + esc(distLabel(r)) + '</span></div></div>'
       : '<div class="place-head"><h2>' + esc(r.name) + '</h2>' + (r.alt ? '<div class="alt">' + esc(r.alt) + '</div>' : '') + '<div class="tags">' + tags + '</div></div>';
     view.innerHTML = '<div class="view-top"><button type="button" class="icon-btn flat" data-action="back" aria-label="' + esc(t('back')) + '">' + ICON.back + '</button></div>' +
       head + campusHoursHTML(r) +
@@ -542,7 +542,7 @@
       var inner = '<b>' + n + '</b><small>' + esc(t(key)) + '</small>';
       return sub ? '<button type="button" class="me-stat" data-action="foot-sub" data-v="' + sub + '">' + inner + '</button>' : '<div class="me-stat">' + inner + '</div>';
     }
-    return '<div class="me-head">' + avatarHTML(pf.name || '?') + '<span class="me-id"><b' + (pf.name ? '' : ' class="muted"') + ' id="me-name">' + esc(pf.name || t('meNoName')) + '</b>' +
+    return '<div class="me-head">' + avatarHTML(pf.name || '?', pf.id) + '<span class="me-id"><b' + (pf.name ? '' : ' class="muted"') + ' id="me-name">' + esc(pf.name || t('meNoName')) + '</b>' +
       '<small>' + esc(home ? t('fromPrefix') + home.city : t('meNoHome')) + '</small></span></div>' +
       '<div class="me-stats">' + stat(Object.keys(been).length, 'meBeen', 'mine') + stat(want, 'meWant', 'saved') + stat(shared, 'meShared') + '</div>';
   }
@@ -821,7 +821,7 @@
       list.map(function (x) {
         var you = x.userId === me().id;
         var sub = esc(x.city) + (you && !x.public ? ' · ' + esc(t('homeOnlyYou')) : '');
-        return '<li><div class="near-item">' + avatarHTML(homeName(x)) + '<span class="near-text"><b>' + esc(t('homeOf', { n: homeName(x) })) + '</b><small>' + sub + '</small></span></div></li>';
+        return '<li><div class="near-item">' + avatarHTML(homeName(x), x.userId) + '<span class="near-text"><b>' + esc(t('homeOf', { n: homeName(x) })) + '</b><small>' + sub + '</small></span></div></li>';
       }).join('') + '</ul>' +
       '<div class="actions"><button type="button" class="btn" data-action="home-set">' + ICON.home + esc(t(mine ? 'homeEdit' : store.myHome() ? 'homeEdit' : 'homeSetCta')) + '</button></div>';
     view.innerHTML = h;

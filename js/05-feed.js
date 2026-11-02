@@ -88,7 +88,7 @@
     return '<li class="post-card"><button type="button" class="pc-open" data-action="open-post" data-id="' + esc(r.id) + '">' +
       '<span class="pc-cover">' + cover + '</span><span class="pc-body"><span class="pc-place">' + esc(r.title || placeTitle(p)) + '</span>' +
       (score ? '<span class="pc-score">' + score + '</span>' : '') +
-      '<span class="pc-who"' + personAttr(r.authorId) + '>' + avatarHTML(name) + '<span>' + esc(name) + ' · ' + esc(timeAgo(homeTime(r))) + '</span></span></span></button>' +
+      '<span class="pc-who"' + personAttr(r.authorId) + '>' + avatarHTML(name, r.authorId) + '<span>' + esc(name) + ' · ' + esc(timeAgo(homeTime(r))) + '</span></span></span></button>' +
       saveBtnHTML(p.id, true) + '</li>';
   }
 
@@ -97,11 +97,14 @@
     var r = store.review(state.postId), p = r && placeById(r.placeId);
     if (!p || (r.visibility !== 'public' && !isMine(r))) { goFeed(); return; }
     var name = authorLabel(r), from = '', text = reviewText(r), c = catOf(p);
-    var h = '<div class="view-top"><button type="button" class="icon-btn flat" data-action="back" aria-label="' + esc(t('back')) + '">' + ICON.back + '</button></div>';
+    /* 自己的帖子：右上角直接编辑、删除（用户 2026-11-02） */
+    var own = isMine(r) ? '<span class="post-own"><button type="button" class="link-btn" data-action="edit-review" data-id="' + esc(r.id) + '">' + esc(t('edit')) + '</button>' +
+      '<button type="button" class="link-btn danger" data-action="del-review" data-id="' + esc(r.id) + '">' + esc(t('del')) + '</button></span>' : '';
+    var h = '<div class="view-top"><button type="button" class="icon-btn flat" data-action="back" aria-label="' + esc(t('back')) + '">' + ICON.back + '</button>' + own + '</div>';
     if (r.photos && r.photos.length) h += '<div class="photo-strip">' + r.photos.map(function (id) {
       return '<button type="button" class="ph" data-action="photo" data-id="' + esc(id) + '" data-group="post"><img data-photo="' + esc(id) + '" data-small alt=""></button>';
     }).join('') + '</div>';
-    var pw = avatarHTML(name) + '<span class="pw-text"><b>' + esc(name) + '</b><small>' + (from ? esc(t('fromPrefix') + from) + ' · ' : '') + esc(timeAgo(r.createdAt)) + '</small></span>';
+    var pw = avatarHTML(name, r.authorId) + '<span class="pw-text"><b>' + esc(name) + '</b><small>' + (from ? esc(t('fromPrefix') + from) + ' · ' : '') + esc(timeAgo(r.createdAt)) + '</small></span>';
     h += canOpenPerson(r.authorId)
       ? '<button type="button" class="post-who who-link"' + personAttr(r.authorId) + ' aria-label="' + esc(personLabel(name)) + '">' + pw + '<i class="pw-go" aria-hidden="true">›</i></button>'
       : '<div class="post-who">' + pw + '</div>';
@@ -112,7 +115,7 @@
     if (sc.length) h += '<div class="post-score">' + sc.join('<span class="sep">·</span>') + '</div>';
     if (r.title) h += '<h1 class="post-title">' + esc(r.title) + '</h1>';
     if (text) h += '<p class="post-text">' + esc(text) + '</p>';
-    h += '<ul class="near-list post-place">' + placeRowHTML(p, 'post-place', esc(catName(c)) + ' · ' + esc(t('distFrom', { d: fmtDist(haversine(XMUM, p)) })), '<span class="near-cta">' + esc(t('postPlace')) + '</span>') + '</ul>';
+    h += '<ul class="near-list post-place">' + placeRowHTML(p, 'post-place', esc(catName(c)) + ' · ' + esc(distLabel(p)), '<span class="near-cta">' + esc(t('postPlace')) + '</span>') + '</ul>';
     h += '<div class="actions post-actions">' + saveBtnHTML(p.id, false) + moderationControl(r) + '</div>';
     view.innerHTML = h;
   }
@@ -128,8 +131,11 @@
     var hm = homeOf(id), from = hm && hm.public ? hm.city : '';
     var ps = personPlaces(), food = ps.filter(function (p) { return p.mode === 'food'; }).length, scen = ps.length - food;
     var h = '<div class="view-top"><button type="button" class="icon-btn flat" data-action="back" aria-label="' + esc(t('back')) + '">' + ICON.back + '</button></div>';
-    h += '<div class="person-head">' + avatarHTML(name) + '<div class="ph-text"><h1>' + esc(name) + '</h1>' +
-      (from ? '<small>' + esc(t('fromPrefix') + from) + '</small>' : '') + '</div></div>';
+    /* 自己的主页：点头像或名字就能改（用户 2026-11-02） */
+    var head = avatarHTML(name, id) + '<div class="ph-text"><h1>' + esc(name) + '</h1>' + (from ? '<small>' + esc(t('fromPrefix') + from) + '</small>' : '') + '</div>';
+    h += mine && store.signedIn()
+      ? '<button type="button" class="person-head ph-edit-btn" data-action="edit-profile" aria-label="' + esc(en ? 'Edit name' : '修改名字') + '">' + head + '<span class="ph-pen">' + esc(en ? 'Edit' : '修改') + '</span></button>'
+      : '<div class="person-head">' + head + '</div>';
     h += '<div class="person-stats"><span><b>' + food + '</b>' + esc(en ? 'food' : '美食') + '</span><span><b>' + scen + '</b>' + esc(en ? 'scenery' : '美景') + '</span><span><b>' + rs.length + '</b>' + esc(en ? 'posts' : '分享') + '</span></div>';
     if (mine && !store.pagePublic(id)) h += '<p class="f-hint person-note">' + esc(en ? 'Only you can open this page now. Turn it on in Me so classmates can.' : '现在只有你自己点得进来；在“我的”里打开后，同学点你的名字也能进来。') + '</p>';
     else h += '<p class="f-hint person-note">' + esc(en ? 'Only places shared to the big map are shown.' : '只显示分享到大地图的记录。') + '</p>';
@@ -179,6 +185,28 @@
     })[0] || null;
   }
   window.__campusShop = campusShop; /* 测试用 */
+  /* 搜索框里打的像校内餐厅（店名里有特点的字），就把它排在谷歌前面（用户 2026-11-02：校内是例外，校外谷歌在上）。
+     只在学校附近 50 公里内搜、或者词里带 xmum/厦大/校内 时才这样；咖啡、餐厅这类大路词不算 */
+  var CAMPUS_GENERIC = /\b(restaurant|restoran|cafe|café|coffee|kitchen|house|express|thai|taro|hk|the|in|sky|chinese|station|delight|uniq|bowl|rice|plate)\b|&/g;
+  var campusHits = [];
+  function campusSearch(q) {
+    var C = window.XMUM_CAFES;
+    campusHits = [];
+    if (!C || !q) return campusHits;
+    var hint = /xmum|厦大|厦门大学|校内|学校/.test(q), qq = q.replace(/xmum|厦大|厦门大学|校内|学校/g, '').trim();
+    if (!hint && haversine(XMUM, searchCenter()) > 50000) return campusHits;
+    var cjk = /[\u4e00-\u9fff]/.test(qq);
+    var isBlock = Object.keys(C.blocks).some(function (b) { return b.toLowerCase() === qq; });
+    if (!isBlock && qq.length < (cjk ? 2 : 3)) { if (!hint) return campusHits; qq = ''; }
+    C.shops.forEach(function (s) {
+      if (!s.id) return;
+      var name = s.name.toLowerCase(), key = name.replace(CAMPUS_GENERIC, ' ').replace(/\s+/g, ' ').trim();
+      var ok = !qq || qq === s.block.toLowerCase() || key.indexOf(qq) !== -1 || (key.length >= 4 && qq.indexOf(key) !== -1);
+      if (ok) campusHits.push({ osm: 'ovt/' + s.id, name: s.name, alt: s.alt, lat: s.lat, lng: s.lng, mode: 'food', cat: s.cat, precision: 'exact', where: 'XMUM ' + s.block + ' · ' + s.lot });
+    });
+    return campusHits;
+  }
+  window.__campusSearch = campusSearch; /* 测试用 */
   function campusHoursHTML(x) {
     var s = campusShop(x), en = state.lang === 'en';
     if (!s) return '';
@@ -209,8 +237,8 @@
     var photos = placePhotos(p).slice(0, 30);
     var reviews = s.rs.slice().sort(function (a, b) { return b.createdAt - a.createdAt; });
     var tags = '<span class="tag">' + catIconHTML(c) + esc(catName(c)) + '</span><span class="tag">' + esc(precLabel(p.precision)) + '</span>' +
-      (p.mode === 'food' ? '<span class="tag">' + esc(t('tier_' + distTier(p))) + '</span>' : '') +
-      '<span class="tag">' + esc(t('distFrom', { d: fmtDist(dist) })) + '</span>';
+      (p.mode === 'food' && !inCampus(p) ? '<span class="tag">' + esc(t('tier_' + distTier(p))) + '</span>' : '') +
+      '<span class="tag">' + esc(distLabel(p)) + '</span>';
 
     var h = '<div class="view-top"><button type="button" class="icon-btn flat" data-action="back" aria-label="' + esc(t('back')) + '">' + ICON.back + '</button>' +
       (p.sample ? '<span class="badge">' + esc(t('sample')) + '</span>' : '') + '</div>' +
@@ -250,7 +278,7 @@
 
   function reviewHTML(r) {
     var name = authorLabel(r), from = '', meta = metaHTML(r), text = reviewText(r), go = canOpenPerson(r.authorId);
-    return '<li class="review">' + (go ? '<button type="button" class="who-link rv-av"' + personAttr(r.authorId) + ' aria-label="' + esc(personLabel(name)) + '">' + avatarHTML(name) + '</button>' : avatarHTML(name)) + '<div class="rv-main">' +
+    return '<li class="review">' + (go ? '<button type="button" class="who-link rv-av"' + personAttr(r.authorId) + ' aria-label="' + esc(personLabel(name)) + '">' + avatarHTML(name, r.authorId) + '</button>' : avatarHTML(name, r.authorId)) + '<div class="rv-main">' +
       '<div class="rv-who">' + (go ? '<button type="button" class="who-link rv-name"' + personAttr(r.authorId) + ' tabindex="-1" aria-hidden="true"><b>' + esc(name) + '</b></button>' : '<b>' + esc(name) + '</b>') + (from ? '<span class="muted">' + esc(t('fromPrefix') + from) + '</span>' : '') + '<span class="fi-time">' + esc(timeAgo(r.createdAt)) + '</span></div>' +
       (meta ? '<div class="rv-meta">' + meta + '</div>' : '') +
       (text ? '<p class="rv-text">' + esc(text) + '</p>' : '') +
@@ -317,6 +345,8 @@
       else if (p) h += '<div class="form-place">' + catIconHTML(catOf(p)) + '<b>' + esc(placeTitle(p)) + '</b></div>';
       else if (f.loc) h += fieldHTML('f-name', esc(t('name')), '<input id="f-name" class="input" maxlength="60"' + (f.lockedName ? ' readonly' : '') + ' placeholder="' + esc(t(isFood ? 'namePhFood' : 'namePhTravel')) + '">');
       h += '<div class="btn-row"><button type="button" class="btn" id="post-location" data-action="post-location">' + ICON.pin + esc(state.lang === 'en' ? (p || f.loc ? 'Change place' : 'Find a place') : (p || f.loc ? '更换地点' : '搜索地点')) + '</button><button type="button" class="btn ghost" data-action="post-map">' + esc(t('addPin')) + '</button></div></div>';
+      /* 发帖选了美食也能填人均（用户 2026-11-02） */
+      if (isFood) h += fieldHTML('f-price', esc(t('priceFood')) + ' <small>· ' + esc(t('optional')) + '</small>', '<input id="f-price" class="input" type="number" inputmode="decimal" min="0" step="0.5">');
     }
     if (!f.post) h += '<div class="field"><span class="f-label">' + esc(t('photos')) + ' <small>· ' + esc(t('photoLimit', { n: MAX_PHOTOS })) + '</small></span><div class="photo-grid" id="f-photos"></div></div>';
     /* 人均只问吃的（筛选按人均）；旅行不问花费（用户 2026-10-26） */
@@ -540,7 +570,9 @@
       if (adding && p.mode !== state.mode) return false;
       return visibleToMe(p) && ((p.name || '').toLowerCase().indexOf(q) !== -1 || (p.altName || '').toLowerCase().indexOf(q) !== -1);
     }).slice(0, 30);
-    var h = '';
+    var h = '', camp = (!adding || state.mode === 'food') ? campusSearch(q).filter(function (r) { return !osmExisting(r); }).slice(0, 8) : [];
+    campusHits = camp;
+    if (camp.length) h += '<li class="sec-title">' + esc(state.lang === 'en' ? 'Campus cafeterias' : '校内餐厅') + '</li>' + camp.map(function (r, i) { return osmRowHTML(r, i).replace('data-action="osm-pick"', 'data-action="campus-pick"'); }).join('');
     if (res.length) {
       h += '<li class="sec-title">' + esc(t('searchLocal')) + '</li>' + res.map(function (p) {
         var sub = placeSub(p);
@@ -556,7 +588,7 @@
     else if (osm.q !== q || osm.status === 'loading') h += '<li class="empty small">' + esc(t('osmLoading')) + '</li>';
     else if (osm.status === 'fail') h += '<li class="empty small">' + esc(t('osmFail')) + '<br><button type="button" class="link-btn" data-action="search-retry">' + esc(state.lang === 'en' ? 'Retry place search' : '重试地点搜索') + '</button></li>';
     else if (!osm.results.length) h += '<li class="empty small">' + esc(t(adding ? 'addNoResult' : 'noResults')) + '</li>';
-    else h += osm.results.map(osmRowHTML).join('') + (osm.status === 'partial' ? '<li class="empty small">' + esc(t('osmMore')) + '</li>' : '');
+    else h += osm.results.map(function (r, i) { return camp.some(function (c) { return c.osm === r.osm; }) ? '' : osmRowHTML(r, i); }).join('') + (osm.status === 'partial' ? '<li class="empty small">' + esc(t('osmMore')) + '</li>' : '');
     if (adding && q.length >= 2) h += '<li><button type="button" class="btn ghost block add-pin-bottom" data-action="add-pin">' + ICON.pin + esc(t('addPinLong')) + '</button></li>';
     h += '<li class="osm-credit">' + esc(t('osmCredit')) + '</li>';
     box.innerHTML = h;
