@@ -56,9 +56,10 @@
       var ph = null;
       (b.groups || []).some(function (g) { return g.photos.some(function (x) { if (x.on && !x.media && !x.warmFail) { ph = x; return true; } return false; }); });
       if (!ph) { b.warming = false; return; }
-      (ph.prepared ? Promise.resolve(ph.prepared) : prepareMedia(ph.file)).then(function (out) {
+      ph.warmP = (ph.prepared ? Promise.resolve(ph.prepared) : prepareMedia(ph.file)).then(function (out) {
         if (out && out.blob) { ph.media = mediaPhoto(out); if (store.preupload) store.preupload([ph.media]); } else ph.warmFail = true;
-      }, function () { ph.warmFail = true; }).then(function () { setTimeout(next, 0); });
+      }, function () { ph.warmFail = true; });
+      ph.warmP.then(function () { setTimeout(next, 0); });
     }
     next();
   }
@@ -455,14 +456,25 @@
     if (g.plat != null) { bulkMark('bk-mk-photo', { lat: g.plat, lng: g.plng }); pts.push({ lat: g.plat, lng: g.plng }); }
     (g.gplaces || []).forEach(function (r) {
       if (cur && cur.osm === r.osm) return;
-      bulkMark('bk-mk-res', r); pts.push(r);
+      bulkMark('bk-mk-res', r); if (!cur) pts.push(r); /* 选好了就只对准照片处和选中的店，别的搜索结果可能在别的国家 */
     });
     if (cur) { bulkMark('sel-pin', cur, SEL_PIN_SVG); pts.push(cur); }
     if (!pts.length) pts.push(bulkCenter(g));
+    bulkMapAim(pts);
+    /* 地图刚挪进卡片时尺寸可能还没定下来，下一帧再对准一次（用户 2026-11-02：选了猴庙，小地图还停在上一张的印尼） */
+    var again = function () { if (bkMap.g === g) { map.resize(); bulkMapAim(pts); } };
+    if (window.requestAnimationFrame) requestAnimationFrame(again); setTimeout(again, 250);
+  }
+  function bulkMapAim(pts) {
+    if (map.stop) map.stop();
     if (pts.length === 1 || !map.fitBounds) { map.jumpTo({ center: [pts[0].lng, pts[0].lat], zoom: 16 }); return; }
     var w = Math.min.apply(null, pts.map(function (p) { return p.lng; })), e = Math.max.apply(null, pts.map(function (p) { return p.lng; }));
     var s = Math.min.apply(null, pts.map(function (p) { return p.lat; })), n = Math.max.apply(null, pts.map(function (p) { return p.lat; }));
-    map.fitBounds([[w, s], [e, n]], { padding: 30, maxZoom: 17, duration: 0 });
+    /* 小地图太小、放不下 30px 边距时 fitBounds 会直接不动，这时至少把中心挪过去 */
+    var cam = map.cameraForBounds ? map.cameraForBounds([[w, s], [e, n]], { padding: 30, maxZoom: 17 }) : null;
+    if (cam && cam.center) map.jumpTo(cam);
+    else if (map.cameraForBounds) map.jumpTo({ center: [(w + e) / 2, (s + n) / 2], zoom: Math.min(map.getZoom(), 12) });
+    else map.fitBounds([[w, s], [e, n]], { padding: 30, maxZoom: 17, duration: 0 });
   }
   /* 和上一组是同一个地方（用户 2026-10-28）：照片并到上一组，地点、评分只填一次。
      上一组没填的，用这一组填过的补上 */
@@ -622,6 +634,8 @@
       return g.photos.filter(function (ph) { return ph.on; }).reduce(function (chain, ph) {
         return chain.then(function () {
           if (ph.media) { photos.push(ph.media); return; }
+          /* 后台正在压这张：等它压完直接用，不重复压 */
+          if (ph.warmP && !ph.warmFail) return ph.warmP.then(function () { if (ph.media) photos.push(ph.media); else return prepareMedia(ph.file).then(function (out) { if (out.blob) photos.push(mediaPhoto(out)); }); });
           return (ph.prepared ? Promise.resolve(ph.prepared) : prepareMedia(ph.file)).then(function (out) {
             if (out.blob) photos.push(mediaPhoto(out));
           }, function (e) { toast(t(e && e.message === 'gifTooBig' ? 'gifTooBig' : 'photoReadFail')); });

@@ -518,10 +518,17 @@
       cv.getContext('2d').drawImage(src, 0, 0, cv.width, cv.height);
       return new Promise(function (resolve, reject) { cv.toBlob(function (b) { cv.width = cv.height = 0; if (b) resolve(b); else reject(new Error('encode')); }, 'image/jpeg', quality); });
     }
+    /* 原图只缩一次到 1280 的画布，小图从这张画布再缩（以前两次都从几千万像素的原图缩，手机上一张要好几秒，用户 2026-11-02） */
     function fromImage(src) {
-      return toBlob(src, 1280, 0.82).then(function (blob) {
-        return toBlob(src, THUMB_SIDE, 0.8).then(function (thumb) { return { blob: blob, thumb: thumb }; });
-      }).finally(function () { if (src.close) src.close(); else src.src = ''; });
+      var w = src.width || src.naturalWidth, h = src.height || src.naturalHeight;
+      var scale = Math.min(1, 1280 / Math.max(w, h));
+      var big = document.createElement('canvas');
+      big.width = Math.round(w * scale); big.height = Math.round(h * scale);
+      big.getContext('2d').drawImage(src, 0, 0, big.width, big.height);
+      if (src.close) src.close(); else src.src = '';
+      return toBlob(big, 1280, 0.82).then(function (blob) {
+        return toBlob(big, THUMB_SIDE, 0.8).then(function (thumb) { big.width = big.height = 0; return { blob: blob, thumb: thumb }; });
+      });
     }
     function viaImg() {
       return new Promise(function (resolve, reject) {
