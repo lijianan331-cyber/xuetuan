@@ -333,7 +333,7 @@
   }
   function fetchGoogleCat(gid) { return fetchGoogleTypes(gid).then(function (ty) { return ty ? googleTypesCat(ty) : null; }); }
   /* 谷歌说它是吃的还是玩的（用户 2026-11-01：批量加的海边日落被记成美食）：
-     有餐厅、咖啡、酒吧这类就是美食；景点、海滩、公园、自然、博物馆、城市这类就是旅行；都不像就不说 */
+     有餐厅、咖啡、酒吧这类就是美食；景点、海滩、公园、自然、博物馆、城市这类就是玩乐；都不像就不说 */
   var G_FOOD = /restaurant|^food$|food_|cafe|coffee|bakery|^bar$|_bar$|pub|meal_|tea|dessert|ice_cream|juice|diner|bistro|hawker|food_court/;
   var G_TRAVEL = /tourist_attraction|natural_feature|^park$|_park$|beach|museum|zoo|aquarium|campground|hiking|landmark|monument|island|lake|mountain|waterfall|garden|scenic|observation|marina|temple|church|mosque|shrine|castle|historical|cultural|art_gallery|^locality$|administrative_area|sublocality|neighborhood|country|colloquial_area|airport|ski|national_park/;
   function googleTypesMode(types) {
@@ -555,7 +555,7 @@
       : signedIn
       ? '<div class="account-row"><span>' + esc(t('signedInAs', { e: store.email() })) + '</span><button type="button" class="btn small ghost" data-action="logout">' + esc(t('logout')) + '</button></div>'
       : '<p class="f-hint">' + esc(t('loginWhy')) + '</p><button type="button" class="btn primary" data-action="login">' + esc(t('login')) + '</button>') + '</div>';
-    /* 以前这里有“来自哪”四个输入框，没什么用，去掉了（以后改成在旅行地图上设“我的家”） */
+    /* 以前这里有“来自哪”四个输入框，没什么用，去掉了（以后改成在玩乐地图上设“我的家”） */
     var personal = !signedIn ? '' :
       '<div class="field"><label class="f-label" for="pf-name">' + esc(t('nickname')) + '</label><input id="pf-name" class="input" data-pf="name" maxlength="20" value="' + esc(pf.name) + '" placeholder="' + esc(t('nicknamePh')) + '"></div>' +
       homeFieldHTML() + pageFieldHTML();
@@ -598,7 +598,7 @@
   }
   function openAppShare() {
     var en = state.lang === 'en', url = appShareURL();
-    openModal('<div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="app-share-title"><h3 id="app-share-title">' + esc(en ? 'Share XueTuan' : '把雪团分享给朋友') + '</h3><p class="f-hint">' + esc(en ? 'Discover food and scenery with your classmates.' : '一起发现同学推荐的美食和美景。') + '</p><input id="app-share-link" class="input" readonly aria-label="' + esc(en ? 'Website link' : '网站链接') + '" value="' + esc(url) + '"><div class="btn-row"><button type="button" class="btn primary" data-action="app-share-system">' + esc(en ? 'More apps' : '系统分享') + '</button><button type="button" class="btn" data-action="app-share-copy">' + esc(en ? 'Copy link' : '复制链接') + '</button><a class="btn" href="https://wa.me/?text=' + encodeURIComponent('雪团 XueTuan · ' + url) + '" target="_blank" rel="noopener noreferrer">WhatsApp</a></div><p class="f-hint">' + esc(en ? 'WeChat / Instagram: copy the link and paste it in a chat. Available system share apps depend on your phone.' : '微信 / Instagram：复制链接后粘贴到聊天中；系统分享中的应用以手机实际支持为准。') + '</p><button type="button" class="btn ghost" data-modal="no">' + esc(en ? 'Close' : '关闭') + '</button></div>');
+    openModal('<div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="app-share-title"><h3 id="app-share-title">' + esc(en ? 'Share XueTuan' : '把雪团分享给朋友') + '</h3><p class="f-hint">' + esc(en ? 'Discover food and things to do with your classmates.' : '一起发现同学推荐的美食和玩乐。') + '</p><input id="app-share-link" class="input" readonly aria-label="' + esc(en ? 'Website link' : '网站链接') + '" value="' + esc(url) + '"><div class="btn-row"><button type="button" class="btn primary" data-action="app-share-system">' + esc(en ? 'More apps' : '系统分享') + '</button><button type="button" class="btn" data-action="app-share-copy">' + esc(en ? 'Copy link' : '复制链接') + '</button><a class="btn" href="https://wa.me/?text=' + encodeURIComponent('雪团 XueTuan · ' + url) + '" target="_blank" rel="noopener noreferrer">WhatsApp</a></div><p class="f-hint">' + esc(en ? 'WeChat / Instagram: copy the link and paste it in a chat. Available system share apps depend on your phone.' : '微信 / Instagram：复制链接后粘贴到聊天中；系统分享中的应用以手机实际支持为准。') + '</p><button type="button" class="btn ghost" data-modal="no">' + esc(en ? 'Close' : '关闭') + '</button></div>');
   }
   function copyAppShare() {
     function fallback() {
@@ -612,7 +612,7 @@
   }
   function sendAppShare() {
     if (!navigator.share) { copyAppShare(); return; }
-    try { Promise.resolve(navigator.share({title:'雪团 XueTuan',text:state.lang === 'en' ? 'Discover food and scenery with classmates.' : '一起发现同学推荐的美食和美景。',url:appShareURL()})).catch(function (e) { if (!e || e.name !== 'AbortError') copyAppShare(); }); }
+    try { Promise.resolve(navigator.share({title:'雪团 XueTuan',text:state.lang === 'en' ? 'Discover food and things to do with classmates.' : '一起发现同学推荐的美食和玩乐。',url:appShareURL()})).catch(function (e) { if (!e || e.name !== 'AbortError') copyAppShare(); }); }
     catch (e) { copyAppShare(); }
   }
   function shareSnapshot(includePrivate) {
@@ -653,7 +653,7 @@
     card.url = sharedCardURL(d); card.blob = null;
     view.innerHTML = '<div class="view-top"><button type="button" class="icon-btn flat" data-action="back" aria-label="' + esc(t('back')) + '">' + ICON.back + '</button><h2 class="view-title">' + esc(en ? 'My footprint card' : '足迹分享卡') + '</h2></div>' +
       (card.own ? '<div class="seg" style="margin-bottom:14px">' + [['atlas',en?'World map':'点亮世界'],['stats',en?'Minimal':'简洁数据']].map(function (x) { return '<button type="button" data-action="share-theme" data-v="' + x[0] + '" aria-pressed="' + (d.theme === x[0]) + '">' + esc(x[1]) + '</button>'; }).join('') + '</div><label class="f-hint"><input type="checkbox" id="share-private"' + (card.includePrivate ? ' checked' : '') + '> ' + esc(en ? 'Include private footprints: totals and countries only' : '包含仅个人足迹：只展示汇总和国家') + '</label>' : '') +
-      '<div class="share-card"><canvas id="share-canvas" width="900" height="1120" role="img" aria-label="' + esc(d.name + ' · ' + d.food + (en ? ' restaurants, ' : ' 家餐厅，') + d.scenery + (en ? ' scenery places, ' : ' 处美景，') + d.places + (en ? ' places' : ' 个地点')) + '"></canvas></div>' +
+      '<div class="share-card"><canvas id="share-canvas" width="900" height="1120" role="img" aria-label="' + esc(d.name + ' · ' + d.food + (en ? ' restaurants, ' : ' 家餐厅，') + d.scenery + (en ? ' places to enjoy, ' : ' 处玩乐，') + d.places + (en ? ' places' : ' 个地点')) + '"></canvas></div>' +
       '<p class="f-hint">' + esc(en ? 'A snapshot of recorded footprints. Country counts are estimated from coordinates. No photos, reviews or hometown location are included.' : '统计来自已记录的足迹，国家/地区按坐标估算。不含照片、点评或家乡位置。') + '</p><div class="share-actions"><button type="button" class="btn primary" data-action="share-card">' + esc(en ? 'Share' : '分享') + '</button><button type="button" class="btn" data-action="save-share-card">' + esc(en ? 'Save image' : '保存图片') + '</button><button type="button" class="btn ghost" data-action="copy-share-card">' + esc(en ? 'Copy link' : '复制链接') + '</button></div>' +
       '<input class="input share-link" id="share-link" readonly aria-label="' + esc(en ? 'Share link' : '分享链接') + '" value="' + esc(card.url) + '">' + (!card.own ? '<button type="button" class="btn primary" data-action="tab" data-tab="home">' + esc(en ? 'Explore XueTuan' : '打开雪团，一起发现') + '</button>' : '');
     var canvas = $('#share-canvas');
@@ -670,13 +670,13 @@
     g.fillStyle = '#3b89cc'; g.font = '700 32px sans-serif'; g.fillText('雪团 XueTuan', 64, 100);
     g.fillStyle = '#23425f'; g.font = '700 48px sans-serif'; g.fillText(en ? 'Places become memories' : '每一处，都是我的故事', 64, 206);
     g.font = '30px sans-serif'; var name = d.name; while (g.measureText(name).width > 760) name = name.slice(0, -1); g.fillText(name, 64, 270);
-    var labels = en ? ['Restaurants','Scenery','Countries / regions','Places'] : ['家餐厅','处美景','个国家 / 地区','个地点'];
+    var labels = en ? ['Restaurants','Things to do','Countries / regions','Places'] : ['家餐厅','处玩乐','个国家 / 地区','个地点'];
     [d.food, d.scenery, d.countries, d.places].forEach(function (n, i) {
       var x = 64 + (i % 2) * 396, y = 340 + Math.floor(i / 2) * 240;
       g.fillStyle = '#ffffff'; g.fillRect(x, y, 376, 220); g.fillStyle = '#4b91c5'; g.font = '700 74px sans-serif'; g.fillText(n == null ? '—' : String(n), x + 28, y + 104);
       g.fillStyle = '#647e91'; g.font = '26px sans-serif'; g.fillText(labels[i], x + 28, y + 164);
     });
-    g.fillStyle = '#6e889b'; g.font = '24px sans-serif'; g.fillText(en ? 'Food, scenery, and the stories in between.' : '记录美食与美景，发现同学的故事。', 64, 910);
+    g.fillStyle = '#6e889b'; g.font = '24px sans-serif'; g.fillText(en ? 'Food, fun, and the stories in between.' : '记录美食与玩乐，发现同学的故事。', 64, 910);
     g.font = '21px sans-serif'; g.fillText((d.privateCounts ? (en ? 'All recorded footprints' : '全部足迹数量') : (en ? 'Public footprints' : '公开足迹数量')) + ' · ' + d.date, 64, 978);
     g.fillText(en ? 'Open the shared link to explore XueTuan.' : '打开分享链接，来雪团一起发现。', 64, 1040);
   }
@@ -698,7 +698,7 @@
     drawShareWorld(g, d, 40, 385, 820, 350);
     g.fillStyle = '#8eabb7'; g.font = '20px sans-serif'; g.fillText(en ? '● Visited     ○ Still to discover' : '● 已留下足迹     ○ 等待探索', 64, 785);
     g.strokeStyle = 'rgba(172,204,212,.2)'; g.lineWidth = 1; g.beginPath(); g.moveTo(64, 830); g.lineTo(836, 830); g.stroke();
-    var vals = [d.food, d.scenery, d.places], labels = en ? ['Restaurants','Scenery','Places'] : ['家餐厅','处美景','个地点'];
+    var vals = [d.food, d.scenery, d.places], labels = en ? ['Restaurants','Things to do','Places'] : ['家餐厅','处玩乐','个地点'];
     vals.forEach(function (n, i) { var x = 64 + i * 272;
       g.fillStyle = '#f2f6f5'; g.font = '500 58px sans-serif'; g.fillText(String(n), x, 907);
       g.fillStyle = '#93b0bd'; g.font = '24px sans-serif'; g.fillText(labels[i], x, 952);

@@ -1,8 +1,8 @@
 /* 雪团 js/03-home-layer.js：index.html 按顺序加载 js/ 下的文件，所有文件共用一个全局作用域。 */
 'use strict';
   /* ================= 我的家 =================
-   * 旅行大地图：大家公开的家乡画成小红针（左上角“同学的家乡”小签说明，点它开关），离得近的合成一根带人数的；
-   * 我的地图 · 旅行：只画我自己的家，是小房子，公不公开都画（用户 2026-10-27） */
+   * 玩乐大地图：大家公开的家乡画成小红针（左上角“同学的家乡”小签说明，点它开关），离得近的合成一根带人数的；
+   * 我的地图 · 玩乐：只画我自己的家，是小房子，公不公开都画（用户 2026-10-27） */
   var HOME_COLOR = '#4F63D8';
   /* 小房子：白底蓝房子；我自己的是蓝底白房子 */
   function drawHome(mine, raised) {
@@ -142,7 +142,7 @@
   function placeClusterMaxZoom() { return 16; }
   function addAppLayers() {
     var fonts = pickFonts();
-    /* 数字圈用雪团的浅冰蓝，不跟着旅行地图变深（用户 2026-10-28） */
+    /* 数字圈用雪团的浅冰蓝，不跟着玩乐地图变深（用户 2026-10-28） */
     var accent = CLUSTER_BLUE;
     homePlacement = null;
     map.addSource('places', { type: 'geojson', data: placesGeoJSON(), cluster: true, clusterMaxZoom: placeClusterMaxZoom(), clusterRadius: PLACE_CLUSTER_RADIUS,
@@ -406,7 +406,7 @@
   var poiLayerIds = null;
   /* ================= 地点库的店画在底图上（用户 2026-10-28：雪团底图放大了很空，谷歌上有的餐厅这里没有）=================
    * 底图（OpenStreetMap）在马来西亚的店很少；我们的地点库（Overture，Supabase poi 表）多得多。
-   * 放大到 14.5 级以后，按 13 级瓦片分块去取看得到的那几块（同一块只取一次），美食地图只要吃的，旅行地图只要玩的；
+   * 放大到 14.5 级以后，按 13 级瓦片分块去取看得到的那几块（同一块只取一次），美食地图只要吃的，玩乐地图只要玩的；
    * 雪团里已经有的店不重复画（它有自己的评分图钉）。点了和点搜索结果一样，出预览、能打分 */
   var LIB_MINZOOM = 14.5, LIB_TILE_Z = 13, libTiles = {}, libTimer = null;
   function libFC() {

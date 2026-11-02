@@ -113,7 +113,7 @@ def via_home(pg, text, to_place=True):
     if to_place:
         pg.click('[data-action="post-place"]'); pg.wait_for_timeout(300)
 def set_mode(pg, mode):
-    # 地图右上角的切换按钮：吃的地图上显示飞机（切去旅行），旅行地图上显示餐具
+    # 地图右上角的切换按钮：吃的地图上显示飞机（切去玩乐），玩乐地图上显示餐具
     if pg.evaluate('document.documentElement.classList.contains("mode-travel")') != (mode == 'travel'):
         pg.click('[data-action="toggle-mode"]')
         pg.wait_for_timeout(200)
@@ -303,10 +303,10 @@ with sync_playwright() as p:
     check('no right-side tool column, locate button kept', page.locator('.tools, [data-action="zoom-in"], [data-action="to-globe"], [data-action="basemap"]').count() == 0 and page.locator('.locate-btn').is_visible())
     acts = page.eval_on_selector_all('#map-ctrls button', 'els => els.map(e => e.dataset.action)')
     check('map controls keep search, destination mode and filter actions', acts == ['search', 'toggle-mode', 'filters'] and page.locator('.topbar, .search-bar, #loc-name, .mode-switch, #filters').count() == 0, acts)
-    check('map: small landscape pill switches to travel and filter is available', page.locator('#map-ctrls [data-action="toggle-mode"]').is_visible() and page.get_attribute('[data-action="toggle-mode"]', 'aria-label') == '切换到美景地图' and page.locator('#map-ctrls [data-action="filters"]').is_visible())
+    check('map: small landscape pill switches to travel and filter is available', page.locator('#map-ctrls [data-action="toggle-mode"]').is_visible() and page.get_attribute('[data-action="toggle-mode"]', 'aria-label') == '切换到玩乐地图' and page.locator('#map-ctrls [data-action="filters"]').is_visible())
     ctl = page.evaluate('(() => { const c = document.querySelector("#map-ctrls").getBoundingClientRect(); return [c.top < 40, c.right <= innerWidth]; })()')
     check('map search bar fits the top edge', ctl == [True, True], ctl)
-    check('compact white destination pill, B pin search icon and new home/campus icons', page.evaluate('document.querySelector(".mode-btn").getBoundingClientRect().height') == 32 and '美景' in page.inner_text('.mode-btn') and page.locator('.map-search img[src="assets/search-pin.png"]').count() == 1 and page.locator('.home-brand .app-logo img').count() == 1 and page.locator('.campus-btn .xmum-buildings').count() == 1)
+    check('compact white destination pill, B pin search icon and new home/campus icons', page.evaluate('document.querySelector(".mode-btn").getBoundingClientRect().height') == 32 and '玩乐' in page.inner_text('.mode-btn') and page.locator('.map-search img[src="assets/search-pin.png"]').count() == 1 and page.locator('.home-brand .app-logo img').count() == 1 and page.locator('.campus-btn .xmum-buildings').count() == 1)
     check('globe only for the world view, flat from country level down (zoom 7)', st['proj'] == {'type': ['interpolate', ['linear'], ['zoom'], 5, 'vertical-perspective', 7, 'mercator']}, st['proj'])
     check('labels patched to Chinese', 'name:zh' in json.dumps(st['label']), st['label'])
     check('shield labels untouched', st['shield'] == '{ref}', st['shield'])
@@ -315,7 +315,7 @@ with sync_playwright() as p:
     src0 = page.evaluate('window.__map.opts.style.sources.openmaptiles')
     check('tile directory fetched with the style and written into it (map starts tiles one round trip sooner)', src0.get('tiles') == json.loads(TILEJSON)['tiles'] and 'url' not in src0 and src0.get('maxzoom') == 14 and len(tilejson_calls) == 1, (src0, tilejson_calls))
     check('web fonts do not block the page (loaded as print, switched on when ready)', page.get_attribute('link[href*="fonts.googleapis.com/css2"]', 'media') == 'all')
-    # 底图只留吃喝（旅行再加景点），车站医院这些不显示；小村落街区名藏起来（用户 2026-10-27）
+    # 底图只留吃喝（玩乐再加景点），车站医院这些不显示；小村落街区名藏起来（用户 2026-10-27）
     bf = page.evaluate('(() => { const l = window.__map.style.layers; return [l.find(x => x.id === "poi_r1").filter, (l.find(x => x.id === "label_other").layout || {}).visibility]; })()')
     check('basemap: only food places on the food map, small village/neighbourhood names hidden', bf[0] and bf[0][0] == 'match' and 'restaurant' in bf[0][2] and 'cafe' in bf[0][2] and 'bus' not in bf[0][2] and 'hospital' not in bf[0][2] and 'attraction' not in bf[0][2] and bf[1] == 'none', bf)
     check('basemap: small shops (shown from 16–17 by default) show from zoom 15', page.evaluate('window.__map.style.layers.find(x => x.id === "poi_r1").minzoom') == 15)
@@ -507,11 +507,11 @@ with sync_playwright() as p:
       setTimeout(() => { const a = f.takenAt; f.takenAt = null; window.__formTakenAt(f, new File([new Uint8Array(8)], 'noexif2.jpg', {lastModified: fresh}));
         setTimeout(() => { const b = f.takenAt; f.takenAt = keep; res([a === old, b === null]); }, 150); }, 150); })''')
     check('single add: a photo without EXIF time falls back to the file time (if older than an hour)', lm == [True, True], lm)
-    check('price label uses RM for a place in Malaysia', 'RM' in page.inner_text('label[for="f-price"]'))
+    check('price label uses MYR for a place in Malaysia', 'MYR' in page.inner_text('label[for="f-price"]'))
     cur = page.evaluate('''() => [["CN","SG","FR","DE","GB","US","CA","AU","TW","HK","MO","JP","KR","TH","ID","MY",""].map(c => window.__curSym(c)).join(" "),
       money({cc: "CN"}, 35), money({lat: 3.15, lng: 101.7}, 12), priceRM({cc: "SG"}, 10), priceRM({cc: "TW"}, 10), ccNow(2.83, 101.70), ccNow(1.30, 103.85)]''')
     check('currency by place country: CN/HK/MO/SG/euro/GB/US/CA/AU use local units; TW/JP stay RM; filter compares in RM',
-          cur == ['¥ S$ € € £ US$ C$ A$ RM HK$ MOP$ RM RM RM RM RM RM', '¥ 35', 'RM 12', 33, 10, 'MY', ''], cur)
+          cur == ['RMB SGD EUR EUR GBP USD CAD AUD MYR HKD MOP MYR MYR MYR MYR MYR MYR', 'RMB 35', 'MYR 12', 33, 10, 'MY', ''], cur)
     page.click('#f-submit')
     page.wait_for_timeout(600)
     check('after publish: place view', page.locator('.place-head h2').count() == 1 and page.inner_text('.place-head h2') == '测试椰浆饭', errors[-4:])
@@ -519,7 +519,7 @@ with sync_playwright() as p:
     taken_rec = page.evaluate('JSON.parse(localStorage.getItem("xmum-chiwan-map:data:v1")).reviews.find(r => r.text && r.text.startsWith("参巴辣"))')
     check('post uses the photo\'s real taken time, not the moment it was added', taken_rec and taken_rec['createdAt'] == taken_ms, taken_rec and taken_rec['createdAt'])
     page.evaluate('delete window.__exif["test-photo.jpg"]')
-    check('stats show score and price', page.inner_text('.score-big') == '4' and 'RM 9.5' in page.inner_text('.stats'), page.inner_text('.stats'))
+    check('stats show score and price', page.inner_text('.score-big') == '4' and 'MYR 9.5' in page.inner_text('.stats'), page.inner_text('.stats'))
     mine_pin = page.evaluate('window.__map.getSource("places").data.features.find(f => f.properties.name === "测试椰浆饭").properties')
     check('pin colour follows score (4 -> orange-red)', mine_pin['color'] == '#e14f12', mine_pin)
     PIN = 'window.__map.getSource("places").data.features.find(f => f.properties.name === "测试椰浆饭").properties'
@@ -826,7 +826,7 @@ with sync_playwright() as p:
     page.wait_for_selector('[data-action="osm-pick"]', timeout=5000)
     osm_rows = page.locator('[data-action="osm-pick"]').all_inner_texts()
     check('osm search lists results, duplicates merged', len(osm_rows) == 2 and 'Kafe Ujian' in osm_rows[0] and '添加' in osm_rows[0], osm_rows)
-    check('osm city result goes to travel', '旅行' in osm_rows[1], osm_rows)
+    check('osm city result goes to travel', '玩乐' in osm_rows[1], osm_rows)
     check('photon queried near the map centre', any('q=kafe' in u and 'lat=' in u for u in photon_calls), photon_calls[-1:])
     page.locator('[data-action="osm-pick"]').first.click()
     page.wait_for_timeout(300)
@@ -1574,7 +1574,7 @@ with sync_playwright() as p:
     pn.screenshot(path=os.path.join(SHOTS, '05i-google-auth.png'))
     ctxn.close()
 
-    # ---------- 我的地图：美食 / 旅行 / 合并 + 点亮去过的国家 ----------
+    # ---------- 我的地图：美食 / 玩乐 / 合并 + 点亮去过的国家 ----------
     def mk_place(id_, mode, cat, lat, lng, name, by):
         return {'id': id_, 'mode': mode, 'cat': cat, 'precision': 'exact', 'lat': lat, 'lng': lng, 'name': name, 'altName': '', 'link': '', 'osm': '', 'createdBy': by, 'createdAt': 1, 'sample': False}
     def mk_review(id_, pid, by):
@@ -1625,7 +1625,7 @@ with sync_playwright() as p:
     page5.click('#map-ctrls [data-action="filters"]')
     page5.wait_for_timeout(100)
     chips = page5.eval_on_selector_all('#bsheet [data-action="mine-mode"]', 'els => els.map(e => e.textContent.trim())')
-    check('my map filter: just food / travel / both', chips == ['美食', '旅行', '合并'] and page5.locator('#bsheet [data-action="cat"], #bsheet [data-action="set-score"]').count() == 0, chips)
+    check('my map filter: just food / travel / both', chips == ['美食', '玩乐', '合并'] and page5.locator('#bsheet [data-action="cat"], #bsheet [data-action="set-score"]').count() == 0, chips)
     fw = page5.evaluate("[document.querySelector('.bsheet-foot').getBoundingClientRect().width, document.querySelector('.bsheet-foot .btn').getBoundingClientRect().width]")
     check('my map filter: the only button spans the sheet', abs(fw[0] - fw[1]) < 2, fw)
     check('no sample note on my map', page5.locator('#view .sample-note').count() == 0)
@@ -1891,7 +1891,7 @@ with sync_playwright() as p:
     check('bulk: nothing to save before scoring', pb.inner_text('#bk-save') == '保存 0' and pb.is_disabled('#bk-save'))
     pb.wait_for_timeout(300)
     check('bulk: food or travel follows the picked place; no photo model is loaded (it crashed phones)', pb.get_attribute('#bk-1 [data-action="bulk-mode"][data-v="food"]', 'aria-pressed') == 'true'
-          and pb.evaluate('window.__catCalls') == 0 and pb.inner_text('#bk-2 [data-action="bulk-mode"][data-v="travel"]') == '旅行'
+          and pb.evaluate('window.__catCalls') == 0 and pb.inner_text('#bk-2 [data-action="bulk-mode"][data-v="travel"]') == '玩乐'
           and pb.get_attribute('#bk-2 [data-bk-q]', 'placeholder') == '搜谷歌：店名或地点'
           and pb.get_attribute('#bk-2 [data-action="bulk-mode"][data-v="food"]', 'aria-pressed') == 'true')
     rate(pb, 4, '#bk-rate-1')
@@ -2462,7 +2462,7 @@ with sync_playwright() as p:
     page6.click('[data-action="post-mode"][data-v="travel"]'); page6.wait_for_timeout(100)
     pr_travel = page6.locator('#f-price').count()
     page6.click('[data-action="post-mode"][data-v="food"]'); page6.wait_for_timeout(100)
-    check('post: choosing 美食 shows the optional 人均 price box, 美景 does not', pr_travel == 0 and page6.locator('#f-price').count() == 1 and '人均' in page6.inner_text('label[for="f-price"]'), pr_travel)
+    check('post: choosing 美食 shows the optional 人均 price box, 玩乐 does not', pr_travel == 0 and page6.locator('#f-price').count() == 1 and '人均' in page6.inner_text('label[for="f-price"]'), pr_travel)
     page6.fill('#f-price', '18')
     before_posts = len(page6.evaluate('window.__sb.db.visits'))
     page6.click('#f-submit')
@@ -2552,9 +2552,9 @@ with sync_playwright() as p:
     tab(page6,'home');page6.wait_for_timeout(300)
     check('home secondary filters start folded behind one small button', not page6.locator('#home-days').is_visible() and not page6.locator('#home-min').is_visible() and not page6.locator('#home-sort').is_visible() and page6.locator('[data-action="home-filters"]').is_visible())
     page6.evaluate('''(pid)=>{ const d=window.__sb.db, now=Date.now();
-      d.places.push({...d.places.find(p=>p.id===pid),id:'hf-travel',mode:'travel',name:'新美景地点'});
+      d.places.push({...d.places.find(p=>p.id===pid),id:'hf-travel',mode:'travel',name:'新玩乐地点'});
       [{id:'hf-food',place_id:pid,title:'首页新美食',rating:5,visibility:'public',updated_at:new Date(now).toISOString()},
-       {id:'hf-scenery',place_id:'hf-travel',title:'首页新美景',rating:3,visibility:'public',updated_at:new Date(now-1000).toISOString()},
+       {id:'hf-scenery',place_id:'hf-travel',title:'首页新玩乐',rating:3,visibility:'public',updated_at:new Date(now-1000).toISOString()},
        {id:'hf-private',place_id:pid,title:'绝不公开的测试',rating:5,visibility:'private'},
        {id:'hf-old',place_id:pid,title:'旧动态测试',rating:4.5,visibility:'public',created_at:'2020-01-01T00:00:00Z',updated_at:new Date(now).toISOString()}].forEach(r=>d.visits.push({user_id:d.visits.find(v=>v.place_id===pid).user_id,created_at:new Date(now).toISOString(),photos:['fixture.jpg'],text:'测试正文',...r}));
     }''',pv['place_id'])
@@ -2562,12 +2562,12 @@ with sync_playwright() as p:
     page6.wait_for_selector('.post-card:has-text("首页新美食")')
     check('home shows the last month by default: a years-old footprint imported today is not pushed', page6.input_value('#home-days') == '30' and page6.locator('.post-card',has_text='旧动态测试').count()==0 and page6.locator('.home-filter-count').count()==0)
     check('home time choices are 3 days / 1 week / 1 month / all', page6.eval_on_selector_all('#home-days option','els=>els.map(e=>e.value)') == ['3','7','30','0'])
-    check('home detects new public posts and keeps private records out', page6.locator('.post-card',has_text='首页新美景').count()==1 and page6.locator('.post-card',has_text='绝不公开的测试').count()==0)
+    check('home detects new public posts and keeps private records out', page6.locator('.post-card',has_text='首页新玩乐').count()==1 and page6.locator('.post-card',has_text='绝不公开的测试').count()==0)
     page6.click('[data-action="home-mode"][data-v="travel"]')
-    check('home scenery filter excludes food', page6.locator('.post-card',has_text='首页新美景').count()==1 and page6.locator('.post-card',has_text='首页新美食').count()==0)
+    check('home scenery filter excludes food', page6.locator('.post-card',has_text='首页新玩乐').count()==1 and page6.locator('.post-card',has_text='首页新美食').count()==0)
     page6.click('[data-action="home-filters"]')
     page6.select_option('#home-min','4.5')
-    check('home rating filter combines with scenery', page6.locator('.post-card',has_text='首页新美景').count()==0 and '暂无符合筛选' in page6.inner_text('#view'))
+    check('home rating filter combines with scenery', page6.locator('.post-card',has_text='首页新玩乐').count()==0 and '暂无符合筛选' in page6.inner_text('#view'))
     check('home filter popover remains open while changing selections', page6.locator('#home-filter-panel').is_visible() and page6.locator('.home-filter-count').inner_text()=='1')
     page6.select_option('#home-min','0');page6.click('[data-action="home-mode"][data-v="all"]')
     check('clicking outside home filters closes the popover', not page6.locator('#home-filter-panel').is_visible())
@@ -2729,7 +2729,7 @@ with sync_playwright() as p:
     add(pd); pd.wait_for_timeout(150); pd.click('[data-action="add-pin"]'); pd.wait_for_timeout(100)
     check('pick search: box is empty again next time', pd.input_value('#pick-q') == '')
     pd.click('[data-action="pick-cancel"]'); pd.wait_for_timeout(150)
-    # 美食 / 旅行的简单判断，不用模型
+    # 美食 / 玩乐的简单判断，不用模型
     sky = pd.evaluate("""(() => {
       const mk = (top, bottom) => { const a = new Uint8ClampedArray(24*24*4); for (let y = 0; y < 24; y++) for (let x = 0; x < 24; x++) { const c = y < 8 ? top(x, y) : bottom(x, y), i = (y*24+x)*4; a[i]=c[0]; a[i+1]=c[1]; a[i+2]=c[2]; a[i+3]=255; } return a; };
       const f = window.__looksLikeSky;
@@ -2779,14 +2779,14 @@ with sync_playwright() as p:
     check('no splash: ?splash shows nothing either', pu.evaluate('!document.getElementById("launch-film") && !document.querySelector("script[src*=launch]")'))
     pu.goto(APP)
     pu.wait_for_function('window.__map && window.__map.getSource("places")', timeout=8000); pu.wait_for_timeout(300)
-    # 地图上的美食 / 美景：两个字都在，当前的那个是实心蓝
+    # 地图上的美食 / 玩乐：两个字都在，当前的那个是实心蓝
     tab(pu, 'explore'); set_mode(pu, 'food')
     mo = [pu.inner_text('.mode-btn .mode-opt.on').strip()]
     set_mode(pu, 'travel'); mo.append(pu.inner_text('.mode-btn .mode-opt.on').strip()); set_mode(pu, 'food')
-    check('map switch shows both 美食 and 美景, the current one filled', mo == ['美食', '美景'] and pu.locator('.mode-btn .mode-opt').count() == 2, mo)
+    check('map switch shows both 美食 and 玩乐, the current one filled', mo == ['美食', '玩乐'] and pu.locator('.mode-btn .mode-opt').count() == 2, mo)
     tb2 = pu.evaluate('[...document.querySelectorAll("#tabbar .tab svg")].map(s => getComputedStyle(s).backgroundColor !== "rgba(0, 0, 0, 0)")')
     check('tab bar: only the current tab icon sits on a soft pill', tb2 == [False, True, False, False], tb2)
-    # 旅行地点没有“花费”，美食地点有人均
+    # 玩乐地点没有“花费”，美食地点有人均
     open_place(pu, '金门', '金门大桥')
     st = pu.evaluate('(() => { const s = document.querySelector("#view .stats"); return s ? s.innerText : null; })()')
     check('travel place: stats have no cost column', st is not None and not any(w in st for w in ('花费', '人均', 'RM')), st)

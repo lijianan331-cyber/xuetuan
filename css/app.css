@@ -972,3 +972,17 @@ button.post-who { width: 100%; }
 .me-edit .me-id { flex: 1; min-width: 0; }
 .post-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .btn.danger-text { color: var(--danger); }
+
+/* Per-price currency controls: compact, no card navigation or page rebuild on conversion. */
+.price-input-row { display: flex; align-items: center; gap: 8px; }
+.price-unit { width: 83px; flex: 0 0 83px; padding: 9px 8px; font: inherit; color: var(--ink); }
+.price-input-row > input { min-width: 0; flex: 1; }
+.price-toggle { display: inline-flex; align-items: center; justify-content: flex-start; gap: 4px; border: 0; border-bottom: 1px dotted var(--muted); padding: 3px 1px; background: transparent; color: inherit; font: inherit; line-height: inherit; white-space: nowrap; touch-action: manipulation; }
+.price-toggle i { font-style: normal; font-size: 10px; color: var(--muted); }
+.price-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 3px; }
+.pc-hit { border: 0; padding: 0; text-align: left; color: inherit; font-family: inherit; }
+button.pc-place { background: transparent; }
+.pc-score { flex-wrap: wrap; }
+.bk-note { flex-wrap: nowrap; gap: 6px; }
+.bk-note > .price-unit { flex: 0 0 66px; width: 66px; min-width: 0; }
+.bk-note > .bk-price { flex: 0 0 84px; width: 84px; min-width: 0; }

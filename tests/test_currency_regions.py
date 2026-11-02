@@ -24,7 +24,7 @@ with sync_playwright() as p:
       let result = await Promise.all([ccAt(22.282,114.158), ccAt(22.1987,113.5439), ccAt(22.54,114.06), ccAt(22.27,113.57)]);
       return [result, money({cc:'CN',lat:22.282,lng:114.158},80), money({cc:'CN',lat:22.1987,lng:113.5439},90), money({cc:'CN',lat:22.54,lng:114.06},25), priceRM({cc:'HK'},100), priceRM({cc:'MO'},100)];
     }''')
-    assert got == [['HK','MO','CN','CN'], 'HK$ 80', 'MOP$ 90', '¥ 25', 52, 50], got
+    assert got == [['HK','MO','CN','CN'], 'HKD 80', 'MOP 90', 'RMB 25', 52, 50], got
     print('PASS CN-coded Hong Kong/Macao use local units; Shenzhen/Zhuhai remain CNY; budget filtering uses approximate RM')
     assert len(calls) == 4
     pg.evaluate('Promise.all([ccAt(22.282,114.158),ccAt(22.282,114.158),ccAt(22.282,114.158)])')
@@ -32,7 +32,7 @@ with sync_playwright() as p:
     print('PASS resolved regional currency is cached without extra requests')
     pg.evaluate("startNewPlace({lat:22.3,lng:114.18},{name:'合成地点',lockedName:true})")
     pg.wait_for_selector('#f-text'); pg.fill('#f-text','保留点评'); pg.fill('#f-price','88')
-    pg.wait_for_function('document.querySelector("label[for=f-price]").textContent.includes("HK$")')
+    pg.wait_for_function('document.querySelector("label[for=f-price]").textContent.includes("HKD")')
     assert pg.input_value('#f-text') == '保留点评' and pg.input_value('#f-price') == '88'
     print('PASS regional lookup updates the add form unit without losing typed comment or price')
     pg.evaluate('''() => {

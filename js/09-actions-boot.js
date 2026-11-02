@@ -372,6 +372,7 @@
     if (!el) return;
     var a = el.dataset.action, d = el.dataset;
     switch (a) {
+      case 'price-toggle': e.preventDefault(); e.stopPropagation(); togglePrice(el); break;
       case 'google-retry': retryGoogle(el.closest('.g-search')); break;
       case 'toggle-mode':
         if (state.view !== 'feed') goFeed();
@@ -473,7 +474,7 @@
       case 'open-place': openPlace(d.id); break;
       case 'back': back(); break;
       case 'write-review': { var wpid = state.placeId; if (wpid && requireLogin(function () { startReview(wpid); })) startReview(wpid); break; }
-      case 'toggle-save': { var tpid = state.placeId; if (tpid && requireLogin(function () { toggleSave(tpid); })) toggleSave(tpid); break; }
+      case 'toggle-save': { var tpid = d.id || state.placeId; if (tpid && requireLogin(function () { toggleSave(tpid); })) toggleSave(tpid); break; }
       case 'copy-coords': copyCoords(d.c); break;
       case 'photo': openLightbox(d.id, d.group); break;
       /* 点照片任何地方都放大（右下角的放大图标只是提示，用户 2026-11-02） */
@@ -567,6 +568,7 @@
     var el = e.target;
     if (el.id === 'flt-price') { setPriceAbout(el, false); return; }
     if (el.id === 'f-name') { onNameForCat(state.form, el.value); return; }
+    if (el.id === 'f-price' && state.form && el.value.trim()) { if (!state.form.priceCurrency) state.form.priceCurrency = formPriceCurrency(); saveFormDraft(); }
     if (el.id === 'pick-q') { queuePickSearch(el.value); return; }
     if (el.id === 'pf-dialog-name') { var pv = $('#pf-preview'); if (pv && !pendingAvatar && !store.avatarOf(me().id)) pv.innerHTML = avatarHTML(el.value.trim() || '?'); return; }
     if (el.id === 'q') { state.query = el.value; queueOsmSearch(); renderSearchResults(); queueGoogle(); }
@@ -574,7 +576,7 @@
     else if (el.dataset && el.dataset.bkComment != null) { var bc = state.bulk && state.bulk.groups && state.bulk.groups[+el.dataset.bkComment]; if (bc) bc.comment = el.value; }
     else if (el.dataset && el.dataset.bkName != null) { var bg = state.bulk && state.bulk.groups && state.bulk.groups[+el.dataset.bkName]; if (bg) bg.name = el.value; }
     else if (el.dataset && el.dataset.bkQ != null) { var bq = state.bulk && state.bulk.groups && state.bulk.groups[+el.dataset.bkQ]; if (bq) { bq.q = el.value; queueBulkGoogle(bq); } }
-    else if (el.dataset && el.dataset.bkPrice != null) { var bp = state.bulk && state.bulk.groups && state.bulk.groups[+el.dataset.bkPrice], pv = parseFloat(el.value); if (bp) bp.price = isFinite(pv) && pv >= 0 ? Math.min(9999, Math.round(pv * 2) / 2) : null; }
+    else if (el.dataset && el.dataset.bkPrice != null) { var bp = state.bulk && state.bulk.groups && state.bulk.groups[+el.dataset.bkPrice], pv = parseFloat(el.value); if (bp && !bp.priceCurrency && isFinite(pv)) bp.priceCurrency = bulkPriceCurrency(bp); if (bp) bp.price = isFinite(pv) && pv >= 0 ? Math.min(99999999.99, Math.round(pv * 100) / 100) : null; }
     else if (el.dataset && el.dataset.pf) {
       var patch = {}; patch[el.dataset.pf] = el.value.trim(); store.updateProfile(patch);
       var nm = $('#me-name');
@@ -582,6 +584,8 @@
     }
   });
   document.addEventListener('change', function (e) {
+    if (e.target.id === 'f-price-currency' && state.form) { captureFormDraft(); state.form.priceCurrency = validPriceCurrency(e.target.value); updateFormCurrency(); saveFormDraft(); return; }
+    if (e.target.dataset.bkCurrency != null && state.bulk && state.bulk.groups) { var g = state.bulk.groups[+e.target.dataset.bkCurrency]; if (g) { g.priceCurrency = validPriceCurrency(e.target.value); setBulkCur(g); } return; }
     if (e.target.id === 'share-private' && shareCard && shareCard.own) { shareCard.includePrivate = e.target.checked; render(); return; }
     if (e.target.id === 'f-file') { addFormPhotos(e.target.files); e.target.value = ''; }
     else if (e.target.id === 'bulk-file' || e.target.id === 'bulk-file-any') { startBulk(e.target.files); e.target.value = ''; }

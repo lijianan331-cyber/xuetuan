@@ -239,9 +239,9 @@
   function renderFilters() {
     var food = state.mode === 'food', n = activeFilterCount();
     var toKey = food ? 'modeToTravel' : 'modeToFood';
-    /* 搜索条右边原来是个斜箭头（像外链），换成放大镜；美食 / 美景两段都写出来，亮的那段是现在这张图（2026-11-01 精修） */
+    /* 搜索条右边原来是个斜箭头（像外链），换成放大镜；美食 / 玩乐两段都写出来，亮的那段是现在这张图（2026-11-01 精修） */
     var h = '<button type="button" class="map-search" data-action="search" aria-label="' + esc(t('searchBtn')) + '"><img src="assets/search-pin.png" alt=""><span>' + esc(t('mapSearchPh')) + '</span>' + CTRL_ICON.search + '</button>';
-    /* 个人主页的地图美食美景一起看，不用切换和筛选 */
+    /* 个人主页的地图美食玩乐一起看，不用切换和筛选 */
     if (state.scope !== 'person') h += '<button type="button" class="icon-btn mode-btn" data-action="toggle-mode" aria-label="' + esc(t(toKey)) + '" title="' + esc(t(toKey)) + '">' +
       '<span class="mode-opt' + (food ? ' on' : '') + '">' + CTRL_ICON.food + '<span>' + esc(t('food')) + '</span></span>' +
       '<span class="mode-opt' + (food ? '' : ' on') + '">' + CTRL_ICON.landscape + '<span>' + esc(t('scenery')) + '</span></span></button>';
@@ -251,13 +251,13 @@
       h += '<button type="button" class="icon-btn globe-btn" data-action="countries" aria-pressed="' + state.countries + '" aria-label="' + esc(t('litCountries')) + '" title="' + esc(t('litCountries')) + '">' + CTRL_ICON.globe + (lit ? '<b>' + world.litCount + '</b>' : '') + '</button>';
     }
     $('#map-ctrls').innerHTML = h;
-    /* 旅行大地图左上角：红针是什么、有几位，点一下收起 / 显示；没人公开家乡就不出 */
+    /* 玩乐大地图左上角：红针是什么、有几位，点一下收起 / 显示；没人公开家乡就不出 */
     var publicHomes = hometownMode(), ownHome = false; /* 我的家开关挪进筛选了 */
     var homeLabel = publicHomes ? (state.lang === 'en' ? 'Back to explore' : '返回探索') : (state.lang === 'en' ? 'Show my hometown' : '显示我的家乡');
     $('#map-chips').innerHTML = publicHomes || ownHome ? '<button type="button" class="map-chip' + (publicHomes ? '' : ' homes-switch') + '" data-action="' + (publicHomes ? 'homes-toggle' : 'mine-home-toggle') + '" aria-label="' + esc(homeLabel) + '" title="' + esc(homeLabel) + '" aria-pressed="' + (publicHomes ? state.homesOn : state.mineHomeOn) + '">' + (publicHomes ? ICON.back + esc(homeLabel) : ICON.home) + '</button>' : '';
   }
 
-  /* 我的地图只分 美食 / 旅行 / 合并（在筛选里选） */
+  /* 我的地图只分 美食 / 玩乐 / 合并（在筛选里选） */
   var COUNTRY_ZOOM = 5;
   function mineView() { return state.mineBoth ? 'both' : state.mode; }
   function globeChipShown() { return state.scope === 'mine' && (state.mode === 'travel' || state.mineBoth) && !!map && map.getZoom() <= COUNTRY_ZOOM; }
@@ -621,10 +621,10 @@
     view.innerHTML = h;
   }
 
-  function metaHTML(r, hidePrivacy) {
+  function metaHTML(r, hidePrivacy, interactive) {
     var parts = [];
     if (r.rating != null) parts.push(starsMiniHTML(r.rating));
-    if (r.price) parts.push('<span>' + money(placeById(r.placeId), r.price) + '</span>');
+    if (r.price) { var pp = placeById(r.placeId), pc = reviewPriceCurrency(pp,r); parts.push(interactive === false ? '<span>' + esc(PRICE_SYM[pc] + ' ' + fmtPrice(r.price)) + '</span>' : priceToggleHTML(pp,r.price,pc,'r:'+r.id)); }
     if (r.visibility === 'private' && !hidePrivacy) parts.push('<span class="pill">' + esc(t('visPrivateShort')) + '</span>');
     return parts.join('<span class="sep">·</span>');
   }
@@ -659,7 +659,7 @@
   function feedItemHTML(r) {
     var p = placeById(r.placeId), c = catOf(p);
     var ownControls = state.tab === 'foot' && state.scope === 'mine' && isMine(r);
-    var name = authorLabel(r), from = '', meta = metaHTML(r, ownControls), text = reviewText(r);
+    var name = authorLabel(r), from = '', meta = metaHTML(r, ownControls, false), text = reviewText(r);
     var n = r.photos ? r.photos.length : 0;
     var lead = n ? '<span class="fi-pic"><img data-photo="' + esc(r.photos[0]) + '" data-small alt="">' +
       (n > 1 ? '<span class="fi-count">' + ICON.camera + n + '</span>' : '') + '</span>' : avatarHTML(name, r.authorId);

@@ -84,11 +84,11 @@
     var cover = n
       ? '<img data-photo="' + esc(r.photos[0]) + '" data-small loading="lazy" decoding="async" alt="">' + (n > 1 ? '<span class="fi-count">' + ICON.camera + n + '</span>' : '')
       : '<span class="pc-words' + (p.mode === 'travel' ? ' travel' : '') + '"><i aria-hidden="true">' + c.emoji + '</i><span>' + esc(text || catName(c)) + '</span></span>';
-    var score = (r.rating != null ? starsMiniHTML(r.rating) : '') + (r.price ? '<span>' + money(p, r.price) + '</span>' : '');
-    return '<li class="post-card"><button type="button" class="pc-open" data-action="open-post" data-id="' + esc(r.id) + '">' +
-      '<span class="pc-cover">' + cover + '</span><span class="pc-body"><span class="pc-place">' + esc(r.title || placeTitle(p)) + '</span>' +
+    var score = (r.rating != null ? starsMiniHTML(r.rating) : '') + (r.price ? priceToggleHTML(p,r.price,reviewPriceCurrency(p,r),'r:'+r.id) : '');
+    return '<li class="post-card"><div class="pc-open" data-action="open-post" data-id="' + esc(r.id) + '">' +
+      '<button type="button" class="pc-cover pc-hit" aria-label="' + esc(r.title || placeTitle(p)) + '">' + cover + '</button><span class="pc-body"><button type="button" class="pc-place pc-hit">' + esc(r.title || placeTitle(p)) + '</button>' +
       (score ? '<span class="pc-score">' + score + '</span>' : '') +
-      '<span class="pc-who"' + personAttr(r.authorId) + '>' + avatarHTML(name, r.authorId) + '<span>' + esc(name) + ' · ' + esc(timeAgo(homeTime(r))) + '</span></span></span></button>' +
+      '<span class="pc-who"' + personAttr(r.authorId) + '>' + avatarHTML(name, r.authorId) + '<span>' + esc(name) + ' · ' + esc(timeAgo(homeTime(r))) + '</span></span></span></div>' +
       saveBtnHTML(p.id, true) + '</li>';
   }
 
@@ -110,7 +110,7 @@
       : '<div class="post-who">' + pw + '</div>';
     var sc = [];
     if (r.rating != null) sc.push(starsMiniHTML(r.rating) + '<b style="color:' + scoreColor(r.rating) + '">' + fmtScore(r.rating) + '</b>');
-    if (r.price) sc.push('<span>' + money(p, r.price) + ' ' + esc(t(p.mode === 'food' ? 'perPerson' : 'costLabel')) + '</span>');
+    if (r.price) sc.push('<span>' + priceToggleHTML(p,r.price,reviewPriceCurrency(p,r),'r:'+r.id) + ' ' + esc(t(p.mode === 'food' ? 'perPerson' : 'costLabel')) + '</span>');
     if (r.visibility === 'private') sc.push('<span class="pill">' + esc(t('visPrivateShort')) + '</span>');
     if (sc.length) h += '<div class="post-score">' + sc.join('<span class="sep">·</span>') + '</div>';
     if (r.title) h += '<h1 class="post-title">' + esc(r.title) + '</h1>';
@@ -136,7 +136,7 @@
     h += mine && store.signedIn()
       ? '<button type="button" class="person-head ph-edit-btn" data-action="edit-profile" aria-label="' + esc(en ? 'Edit avatar and name' : '修改头像和名字') + '">' + head + '<span class="ph-pen">' + esc(en ? 'Edit' : '修改') + '</span></button>'
       : '<div class="person-head">' + head + '</div>';
-    h += '<div class="person-stats"><span><b>' + food + '</b>' + esc(en ? 'food' : '美食') + '</span><span><b>' + scen + '</b>' + esc(en ? 'scenery' : '美景') + '</span><span><b>' + rs.length + '</b>' + esc(en ? 'posts' : '分享') + '</span></div>';
+    h += '<div class="person-stats"><span><b>' + food + '</b>' + esc(en ? 'food' : '美食') + '</span><span><b>' + scen + '</b>' + esc(en ? 'things to do' : '玩乐') + '</span><span><b>' + rs.length + '</b>' + esc(en ? 'posts' : '分享') + '</span></div>';
     if (mine && !store.pagePublic(id)) h += '<p class="f-hint person-note">' + esc(en ? 'Only you can open this page now. Turn it on in Me so classmates can.' : '现在只有你自己点得进来；在“我的”里打开后，同学点你的名字也能进来。') + '</p>';
     else h += '<p class="f-hint person-note">' + esc(en ? 'Only places shared to the big map are shown.' : '只显示分享到大地图的记录。') + '</p>';
     h += rs.length ? '<ul class="post-grid">' + rs.map(postCardHTML).join('') + '</ul>'
@@ -228,7 +228,7 @@
     var actions = (far
       ? '<a class="btn" href="' + esc(mapsHref(coords, placeTitle(p), true)) + '" target="_blank" rel="noopener">' + ICON.nav + esc(t(APPLE ? 'viewApple' : 'viewGoogle')) + '</a>'
       : '<a class="btn primary" href="' + esc(mapsHref(coords, placeTitle(p))) + '" target="_blank" rel="noopener">' + ICON.nav + esc(t(APPLE ? 'navApple' : 'navGoogle')) + '</a>') +
-      '<button type="button" class="btn save-btn" data-action="toggle-save" aria-pressed="' + saved + '">' + (saved ? ICON.starOn + esc(t('wished')) : ICON.star + esc(t('wish'))) + '</button>' +
+      '<button type="button" class="btn save-btn" data-action="toggle-save" data-id="' + esc(p.id) + '" aria-pressed="' + saved + '">' + (saved ? ICON.starOn + esc(t('wished')) : ICON.star + esc(t('wish'))) + '</button>' +
       '<button type="button" class="btn" data-action="write-review">' + ICON.pen + esc(t(p.mode === 'food' ? 'writeReview' : 'beenHere')) + '</button>' +
       (far ? '' : '<a class="btn" href="https://waze.com/ul?ll=' + coords + '&navigate=yes" target="_blank" rel="noopener">' + ICON.nav + esc(t('navWaze')) + '</a>');
     actions += '<button type="button" class="btn" data-action="copy-coords" data-c="' + coords + '">' + ICON.copy + esc(t('copyCoords')) + '</button>';
@@ -258,8 +258,8 @@
     if (!scopedReviews(p.id, 'saved').length) { view.innerHTML = h + '<p class="place-empty">' + esc(t('placeEmpty')) + '</p>'; bindHero(); return; }
     h += '<div class="stats">' +
       '<div class="stat"><b>' + (s.score != null ? '<span class="score-big" style="color:' + scoreColor(s.score) + '">' + fmtScore(s.score) + '</span>' : '—') + '</b><small>' + esc(scoreLabel(s)) + '</small></div>' +
-      /* 旅行不记花费（用户 2026-10-26）：没有花费就不放这一格，不再显示“花费 —” */
-      (p.mode === 'food' || s.avgPrice ? '<div class="stat"><b>' + (s.avgPrice ? money(p, s.avgPrice) : '—') + '</b><small>' + esc(t(p.mode === 'food' ? 'perPerson' : 'costLabel')) + '</small></div>' : '') +
+      /* 玩乐不记花费（用户 2026-10-26）：没有花费就不放这一格，不再显示“花费 —” */
+      (p.mode === 'food' || s.avgPrice ? '<div class="stat"><b>' + (s.avgPrice ? priceToggleHTML(p,s.avgPrice,defaultPriceCurrency(p),'avg:'+p.id) : '—') + '</b><small>' + esc(t(p.mode === 'food' ? 'perPerson' : 'costLabel')) + '</small></div>' : '') +
       '<div class="stat"><b>' + s.count + '</b><small>' + esc(t('reviewsLabel')) + '</small></div></div>';
     h += '<h3 class="sec-title">' + esc(t('reviewsTitle')) + '</h3><ul class="reviews">' + reviews.map(reviewHTML).join('') + '</ul>';
     view.innerHTML = h;
@@ -306,7 +306,7 @@
     if (!loc || (p && p.cc) || ccNow(loc.lat, loc.lng)) return;
     ccAt(loc.lat, loc.lng).then(function (cc) {
       var lab = $('label[for="f-price"]');
-      if (cc && lab && state.form === f) lab.textContent = t('priceFood', { c: curSymAt(cc) });
+      if (cc && lab && state.form === f) updateFormCurrency();
     });
   }
   function renderForm() {
@@ -357,11 +357,11 @@
       else if (f.loc) h += fieldHTML('f-name', esc(t('name')), '<input id="f-name" class="input" maxlength="60"' + (f.lockedName ? ' readonly' : '') + ' placeholder="' + esc(t(isFood ? 'namePhFood' : 'namePhTravel')) + '">');
       h += '<div class="btn-row"><button type="button" class="btn" id="post-location" data-action="post-location">' + ICON.pin + esc(state.lang === 'en' ? (p || f.loc ? 'Change place' : 'Find a place') : (p || f.loc ? '更换地点' : '搜索地点')) + '</button><button type="button" class="btn ghost" data-action="post-map">' + esc(t('addPin')) + '</button></div></div>';
       /* 发帖选了美食也能填人均（用户 2026-11-02） */
-      if (isFood) h += fieldHTML('f-price', esc(t('priceFood', { c: cur })), '<input id="f-price" class="input" type="number" inputmode="decimal" min="0" step="0.5">');
+      if (isFood) h += formPriceFieldHTML();
     }
     if (!f.post) h += '<div class="field"><span class="f-label">' + esc(t('photos')) + ' <small>· ' + esc(t('photoLimit', { n: MAX_PHOTOS })) + '</small></span><div class="photo-grid" id="f-photos"></div></div>';
-    /* 人均只问吃的（筛选按人均）；旅行不问花费（用户 2026-10-26） */
-    if (isFood && !f.post) h += fieldHTML('f-price', esc(t('priceFood', { c: cur })), '<input id="f-price" class="input" type="number" inputmode="decimal" min="0" step="0.5">');
+    /* 人均只问吃的（筛选按人均）；玩乐不问花费（用户 2026-10-26） */
+    if (isFood && !f.post) h += formPriceFieldHTML();
     /* 记录默认进“我的地图”，只问要不要分享到大地图 */
     if (f.post && !f.editId) h += '<p class="f-hint">' + esc(state.lang === 'en' ? 'Public post · also saved to your footprints' : '公开分享 · 同时保存到个人足迹') + '</p>';
     else h += '<button type="button" class="switch-row" role="switch" data-action="f-share" aria-checked="' + share + '">' +

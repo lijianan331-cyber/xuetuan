@@ -195,9 +195,9 @@
       return parsePhoton({ features: keep }).filter(function (r) { return r.precision === 'exact'; });
     });
   }
-  /* 以前这里用手机本地的小模型按照片猜美食/旅行，用户手机上三张照片就把页面撑崩、也没认出来（2026-10-28），去掉了。
-     现在默认美食（用户 2026-10-31：奶茶被自动记到旅行，没注意很麻烦）；只有自己记过的地点，
-     或附近找到的是很明确的景点（海岛、自然、古迹、玩乐活动）才自动换成旅行；不对自己点着改 */
+  /* 以前这里用手机本地的小模型按照片猜美食/玩乐，用户手机上三张照片就把页面撑崩、也没认出来（2026-10-28），去掉了。
+     现在默认美食（用户 2026-10-31：奶茶被自动记到玩乐，没注意很麻烦）；只有自己记过的地点，
+     或附近找到的是很明确的景点（海岛、自然、古迹、玩乐活动）才自动换成玩乐；不对自己点着改 */
   var BULK_TRAVEL_CATS = ['island', 'nature', 'culture', 'fun'];
   function bulkAutoMode(c, g) {
     if (c && c.place) return c.mode;
@@ -211,8 +211,8 @@
     if (!g.modeSet) g.mode = bulkAutoMode(c, g);
   }
   /* 不用模型的简单判断（用户 2026-11-01）：照片上面三分之一大片是平滑的天空 / 海
-     （蓝、或日落那种暖色渐变），下面不是近拍的一大盘东西 → 先放旅行。只看 24×24 的小图，几乎不占内存。
-     宁可漏判也别把奶茶记成旅行（用户 2026-10-31），所以条件收得很紧；点一下随时改 */
+     （蓝、或日落那种暖色渐变），下面不是近拍的一大盘东西 → 先放玩乐。只看 24×24 的小图，几乎不占内存。
+     宁可漏判也别把奶茶记成玩乐（用户 2026-10-31），所以条件收得很紧；点一下随时改 */
   function skyScore(px, w, h) {
     var top = Math.floor(h / 3), sky = 0, blues = 0, n = 0, rough = 0;
     for (var y = 0; y < top; y++) for (var x = 0; x < w; x++) {
@@ -274,7 +274,8 @@
     if (c && c.lat != null) return { lat: c.lat, lng: c.lng };
     return g.plat != null ? { lat: g.plat, lng: g.plng } : null;
   }
-  function bulkCur(g) { var l = bulkCurLoc(g); return l ? curSym(l) : 'RM'; }
+  function bulkPriceCurrency(g) { return validPriceCurrency(g.priceCurrency) || defaultPriceCurrency(bulkCurLoc(g)); }
+  function bulkCur(g) { return PRICE_SYM[bulkPriceCurrency(g)]; }
   function bulkCurCheck(g) {
     var l = bulkCurLoc(g);
     if (!l || placeCC(l)) { setBulkCur(g); return; }
@@ -282,16 +283,17 @@
   }
   function setBulkCur(g) {
     var el = $('[data-bk-price="' + g.i + '"]'), c = bulkCur(g);
+    var select = $('[data-bk-currency="' + g.i + '"]'); if (select) select.innerHTML = priceSelectOptions(bulkCurLoc(g),bulkPriceCurrency(g));
     if (el) { el.placeholder = t('bulkPrice', { c: c }); el.setAttribute('aria-label', t('priceFood', { c: c })); }
   }
   function bulkCommentHTML(g) {
     return '<div class="bk-note"><textarea class="input bk-comment" rows="1" data-bk-comment="' + g.i + '" maxlength="1000" placeholder="' + esc(t('review')) + '" aria-label="' + esc(t('review')) + '">' + esc(g.comment || '') + '</textarea>' +
-      '<input class="input bk-price" type="number" inputmode="decimal" min="0" max="9999" step="0.5" data-bk-price="' + g.i + '" placeholder="' + esc(t('bulkPrice', { c: bulkCur(g) })) + '" aria-label="' + esc(t('priceFood', { c: bulkCur(g) })) + '" value="' + (g.price != null ? g.price : '') + '"' + (g.mode === 'food' ? '' : ' hidden') + '></div>';
+      '<select class="input price-unit" data-bk-currency="' + g.i + '" aria-label="' + esc(state.lang === 'en' ? 'Price currency' : '金额币种') + '"' + (g.mode === 'food' ? '' : ' hidden') + '>' + priceSelectOptions(bulkCurLoc(g),bulkPriceCurrency(g)) + '</select><input class="input bk-price" type="number" inputmode="decimal" min="0" max="99999999.99" step="0.01" data-bk-price="' + g.i + '" placeholder="' + esc(t('bulkPrice', { c: bulkCur(g) })) + '" aria-label="' + esc(t('priceFood', { c: bulkCur(g) })) + '" value="' + (g.price != null ? g.price : '') + '"' + (g.mode === 'food' ? '' : ' hidden') + '></div>';
   }
   function updateBulkMode(g) {
     updateBulkModeSeg(g);
     var pr = $('[data-bk-price="' + g.i + '"]');
-    if (pr) pr.hidden = g.mode !== 'food';
+    if (pr) pr.hidden = g.mode !== 'food'; var unit = $('[data-bk-currency="' + g.i + '"]'); if (unit) unit.hidden = g.mode !== 'food';
   }
   function bulkCardHTML(g) {
     var h = '<li class="bk-card" id="bk-' + g.i + '"><div class="bk-photos">' + g.photos.map(function (p, j) {
@@ -418,7 +420,7 @@
         var p = store.places().find(function (p) { return p.osm === r.osm && p.mode === r.mode; });
         if (p) { r.place = p.id; r.name = placeTitle(p); r.cat = p.cat; }
         bulkTake(g, r);
-        /* 谷歌说是景点就切到旅行、是餐厅就切回美食；自己点过美食/旅行就不动 */
+        /* 谷歌说是景点就切到玩乐、是餐厅就切回美食；自己点过美食/玩乐就不动 */
         if (!p && /^g\//.test(r.osm || '')) fetchGoogleTypes(r.osm.slice(2)).then(function (ty) {
           var m = ty && googleTypesMode(ty);
           if (!m || g.modeSet || state.bulk !== b || g.cands[g.pick] !== r) return;
@@ -502,6 +504,8 @@
     var b = state.bulk, gs = b && b.groups;
     if (!gs || b.saving || i <= 0 || !gs[i]) return;
     var top = gs[i - 1], cur = gs[i];
+    if (top.price != null && !top.priceCurrency) top.priceCurrency = bulkPriceCurrency(top);
+    if (top.price == null && cur.price != null) { top.price = cur.price; top.priceCurrency = bulkPriceCurrency(cur); }
     var onTop = top.photos.filter(function (p) { return p.on; }).length;
     cur.photos.forEach(function (p) { p.on = p.on && onTop < MAX_PHOTOS; if (p.on) onTop++; });
     top.photos = top.photos.concat(cur.photos);
@@ -661,7 +665,7 @@
           }, function (e) { toast(t(e && e.message === 'gifTooBig' ? 'gifTooBig' : 'photoReadFail')); });
         });
       }, Promise.resolve()).then(function () {
-        return store.addReview({ placeId: p.id, rating: g.rating, price: mode === 'food' && g.price != null ? g.price : null, text: (g.comment || '').trim(), visibility: b.share ? 'public' : 'private', createdAt: g.time }, photos);
+        return store.addReview({ placeId: p.id, rating: g.rating, priceCurrency: bulkPriceCurrency(g), price: mode === 'food' && g.price != null ? g.price : null, text: (g.comment || '').trim(), visibility: b.share ? 'public' : 'private', createdAt: g.time }, photos);
       });
     });
   }

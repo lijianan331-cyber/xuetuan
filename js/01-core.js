@@ -167,16 +167,16 @@
   var I18N = {
     zh: {
       tagline: '中国有美团，雪邦有雪团',
-      foodAria: '吃：美食地图', travelAria: '玩：旅行地图',
-      food: '美食', travel: '旅行', scenery: '美景',
+      foodAria: '吃：美食地图', travelAria: '玩：玩乐地图',
+      food: '美食', travel: '玩乐', scenery: '玩乐',
       catAll: '全部',
       scoreAria: '{n} 分', legend: '评分',
       dist_walk: '步行 · 校园周边', dist_short: '短途打车 · 6km 内', dist_mid: '中距离 · 龙溪 / IOI', dist_kl: '吉隆坡', dist_far: '出吉隆坡',
       tier_walk: '步行可达', tier_short: '短途打车', tier_mid: '中距离打车', tier_kl: '吉隆坡', tier_far: '吉隆坡以外',
       feedFoodAll: '大家最近在吃', feedTravelAll: '大家最近去了', feedFoodMine: '我吃过的', feedTravelMine: '我去过的', feedBothMine: '我的足迹',
-      mine_food: '美食', mine_travel: '旅行', mine_both: '合并', savedAll: '全部', savedWant: '还没去过', mineShow: '显示', subBeen: '去过', subSaved: '想去', savedShow: '想去里', filterCat: '分类',
-      modeToTravel: '切换到美景地图', modeToFood: '切换到美食地图', litCountries: '点亮国家', litN: '已去 {n} 国', worldFail: '国家边界没加载出来，等下再试',
-      feedSavedFood: '想去吃的', feedSavedTravel: '想去的地方', placesFoodAll: '探索美食', placesTravelAll: '探索旅行', exploreHint: '点地图上的图钉看大家的评价；大家最近分享了什么在“首页”。',
+      mine_food: '美食', mine_travel: '玩乐', mine_both: '合并', savedAll: '全部', savedWant: '还没去过', mineShow: '显示', subBeen: '去过', subSaved: '想去', savedShow: '想去里', filterCat: '分类',
+      modeToTravel: '切换到玩乐地图', modeToFood: '切换到美食地图', litCountries: '点亮国家', litN: '已去 {n} 国', worldFail: '国家边界没加载出来，等下再试',
+      feedSavedFood: '想去吃的', feedSavedTravel: '想去的地方', placesFoodAll: '探索美食', placesTravelAll: '探索玩乐', exploreHint: '点地图上的图钉看大家的评价；大家最近分享了什么在“首页”。',
       emptySaved: '还没有想去的地方，点“收藏”就会出现在这里。', emptyWant: '收藏的地方都去过了。', goExplore: '去探索',
       wish: '收藏', wished: '已收藏', wishAdded: '收藏了，在“足迹 · 想去”里能找到', wishRemoved: '取消收藏了',
       emptyFoodAll: '这片还没人写过。',
@@ -191,7 +191,7 @@
       altName: '原名 / 英文名', altNamePh: '招牌上的英文或马来文名字',
       category: '分类（选填）', precision: '标到哪一级',
       precExact: '具体地点', precArea: '一片区域', precCity: '整个城市',
-      precHint: '吃饭的店标到门口；旅行可以只标城市，放大时会显示成一个范围。',
+      precHint: '吃饭的店标到门口；玩乐可以只标城市，放大时会显示成一个范围。',
       catGuessing: '正在看照片认是哪一类…', catGuessed: '看照片像「{c}」，不对就点别的', catByName: '按店名选了「{c}」，不对就点别的', catByGoogle: '按谷歌上的店铺类型选了「{c}」，不对就点别的', catNoGuess: '照片没认出来', optional: '选填', rating: '评分', ratingHint: '点或左右拖星星，可以打半颗；拖到最左是 0 分（踩雷）。', errRating: '打个分再发布', starsNone: '还没打分',
       priceFood: '人均（{c}，选填）',
       review: '评论（选填）', reviewPhFood: '写评论', reviewPhTravel: '写评论',
@@ -202,7 +202,7 @@
       bulkBtn: '从照片批量加', bulkTitle: '从照片批量加', bulkReading: '正在读照片 {n}/{m}…',
       bulkSum: '{n} 张照片，分成 {g} 组，打了分的才保存。', bulkNoGps: '{n} 张读不到位置，按拍摄时间分了组，自己搜店名。',
       bulkTip: '位置多半是手机交给网页时去掉的，从文件管理里选（DCIM → Camera）也许能读到。', bulkFiles: '从文件管理选',
-      bulkFindPh: '搜谷歌：店名或地点', bulkFromPhoto: '离拍照处 {d}', bulkPrice: '人均 {c}', footTaken: '拍摄时间', footTakenAt: '拍于 {t}', bulkMerge: '和上一组是同一个地方', gifTooBig: '动图超过 5MB，请压缩动图后重试；不会转成静图', clipLong: '视频要在 {n} 秒以内', clipBig: '视频太大了，剪短一点再试', clipRead: '这个视频读不了', clipBusy: '视频处理中…', bulkModeLabel: '记到美食还是旅行', bulkNoLoc: '没有位置', bulkNeed: '搜到地点才能保存', bulkNoMatch: '没搜到，换个写法试试', bulkFinding: '正在搜…',
+      bulkFindPh: '搜谷歌：店名或地点', bulkFromPhoto: '离拍照处 {d}', bulkPrice: '人均 {c}', footTaken: '拍摄时间', footTakenAt: '拍于 {t}', bulkMerge: '和上一组是同一个地方', gifTooBig: '动图超过 5MB，请压缩动图后重试；不会转成静图', clipLong: '视频要在 {n} 秒以内', clipBig: '视频太大了，剪短一点再试', clipRead: '这个视频读不了', clipBusy: '视频处理中…', bulkModeLabel: '记到美食还是玩乐', bulkNoLoc: '没有位置', bulkNeed: '搜到地点才能保存', bulkNoMatch: '没搜到，换个写法试试', bulkFinding: '正在搜…',
       bulkNone: '选的照片里都没有拍摄地点。相机设置里打开“地理位置”，以后拍的就有了。',
       bulkSave: '保存 {n}', bulkSaving: '保存中 {n}/{m}', bulkDone: '存进足迹 {n} 个', bulkFailSome: '{n} 个没存上，过会儿再试',
       bulkPhotos: '{n} 张', bulkLooking: '正在找附近的店…', bulkOwn: '自己写', bulkBeen: '记过',
@@ -213,7 +213,7 @@
       testAccounts: '测试账号（仅供测试）', testAccountsHint: '同一台手机上换着当不同的人：每个号的记录、收藏、家都分开，私密的只有自己看得到。',
       acctAdd: '＋ 再加一个', acctSwitched: '现在是：{n}', acctUnnamed: '没起名的号', acctDefault: '测试号 {c}',
       myHome: '我的家', homeNone: '设了以后足迹地图上有个小房子，公开后大地图上是一根红针。只到城市一级。', homeSet: '设置我的家', homeChange: '改', homeRemove: '不设了',
-      homePublic: '公开到大地图', homePublicOn: '同学在旅行大地图上能看到，列表里显示“来自 {c}”', homePublicOff: '现在只有你自己看得到（足迹 · 旅行）',
+      homePublic: '公开到大地图', homePublicOn: '同学在玩乐大地图上能看到，列表里显示“来自 {c}”', homePublicOff: '现在只有你自己看得到（足迹 · 玩乐）',
       homeTitle: '设置我的家', homeSearchPh: '搜城市，比如 吉隆坡、深圳', homePick: '在地图上点', homeNote: '只存城市名和大概位置（约 10 公里），不存地址。',
       homeNoResult: '没找到这个城市，换个写法，或者在地图上点', homeSaved: '设好了：{c}', homeRemoved: '不设家了', homeLookup: '正在认是哪个城市…',
       homePickHint: '拖动地图，把十字对准你家所在的城市', homePickFail: '认不出这是哪个城市，换个位置，或者直接搜城市名',
@@ -271,20 +271,20 @@
     },
     en: {
       tagline: 'A food & travel map by XMUM students',
-      foodAria: 'Food map', travelAria: 'Travel map',
-      food: 'Food', travel: 'Travel', scenery: 'Scenery',
+      foodAria: 'Food map', travelAria: 'Things to do map',
+      food: 'Food', travel: 'Things to do', scenery: 'Things to do',
       catAll: 'All',
       scoreAria: 'Score {n}', legend: 'Score',
       dist_walk: 'Walk · around campus', dist_short: 'Short ride · within 6 km', dist_mid: 'Mid ride · Dengkil / IOI', dist_kl: 'Kuala Lumpur', dist_far: 'Beyond KL',
       tier_walk: 'Walkable', tier_short: 'Short ride', tier_mid: 'Mid ride', tier_kl: 'Kuala Lumpur', tier_far: 'Beyond KL',
       feedFoodAll: 'What people are eating', feedTravelAll: 'Where people went', feedFoodMine: 'Places I’ve eaten', feedTravelMine: 'Places I’ve been', feedBothMine: 'My footprints',
-      mine_food: 'Food', mine_travel: 'Travel', mine_both: 'Both', savedAll: 'All', savedWant: 'Not been yet', mineShow: 'Show', subBeen: 'Been', subSaved: 'Wishlist', savedShow: 'Wishlist', filterCat: 'Category',
-      modeToTravel: 'Switch to the scenery map', modeToFood: 'Switch to the food map', litCountries: 'Countries', litN: '{n} visited', worldFail: 'Couldn’t load country borders. Try again later.',
-      feedSavedFood: 'Food spots I saved', feedSavedTravel: 'Places I saved', placesFoodAll: 'Explore food', placesTravelAll: 'Explore travel', exploreHint: 'Tap a pin to see what people said. Recent posts are on Home.',
+      mine_food: 'Food', mine_travel: 'Things to do', mine_both: 'Both', savedAll: 'All', savedWant: 'Not been yet', mineShow: 'Show', subBeen: 'Been', subSaved: 'Wishlist', savedShow: 'Wishlist', filterCat: 'Category',
+      modeToTravel: 'Switch to things to do', modeToFood: 'Switch to the food map', litCountries: 'Countries', litN: '{n} visited', worldFail: 'Couldn’t load country borders. Try again later.',
+      feedSavedFood: 'Food spots I saved', feedSavedTravel: 'Places I saved', placesFoodAll: 'Explore food', placesTravelAll: 'Explore things to do', exploreHint: 'Tap a pin to see what people said. Recent posts are on Home.',
       emptySaved: 'Your wishlist is empty. Tap “Save” to keep places here.', emptyWant: 'You’ve been to every place you saved.', goExplore: 'Explore',
       wish: 'Save', wished: 'Saved', wishAdded: 'Saved. Find it under Footprints · Wishlist', wishRemoved: 'Removed from saved',
       emptyFoodAll: 'Nobody has written about this area yet.',
-      emptyTravelAll: 'No trips shared yet.',
+      emptyTravelAll: 'No places shared yet.',
       emptyMine: 'You haven’t recorded any places yet.', emptyFiltered: 'Nothing matches these filters.', clearFilters: 'Clear filters',
       addFood: 'Add a food spot', addTravel: 'Pin a place', fabFood: 'Add spot', fabTravel: 'Pin a place',
       pickHintFood: 'Drag the map until the pin points at the entrance', pickHintTravel: 'Drag the map to the spot. For a whole city, zoom out before confirming',
@@ -317,7 +317,7 @@
       testAccounts: 'Test accounts (testing only)', testAccountsHint: 'Take turns being different people on one phone. Each account has its own records, saves and home; private ones stay private.',
       acctAdd: '+ Add one', acctSwitched: 'Now using: {n}', acctUnnamed: 'Unnamed account', acctDefault: 'Tester {c}',
       myHome: 'My home', homeNone: 'Puts a little house on your Footprints map, and a red pin on the big map if public. City level only.', homeSet: 'Set my home', homeChange: 'Change', homeRemove: 'Remove',
-      homePublic: 'Show on the big map', homePublicOn: 'Classmates see it on the travel map, and lists say “from {c}”', homePublicOff: 'Only you can see it now (Footprints · Travel)',
+      homePublic: 'Show on the big map', homePublicOn: 'Classmates see it on the things to do map, and lists say “from {c}”', homePublicOff: 'Only you can see it now (Footprints · Things to do)',
       homeTitle: 'Set my home', homeSearchPh: 'Search a city, e.g. Kuala Lumpur', homePick: 'Pick on the map', homeNote: 'Only the city name and a rough spot (about 10 km) are saved, never an address.',
       homeNoResult: 'No city found. Try another spelling or pick on the map', homeSaved: 'Home set: {c}', homeRemoved: 'Home removed', homeLookup: 'Finding the city…',
       homePickHint: 'Drag the map until the crosshair is on your home city', homePickFail: 'Couldn’t tell which city this is. Move a bit, or search the city name',
@@ -573,7 +573,7 @@
         var me = data.profile;
         var r = {
           id: uid('r'), placeId: f.placeId, authorId: me.id, authorName: me.name || '',
-          rating: f.rating, price: f.price, title: f.title || null, text: f.text, photos: newPhotos.map(function (ph) { return ph.id; }),
+          rating: f.rating, price: f.price, priceCurrency: validPriceCurrency(f.priceCurrency), title: f.title || null, text: f.text, photos: newPhotos.map(function (ph) { return ph.id; }),
           visibility: f.visibility, createdAt: f.createdAt || Date.now(), updatedAt: Date.now(), sample: false
         };
         return putPhotos(newPhotos).then(function (photosOk) {
@@ -588,7 +588,7 @@
         if (!r || r.authorId !== data.profile.id) return Promise.reject(new Error('not yours'));
         return putPhotos(newPhotos).then(function (photosOk) {
           (r.photos || []).forEach(function (pid) { if (keepPhotos.indexOf(pid) === -1) forgetPhoto(pid); });
-          ['rating', 'price', 'title', 'text', 'visibility'].forEach(function (k) { if (patch[k] !== undefined) r[k] = patch[k]; });
+          ['rating', 'price', 'priceCurrency', 'title', 'text', 'visibility'].forEach(function (k) { if (patch[k] !== undefined) r[k] = patch[k]; });
           r.photos = orderPhotos(keepPhotos, newPhotos.map(function (ph) { return ph.id; }), patch.photoOrder);
           r.authorName = data.profile.name || '';
           r.updatedAt = Date.now();
@@ -772,7 +772,7 @@
       author = author || r.author || {};
       return {
         id: r.id, placeId: r.place_id, authorId: r.user_id, authorName: author.name || '', authorPage: !!author.page_public, authorAvatar: author.avatar || '',
-        rating: r.rating == null ? null : +r.rating, price: r.price == null ? null : +r.price, title: r.title || null, text: r.text, photos: r.photos || [],
+        rating: r.rating == null ? null : +r.rating, price: r.price == null ? null : +r.price, priceCurrency: validPriceCurrency(r.price_currency), title: r.title || null, text: r.text, photos: r.photos || [],
         visibility: r.visibility, createdAt: Date.parse(r.created_at), updatedAt: r.updated_at ? Date.parse(r.updated_at) : null, sample: false
       };
     }
@@ -989,7 +989,7 @@
         return needLogin() || uploadPhotos(newPhotos, progress).then(function (up) {
           if (!up.ok) throw up.error || new Error('photo-upload');
           if (progress) progress('write');
-          var row = { place_id: f.placeId, rating: f.rating, price: f.price, text: f.text, title: f.title || null, visibility: f.visibility, photos: up.paths, updated_at: new Date().toISOString() };
+          var row = { place_id: f.placeId, rating: f.rating, price: f.price, price_currency: validPriceCurrency(f.priceCurrency), text: f.text, title: f.title || null, visibility: f.visibility, photos: up.paths, updated_at: new Date().toISOString() };
           if (f.createdAt) row.created_at = new Date(f.createdAt).toISOString();
           return client.from('visits').insert(row).select().single().then(ok).then(function (v) {
             var r = reviewFromRow(v, cache.profile);
@@ -1005,7 +1005,7 @@
           if (!up.ok) throw up.error || new Error('photo-upload');
           if (progress) progress('write');
           var dropped = (r.photos || []).filter(function (p) { return keepPhotos.indexOf(p) === -1; });
-          var row = { rating: patch.rating, price: patch.price, text: patch.text, title: patch.title || null, visibility: patch.visibility, photos: orderPhotos(keepPhotos, up.paths, patch.photoOrder) };
+          var row = { rating: patch.rating, price: patch.price, price_currency: validPriceCurrency(patch.priceCurrency), text: patch.text, title: patch.title || null, visibility: patch.visibility, photos: orderPhotos(keepPhotos, up.paths, patch.photoOrder) };
           return client.from('visits').update(row).eq('id', id).select().single().then(ok).then(function (v) {
             removePhotos(dropped);
             Object.assign(r, reviewFromRow(v, cache.profile));
@@ -1023,7 +1023,7 @@
           if (progress) progress('write');
           var dropped = (r.photos || []).filter(function (p) { return keepPhotos.indexOf(p) === -1; });
           var made = r._movedTo && r._movedTo.placeId === placeId ? Promise.resolve(r._movedTo) : client.from('visits').insert({
-            place_id: placeId, rating: patch.rating, price: patch.price, text: patch.text, title: patch.title || null, visibility: patch.visibility,
+            place_id: placeId, rating: patch.rating, price: patch.price, price_currency: validPriceCurrency(patch.priceCurrency), text: patch.text, title: patch.title || null, visibility: patch.visibility,
             photos: orderPhotos(keepPhotos, up.paths, patch.photoOrder), created_at: new Date(r.createdAt).toISOString(), updated_at: new Date().toISOString()
           }).select().single().then(ok).then(function (v) { r._movedTo = reviewFromRow(v, cache.profile); return r._movedTo; });
           return made.then(function (nr) {
@@ -1070,10 +1070,15 @@
         });
       },
       setSaved: function (placeId, saved) {
+        var owner = uidNow();
         var q = saved
-          ? client.from('wishlist').insert({ place_id: placeId })
-          : client.from('wishlist').delete().eq('place_id', placeId).eq('user_id', uidNow());
-        return needLogin() || q.then(ok).then(function () {
+          ? client.from('wishlist').insert({ place_id: placeId, user_id: owner })
+          : client.from('wishlist').delete().eq('place_id', placeId).eq('user_id', owner);
+        return needLogin() || q.then(function (res) {
+          if (saved && res.error && res.error.code === '23505') return client.from('wishlist').select('place_id').eq('place_id',placeId).eq('user_id',owner).then(function (found) { return !found.error && found.data && found.data.length ? found : res; });
+          return res;
+        }).then(ok).then(function () {
+          if (uidNow() !== owner) return saved;
           cache.wishlist = cache.wishlist.filter(function (w) { return w.placeId !== placeId; });
           if (saved) { cache.wishlist.push({ placeId: placeId, createdAt: Date.now() }); return saved; }
           /* 没人记录、也没人想去的地点，数据库会顺带删掉；查一下还在不在 */
@@ -1181,7 +1186,7 @@
               });
               return Promise.all(blobs).then(function (list) {
                 return self.addReview({
-                  placeId: p.id, rating: r.rating == null ? null : clamp(Math.round(r.rating * 2) / 2, 0, 5), price: r.price || null,
+                  placeId: p.id, rating: r.rating == null ? null : clamp(Math.round(r.rating * 2) / 2, 0, 5), price: r.price || null, priceCurrency: validPriceCurrency(r.priceCurrency),
                   title: r.title ? String(r.title).slice(0, 80) : null, text: String(r.text || '').slice(0, 1000), visibility: r.visibility === 'private' ? 'private' : 'public'
                 }, list);
               });
@@ -1316,10 +1321,10 @@
   }
   function fmtPrice(n) { var v = Math.round(n * 10) / 10; return v % 1 === 0 ? String(v) : v.toFixed(1); }
   /* 人均按地点所在地的货币（用户 2026-11-02）：人民币（中国大陆）、港币、澳门元、新币、欧元、澳元、美元、加元、英镑，
-     别的地方（日本、韩国、台湾、泰国、印尼…）都用 RM。界面上只出货币符号，不出国家名。
+     别的地方（日本、韩国、台湾、泰国、印尼…）都用 RM。界面使用货币简称，人民币显示 RMB（数据库仍用标准 CNY）。
      places.cc 存两位代码，新建地点时问 Photon；马来西亚大部分范围直接认，不用问 */
   var EURO_CC = 'AT BE BG HR CY EE FI FR DE GR IE IT LV LT LU MT NL PT SK SI ES MC SM VA AD ME XK'.split(' ');
-  var CUR_SYM = { CN: '¥', HK: 'HK$', MO: 'MOP$', SG: 'S$', AU: 'A$', US: 'US$', CA: 'C$', GB: '£', EUR: '€' };
+  var CUR_SYM = { CN: 'RMB', HK: 'HKD', MO: 'MOP', SG: 'SGD', AU: 'AUD', US: 'USD', CA: 'CAD', GB: 'GBP', EUR: 'EUR' };
   /* 筛选“RM x 左右”时换成 RM 大概比（2026-11 的约值，够筛选用） */
   var CUR_RM = { CN: 0.6, HK: 0.52, MO: 0.50, SG: 3.3, AU: 2.8, US: 4.2, CA: 3.0, GB: 5.6, EUR: 4.8 };
   function curKey(cc) { cc = String(cc || '').toUpperCase(); return EURO_CC.indexOf(cc) !== -1 ? 'EUR' : CUR_SYM[cc] ? cc : ''; }
@@ -1343,7 +1348,7 @@
       /* Refresh visible amounts, without rebuilding an unfinished form or photo import. */
       if (state.view === 'form') {
         var f = state.form, p = f && f.placeId ? placeById(f.placeId) : null, loc = f && formCurLoc(f, p), lab = $('label[for="f-price"]');
-        if (lab && loc) lab.textContent = t('priceFood', { c: p ? curSym(p) : curSymAt(ccNow(loc.lat, loc.lng)) });
+        if (lab && loc) updateFormCurrency();
       } else if (state.bulk) (state.bulk.groups || []).forEach(setBulkCur);
       else if (!state.picking && !document.querySelector('input:focus, textarea:focus, select:focus')) { render(); refreshMap(); }
     }, 100);
@@ -1388,11 +1393,55 @@
     var stored = String(p.cc || '').toUpperCase(), cached = ccNow(p.lat, p.lng);
     return (!stored || stored === 'CN' ? cached || stored : stored) || '';
   }
-  function curSymAt(cc) { return CUR_SYM[curKey(cc)] || 'RM'; }
+  function curSymAt(cc) { return CUR_SYM[curKey(cc)] || 'MYR'; }
   function curSym(p) { return curSymAt(placeCC(p)); }
   function money(p, n) { return curSym(p) + ' ' + fmtPrice(n); }
   function priceRM(p, n) { return n ? n * (CUR_RM[curKey(placeCC(p))] || 1) : n; }
   window.__curSym = function (cc) { return curSymAt(cc); }; /* 测试用 */
+  /* Original amounts are stored with their currency. Conversion is display-only and approximate.
+     JP/KR/TH/ID/TW keep the previous MYR default; their local currency is opt-in. */
+  var LOCAL_PRICE_CUR = { CN:'CNY', HK:'HKD', MO:'MOP', SG:'SGD', AU:'AUD', US:'USD', CA:'CAD', GB:'GBP', EUR:'EUR', JP:'JPY', KR:'KRW', TH:'THB', ID:'IDR', TW:'TWD' };
+  var PRICE_SYM = { MYR:'MYR', CNY:'RMB', HKD:'HKD', MOP:'MOP', SGD:'SGD', AUD:'AUD', USD:'USD', CAD:'CAD', GBP:'GBP', EUR:'EUR', JPY:'JPY', KRW:'KRW', THB:'THB', IDR:'IDR', TWD:'TWD' };
+  /* Budget estimates, not a live or transaction exchange rate. */
+  var PRICE_RATE = { MYR:1, CNY:CUR_RM.CN, HKD:CUR_RM.HK, MOP:CUR_RM.MO, SGD:CUR_RM.SG, AUD:CUR_RM.AU, USD:CUR_RM.US, CAD:CUR_RM.CA, GBP:CUR_RM.GB, EUR:CUR_RM.EUR, JPY:.026, KRW:.0031, THB:.12, IDR:.00025, TWD:.13 };
+  var priceViews = new Map();
+  function validPriceCurrency(c) { return Object.prototype.hasOwnProperty.call(PRICE_SYM, c) ? c : null; }
+  function localPriceCurrency(p) { var cc = placeCC(p); return LOCAL_PRICE_CUR[EURO_CC.indexOf(cc) !== -1 ? 'EUR' : cc] || 'MYR'; }
+  function defaultPriceCurrency(p) { return LOCAL_PRICE_CUR[curKey(placeCC(p))] || 'MYR'; }
+  function priceRate(c) { return PRICE_RATE[validPriceCurrency(c) || 'MYR']; }
+  function reviewPriceCurrency(p, r) { return validPriceCurrency(r && r.priceCurrency) || defaultPriceCurrency(p); }
+  function reviewPriceRM(p, r) { return r.price * priceRate(reviewPriceCurrency(p, r)); }
+  function priceChoices(p, keep) { var local = localPriceCurrency(p), a = ['MYR']; if (local !== 'MYR') a.push(local); if (validPriceCurrency(keep) && a.indexOf(keep) < 0) a.push(keep); return a; }
+  function formPricePlace() { var f = state.form; return f && (f.placeId ? placeById(f.placeId) : f.loc) || null; }
+  function formPriceCurrency() { return validPriceCurrency(state.form && state.form.priceCurrency) || defaultPriceCurrency(formPricePlace()); }
+  function priceSelectOptions(p, current) { return priceChoices(p,current).map(function (c) { return '<option value="' + c + '"' + (c === current ? ' selected' : '') + '>' + esc(PRICE_SYM[c]) + '</option>'; }).join(''); }
+  function formPriceFieldHTML() {
+    var c = formPriceCurrency();
+    return fieldHTML('f-price', esc(t('priceFood',{c:PRICE_SYM[c]})), '<div class="price-input-row"><select id="f-price-currency" class="input price-unit" aria-label="' + esc(state.lang === 'en' ? 'Price currency' : '金额币种') + '">' + priceSelectOptions(formPricePlace(), c) + '</select><input id="f-price" class="input" type="number" inputmode="decimal" min="0" max="99999999.99" step="0.01"></div>');
+  }
+  function updateFormCurrency() {
+    var lab = $('label[for="f-price"]'), sel = $('#f-price-currency'), c = formPriceCurrency();
+    if (lab) lab.textContent = t('priceFood',{c:PRICE_SYM[c]});
+    if (sel) sel.innerHTML = priceSelectOptions(formPricePlace(), c);
+  }
+  function priceToggleHTML(p, amount, currency, key) {
+    amount = Number(amount); if (!isFinite(amount) || amount <= 0) return '<span>—</span>';
+    var local = localPriceCurrency(p), source = validPriceCurrency(currency) || defaultPriceCurrency(p), target = priceViews.get(key) || defaultPriceCurrency(p);
+    if (target !== 'MYR' && target !== local) target = defaultPriceCurrency(p);
+    var n = amount * priceRate(source) / priceRate(target), approx = source !== target;
+    var text = (approx ? (state.lang === 'en' ? '≈ ' : '约 ') : '') + PRICE_SYM[target] + ' ' + fmtPrice(n);
+    if (local === 'MYR') return '<span>' + esc(text) + '</span>';
+    var next = target === 'MYR' ? local : 'MYR';
+    var label = text + (state.lang === 'en' ? '; switch to ' : '，点击切换为 ') + PRICE_SYM[next] + (approx ? (state.lang === 'en' ? '; estimated rate' : '，估算汇率') : '');
+    return '<button type="button" class="price-toggle" data-action="price-toggle" data-price-key="' + esc(key) + '" data-price-place="' + esc(p.id || '') + '" data-price-cc="' + esc(placeCC(p)) + '" data-price-amount="' + amount + '" data-price-source="' + source + '" data-price-target="' + target + '" aria-label="' + esc(label) + '" title="' + esc(label) + '"><span>' + esc(text) + '</span><i aria-hidden="true">↔</i></button>';
+  }
+  function togglePrice(el) {
+    var d = el.dataset, p = placeById(d.pricePlace) || {cc:d.priceCc}, next = d.priceTarget === 'MYR' ? localPriceCurrency(p) : 'MYR';
+    priceViews.set(d.priceKey, next);
+    /* Keep photos, scroll position and the surrounding card untouched. */
+    var wrap = document.createElement('div'); wrap.innerHTML = priceToggleHTML(p,+d.priceAmount,d.priceSource,d.priceKey);
+    var fresh = wrap.firstElementChild; el.replaceWith(fresh); fresh.focus({preventScroll:true});
+  }
   function timeAgo(ts) {
     var d = Date.now() - ts, min = 60000;
     if (d < min) return t('justNow');
@@ -1504,7 +1553,7 @@
     return {
       rs: rs, count: rs.length, raters: positive.length || scored.length, zeros: positive.length ? scored.length - positive.length : 0,
       score: score == null ? null : Math.round(score * 10) / 10,
-      avgPrice: avgOf(priced, 'price') || 0
+      avgPrice: priced.length ? priced.reduce(function (sum, r) { return sum + reviewPriceRM(p, r); }, 0) / priced.length / priceRate(defaultPriceCurrency(p)) : 0
     };
   }
 
@@ -1648,7 +1697,7 @@
   function modeOk(p) { return p.mode === state.mode || (state.scope === 'mine' && state.mineBoth) || state.scope === 'person'; }
   function passesFilters(p, s) {
     if (!modeOk(p)) return false;
-    if (state.scope === 'mine' || state.scope === 'person') return true; /* 我的地图只分美食 / 旅行，不用分类和筛选 */
+    if (state.scope === 'mine' || state.scope === 'person') return true; /* 我的地图只分美食 / 玩乐，不用分类和筛选 */
     if (state.cat !== 'all' && !catMatch(p, state.cat)) return false;
     s = s || stats(p);
     if (state.priceAbout && !priceFits(priceRM(p, s.avgPrice), state.priceAbout)) return false;

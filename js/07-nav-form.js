@@ -119,7 +119,7 @@
     else if (state.view === 'home') leaveHomeSet();
     else goFeed();
   }
-  /* 个人主页：点作者名字 / 头像进去（他在“我的”里打开了才行），地图只放他分享到大地图的记录，美食美景一起。
+  /* 个人主页：点作者名字 / 头像进去（他在“我的”里打开了才行），地图只放他分享到大地图的记录，美食玩乐一起。
      返回回到点进来之前的那一页 */
   function openPerson(id) {
     if (!canOpenPerson(id)) return;
@@ -383,7 +383,7 @@
     state.form = newForm({
       placeId: p.id, editId: r.id, loc: { lng: p.lng, lat: p.lat }, cat: p.cat, precision: p.precision, osm: p.osm || '',
       relocate: true, origPlaceId: p.id, origName: p.name || '',
-      rating: r.rating, visibility: r.visibility,
+      rating: r.rating, visibility: r.visibility, priceCurrency: reviewPriceCurrency(p,r),
       photos: (r.photos || []).map(function (id) { return { id: id, existing: true }; }),
       draft: { name: p.name, alt: p.altName, link: p.link, price: r.price ? String(r.price) : '', title: r.title || '', text: r.text }
     });
@@ -753,7 +753,7 @@
     } : null;
     var price = ((p0 ? p0.mode : state.mode) === 'food') ? parseFloat(d.price) : NaN;
     var rv = {
-      rating: f.rating, price: isFinite(price) && price > 0 ? Math.round(price * 100) / 100 : null,
+      rating: f.rating, priceCurrency: formPriceCurrency(), price: isFinite(price) && price > 0 ? Math.round(price * 100) / 100 : null,
       title: (d.title || '').trim().slice(0, 80) || null, text: (d.text || '').trim().slice(0, 1000), visibility: f.visibility
     };
     /* 照片是一小时以前拍的才改日期，刚拍刚发的照常用现在 */
