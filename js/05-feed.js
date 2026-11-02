@@ -134,7 +134,7 @@
     /* 自己的主页：点头像或名字就能改（用户 2026-11-02） */
     var head = avatarHTML(name, id) + '<div class="ph-text"><h1>' + esc(name) + '</h1>' + (from ? '<small>' + esc(t('fromPrefix') + from) + '</small>' : '') + '</div>';
     h += mine && store.signedIn()
-      ? '<button type="button" class="person-head ph-edit-btn" data-action="edit-profile" aria-label="' + esc(en ? 'Edit name' : '修改名字') + '">' + head + '<span class="ph-pen">' + esc(en ? 'Edit' : '修改') + '</span></button>'
+      ? '<button type="button" class="person-head ph-edit-btn" data-action="edit-profile" aria-label="' + esc(en ? 'Edit avatar and name' : '修改头像和名字') + '">' + head + '<span class="ph-pen">' + esc(en ? 'Edit' : '修改') + '</span></button>'
       : '<div class="person-head">' + head + '</div>';
     h += '<div class="person-stats"><span><b>' + food + '</b>' + esc(en ? 'food' : '美食') + '</span><span><b>' + scen + '</b>' + esc(en ? 'scenery' : '美景') + '</span><span><b>' + rs.length + '</b>' + esc(en ? 'posts' : '分享') + '</span></div>';
     if (mine && !store.pagePublic(id)) h += '<p class="f-hint person-note">' + esc(en ? 'Only you can open this page now. Turn it on in Me so classmates can.' : '现在只有你自己点得进来；在“我的”里打开后，同学点你的名字也能进来。') + '</p>';

@@ -38,7 +38,7 @@
   /* 改名字：个人主页点头像/名字打开（头像现在是名字的第一个字，改名字头像跟着变） */
   function openProfileDialog() {
     var en = state.lang === 'en', name = me().name || '';
-    openModal('<form class="modal-card" id="profile-form"><h3>' + esc(en ? 'Your name' : '修改名字') + '</h3>' +
+    openModal('<form class="modal-card" id="profile-form"><h3>' + esc(en ? 'Avatar and name' : '头像和名字') + '</h3>' +
       '<div class="pf-preview"><button type="button" class="pf-av-btn" data-action="pf-avatar-pick" aria-label="' + esc(en ? 'Change photo' : '换头像照片') + '"><span id="pf-preview">' + avatarHTML(name || '?', me().id) + '</span><i>' + esc(en ? 'Change photo' : '换照片') + '</i></button>' +
       '<input id="pf-avatar-file" type="file" accept="image/*" hidden></div>' +
       '<input id="pf-dialog-name" class="input" maxlength="20" autocomplete="nickname" value="' + esc(name) + '" placeholder="' + esc(t('nicknamePh')) + '">' +
