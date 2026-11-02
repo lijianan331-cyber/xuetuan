@@ -124,29 +124,42 @@
     });
   }
 
-  function toggleSave(placeId) {
-    var on = !store.isSaved(placeId);
-    store.setSaved(placeId, on).then(function () {
-      toast(t(on ? 'wishAdded' : 'wishRemoved'));
-      refreshMap();
-      if (placeById(placeId)) render(); else goFeed();
+  var savedWrites = new Map();
+  function savedButtons(placeId) {
+    return $$('[data-action="save-place"], [data-action="toggle-save"]').filter(function (b) { return b.dataset.id === placeId || (b.dataset.action === 'toggle-save' && state.placeId === placeId); });
+  }
+  function paintSavedButtons(placeId) {
+    savedButtons(placeId).forEach(function (b) {
+      var tmp = document.createElement('div'), action = b.dataset.action;
+      tmp.innerHTML = saveBtnHTML(placeId,b.classList.contains('pc-save'));
+      var fresh = tmp.firstElementChild; fresh.dataset.action = action;
+      fresh.disabled = savedWrites.has(placeId); fresh.setAttribute('aria-busy',String(savedWrites.has(placeId)));
+      b.replaceWith(fresh);
     });
   }
-
-  /* 卡片、帖子上的收藏：只换按钮的样子，不重画整页（不然图片会闪） */
   function savePlace(placeId) {
-    var on = !store.isSaved(placeId);
-    store.setSaved(placeId, on).then(function () {
-      toast(t(on ? 'wishAdded' : 'wishRemoved'));
-      refreshMap();
-      $$('[data-action="save-place"]').forEach(function (b) {
-        if (b.dataset.id !== placeId) return;
-        var tmp = document.createElement('div');
-        tmp.innerHTML = saveBtnHTML(placeId, b.classList.contains('pc-save'));
-        b.replaceWith(tmp.firstChild);
-      });
-    }, function () { toast(t('saveFail')); });
+    if (!placeId) { toast(state.lang === 'en' ? 'Place is still loading. Try again.' : '地点还没加载好，请稍后再试'); return Promise.resolve(false); }
+    if (savedWrites.has(placeId)) return savedWrites.get(placeId);
+    var on = !store.isSaved(placeId), actor = me().id;
+    savedButtons(placeId).forEach(function (b) { b.disabled = true; b.setAttribute('aria-busy','true'); b.classList.add('saving'); if (!b.classList.contains('pc-save')) b.innerHTML = (on ? ICON.star : ICON.starOn) + esc(state.lang === 'en' ? (on ? 'Saving…' : 'Removing…') : (on ? '收藏中…' : '取消中…')); });
+    var slow = setTimeout(function () { if (savedWrites.has(placeId)) toast(state.lang === 'en' ? 'Saving is taking longer. Please wait…' : '收藏保存较慢，请稍候…'); }, 4000);
+    var work = Promise.resolve().then(function () { return store.setSaved(placeId,on); }).then(function () {
+      if (actor !== me().id) return false;
+      toast(t(on ? 'wishAdded' : 'wishRemoved')); refreshMap();
+      if (!placeById(placeId) && state.view === 'place' && state.placeId === placeId) goFeed();
+      return true;
+    }, function (e) {
+      if (actor !== me().id) return false;
+      var message = String(e && e.message || e || '');
+      toast(/XUETUAN_/.test(message) ? securitySaveError(e) : (state.lang === 'en' ? 'Could not save. Check your connection and retry.' : '收藏没有保存成功，请检查网络后重试'));
+      return false;
+    }).finally(function () {
+      clearTimeout(slow); savedWrites.delete(placeId);
+      if (actor === me().id) paintSavedButtons(placeId);
+    });
+    savedWrites.set(placeId,work); return work;
   }
+  function toggleSave(placeId) { return savePlace(placeId); }
   /* 还不在雪团的地方（搜索结果、底图上的店）先收藏：建一个没有记录的地点，放进想去 */
   function savePreview(r) {
     var p0 = osmExisting(r);
@@ -419,7 +432,7 @@
         store.updateProfile({ page_public: !store.pagePublic(me().id) }).then(function () { if (state.view === 'feed' && state.tab === 'me') { var y = view.scrollTop; render(); view.scrollTop = y; } }, function () { toast(t('saveFail')); });
         break;
       case 'post-place': openPostPlace(d.id); break;
-      case 'save-place': { var spl = d.id; if (requireLogin(function () { savePlace(spl); })) savePlace(spl); break; }
+      case 'save-place': { if (!store.signedIn()) toast(state.lang === 'en' ? 'Preparing to save…' : '正在准备收藏，请稍候…'); var spl = d.id; if (requireLogin(function () { savePlace(spl); })) savePlace(spl); break; }
       case 'save-preview': { var spv = state.preview; if (spv && requireLogin(function () { savePreview(spv); })) savePreview(spv); break; }
       case 'cat': state.cat = d.cat; refilter(); break;
       case 'saved-want': state.savedWant = d.v === 'want'; refilter(); break;
@@ -474,7 +487,7 @@
       case 'open-place': openPlace(d.id); break;
       case 'back': back(); break;
       case 'write-review': { var wpid = state.placeId; if (wpid && requireLogin(function () { startReview(wpid); })) startReview(wpid); break; }
-      case 'toggle-save': { var tpid = d.id || state.placeId; if (tpid && requireLogin(function () { toggleSave(tpid); })) toggleSave(tpid); break; }
+      case 'toggle-save': { if (!store.signedIn()) toast(state.lang === 'en' ? 'Preparing to save…' : '正在准备收藏，请稍候…'); var tpid = d.id || state.placeId; if (tpid && requireLogin(function () { toggleSave(tpid); })) toggleSave(tpid); break; }
       case 'copy-coords': copyCoords(d.c); break;
       case 'photo': openLightbox(d.id, d.group); break;
       /* 点照片任何地方都放大（右下角的放大图标只是提示，用户 2026-11-02） */
