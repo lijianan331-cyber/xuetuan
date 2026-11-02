@@ -1694,8 +1694,11 @@
   function inCampus(p) { return !!p && p.lat >= XMUM_BOX.s && p.lat <= XMUM_BOX.n && p.lng >= XMUM_BOX.w && p.lng <= XMUM_BOX.e; }
   function distLabel(p) { return inCampus(p) ? 'XMUM' : t('distFrom', { d: fmtDist(haversine(XMUM, p)) }); }
   window.__distLabel = distLabel; /* 测试用 */
+  /* 龙溪(Dengkil)镇上离 XMUM 只有 3–5 公里，按直线会落进短途；用户说龙溪算中距离（2026-11-02）：镇中心 2.2 公里内都算中距离 */
+  var DENGKIL = { lat: 2.8605, lng: 101.6790 };
   function distTier(p) {
     var d = haversine(XMUM, p);
+    if (d > 1300 && d <= 20000 && haversine(DENGKIL, p) <= 2200) return 'mid';
     for (var i = 0; i < DIST_TIERS.length; i++) if (d <= DIST_TIERS[i].max) return DIST_TIERS[i].id;
     return 'far';
   }

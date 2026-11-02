@@ -148,6 +148,7 @@ def touch_drag(pg, x, y0, y1, steps=8):
 
 def tier(x):
     d = dist_m(x['lat'], x['lng'])
+    if 1300 < d <= 20000 and dist_m(x['lat'], x['lng'], 2.8605, 101.6790) <= 2200: return 'mid'
     return 'walk' if d <= 1300 else 'short' if d <= 6000 else 'mid' if d <= 20000 else 'kl' if d <= 50000 else 'far'
 
 def map_expr(e, z, props):
@@ -520,6 +521,8 @@ with sync_playwright() as p:
       money({cc: "CN"}, 35), money({lat: 3.15, lng: 101.7}, 12), priceRM({cc: "SG"}, 10), priceRM({cc: "TW"}, 10), ccNow(2.83, 101.70), ccNow(1.30, 103.85)]''')
     check('currency by place country: CN/HK/MO/SG/euro/GB/US/CA/AU use local units; TW/JP stay RM; filter compares in RM',
           cur == ['RMB SGD EUR EUR GBP USD CAD AUD MYR HKD MOP MYR MYR MYR MYR MYR MYR', 'RMB 35', 'MYR 12', 33, 10, 'MY', ''], cur)
+    dk = page.evaluate('[distTier({lat: 2.8605, lng: 101.6790}), distTier({lat: 2.8545, lng: 101.6830}), distTier({lat: 2.8330, lng: 101.6850})]')
+    check('Dengkil (龙溪) town counts as mid ride even though it is only ~4 km away; the McD on road 29 stays short', dk == ['mid', 'mid', 'short'], dk)
     page.click('#f-submit')
     page.wait_for_timeout(600)
     check('after publish: place view', page.locator('.place-head h2').count() == 1 and page.inner_text('.place-head h2') == '测试椰浆饭', errors[-4:])
