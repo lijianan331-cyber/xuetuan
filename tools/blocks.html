@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>XMUM 楼位置</title>
+<meta name="robots" content="noindex">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.css">
+<style>
+  /* 一次性小工具：在地图上点出各栋楼的位置，复制坐标发回去 */
+  :root { --blue: #2A9BEC; --ink: #16324a; --muted: #6b7f92; --bg: #fff; --soft: #eef6fd; }
+  html, body { height: 100%; margin: 0; font: 15px/1.4 system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; color: var(--ink); background: var(--bg); }
+  #map { position: absolute; inset: 0; }
+  .top { position: absolute; z-index: 2; top: max(10px, env(safe-area-inset-top)); left: 10px; right: 10px; background: var(--bg); border-radius: 14px; box-shadow: 0 4px 18px rgba(20,50,80,.18); padding: 10px 12px; }
+  .top p { margin: 0 0 8px; font-size: 13.5px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip { border: 1.5px solid #cfe3f5; background: var(--bg); color: var(--ink); border-radius: 999px; padding: 6px 11px; font: inherit; font-size: 14px; cursor: pointer; }
+  .chip.on { background: var(--blue); border-color: var(--blue); color: #fff; }
+  .chip.done:not(.on)::after { content: ' ✓'; color: var(--blue); font-weight: 700; }
+  .bottom { position: absolute; z-index: 2; left: 10px; right: 10px; bottom: max(10px, env(safe-area-inset-bottom)); background: var(--bg); border-radius: 14px; box-shadow: 0 4px 18px rgba(20,50,80,.18); padding: 10px 12px; display: grid; gap: 8px; }
+  textarea { width: 100%; box-sizing: border-box; height: 92px; border: 1px solid #d6e4f0; border-radius: 10px; padding: 8px; font: 12.5px/1.45 ui-monospace, Menlo, monospace; color: var(--ink); background: var(--soft); resize: none; }
+  .row { display: flex; gap: 8px; }
+  .btn { flex: 1; border: 0; border-radius: 10px; padding: 11px; font: inherit; font-weight: 600; cursor: pointer; background: var(--soft); color: var(--ink); }
+  .btn.primary { background: var(--blue); color: #fff; }
+  .tag { background: var(--blue); color: #fff; font-size: 12px; font-weight: 700; padding: 3px 7px; border-radius: 8px; white-space: nowrap; transform: translateY(-14px); box-shadow: 0 2px 6px rgba(0,0,0,.25); }
+  .tag::after { content: ''; position: absolute; left: 50%; bottom: -5px; margin-left: -5px; border: 5px solid transparent; border-bottom: 0; border-top-color: var(--blue); }
+</style>
+</head>
+<body>
+<div id="map"></div>
+<div class="top">
+  <p id="hint">先点下面一栋楼的名字，再在地图上点它的位置（点楼的中间就行）。</p>
+  <div class="chips" id="chips"></div>
+</div>
+<div class="bottom">
+  <textarea id="out" readonly aria-label="坐标"></textarea>
+  <div class="row">
+    <button class="btn" id="sat" type="button">卫星图</button>
+    <button class="btn primary" id="copy" type="button">复制，发给 Claude</button>
+  </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.js"></script>
+<script>
+  var BLOCKS = ['B1', 'D6', 'LY3', 'Music Island 音乐岛', 'A3', 'IAEC'];
+  var pts = { 'D6': [101.70651, 2.83412] }; /* D6 先用“蜀之味”那条记录的位置，不对就重点 */
+  var cur = 'B1', marks = {};
+  var map = new maplibregl.Map({ container: 'map', style: 'https://tiles.openfreemap.org/styles/liberty', center: [101.7045, 2.8335], zoom: 16.2, attributionControl: { compact: true } });
+  function chips() {
+    document.getElementById('chips').innerHTML = BLOCKS.map(function (b) {
+      return '<button type="button" class="chip' + (b === cur ? ' on' : '') + (pts[b] ? ' done' : '') + '" data-b="' + b + '">' + b + '</button>';
+    }).join('');
+    document.getElementById('hint').textContent = cur ? '现在在点：' + cur + '。在地图上点它的位置（可以先放大）。' : '都点完了，复制下面的文字发给 Claude。';
+    document.getElementById('out').value = BLOCKS.filter(function (b) { return pts[b]; }).map(function (b) { return b + ': ' + pts[b][1].toFixed(5) + ', ' + pts[b][0].toFixed(5); }).join('\n');
+  }
+  function draw(b) {
+    if (marks[b]) marks[b].remove();
+    var el = document.createElement('div'); el.className = 'tag'; el.textContent = b;
+    marks[b] = new maplibregl.Marker({ element: el, anchor: 'bottom' }).setLngLat(pts[b]).addTo(map);
+  }
+  document.getElementById('chips').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-b]'); if (!b) return;
+    cur = b.dataset.b; chips();
+  });
+  map.on('click', function (e) {
+    if (!cur) return;
+    pts[cur] = [e.lngLat.lng, e.lngLat.lat]; draw(cur);
+    var next = BLOCKS.filter(function (b) { return !pts[b]; })[0];
+    cur = next || null; chips();
+  });
+  map.on('load', function () {
+    draw('D6');
+    map.addSource('sat', { type: 'raster', tileSize: 256, maxzoom: 19, tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'], attribution: 'Esri World Imagery' });
+    map.addLayer({ id: 'sat', type: 'raster', source: 'sat', layout: { visibility: 'none' } });
+  });
+  var satOn = false;
+  document.getElementById('sat').addEventListener('click', function () {
+    satOn = !satOn;
+    if (map.getLayer('sat')) map.setLayoutProperty('sat', 'visibility', satOn ? 'visible' : 'none');
+    this.textContent = satOn ? '普通地图' : '卫星图';
+  });
+  document.getElementById('copy').addEventListener('click', function () {
+    var t = document.getElementById('out'), btn = this;
+    function done() { btn.textContent = '已复制'; setTimeout(function () { btn.textContent = '复制，发给 Claude'; }, 1600); }
+    if (navigator.clipboard) navigator.clipboard.writeText(t.value).then(done, function () { t.select(); });
+    else { t.select(); try { document.execCommand('copy'); done(); } catch (e) {} }
+  });
+  chips();
+</script>
+</body>
+</html>
