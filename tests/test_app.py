@@ -1901,6 +1901,11 @@ with sync_playwright() as p:
     check('bulk preview closes with place and score intact', stars_val(pb, '#bk-rate-1') == '4' and pb.locator('#bk-1 .bk-ph[data-on="true"]').count() == picked_before)
     check('bulk preview keeps a bounded image and import thumbnails alive', pb.evaluate('[...document.querySelectorAll("#bk-1 .bk-preview img")].every(i => i.complete && i.naturalWidth > 0)'))
 
+    pb.fill('[data-bk-q="1"]', '巷子口小面馆')
+    pb.wait_for_function('document.querySelector("#bk-known-1 .bk-here")', timeout=5000)
+    check('bulk: a group with photo GPS offers "use this name at the photo spot" (Google misses small shops)', '就用「巷子口小面馆」' in pb.inner_text('#bk-known-1 .bk-here') and '拍照的地方' in pb.inner_text('#bk-known-1 .bk-here'))
+    pb.fill('[data-bk-q="1"]', '')
+    pb.wait_for_timeout(150)
     pb.click('#bk-1 .bk-check >> nth=1')
     pb.click('#bk-0 [data-action="bulk-mode"][data-v="travel"]')
     rate(pb, 3.5, '#bk-rate-0')

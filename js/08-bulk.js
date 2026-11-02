@@ -361,8 +361,11 @@
   }
   function bulkKnownHTML(g) {
     g.known = bulkKnown(g);
+    /* 谷歌搜不到的小店（中国的小店常这样，用户 2026-11-02）：照片里有位置时，一点就用打的名字 + 拍照的位置 */
+    var q = (g.q || '').trim();
+    if (q && g.plat != null && g.plng != null) g.known.push({ name: q.slice(0, 60), lat: g.plat, lng: g.plng, mode: g.mode, osm: '', here: true });
     return g.known.map(function (r, k) {
-      return '<button type="button" class="chip" data-action="bulk-known" data-i="' + g.i + '" data-k="' + k + '"><b>' + esc(r.name) + '</b><small>' + esc(r.been ? t('bulkBeen') : String(r.where || '').split(',')[0]) + '</small></button>';
+      return '<button type="button" class="chip' + (r.here ? ' bk-here' : '') + '" data-action="bulk-known" data-i="' + g.i + '" data-k="' + k + '"><b>' + esc(r.here ? (state.lang === 'en' ? 'Use “' + r.name + '”' : '就用「' + r.name + '」') : r.name) + '</b><small>' + esc(r.here ? (state.lang === 'en' ? 'at the photo spot' : '位置用拍照的地方') : r.been ? t('bulkBeen') : String(r.where || '').split(',')[0]) + '</small></button>';
     }).join('');
   }
   function bulkTake(g, r) {
@@ -619,7 +622,7 @@
     var c = g.pick >= 0 && g.cands ? g.cands[g.pick] : null;
     /* 用户把吃 / 玩换了：不沿用那家已有的地点和分类，按用户选的另建一个 */
     var mode = g.mode, keep = !!c && c.mode === mode;
-    var key = c ? (keep && c.place ? c.place : (c.osm || c.place || '')) + ':' + mode : '';
+    var key = c ? (keep && c.place ? c.place : (c.osm || c.place || ('here:' + c.name + '@' + round6(c.lat) + ',' + round6(c.lng)))) + ':' + mode : '';
     var p0 = keep && c.place ? placeById(c.place) : key && made[key] ? placeById(made[key]) : null;
     var name = (c ? c.name : g.name.trim()) || t(mode === 'food' ? 'unnamedFood' : 'unnamedTravel');
     /* 谷歌上的店：按谷歌的店铺类型分；地点库带来的旧“日韩”按店名分 */
