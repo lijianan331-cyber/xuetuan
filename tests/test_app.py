@@ -1978,6 +1978,19 @@ with sync_playwright() as p:
             {'id': 'v-b-pub', 'place_id': 'p-b-pub', 'user_id': B, 'rating': 5, 'price': '12.00', 'text': '好吃', 'photos': ['fixture.jpg'], 'visibility': 'public', 'created_at': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime(time.time() - 2 * 86400))},
             {'id': 'v-b-priv', 'place_id': 'p-b-priv', 'user_id': B, 'rating': 1, 'price': None, 'text': '秘密', 'photos': [], 'visibility': 'private', 'created_at': '2026-10-02T00:00:00Z'}]
     }
+    # Supabase 一次最多回 1000 行：读地点/记录/家要一页一页接着读，不能只拿到第一页（发布前检查 2026-11-02）
+    pg_seed = {'profiles': [{'id': B, 'name': '小B'}], 'homes': [{'user_id': B, 'city': 'Klang', 'lat': 3.0, 'lng': 101.4, 'is_public': True}],
+               'places': [{'id': 'pp-%d' % i, 'mode': 'food', 'cat': 'cn', 'precision': 'exact', 'lat': 2.83 + i * 0.001, 'lng': 101.70, 'name': '分页店%d' % i, 'alt_name': '', 'link': '', 'osm': '', 'created_by': B, 'created_at': '2026-10-01T00:00:00Z'} for i in range(5)],
+               'visits': [{'id': 'pv-%d' % i, 'place_id': 'pp-%d' % i, 'user_id': B, 'rating': 4, 'price': None, 'text': '', 'photos': [], 'visibility': 'public', 'created_at': '2026-10-02T00:00:00Z'} for i in range(5)]}
+    ctxp = browser.new_context(viewport={'width': 390, 'height': 844})
+    route_all(ctxp, supabase=True)
+    ctxp.add_init_script('window.__sbPageRows = 2; window.__sbSeed = ' + json.dumps(pg_seed) + ';')
+    pgp = ctxp.new_page()
+    pgp.goto(APP)
+    pgp.wait_for_function('window.__map && window.__map.getSource("places") && window.__map.getSource("places").data.features.length >= 5', timeout=8000)
+    pnames = sorted(pgp.evaluate('window.__map.getSource("places").data.features.map(f => f.properties.name)'))
+    check('remote: places/visits load page by page past the server row cap (none silently dropped)', pnames == ['分页店%d' % i for i in range(5)] and pgp.evaluate('window.__sbRangeCalls') >= 6, (pnames, pgp.evaluate('window.__sbRangeCalls')))
+    ctxp.close()
     ctx6 = browser.new_context(viewport={'width': 390, 'height': 844}, device_scale_factor=2, has_touch=True, accept_downloads=True)
     route_all(ctx6, supabase=True)
     ctx6.add_init_script('window.__sbSeed = ' + json.dumps(sb_seed) + ';')

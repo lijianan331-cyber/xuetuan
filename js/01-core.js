@@ -817,18 +817,32 @@
       return client.storage.from('photos').remove(paths.concat(paths.map(thumbPath))).then(function () {}, function () {});
     }
 
+    /* Supabase 每次最多回 1000 行（max-rows），超过就一页一页接着读，不然人多了地点会悄悄少掉 */
+    var PAGE_ROWS = window.__sbPageRows || 1000;
+    function fetchAll(build) {
+      var out = [];
+      function page(from) {
+        return build().range(from, from + PAGE_ROWS - 1).then(function (r) {
+          if (r.error) return r;
+          var rows = r.data || [];
+          out = out.concat(rows);
+          return rows.length < PAGE_ROWS || out.length >= 50000 ? { data: out, error: null } : page(from + PAGE_ROWS);
+        });
+      }
+      return page(0);
+    }
     function loadAll(guard) {
       var uid = uidNow();
       return Promise.all([
-        client.from('places').select('*').limit(10000),
+        fetchAll(function () { return client.from('places').select('*').order('id'); }),
         /* 头像列是 2026-11-02 加的，数据库还没加时退回不带头像的读法 */
-        client.from('visits').select('*, author:profiles(name, page_public, avatar)').order('created_at', { ascending: false }).limit(10000).then(function (r) {
-          return r.error ? client.from('visits').select('*, author:profiles(name, page_public)').order('created_at', { ascending: false }).limit(10000) : r;
+        fetchAll(function () { return client.from('visits').select('*, author:profiles(name, page_public, avatar)').order('created_at', { ascending: false }).order('id'); }).then(function (r) {
+          return r.error ? fetchAll(function () { return client.from('visits').select('*, author:profiles(name, page_public)').order('created_at', { ascending: false }).order('id'); }) : r;
         }),
         uid ? client.from('profiles').select('*').eq('id', uid).maybeSingle() : Promise.resolve({ data: null }),
         uid ? client.from('wishlist').select('*') : Promise.resolve({ data: [] }),
         /* 家这张表是后加的，读不到也别让整个应用打不开 */
-        client.from('homes').select('user_id, city, lat, lng, is_public, owner:profiles(name)').limit(10000).then(function (r) { return r.error ? { data: [] } : r; }, function () { return { data: [] }; }),
+        fetchAll(function () { return client.from('homes').select('user_id, city, lat, lng, is_public, owner:profiles(name)').order('user_id'); }).then(function (r) { return r.error ? { data: [] } : r; }, function () { return { data: [] }; }),
         uid ? client.rpc('xuetuan_is_admin').then(function (r) { return !r.error && r.data === true; }, function () { return false; }) : Promise.resolve(false)
       ]).then(function (res) {
         if (uid !== uidNow() || (guard && !guard())) return false;

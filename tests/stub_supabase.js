@@ -57,6 +57,7 @@
   Query.prototype.lte = function (k, v) { this.filters.push([k, v, 'lte']); return this; };
   Query.prototype.order = function () { return this; };
   Query.prototype.limit = function () { return this; };
+  Query.prototype.range = function (a, b) { this.span = [a, b]; window.__sbRangeCalls = (window.__sbRangeCalls || 0) + 1; return this; };
   Query.prototype.single = function () { this.one = 'single'; this.wantRows = true; return this; };
   Query.prototype.maybeSingle = function () { this.one = 'maybe'; this.wantRows = true; return this; };
   Query.prototype.match = function (row) {
@@ -109,6 +110,7 @@
       if (self.embed) o[self.embed] = db.profiles.filter(function (p) { return p.id === r.user_id; })[0] || null;
       return o;
     });
+    if (this.span) out = out.slice(this.span[0], this.span[1] + 1);
     if (!this.wantRows) return { data: null, error: null };
     if (this.one === 'single') return out.length === 1 ? { data: out[0], error: null } : err('expected one row, got ' + out.length);
     if (this.one === 'maybe') return { data: out[0] || null, error: null };
