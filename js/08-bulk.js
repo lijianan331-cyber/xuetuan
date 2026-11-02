@@ -267,9 +267,26 @@
     return d.toLocaleDateString(state.lang === 'en' ? 'en-MY' : 'zh-CN', sameYear ? { month: 'short', day: 'numeric', weekday: 'short' } : { year: 'numeric', month: 'short', day: 'numeric' });
   }
   /* 评论和人均放一行；人均只有美食才问（用户 2026-10-31：选填，一小块就行） */
+  /* 人均的货币跟着选的地点（没选就按拍照位置）走 */
+  function bulkCurLoc(g) {
+    var c = g.pick >= 0 && g.cands ? g.cands[g.pick] : null, p = c && c.place ? placeById(c.place) : null;
+    if (p) return p;
+    if (c && c.lat != null) return { lat: c.lat, lng: c.lng };
+    return g.plat != null ? { lat: g.plat, lng: g.plng } : null;
+  }
+  function bulkCur(g) { var l = bulkCurLoc(g); return l ? curSym(l) : 'RM'; }
+  function bulkCurCheck(g) {
+    var l = bulkCurLoc(g);
+    if (!l || placeCC(l)) { setBulkCur(g); return; }
+    ccAt(l.lat, l.lng).then(function () { setBulkCur(g); });
+  }
+  function setBulkCur(g) {
+    var el = $('[data-bk-price="' + g.i + '"]'), c = bulkCur(g);
+    if (el) { el.placeholder = t('bulkPrice', { c: c }); el.setAttribute('aria-label', t('priceFood', { c: c })); }
+  }
   function bulkCommentHTML(g) {
     return '<div class="bk-note"><textarea class="input bk-comment" rows="1" data-bk-comment="' + g.i + '" maxlength="1000" placeholder="' + esc(t('review')) + '" aria-label="' + esc(t('review')) + '">' + esc(g.comment || '') + '</textarea>' +
-      '<input class="input bk-price" type="number" inputmode="decimal" min="0" max="9999" step="0.5" data-bk-price="' + g.i + '" placeholder="' + esc(t('bulkPrice')) + '" aria-label="' + esc(t('priceFood')) + '" value="' + (g.price != null ? g.price : '') + '"' + (g.mode === 'food' ? '' : ' hidden') + '></div>';
+      '<input class="input bk-price" type="number" inputmode="decimal" min="0" max="9999" step="0.5" data-bk-price="' + g.i + '" placeholder="' + esc(t('bulkPrice', { c: bulkCur(g) })) + '" aria-label="' + esc(t('priceFood', { c: bulkCur(g) })) + '" value="' + (g.price != null ? g.price : '') + '"' + (g.mode === 'food' ? '' : ' hidden') + '></div>';
   }
   function updateBulkMode(g) {
     updateBulkModeSeg(g);
@@ -375,7 +392,7 @@
     var input = $('[data-bk-q="' + g.i + '"]'); if (input) { input.value = ''; input.blur(); }
     var box = $('#bk-google-' + g.i); if (box) box.hidden = true;
     var kn = $('#bk-known-' + g.i); if (kn) kn.innerHTML = '';
-    updateBulkPlace(g); updateBulkMode(g); updateBulkSave(); bulkMapUpdate(g);
+    updateBulkPlace(g); updateBulkMode(g); updateBulkSave(); bulkMapUpdate(g); bulkCurCheck(g);
   }
   function bulkKnownPick(i, k) {
     var g = state.bulk && state.bulk.groups && state.bulk.groups[i], r = g && g.known && g.known[k];

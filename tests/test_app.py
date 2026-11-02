@@ -507,6 +507,11 @@ with sync_playwright() as p:
       setTimeout(() => { const a = f.takenAt; f.takenAt = null; window.__formTakenAt(f, new File([new Uint8Array(8)], 'noexif2.jpg', {lastModified: fresh}));
         setTimeout(() => { const b = f.takenAt; f.takenAt = keep; res([a === old, b === null]); }, 150); }, 150); })''')
     check('single add: a photo without EXIF time falls back to the file time (if older than an hour)', lm == [True, True], lm)
+    check('price label uses RM for a place in Malaysia', 'RM' in page.inner_text('label[for="f-price"]'))
+    cur = page.evaluate('''() => [["CN","SG","FR","DE","GB","US","CA","AU","TW","HK","JP","KR","TH","ID","MY",""].map(c => window.__curSym(c)).join(" "),
+      money({cc: "CN"}, 35), money({lat: 3.15, lng: 101.7}, 12), priceRM({cc: "SG"}, 10), priceRM({cc: "TW"}, 10), ccNow(2.83, 101.70), ccNow(1.30, 103.85)]''')
+    check('currency by place country: only CN/SG/euro/GB/US/CA/AU change, the rest (TW, HK, JP…) stay RM; filter compares in RM',
+          cur == ['¥ S$ € € £ US$ C$ A$ RM RM RM RM RM RM RM RM', '¥ 35', 'RM 12', 33, 10, 'MY', ''], cur)
     page.click('#f-submit')
     page.wait_for_timeout(600)
     check('after publish: place view', page.locator('.place-head h2').count() == 1 and page.inner_text('.place-head h2') == '测试椰浆饭', errors[-4:])

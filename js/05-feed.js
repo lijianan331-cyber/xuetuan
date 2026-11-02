@@ -84,7 +84,7 @@
     var cover = n
       ? '<img data-photo="' + esc(r.photos[0]) + '" data-small loading="lazy" decoding="async" alt="">' + (n > 1 ? '<span class="fi-count">' + ICON.camera + n + '</span>' : '')
       : '<span class="pc-words' + (p.mode === 'travel' ? ' travel' : '') + '"><i aria-hidden="true">' + c.emoji + '</i><span>' + esc(text || catName(c)) + '</span></span>';
-    var score = (r.rating != null ? starsMiniHTML(r.rating) : '') + (r.price ? '<span>RM ' + fmtPrice(r.price) + '</span>' : '');
+    var score = (r.rating != null ? starsMiniHTML(r.rating) : '') + (r.price ? '<span>' + money(p, r.price) + '</span>' : '');
     return '<li class="post-card"><button type="button" class="pc-open" data-action="open-post" data-id="' + esc(r.id) + '">' +
       '<span class="pc-cover">' + cover + '</span><span class="pc-body"><span class="pc-place">' + esc(r.title || placeTitle(p)) + '</span>' +
       (score ? '<span class="pc-score">' + score + '</span>' : '') +
@@ -110,7 +110,7 @@
       : '<div class="post-who">' + pw + '</div>';
     var sc = [];
     if (r.rating != null) sc.push(starsMiniHTML(r.rating) + '<b style="color:' + scoreColor(r.rating) + '">' + fmtScore(r.rating) + '</b>');
-    if (r.price) sc.push('<span>RM ' + fmtPrice(r.price) + ' ' + esc(t(p.mode === 'food' ? 'perPerson' : 'costLabel')) + '</span>');
+    if (r.price) sc.push('<span>' + money(p, r.price) + ' ' + esc(t(p.mode === 'food' ? 'perPerson' : 'costLabel')) + '</span>');
     if (r.visibility === 'private') sc.push('<span class="pill">' + esc(t('visPrivateShort')) + '</span>');
     if (sc.length) h += '<div class="post-score">' + sc.join('<span class="sep">·</span>') + '</div>';
     if (r.title) h += '<h1 class="post-title">' + esc(r.title) + '</h1>';
@@ -259,7 +259,7 @@
     h += '<div class="stats">' +
       '<div class="stat"><b>' + (s.score != null ? '<span class="score-big" style="color:' + scoreColor(s.score) + '">' + fmtScore(s.score) + '</span>' : '—') + '</b><small>' + esc(scoreLabel(s)) + '</small></div>' +
       /* 旅行不记花费（用户 2026-10-26）：没有花费就不放这一格，不再显示“花费 —” */
-      (p.mode === 'food' || s.avgPrice ? '<div class="stat"><b>' + (s.avgPrice ? 'RM ' + fmtPrice(s.avgPrice) : '—') + '</b><small>' + esc(t(p.mode === 'food' ? 'perPerson' : 'costLabel')) + '</small></div>' : '') +
+      (p.mode === 'food' || s.avgPrice ? '<div class="stat"><b>' + (s.avgPrice ? money(p, s.avgPrice) : '—') + '</b><small>' + esc(t(p.mode === 'food' ? 'perPerson' : 'costLabel')) + '</small></div>' : '') +
       '<div class="stat"><b>' + s.count + '</b><small>' + esc(t('reviewsLabel')) + '</small></div></div>';
     h += '<h3 class="sec-title">' + esc(t('reviewsTitle')) + '</h3><ul class="reviews">' + reviews.map(reviewHTML).join('') + '</ul>';
     view.innerHTML = h;
@@ -299,6 +299,16 @@
     return !p || (!!f.editId && p.createdBy === me().id && !p.sample);
   }
 
+  /* 人均的货币跟着地点走：已有地点看它的国家，新地点按选的位置问一次 */
+  function formCurLoc(f, p) { return p ? { lat: p.lat, lng: p.lng } : f.loc || null; }
+  function formCurCheck() {
+    var f = state.form, p = f && f.placeId ? placeById(f.placeId) : null, loc = f && formCurLoc(f, p);
+    if (!loc || (p && p.cc) || ccNow(loc.lat, loc.lng)) return;
+    ccAt(loc.lat, loc.lng).then(function (cc) {
+      var lab = $('label[for="f-price"]');
+      if (cc && lab && state.form === f) lab.textContent = t('priceFood', { c: curSymAt(cc) });
+    });
+  }
   function renderForm() {
     var f = state.form;
     if (!f) { goFeed(); return; }
@@ -306,6 +316,7 @@
     var isFood = (p ? p.mode : state.mode) === 'food';
     var placeFields = formHasPlaceFields(f, p);
     var share = f.visibility === 'public';
+    var curLoc = formCurLoc(f, p), cur = p ? curSym(p) : curSymAt(curLoc && ccNow(curLoc.lat, curLoc.lng));
     var title = f.editId ? t('formEdit') : f.post ? (state.lang === 'en' ? 'Create post' : '发布分享') : p ? t('formReview') : t(isFood ? 'formNewFood' : 'formNewTravel');
     /* 发布按钮放在顶部右边，不用滑到底才找得到 */
     var h = '<div class="view-top"><button type="button" class="icon-btn flat" data-action="form-cancel" aria-label="' + esc(t('back')) + '">' + ICON.back + '</button><h2 class="view-title">' + esc(title) + '</h2>' +
@@ -346,11 +357,11 @@
       else if (f.loc) h += fieldHTML('f-name', esc(t('name')), '<input id="f-name" class="input" maxlength="60"' + (f.lockedName ? ' readonly' : '') + ' placeholder="' + esc(t(isFood ? 'namePhFood' : 'namePhTravel')) + '">');
       h += '<div class="btn-row"><button type="button" class="btn" id="post-location" data-action="post-location">' + ICON.pin + esc(state.lang === 'en' ? (p || f.loc ? 'Change place' : 'Find a place') : (p || f.loc ? '更换地点' : '搜索地点')) + '</button><button type="button" class="btn ghost" data-action="post-map">' + esc(t('addPin')) + '</button></div></div>';
       /* 发帖选了美食也能填人均（用户 2026-11-02） */
-      if (isFood) h += fieldHTML('f-price', esc(t('priceFood')) + ' <small>· ' + esc(t('optional')) + '</small>', '<input id="f-price" class="input" type="number" inputmode="decimal" min="0" step="0.5">');
+      if (isFood) h += fieldHTML('f-price', esc(t('priceFood', { c: cur })), '<input id="f-price" class="input" type="number" inputmode="decimal" min="0" step="0.5">');
     }
     if (!f.post) h += '<div class="field"><span class="f-label">' + esc(t('photos')) + ' <small>· ' + esc(t('photoLimit', { n: MAX_PHOTOS })) + '</small></span><div class="photo-grid" id="f-photos"></div></div>';
     /* 人均只问吃的（筛选按人均）；旅行不问花费（用户 2026-10-26） */
-    if (isFood && !f.post) h += fieldHTML('f-price', esc(t('priceFood')), '<input id="f-price" class="input" type="number" inputmode="decimal" min="0" step="0.5">');
+    if (isFood && !f.post) h += fieldHTML('f-price', esc(t('priceFood', { c: cur })), '<input id="f-price" class="input" type="number" inputmode="decimal" min="0" step="0.5">');
     /* 记录默认进“我的地图”，只问要不要分享到大地图 */
     if (f.post && !f.editId) h += '<p class="f-hint">' + esc(state.lang === 'en' ? 'Public post · also saved to your footprints' : '公开分享 · 同时保存到个人足迹') + '</p>';
     else h += '<button type="button" class="switch-row" role="switch" data-action="f-share" aria-checked="' + share + '">' +
@@ -370,6 +381,7 @@
     h += '</form>';
     view.innerHTML = h;
     renderFormPhotos();
+    formCurCheck();
     restoreFormDraft();
     if (/^g\//.test(f.osm)) { mountGoogleFormDetail(f); googleCatForForm(f); googleAreaHint(f); }
     /* 分类只占一行，横着滑；预选的那个滑到看得见的地方 */

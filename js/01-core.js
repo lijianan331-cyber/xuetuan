@@ -193,7 +193,7 @@
       precExact: '具体地点', precArea: '一片区域', precCity: '整个城市',
       precHint: '吃饭的店标到门口；旅行可以只标城市，放大时会显示成一个范围。',
       catGuessing: '正在看照片认是哪一类…', catGuessed: '看照片像「{c}」，不对就点别的', catByName: '按店名选了「{c}」，不对就点别的', catByGoogle: '按谷歌上的店铺类型选了「{c}」，不对就点别的', catNoGuess: '照片没认出来', optional: '选填', rating: '评分', ratingHint: '点或左右拖星星，可以打半颗；拖到最左是 0 分（踩雷）。', errRating: '打个分再发布', starsNone: '还没打分',
-      priceFood: '人均（RM，选填）',
+      priceFood: '人均（{c}，选填）',
       review: '评论（选填）', reviewPhFood: '写评论', reviewPhTravel: '写评论',
       photos: '照片（选填）', photoLimit: '最多 {n} 张 · 按住拖动排序，第一张是封面', addPhoto: '加照片', photoReadFail: '这张图读不了，换一张试试',
       visPrivateShort: '仅自己',
@@ -202,7 +202,7 @@
       bulkBtn: '从照片批量加', bulkTitle: '从照片批量加', bulkReading: '正在读照片 {n}/{m}…',
       bulkSum: '{n} 张照片，分成 {g} 组，打了分的才保存。', bulkNoGps: '{n} 张读不到位置，按拍摄时间分了组，自己搜店名。',
       bulkTip: '位置多半是手机交给网页时去掉的，从文件管理里选（DCIM → Camera）也许能读到。', bulkFiles: '从文件管理选',
-      bulkFindPh: '搜谷歌：店名或地点', bulkFromPhoto: '离拍照处 {d}', bulkPrice: '人均 RM', footTaken: '拍摄时间', footTakenAt: '拍于 {t}', bulkMerge: '和上一组是同一个地方', gifTooBig: '动图超过 5MB，请压缩动图后重试；不会转成静图', clipLong: '视频要在 {n} 秒以内', clipBig: '视频太大了，剪短一点再试', clipRead: '这个视频读不了', clipBusy: '视频处理中…', bulkModeLabel: '记到美食还是旅行', bulkNoLoc: '没有位置', bulkNeed: '搜到地点才能保存', bulkNoMatch: '没搜到，换个写法试试', bulkFinding: '正在搜…',
+      bulkFindPh: '搜谷歌：店名或地点', bulkFromPhoto: '离拍照处 {d}', bulkPrice: '人均 {c}', footTaken: '拍摄时间', footTakenAt: '拍于 {t}', bulkMerge: '和上一组是同一个地方', gifTooBig: '动图超过 5MB，请压缩动图后重试；不会转成静图', clipLong: '视频要在 {n} 秒以内', clipBig: '视频太大了，剪短一点再试', clipRead: '这个视频读不了', clipBusy: '视频处理中…', bulkModeLabel: '记到美食还是旅行', bulkNoLoc: '没有位置', bulkNeed: '搜到地点才能保存', bulkNoMatch: '没搜到，换个写法试试', bulkFinding: '正在搜…',
       bulkNone: '选的照片里都没有拍摄地点。相机设置里打开“地理位置”，以后拍的就有了。',
       bulkSave: '保存 {n}', bulkSaving: '保存中 {n}/{m}', bulkDone: '存进足迹 {n} 个', bulkFailSome: '{n} 个没存上，过会儿再试',
       bulkPhotos: '{n} 张', bulkLooking: '正在找附近的店…', bulkOwn: '自己写', bulkBeen: '记过',
@@ -297,7 +297,7 @@
       precExact: 'Exact spot', precArea: 'An area', precCity: 'Whole city',
       precHint: 'Pin restaurants at the door. Trips can be city-level and show as an area when zoomed in.',
       catByGoogle: 'Picked {c} from the shop type on Google. Tap another to change.', catGuessing: 'Reading the photo…', catGuessed: 'Looks like {c} from the photo. Tap another if wrong.', catByName: 'Picked {c} from the name. Tap another if wrong.', catNoGuess: 'Could not tell from the photo', optional: 'optional', rating: 'Score', ratingHint: 'Tap or drag the stars; half stars work. All the way left is 0 (avoid).', errRating: 'Give it a score first', starsNone: 'Not scored yet',
-      priceFood: 'Per person (RM, optional)',
+      priceFood: 'Per person ({c}, optional)',
       review: 'Review (optional)', reviewPhFood: 'Write a review', reviewPhTravel: 'Write a review',
       photos: 'Photos (optional)', photoLimit: 'up to {n} · hold and drag to reorder, first is the cover', addPhoto: 'Add photo', photoReadFail: 'Couldn’t read that image. Try another one',
       visPrivateShort: 'Private',
@@ -306,7 +306,7 @@
       bulkBtn: 'Add many from photos', bulkTitle: 'Add from photos', bulkReading: 'Reading photos {n}/{m}…',
       bulkSum: '{n} photos in {g} groups. Only scored ones are saved.', bulkNoGps: '{n} have no location, so they’re grouped by time. Search for each place.',
       bulkTip: 'Phones often strip the location when handing photos to a web page. Picking them from your file manager (DCIM → Camera) may keep it.', bulkFiles: 'Pick from files',
-      bulkFindPh: 'Search Google: name or place', bulkFromPhoto: '{d} from photo', bulkPrice: 'RM / pax', footTaken: 'Photo time', footTakenAt: 'taken {t}', bulkMerge: 'Same place as the one above', gifTooBig: 'GIF exceeds 5MB. Compress the animation and retry; it will not be flattened.', clipLong: 'Videos must be {n} s or shorter', clipBig: 'Video too big, trim it and try again', clipRead: "Couldn't read this video", clipBusy: 'Processing video…', bulkModeLabel: 'Food or travel', bulkNoLoc: 'no location', bulkNeed: 'Find the place to save this one', bulkNoMatch: 'Nothing found, try another spelling', bulkFinding: 'Searching…',
+      bulkFindPh: 'Search Google: name or place', bulkFromPhoto: '{d} from photo', bulkPrice: '{c} / pax', footTaken: 'Photo time', footTakenAt: 'taken {t}', bulkMerge: 'Same place as the one above', gifTooBig: 'GIF exceeds 5MB. Compress the animation and retry; it will not be flattened.', clipLong: 'Videos must be {n} s or shorter', clipBig: 'Video too big, trim it and try again', clipRead: "Couldn't read this video", clipBusy: 'Processing video…', bulkModeLabel: 'Food or travel', bulkNoLoc: 'no location', bulkNeed: 'Find the place to save this one', bulkNoMatch: 'Nothing found, try another spelling', bulkFinding: 'Searching…',
       bulkNone: 'None of these photos has a location. Turn on location tags in your camera settings for new photos.',
       bulkSave: 'Save {n}', bulkSaving: 'Saving {n}/{m}', bulkDone: '{n} saved to Footprints', bulkFailSome: '{n} couldn’t be saved, try again later',
       bulkPhotos: '{n} photos', bulkLooking: 'Looking for nearby places…', bulkOwn: 'Type a name', bulkBeen: 'recorded',
@@ -553,16 +553,18 @@
       addPlace: function (f) {
         var p = {
           id: uid('p'), mode: f.mode, cat: f.cat, precision: f.precision, lat: f.lat, lng: f.lng,
-          name: f.name, altName: f.altName || '', link: f.link || '', osm: f.osm || '',
+          name: f.name, altName: f.altName || '', link: f.link || '', osm: f.osm || '', cc: ccNow(f.lat, f.lng),
           createdBy: data.profile.id, createdAt: Date.now(), sample: false
         };
         data.places.push(p);
-        return done(p);
+        if (p.cc) return done(p);
+        return ccAt(f.lat, f.lng).then(function (cc) { p.cc = cc; return done(p); });
       },
       updatePlace: function (id, patch) {
         var p = find(data.places, id);
         if (!p || p.createdBy !== data.profile.id) return Promise.reject(new Error('not yours'));
         ['cat', 'precision', 'lat', 'lng', 'name', 'altName', 'link'].forEach(function (k) { if (patch[k] !== undefined) p[k] = patch[k]; });
+        if (patch.lat != null) p.cc = ccNow(patch.lat, patch.lng);
         p.updatedAt = Date.now();
         return done(p);
       },
@@ -754,7 +756,7 @@
     function placeFromRow(r) {
       return {
         id: r.id, mode: r.mode, cat: r.cat, precision: r.precision, lat: r.lat, lng: r.lng,
-        name: r.name, altName: r.alt_name, link: r.link, osm: r.osm, createdBy: r.created_by,
+        name: r.name, altName: r.alt_name, link: r.link, osm: r.osm, cc: r.cc || '', createdBy: r.created_by,
         createdAt: Date.parse(r.created_at), sample: false
       };
     }
@@ -762,6 +764,8 @@
       var row = {};
       [['mode', 'mode'], ['cat', 'cat'], ['precision', 'precision'], ['lat', 'lat'], ['lng', 'lng'], ['name', 'name'],
         ['altName', 'alt_name'], ['link', 'link'], ['osm', 'osm']].forEach(function (k) { if (p[k[0]] !== undefined) row[k[1]] = p[k[0]]; });
+      /* 国家代码列（2026-11-02 加）：数据库有这一列才写 */
+      if (cache.ccCol && p.cc) row.cc = p.cc;
       return row;
     }
     function reviewFromRow(r, author) {
@@ -852,6 +856,7 @@
         cache.homes = (res[4].data || []).map(homeFromRow);
         cache.admin = res[5] === true;
         cache.places = places.map(placeFromRow);
+        cache.ccCol = !!(places[0] && 'cc' in places[0]);
         cache.reviews = visits.map(function (v) { return reviewFromRow(v); });
         cache.profile = uid ? Object.assign({}, ANON, profile || {}, { id: uid }) : ANON;
         cache.wishlist = (wish || []).map(function (w) { return { placeId: w.place_id, createdAt: Date.parse(w.created_at) }; });
@@ -965,7 +970,7 @@
 
       /* ---- 写 ---- */
       addPlace: function (f) {
-        return needLogin() || client.from('places').insert(placeToRow(f)).select().single().then(ok).then(function (row) {
+        return needLogin() || ccAt(f.lat, f.lng).then(function (cc) { return client.from('places').insert(placeToRow(Object.assign({}, f, { cc: cc }))).select().single(); }).then(ok).then(function (row) {
           var p = placeFromRow(row);
           cache.places.push(p);
           return p;
@@ -974,11 +979,11 @@
       updatePlace: function (id, patch) {
         var row = placeToRow(patch);
         delete row.mode;
-        return needLogin() || client.from('places').update(row).eq('id', id).select().single().then(ok).then(function (r) {
+        return needLogin() || (patch.lat != null ? ccAt(patch.lat, patch.lng) : Promise.resolve('')).then(function (cc) { if (cc && cache.ccCol) row.cc = cc; return client.from('places').update(row).eq('id', id).select().single().then(ok).then(function (r) {
           var p = find(cache.places, id);
           Object.assign(p, placeFromRow(r));
           return p;
-        });
+        }); });
       },
       addReview: function (f, newPhotos, progress) {
         return needLogin() || uploadPhotos(newPhotos, progress).then(function (up) {
@@ -1310,6 +1315,41 @@
     return Math.round(m / 1000).toLocaleString(state.lang === 'zh' ? 'zh-CN' : 'en-MY') + ' km';
   }
   function fmtPrice(n) { var v = Math.round(n * 10) / 10; return v % 1 === 0 ? String(v) : v.toFixed(1); }
+  /* 人均按地点所在地的货币（用户 2026-11-02）：只认人民币（中国大陆）、新币、欧元、澳元、美元、加元、英镑，
+     别的地方（日本、韩国、台湾、泰国、印尼…）都用 RM。界面上只出货币符号，不出国家名。
+     places.cc 存两位代码，新建地点时问 Photon；马来西亚大部分范围直接认，不用问 */
+  var EURO_CC = 'AT BE BG HR CY EE FI FR DE GR IE IT LV LT LU MT NL PT SK SI ES MC SM VA AD ME XK'.split(' ');
+  var CUR_SYM = { CN: '¥', SG: 'S$', AU: 'A$', US: 'US$', CA: 'C$', GB: '£', EUR: '€' };
+  /* 筛选“RM x 左右”时换成 RM 大概比（2026-11 的约值，够筛选用） */
+  var CUR_RM = { CN: 0.6, SG: 3.3, AU: 2.8, US: 4.2, CA: 3.0, GB: 5.6, EUR: 4.8 };
+  function curKey(cc) { cc = String(cc || '').toUpperCase(); return EURO_CC.indexOf(cc) !== -1 ? 'EUR' : CUR_SYM[cc] ? cc : ''; }
+  var ccCache = new Map();
+  function ccKey(lat, lng) { return (+lat).toFixed(2) + ',' + (+lng).toFixed(2); }
+  /* 新加坡和新山挨着，那一块不猜，要问 */
+  function ccBox(lat, lng) {
+    if (lat > 1.1 && lat < 1.6 && lng > 103.5 && lng < 104.2) return '';
+    return lat > 0.85 && lat < 7.4 && lng > 99.6 && lng < 119.3 ? 'MY' : '';
+  }
+  function ccNow(lat, lng) { if (lat == null || lng == null) return ''; return ccBox(lat, lng) || ccCache.get(ccKey(lat, lng)) || ''; }
+  function ccAt(lat, lng) {
+    if (lat == null || lng == null) return Promise.resolve('');
+    var known = ccNow(lat, lng), key = ccKey(lat, lng);
+    if (known) return Promise.resolve(known);
+    if (window.__ccAt) return Promise.resolve(window.__ccAt(lat, lng)); /* 测试用 */
+    var url = 'https://photon.komoot.io/reverse?lat=' + (+lat).toFixed(5) + '&lon=' + (+lng).toFixed(5) + '&limit=1';
+    var ask = fetch(url).then(function (res) { return res.ok ? res.json() : null; }).then(function (json) {
+      var f = json && json.features && json.features[0], cc = String((f && f.properties && f.properties.countrycode) || '').toUpperCase();
+      if (/^[A-Z]{2}$/.test(cc)) { ccCache.set(key, cc); return cc; }
+      return '';
+    }).catch(function () { return ''; });
+    return Promise.race([ask, new Promise(function (r) { setTimeout(function () { r(''); }, 3000); })]);
+  }
+  function placeCC(p) { return (p && (p.cc || ccNow(p.lat, p.lng))) || ''; }
+  function curSymAt(cc) { return CUR_SYM[curKey(cc)] || 'RM'; }
+  function curSym(p) { return curSymAt(placeCC(p)); }
+  function money(p, n) { return curSym(p) + ' ' + fmtPrice(n); }
+  function priceRM(p, n) { return n ? n * (CUR_RM[curKey(placeCC(p))] || 1) : n; }
+  window.__curSym = function (cc) { return curSymAt(cc); }; /* 测试用 */
   function timeAgo(ts) {
     var d = Date.now() - ts, min = 60000;
     if (d < min) return t('justNow');
@@ -1568,7 +1608,7 @@
     if (state.scope === 'mine' || state.scope === 'person') return true; /* 我的地图只分美食 / 旅行，不用分类和筛选 */
     if (state.cat !== 'all' && !catMatch(p, state.cat)) return false;
     s = s || stats(p);
-    if (state.priceAbout && !priceFits(s.avgPrice, state.priceAbout)) return false;
+    if (state.priceAbout && !priceFits(priceRM(p, s.avgPrice), state.priceAbout)) return false;
     if (state.minScore && !(s.score != null && s.score >= state.minScore)) return false;
     if (state.mode === 'food' && state.dist !== 'any' && distTier(p) !== state.dist) return false;
     return true;

@@ -624,7 +624,7 @@
   function metaHTML(r, hidePrivacy) {
     var parts = [];
     if (r.rating != null) parts.push(starsMiniHTML(r.rating));
-    if (r.price) parts.push('<span>RM ' + fmtPrice(r.price) + '</span>');
+    if (r.price) parts.push('<span>' + money(placeById(r.placeId), r.price) + '</span>');
     if (r.visibility === 'private' && !hidePrivacy) parts.push('<span class="pill">' + esc(t('visPrivateShort')) + '</span>');
     return parts.join('<span class="sep">·</span>');
   }
