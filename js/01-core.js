@@ -980,7 +980,9 @@
       updatePlace: function (id, patch) {
         var row = placeToRow(patch);
         delete row.mode;
-        return needLogin() || (patch.lat != null ? ccAt(patch.lat, patch.lng) : Promise.resolve('')).then(function (cc) { if (cc && cache.ccCol) row.cc = cc; return client.from('places').update(row).eq('id', id).select().single().then(ok).then(function (r) {
+        /* 国家代码只在新建时写；数据库只允许改几列，带上 cc 会整条被拒（编辑记录保存失败，用户 2026-11-02） */
+        delete row.cc;
+        return needLogin() || Promise.resolve().then(function () { return client.from('places').update(row).eq('id', id).select().single().then(ok).then(function (r) {
           var p = find(cache.places, id);
           Object.assign(p, placeFromRow(r));
           return p;
