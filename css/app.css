@@ -926,6 +926,28 @@ html[data-page="me"] #view > .home-set-btn { background: var(--surface); box-sha
   .panel, .locate-btn, .campus-btn, .add-fab, .attrib, .bsheet-card { transition: none; animation: none; }
 }
 
+/* ---------- 开屏（2026-11-02 改短）：像 Instagram / 抖音，全屏雪团蓝 + 中间雪团子和“雪团”，飘一点小雪，一秒多进首页 ---------- */
+.splash { display: none; }
+html.splash-on .splash { position: fixed; top: 0; right: 0; bottom: 0; left: 0; z-index: 200; display: flex; flex-direction: column; align-items: center; justify-content: center; overflow: hidden; background: linear-gradient(170deg, #48BCFD 0%, #3AACF4 48%, #2F98E4 100%); cursor: pointer; -webkit-user-select: none; user-select: none; transition: opacity .3s ease; }
+html.splash-out .splash { opacity: 0; pointer-events: none; }
+.sp-mark { position: relative; display: flex; flex-direction: column; align-items: center; margin-top: -8vh; }
+.sp-ball { display: block; width: 128px; height: 128px; filter: drop-shadow(0 12px 18px rgba(14, 70, 130, .28)); }
+.sp-mark b { margin-top: 6px; font-family: var(--font-display); font-size: 40px; font-weight: 400; line-height: 1.1; letter-spacing: .12em; color: #fff; text-shadow: 0 2px 10px rgba(14, 70, 130, .22); }
+.sp-tag { position: absolute; left: 0; right: 0; bottom: calc(44px + env(safe-area-inset-bottom, 0px)); text-align: center; color: rgba(255, 255, 255, .9); font-size: 13.5px; font-weight: 500; letter-spacing: .14em; }
+html.splash-go .sp-mark { animation: sp-pop .42s cubic-bezier(.2, .9, .3, 1.15) both; }
+html.splash-go .sp-tag { animation: sp-in .4s ease-out .18s both; }
+.sp-flakes { position: absolute; top: 0; right: 0; bottom: 0; left: 0; pointer-events: none; }
+.sp-flakes i { position: absolute; top: -14px; border-radius: 50%; background: #fff; opacity: .85; will-change: transform; animation: sp-fall linear infinite; }
+.sp-flakes i.sf { border-radius: 0; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23fff' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='M12 2v20M3.3 7l17.4 10M3.3 17L20.7 7M12 5l-2.2-2M12 5l2.2-2M12 19l-2.2 2M12 19l2.2 2'/%3E%3C/svg%3E") center / contain no-repeat; opacity: .75; }
+@keyframes sp-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes sp-pop { from { opacity: 0; transform: scale(.86); } to { opacity: 1; transform: none; } }
+@keyframes sp-fall { 0% { transform: translate3d(0, 0, 0) rotate(0); } 100% { transform: translate3d(var(--dx, 0), 106vh, 0) rotate(160deg); } }
+/* 系统开了“减少动态效果”：不飘雪不弹出，静止的 logo，很快进首页 */
+@media (prefers-reduced-motion: reduce) {
+  .sp-flakes { display: none; }
+  html.splash-go .sp-mark, html.splash-go .sp-tag { animation: none; }
+}
+
 /* 个人主页（2026-11-01）：点作者名字 / 头像进去 */
 .who-link { appearance: none; background: none; border: 0; padding: 0; margin: 0; font: inherit; color: inherit; text-align: left; cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .who-link:active { opacity: .6; }

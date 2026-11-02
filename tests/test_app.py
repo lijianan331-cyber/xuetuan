@@ -2793,16 +2793,43 @@ with sync_playwright() as p:
     check('draft: no page errors', not errorsd, errorsd)
     ctxdr.close()
 
-    # 2026-11-01 界面精修 + 开屏动画（雪团扔过来，椰林和 XMUM 楼被雪盖白，再进首页）
+    # 2026-11-01 界面精修；开屏 2026-11-02 改成短版（全屏雪团蓝 + 雪团子 + “雪团” + 小雪 + 底部一句话）
     ctxui = browser.new_context(viewport={'width': 375, 'height': 780}, has_touch=True)
     route_all(ctxui)
     errorsui = []
     pu = ctxui.new_page(); pu.on('pageerror', lambda e: errorsui.append(str(e)))
     pu.goto(APP)
     pu.wait_for_function('window.__map && window.__map.getSource("places")', timeout=8000)
-    check('no splash: the app opens straight to the map (user removed it 2026-11-02)', pu.evaluate('!document.getElementById("launch-film")'))
-    pu.goto(APP + '?splash'); pu.wait_for_timeout(200)
-    check('no splash: ?splash shows nothing either', pu.evaluate('!document.getElementById("launch-film") && !document.querySelector("script[src*=launch]")'))
+    check('splash: automated browsers skip it unless ?splash', pu.evaluate('!document.getElementById("splash") && !document.documentElement.classList.contains("splash-on")'))
+    t0 = time.time(); pu.goto(APP + '?splash')
+    sp0 = pu.evaluate('(() => { const s = document.getElementById("splash"); if (!s) return null; const m = s.querySelector(".sp-mark").getBoundingClientRect(), t = s.querySelector(".sp-tag"); return [getComputedStyle(s).display !== "none", document.querySelectorAll("#sp-flakes i").length >= 20, document.querySelectorAll("#sp-flakes i.sf").length > 0, !!s.querySelector(".sp-mark .sp-ball"), s.querySelector(".sp-mark b").textContent, t.textContent, Math.abs((m.left + m.right) / 2 - innerWidth / 2) < 2, t.getBoundingClientRect().bottom < innerHeight, !s.querySelector(".sp-scene, .sp-splat")]; })()')
+    check('splash: full screen, snowball + 雪团 centred, light snow, tagline at the bottom, no old scene', sp0 == [True, True, True, True, '雪团', 'XMUMer 的图鉴', True, True, True], sp0)
+    pu.wait_for_function('!document.getElementById("splash")', timeout=4000)
+    sp1 = [round(time.time() - t0, 1), pu.evaluate('document.documentElement.className.includes("splash")')]
+    check('splash: short, ends by itself in under ~2 s and hands over to the app', sp1[0] < 2.6 and not sp1[1], sp1)
+    pu.goto(APP + '?splash'); pu.wait_for_timeout(250)
+    t1 = time.time(); pu.click('#splash')
+    pu.wait_for_function('!document.getElementById("splash")', timeout=3000)
+    check('splash: a tap skips it', time.time() - t1 < 1.5, round(time.time() - t1, 2))
+    # 同一个标签页只播一次（模拟真手机：不是自动化浏览器）
+    ctxsp = browser.new_context(viewport={'width': 375, 'height': 780})
+    route_all(ctxsp)
+    ctxsp.add_init_script('Object.defineProperty(navigator, "webdriver", { get: () => false })')
+    psp = ctxsp.new_page(); psp.goto(APP)
+    first = psp.evaluate('!!document.getElementById("splash")')
+    psp.wait_for_function('!document.getElementById("splash")', timeout=4000)
+    psp.reload(); psp.wait_for_timeout(300)
+    again = psp.evaluate('!!document.getElementById("splash")')
+    check('splash: plays when the app opens, not again on reload in the same tab', first and not again, [first, again])
+    ctxsp.close()
+    # 系统设了“减少动态效果”：不下雪不弹出，静止的 logo，很快进入
+    ctxrm = browser.new_context(viewport={'width': 375, 'height': 780}, reduced_motion='reduce')
+    route_all(ctxrm)
+    prm = ctxrm.new_page(); prm.goto(APP + '?splash')
+    rm = prm.evaluate('(() => { const m = document.querySelector(".sp-mark"); return [!!document.getElementById("splash"), document.querySelectorAll("#sp-flakes i").length, m ? getComputedStyle(m).animationName : null, m ? +getComputedStyle(m).opacity : null]; })()')
+    check('splash: reduced motion = no snowfall or pop, a still logo', rm == [True, 0, 'none', 1], rm)
+    prm.wait_for_function('!document.getElementById("splash")', timeout=2500)
+    ctxrm.close()
     pu.goto(APP)
     pu.wait_for_function('window.__map && window.__map.getSource("places")', timeout=8000); pu.wait_for_timeout(300)
     # 地图上的美食 / 玩乐：两个字都在，当前的那个是实心蓝
