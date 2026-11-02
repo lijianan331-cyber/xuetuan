@@ -806,6 +806,34 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
 .post-place { margin-top: 14px; border-top: 1px solid var(--line); }
 .post-place .near-item { border-bottom: 1px solid var(--line); }
 .post-actions { margin-top: 12px; }
+.post-social { margin-top: 22px; border-top: 1px solid var(--hairline); padding-top: 16px; padding-bottom: 20px; }
+.social-toolbar, .social-heading, .social-comment-head, .social-send-row, .social-replying { display: flex; align-items: center; gap: 10px; }
+.social-toolbar { flex-wrap: wrap; }
+.social-like { gap: 6px; min-height: 36px; }
+.social-like svg { width: 18px; height: 18px; }
+.social-like[aria-pressed="true"] { color: var(--accent); background: var(--accent-soft); }
+.social-like[aria-pressed="true"] svg { fill: currentColor; }
+.social-private-count, .social-send-row small, .social-comment-head time { color: var(--muted); font-size: 12px; }
+.social-heading { justify-content: space-between; margin-top: 18px; margin-bottom: 10px; }
+.social-heading h2 { font-size: 17px; margin: 0; }
+.social-compose { background: var(--surface-2); border: 1px solid var(--hairline); border-radius: 14px; padding: 10px; }
+.social-compose textarea { min-height: 62px; resize: vertical; font-size: 14px; line-height: 1.5; background: var(--surface); }
+.social-send-row { justify-content: space-between; margin-top: 8px; }
+.social-replying { justify-content: space-between; margin-bottom: 8px; font-size: 12px; color: var(--muted); }
+.social-comments { list-style: none; padding: 0; margin: 6px 0 0; }
+.social-comment { padding: 14px 0; border-bottom: 1px solid var(--hairline); overflow-wrap: anywhere; }
+.social-comment-head { justify-content: space-between; align-items: baseline; }
+.social-author { border: 0; padding: 0; background: none; color: var(--ink); font: inherit; font-size: 13px; font-weight: 700; text-align: left; }
+.social-author[data-action] { color: var(--accent); }
+.social-comment p { font-size: 14px; line-height: 1.6; white-space: pre-wrap; margin: 6px 0; }
+.social-comment-actions { display: flex; flex-wrap: wrap; gap: 16px; }
+.social-comment-actions .link-btn, .social-heading .link-btn { font-size: 12px; min-height: 32px; }
+.social-reply-label { display: block; color: var(--muted); margin-top: 5px; font-size: 12px; }
+.social-status { color: var(--muted); font-size: 13px; line-height: 1.6; }
+.social-report-reasons { display: grid; gap: 8px; margin: 14px 0; }
+.social-input-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.social-entry { font-size: 12px; min-height: 32px; }
+.post-actions .save-btn[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
 .place-empty { margin: 6px 0 0; color: var(--muted); font-size: 13px; }
 
 /* ---------- 我的：头像、昵称、来自哪、数量 ---------- */
@@ -1009,6 +1037,9 @@ button.pc-place { background: transparent; }
 .bk-note { flex-wrap: nowrap; gap: 6px; }
 .bk-note > .price-unit { flex: 0 0 66px; width: 66px; min-width: 0; }
 .bk-note > .bk-price { flex: 0 0 84px; width: 84px; min-width: 0; }
+
+/* 照片日期说明：上传日期不冒充拍摄日期。 */
+.rv-photos .ph.sm{height:auto;overflow:visible;display:inline-flex;flex-direction:column;background:transparent;vertical-align:top}.rv-photos .ph.sm img{aspect-ratio:1;object-fit:cover;border-radius:12px}.photo-date{display:block;font-size:10px;line-height:1.5;color:var(--muted);padding:4px 0;white-space:nowrap}.rv-who .fi-time{white-space:normal;text-align:right;font-size:11px}
 
 /* Footprints and saved places: direct type controls; advanced filters stay in the sheet. */
 .foot-tools { display:flex; align-items:center; gap:6px; margin:0 0 10px; }

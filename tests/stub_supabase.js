@@ -13,6 +13,45 @@
   var files = {}, types = {};
   var session = null, listeners = [], calls = [];
   window.__sb = { db: db, files: files, types: types, calls: calls };
+  db.social_comments=(seed.social_comments || []).slice();
+  db.social_likes=(seed.social_likes || []).slice();
+  db.social_reports=(seed.social_reports || []).slice();
+  function socialRun(name,a) {
+    if (window.__socialFail && (window.__socialFail===name || window.__socialFail===a.action)) return err('network offline');
+    if (name==='xuetuan_comment_reports') {
+      if(uid()!==window.__sbAdmin)return err('Admin required');
+      return {data:db.social_reports.filter(function(r){return !r.resolved;}).map(function(r){var c=db.social_comments.find(function(c){return c.id===r.comment_id;});return Object.assign({},c,{name:'Synthetic',reports:1,reasons:[r.reason]});}),error:null};
+    }
+    if (name==='xuetuan_moderate_comment') {
+      if(uid()!==window.__sbAdmin)return err('Admin required');
+      var mc=db.social_comments.find(function(c){return c.id===a.comment_id;});
+      if(mc && a.decision!=='dismiss'){mc.deleted=true;mc.body='';}
+      if(mc && a.decision==='delete_and_ban')window.__sbBanned=mc.user_id;
+      db.social_reports.forEach(function(r){if(r.comment_id===a.comment_id)r.resolved=true;});return {data:{ok:true},error:null};
+    }
+    var v=db.visits.find(function(v){return v.id===a.visit_id && v.visibility==='public';});
+    if(!v)return err('XUETUAN_POST_UNAVAILABLE');
+    if(name==='xuetuan_post_social'){
+      var rows=db.social_comments.filter(function(c){return c.visit_id===v.id;}).map(function(c){var pf=db.profiles.find(function(p){return p.id===c.user_id;})||{};var parent=db.social_comments.find(function(x){return x.id===c.parent_id;});var pp=parent&&db.profiles.find(function(p){return p.id===parent.user_id;});return Object.assign({},c,{user_id:c.deleted?null:c.user_id,name:c.deleted?'':pf.name,page_public:!c.deleted&&pf.page_public,reply_name:parent&&!parent.deleted&&pp?pp.name:''});});
+      rows.sort(function(a,b){return b.created_at.localeCompare(a.created_at)||b.id.localeCompare(a.id);});
+      if(a.after_at)rows=rows.filter(function(c){return c.created_at<a.after_at || (c.created_at===a.after_at && c.id<a.after_id);});
+      return {data:{comments:rows.slice(0,30),has_more:rows.length>30,liked:db.social_likes.some(function(l){return l.visit_id===v.id && l.user_id===uid();}),like_count:v.user_id===uid()?db.social_likes.filter(function(l){return l.visit_id===v.id;}).length:null},error:null};
+    }
+    if(!uid() || session.user.is_anonymous)return err('XUETUAN_BIND_REQUIRED');
+    var target=db.social_comments.find(function(c){return c.id===a.target_id && c.visit_id===v.id;});
+    if(a.action==='like'){
+      db.social_likes=db.social_likes.filter(function(l){return l.visit_id!==v.id || l.user_id!==uid();});
+      if(a.liked)db.social_likes.push({visit_id:v.id,user_id:uid()});
+    } else if(a.action==='comment'){
+      if(a.target_id && (!target || target.deleted || target.parent_id))return err('Reply target unavailable');
+      if(!db.social_comments.some(function(c){return c.id===a.request_id;}))db.social_comments.unshift({id:a.request_id,visit_id:v.id,user_id:uid(),parent_id:a.target_id||null,body:a.body,deleted:false,created_at:new Date().toISOString()});
+    } else if(a.action==='delete'){
+      if(!target || (target.user_id!==uid() && v.user_id!==uid() && window.__sbAdmin!==uid()))return err('Permission denied');target.deleted=true;target.body='';
+    } else if(a.action==='report'){
+      if(!db.social_reports.some(function(r){return r.user_id===uid() && r.comment_id===a.target_id;}))db.social_reports.push({comment_id:a.target_id,user_id:uid(),reason:a.body});
+    }
+    return {data:{ok:true},error:null};
+  }
 
   function uid() { return session ? session.user.id : null; }
   function newId() { return 'xxxxxxxx-xxxx-4xxx-8xxx-xxxxxxxxxxxx'.replace(/x/g, function () { return (Math.random() * 16 | 0).toString(16); }); }
@@ -139,6 +178,10 @@
         /* 地点库搜索：名字里包含关键词就算搜到 */
         rpc: function (name, args) {
           calls.push(['rpc', name, args]);
+          if (['xuetuan_post_social','xuetuan_social_write','xuetuan_comment_reports','xuetuan_moderate_comment'].indexOf(name)!==-1) {
+            if(window.__socialHold && (window.__socialHold===name || window.__socialHold===(args||{}).action))return new Promise(function(resolve){window.__releaseSocial=function(){resolve(socialRun(name,args||{}));};});
+            return Promise.resolve(socialRun(name,args||{}));
+          }
           if (name === 'xuetuan_is_admin') return Promise.resolve({data:uid() === window.__sbAdmin,error:null});
           if (name === 'xuetuan_moderate_visit') {
             if (!uid() || uid() !== window.__sbAdmin) return Promise.resolve(err('Admin required'));

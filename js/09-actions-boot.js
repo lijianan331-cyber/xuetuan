@@ -384,6 +384,7 @@
     var el = e.target.closest('[data-action]');
     if (!el) return;
     var a = el.dataset.action, d = el.dataset;
+    if (handleSocialAction(a,el)) return;
     switch (a) {
       case 'price-toggle': e.preventDefault(); e.stopPropagation(); togglePrice(el); break;
       case 'google-retry': retryGoogle(el.closest('.g-search')); break;

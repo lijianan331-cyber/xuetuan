@@ -1454,6 +1454,29 @@
     var dt = new Date(ts);
     return dt.getFullYear() + '-' + String(dt.getMonth() + 1).padStart(2, '0') + '-' + String(dt.getDate()).padStart(2, '0');
   }
+  /* 拍摄/到访时间保留；动态按最近保存或已知照片上传时间排序。 */
+  function photoUploadedAt(id) {
+    var m = /(?:^|\/)ph-([0-9a-z]{8})/.exec(String(id || '')), n = m ? parseInt(m[1], 36) : 0;
+    return n > 1.6e12 && n <= Date.now() + 864e5 ? n : 0;
+  }
+  function reviewActivityAt(r) {
+    return Math.max(Number(r.createdAt) || 0, Number(r.updatedAt) || 0,
+      (r.photos || []).reduce(function (latest, id) { return Math.max(latest, photoUploadedAt(id)); }, 0));
+  }
+  function visitDay(ts) {
+    if (!ts) return '';
+    var d = new Date(ts);
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  }
+  function reviewTimeLabel(r) {
+    var at = reviewActivityAt(r), changed = at > (r.createdAt || 0) + 60000;
+    return (state.lang === 'en' ? 'Visited ' : '到访 ') + visitDay(r.createdAt) +
+      (changed ? ' · ' + (state.lang === 'en' ? 'Updated ' : '更新于 ') + timeAgo(at) : ' · ' + timeAgo(at));
+  }
+  function photoDateHTML(id, r) {
+    var uploaded = photoUploadedAt(id), at = uploaded || r.createdAt;
+    return at ? '<span class="photo-date">' + esc((state.lang === 'en' ? (uploaded ? 'Uploaded ' : 'Visit ') : (uploaded ? '上传 ' : '到访 ')) + visitDay(at)) + '</span>' : '';
+  }
   function safeURL(u) {
     u = (u || '').trim();
     if (!u) return '';
@@ -1526,13 +1549,13 @@
   function coverPhoto(p, scope) {
     var best = null;
     scopedReviews(p.id, scope).forEach(function (r) {
-      if (r.photos && r.photos.length && (!best || r.createdAt > best.createdAt)) best = r;
+      if (r.photos && r.photos.length && (!best || reviewActivityAt(r) > reviewActivityAt(best))) best = r;
     });
     return best ? best.photos[0] : null;
   }
   function placePhotos(p) {
     var seen = {}, photos = [];
-    scopedReviews(p.id).slice().sort(function (a, b) { return b.createdAt - a.createdAt; }).forEach(function (r) {
+    scopedReviews(p.id).slice().sort(function (a, b) { return reviewActivityAt(b) - reviewActivityAt(a); }).forEach(function (r) {
       (r.photos || []).forEach(function (id) { if (!seen[id]) { seen[id] = true; photos.push(id); } });
     });
     return photos;

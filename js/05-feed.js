@@ -3,8 +3,8 @@
   /* ================= 首页 =================
    * 上面一张地图预览（点了去探索），下面是大家最新分享的记录：两列图文卡片，点卡片看帖子。
    * 只放真实的公开记录，不放示例；没有就诚实地说没有（V2.0） */
-  /* 按去的时间（批量加的是照片拍摄时间），不按上传/改动时间：旧足迹刚导入也不会被当成新动态推出去（用户 2026-11-01） */
-  function homeTime(r) { return r.createdAt; }
+  /* 首页按最近保存/补图时间排序；到访原日期独立显示（用户 2026-11-02）。 */
+  function homeTime(r) { return reviewActivityAt(r); }
   function homeEligible() { return store.reviews().filter(function (r) { return r.visibility === 'public' && !r.sample && r.photos && r.photos.length > 0 && placeById(r.placeId); }); }
   function homeReviews() {
     var cutoff = state.homeDays ? Date.now() - state.homeDays * 86400000 : 0;
@@ -104,7 +104,7 @@
     if (r.photos && r.photos.length) h += '<div class="photo-strip">' + r.photos.map(function (id) {
       return '<button type="button" class="ph" data-action="photo" data-id="' + esc(id) + '" data-group="post"><img data-photo="' + esc(id) + '" data-small alt=""></button>';
     }).join('') + '</div>';
-    var pw = avatarHTML(name, r.authorId) + '<span class="pw-text"><b>' + esc(name) + '</b><small>' + (from ? esc(t('fromPrefix') + from) + ' · ' : '') + esc(timeAgo(r.createdAt)) + '</small></span>';
+    var pw = avatarHTML(name, r.authorId) + '<span class="pw-text"><b>' + esc(name) + '</b><small>' + (from ? esc(t('fromPrefix') + from) + ' · ' : '') + esc(reviewTimeLabel(r)) + '</small></span>';
     h += canOpenPerson(r.authorId)
       ? '<button type="button" class="post-who who-link"' + personAttr(r.authorId) + ' aria-label="' + esc(personLabel(name)) + '">' + pw + '<i class="pw-go" aria-hidden="true">›</i></button>'
       : '<div class="post-who">' + pw + '</div>';
@@ -117,7 +117,9 @@
     if (text) h += '<p class="post-text">' + esc(text) + '</p>';
     h += '<ul class="near-list post-place">' + placeRowHTML(p, 'post-place', esc(catName(c)) + ' · ' + esc(distLabel(p)), '<span class="near-cta">' + esc(t('postPlace')) + '</span>') + '</ul>';
     h += '<div class="actions post-actions">' + saveBtnHTML(p.id, false) + own + moderationControl(r) + '</div>';
+    if (r.visibility === 'public' && !r.sample) h += '<section id="post-social" class="post-social" aria-label="' + esc(state.lang === 'en' ? 'Post discussion' : '帖子互动') + '"></section>';
     view.innerHTML = h;
+    if (r.visibility === 'public' && !r.sample) mountPostSocial(r.id);
   }
 
   function personLabel(name) { return state.lang === 'en' ? 'Open ' + name + '’s page' : '进入' + name + '的主页'; }
@@ -229,13 +231,13 @@
       ? '<a class="btn" href="' + esc(mapsHref(coords, placeTitle(p), true)) + '" target="_blank" rel="noopener">' + ICON.nav + esc(t(APPLE ? 'viewApple' : 'viewGoogle')) + '</a>'
       : '<a class="btn primary" href="' + esc(mapsHref(coords, placeTitle(p))) + '" target="_blank" rel="noopener">' + ICON.nav + esc(t(APPLE ? 'navApple' : 'navGoogle')) + '</a>') +
       '<button type="button" class="btn save-btn" data-action="toggle-save" data-id="' + esc(p.id) + '" aria-pressed="' + saved + '">' + (saved ? ICON.starOn + esc(t('wished')) : ICON.star + esc(t('wish'))) + '</button>' +
-      '<button type="button" class="btn" data-action="write-review">' + ICON.pen + esc(t(p.mode === 'food' ? 'writeReview' : 'beenHere')) + '</button>' +
+      '<button type="button" class="btn" data-action="write-review">' + ICON.pen + esc(beenThere(p) ? (state.lang === 'en' ? 'Record another visit' : '再次到访') : t(p.mode === 'food' ? 'writeReview' : 'beenHere')) + '</button>' +
       (far ? '' : '<a class="btn" href="https://waze.com/ul?ll=' + coords + '&navigate=yes" target="_blank" rel="noopener">' + ICON.nav + esc(t('navWaze')) + '</a>');
     actions += '<button type="button" class="btn" data-action="copy-coords" data-c="' + coords + '">' + ICON.copy + esc(t('copyCoords')) + '</button>';
     if (link) actions += '<a class="btn" href="' + esc(link) + '" target="_blank" rel="noopener nofollow">' + ICON.link + esc(t('openLink')) + '</a>';
     /* 多人同一家店的照片：越新的越前面 */
     var photos = placePhotos(p).slice(0, 30);
-    var reviews = s.rs.slice().sort(function (a, b) { return b.createdAt - a.createdAt; });
+    var reviews = s.rs.slice().sort(function (a, b) { return reviewActivityAt(b) - reviewActivityAt(a); });
     var tags = '<span class="tag">' + catIconHTML(c) + esc(catName(c)) + '</span><span class="tag">' + esc(precLabel(p.precision)) + '</span>' +
       (p.mode === 'food' && !inCampus(p) ? '<span class="tag">' + esc(t('tier_' + distTier(p))) + '</span>' : '') +
       '<span class="tag">' + esc(distLabel(p)) + '</span>';
@@ -279,12 +281,13 @@
   function reviewHTML(r) {
     var name = authorLabel(r), from = '', meta = metaHTML(r), text = reviewText(r), go = canOpenPerson(r.authorId);
     return '<li class="review">' + (go ? '<button type="button" class="who-link rv-av"' + personAttr(r.authorId) + ' aria-label="' + esc(personLabel(name)) + '">' + avatarHTML(name, r.authorId) + '</button>' : avatarHTML(name, r.authorId)) + '<div class="rv-main">' +
-      '<div class="rv-who">' + (go ? '<button type="button" class="who-link rv-name"' + personAttr(r.authorId) + ' tabindex="-1" aria-hidden="true"><b>' + esc(name) + '</b></button>' : '<b>' + esc(name) + '</b>') + (from ? '<span class="muted">' + esc(t('fromPrefix') + from) + '</span>' : '') + '<span class="fi-time">' + esc(timeAgo(r.createdAt)) + '</span></div>' +
+      '<div class="rv-who">' + (go ? '<button type="button" class="who-link rv-name"' + personAttr(r.authorId) + ' tabindex="-1" aria-hidden="true"><b>' + esc(name) + '</b></button>' : '<b>' + esc(name) + '</b>') + (from ? '<span class="muted">' + esc(t('fromPrefix') + from) + '</span>' : '') + '<span class="fi-time">' + esc(reviewTimeLabel(r)) + '</span></div>' +
       (meta ? '<div class="rv-meta">' + meta + '</div>' : '') +
       (text ? '<p class="rv-text">' + esc(text) + '</p>' : '') +
       (r.photos && r.photos.length ? '<div class="rv-photos">' + r.photos.map(function (id) {
-        return '<button type="button" class="ph sm" data-action="photo" data-id="' + esc(id) + '" data-group="rv-' + esc(r.id) + '"><img data-photo="' + esc(id) + '" data-small alt=""></button>';
+        return '<button type="button" class="ph sm" data-action="photo" data-id="' + esc(id) + '" data-group="rv-' + esc(r.id) + '"><img data-photo="' + esc(id) + '" data-small alt="">' + photoDateHTML(id, r) + '</button>';
       }).join('') + '</div>' : '') +
+      (r.visibility === 'public' && !r.sample ? '<button type="button" class="link-btn social-entry" data-action="social-open" data-id="' + esc(r.id) + '">' + esc(state.lang === 'en' ? 'Discussion' : '留言') + '</button>' : '') +
       (isMine(r) ? '<div class="rv-actions"><button type="button" class="link-btn" data-action="edit-review" data-id="' + esc(r.id) + '">' + esc(t('edit')) + '</button>' +
         '<button type="button" class="link-btn danger" data-action="del-review" data-id="' + esc(r.id) + '">' + esc(t('del')) + '</button></div>' : '') +
       moderationControl(r) + '</div></li>';
@@ -593,7 +596,7 @@
         var sub = placeSub(p);
         var info = esc(t(p.mode)) + ' · ' + esc(catName(catOf(p))) + (sub ? ' · ' + esc(sub) : '');
         return adding
-          ? placeRowHTML(p, 'add-existing', info, '<span class="near-cta">' + esc(t(p.mode === 'food' ? 'writeReview' : 'beenHere')) + '</span>')
+          ? placeRowHTML(p, 'add-existing', info, '<span class="near-cta">' + esc(beenThere(p) ? (state.lang === 'en' ? 'Record another visit' : '再次到访') : t(p.mode === 'food' ? 'writeReview' : 'beenHere')) + '</span>')
           : placeRowHTML(p, 'open-place', info);
       }).join('');
     }

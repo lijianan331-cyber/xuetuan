@@ -653,7 +653,9 @@ with sync_playwright() as p:
     page.click('#f-submit')
     page.wait_for_timeout(500)
     check('edit saved toast', '改好了' in page.inner_text('#toast'), page.inner_text('#toast'))
-    page.locator('[data-action="edit-review"]').first.click()
+    # 补图/编辑后列表会按最近活动重排；按目标记录的文字选，不能假定私密记录仍在第一行。
+    private_edit_id = page.evaluate('store.reviews().find(r => r.text === "今天的饭有点冷。").id')
+    page.locator('[data-action="edit-review"][data-id="' + private_edit_id + '"]').click()
     page.wait_for_timeout(200)
     check('edit keeps private visibility', page.get_attribute('[data-action="f-share"]', 'aria-checked') == 'false')
     rate(page, 0)
@@ -2578,11 +2580,13 @@ with sync_playwright() as p:
       [{id:'hf-food',place_id:pid,title:'首页新美食',rating:5,visibility:'public',updated_at:new Date(now).toISOString()},
        {id:'hf-scenery',place_id:'hf-travel',title:'首页新玩乐',rating:3,visibility:'public',updated_at:new Date(now-1000).toISOString()},
        {id:'hf-private',place_id:pid,title:'绝不公开的测试',rating:5,visibility:'private'},
-       {id:'hf-old',place_id:pid,title:'旧动态测试',rating:4.5,visibility:'public',created_at:'2020-01-01T00:00:00Z',updated_at:new Date(now).toISOString()}].forEach(r=>d.visits.push({user_id:d.visits.find(v=>v.place_id===pid).user_id,created_at:new Date(now).toISOString(),photos:['fixture.jpg'],text:'测试正文',...r}));
+       {id:'hf-old',place_id:pid,title:'旧动态测试',rating:4.5,visibility:'public',created_at:'2020-01-01T00:00:00Z',updated_at:'2020-01-01T00:00:00Z'},
+       {id:'hf-updated',place_id:pid,title:'补图后的旧足迹',rating:4,visibility:'public',created_at:'2020-01-01T00:00:00Z',updated_at:new Date(now).toISOString()}].forEach(r=>d.visits.push({user_id:d.visits.find(v=>v.place_id===pid).user_id,created_at:new Date(now).toISOString(),photos:['fixture.jpg'],text:'测试正文',...r}));
     }''',pv['place_id'])
     page6.evaluate('document.dispatchEvent(new Event("visibilitychange"))')
     page6.wait_for_selector('.post-card:has-text("首页新美食")')
-    check('home shows the last month by default: a years-old footprint imported today is not pushed', page6.input_value('#home-days') == '30' and page6.locator('.post-card',has_text='旧动态测试').count()==0 and page6.locator('.home-filter-count').count()==0)
+    check('home shows the last month by default and excludes old unchanged records', page6.input_value('#home-days') == '30' and page6.locator('.post-card',has_text='旧动态测试').count()==0 and page6.locator('.home-filter-count').count()==0)
+    check('a newly updated old public visit returns to the feed without changing its visit date', page6.locator('.post-card',has_text='补图后的旧足迹').count()==1 and page6.evaluate('store.review("hf-updated").createdAt===Date.parse("2020-01-01T00:00:00Z")'))
     check('home time choices are 3 days / 1 week / 1 month / all', page6.eval_on_selector_all('#home-days option','els=>els.map(e=>e.value)') == ['3','7','30','0'])
     check('home detects new public posts and keeps private records out', page6.locator('.post-card',has_text='首页新玩乐').count()==1 and page6.locator('.post-card',has_text='绝不公开的测试').count()==0)
     page6.click('[data-action="home-mode"][data-v="travel"]')
@@ -2595,7 +2599,7 @@ with sync_playwright() as p:
     check('clicking outside home filters closes the popover', not page6.locator('#home-filter-panel').is_visible())
     page6.click('[data-action="home-filters"]')
     page6.select_option('#home-days','7')
-    check('home time follows when the place was visited, not when it was uploaded', page6.locator('.post-card',has_text='首页新美食').count()==1 and page6.locator('.post-card',has_text='旧动态测试').count()==0)
+    check('home time includes recent uploads/updates while excluding unchanged old visits', page6.locator('.post-card',has_text='首页新美食').count()==1 and page6.locator('.post-card',has_text='补图后的旧足迹').count()==1 and page6.locator('.post-card',has_text='旧动态测试').count()==0)
     page6.select_option('#home-sort','rating')
     check('home rating sort puts high scores first', page6.locator('.post-card').first.locator('.pc-score [aria-label="5 分"]').count()==1)
     page6.select_option('#home-sort','newest');page6.select_option('#home-days','0')
