@@ -1,4 +1,4 @@
-"""Real synthetic videos: 8s/26MB imports, duration/size rejection, and batch parity."""
+"""Real synthetic videos: 8s/26MB original imports, duration/size rejection, and batch parity."""
 import os, shutil, subprocess, tempfile
 from pathlib import Path
 from playwright.sync_api import sync_playwright
@@ -24,11 +24,12 @@ with tempfile.TemporaryDirectory() as tmp, sync_playwright() as p:
     pg = c.new_page()
     pg.goto(scope['APP'] + '?local')
     pg.wait_for_function('window.__map && window.__map.getSource("places")')
+    pg.evaluate("window.__transcodes=0; const original=reencodeClip; reencodeClip=function(v){window.__transcodes++; return original(v);}; 0")
     pg.click('[data-action="new-post"]')
     pg.set_input_files('#f-file', str(large))
     pg.wait_for_function('state.form && !state.form.mediaBusy && state.form.photos.length===1', timeout=45000)
-    assert pg.evaluate('state.form.photos[0].blob.size <= MEDIA_MAX_BYTES')
-    print('PASS real 8s/26MB video imports into composer and compresses below 5MB')
+    assert pg.evaluate('state.form.photos[0].blob.size === 26*1024*1024 && window.__transcodes===0')
+    print('PASS real 8s/26MB video imports into composer and retains the original 26MB file without transcoding')
     pg.set_input_files('#f-file', str(long))
     pg.wait_for_function('state.form && !state.form.mediaBusy')
     assert pg.evaluate('state.form.photos.length') == 1
@@ -43,5 +44,6 @@ with tempfile.TemporaryDirectory() as tmp, sync_playwright() as p:
     pg.wait_for_selector('.bk-card', timeout=45000)
     assert pg.locator('.bk-ph').count() == 1
     assert pg.evaluate('state.bulk.rejected.length') == 0
+    assert pg.evaluate('state.bulk.groups[0].photos[0].prepared.blob.size === 26*1024*1024 && window.__transcodes===0')
     print('PASS batch imports the same real 8s/26MB video')
     b.close()

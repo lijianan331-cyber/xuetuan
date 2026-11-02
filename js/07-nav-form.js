@@ -430,7 +430,7 @@
   }
 
   /* 动图和短视频（用户 2026-10-28：动图可以；2026-11-02 视频放宽至 10 秒、原文件 30MB）。
-     GIF 原样存；小视频优先保留原文件，普通添加的大文件可尝试 720p 重录。编码兼容性仍取决于浏览器，不能保证任意格式都能播放。
+     GIF 原样存；10 秒、30MB 以内的 MP4/MOV/WebM 保留原文件，不强制压缩；未知编码尝试 720p 转码。编码兼容性仍取决于浏览器，不能保证任意格式都能播放。
      都另做一张 jpg 小图，地图和列表用小图，点开才动 */
   var CLIP_MAX_SEC = 10, CLIP_INPUT_MAX_BYTES = 30 * 1024 * 1024, MEDIA_MAX_BYTES = 5 * 1024 * 1024;
   var MEDIA_TYPES = { gif: 'image/gif', mp4: 'video/mp4', mov: 'video/quicktime', webm: 'video/webm' };
@@ -490,14 +490,14 @@
       return frameJpeg(v, v.videoWidth, v.videoHeight, THUMB_SIDE);
     }).then(function (thumb) {
       var originalExt = extOf(file.type);
-      if (originalExt && file.size <= MEDIA_MAX_BYTES) return { blob: file, thumb: thumb, ext: originalExt };
+      if (originalExt && file.size <= CLIP_INPUT_MAX_BYTES) return { blob: file, thumb: thumb, ext: originalExt };
       return reencodeClip(v).then(function (blob) {
         if (!blob) {
           var ext = extOf(file.type);
-          if (ext && file.size <= MEDIA_MAX_BYTES) return { blob: file, thumb: thumb, ext: ext };
+          if (ext && file.size <= CLIP_INPUT_MAX_BYTES) return { blob: file, thumb: thumb, ext: ext };
           throw new Error('clipBig');
         }
-        if (blob.size > MEDIA_MAX_BYTES) throw new Error('clipBig');
+        if (blob.size > CLIP_INPUT_MAX_BYTES) throw new Error('clipBig');
         return { blob: blob, thumb: thumb, ext: extOf(blob.type) || 'webm' };
       });
     }).then(function (out) { cleanup(); return out; }, function (e) { cleanup(); throw e; });
