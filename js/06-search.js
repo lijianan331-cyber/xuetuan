@@ -578,7 +578,7 @@
       (areas.length ? '<ul class="area-list">' + areas.map(function (a) {
         return '<li><span>' + esc(a.name) + '</span><button type="button" class="link-btn danger" data-action="del-area" data-id="' + esc(a.id) + '">' + esc(t('del')) + '</button></li>';
       }).join('') + '</ul>' : '<p class="f-hint">' + esc(t('noCustomAreas')) + '</p>') + '</div>' +
-      '<div class="field"><span class="f-label">' + esc(t('dataTitle')) + '</span><p class="note">' + esc(t(remote ? 'remoteNote' : 'localNote')) + '</p>' +
+      '<div class="field"><span class="f-label">' + esc(t('dataTitle')) + '</span><p class="note">' + esc(t(remote ? 'remoteNote' : 'localNote')) + ' <a class="privacy-link" href="privacy.html" target="_blank" rel="noopener">' + esc(t('privacyLink')) + '</a></p>' +
       (dataButtons ? '<div class="btn-row">' + dataButtons + '</div>' : '') + '</div>' +
       '<p class="about">' + esc(t('about')) + '</p></div>';
     view.innerHTML = h;
