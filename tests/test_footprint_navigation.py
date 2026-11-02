@@ -56,9 +56,7 @@ with sync_playwright() as p:
  assert '去过的书店' in pg.inner_text('#view')
  pg.click('[data-action=foot-filters]');assert '书店阅读' in pg.inner_text('#bsheet-card')
  pg.click('#bsheet [data-action=sheet-close]')
- pg.evaluate("setTab('home')");assert pg.locator('.home-favorites[data-action=open-favorites]').is_visible()
- pg.click('.home-favorites');assert pg.evaluate('state.scope')=='saved'
- pg.keyboard.press('Escape');assert pg.evaluate("state.tab==='home' && state.scope==='all'")
+ pg.evaluate("setTab('home')");assert pg.locator('.home-lang').is_visible() and pg.locator('.home-favorites').count()==0
  pg.evaluate("setTab('explore');openPlace('want');setSnap('full')")
  pg.click('[data-action=toggle-save]');pg.wait_for_function("!store.isSaved('want')")
  pg.click('[data-action=toggle-save]');pg.wait_for_function("store.isSaved('want') && document.querySelector('#toast').textContent.includes('点击星星')")

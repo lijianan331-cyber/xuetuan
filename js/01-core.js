@@ -1473,10 +1473,8 @@
     return (state.lang === 'en' ? 'Visited ' : '到访 ') + visitDay(r.createdAt) +
       (changed ? ' · ' + (state.lang === 'en' ? 'Updated ' : '更新于 ') + timeAgo(at) : ' · ' + timeAgo(at));
   }
-  function photoDateHTML(id, r) {
-    var uploaded = photoUploadedAt(id), at = uploaded || r.createdAt;
-    return at ? '<span class="photo-date">' + esc((state.lang === 'en' ? (uploaded ? 'Uploaded ' : 'Visit ') : (uploaded ? '上传 ' : '到访 ')) + visitDay(at)) + '</span>' : '';
-  }
+  /* 缩略图下面不再写“上传 / 到访”日期：评论上方已经有“到访 … · 更新于 …”（用户 2026-11-02：文字重复） */
+  function photoDateHTML() { return ''; }
   function safeURL(u) {
     u = (u || '').trim();
     if (!u) return '';

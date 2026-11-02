@@ -107,6 +107,8 @@ def via_home(pg, text, to_place=True):
     tab(pg, 'home')
     card = pg.locator('.post-card', has_text=text).first
     if not card.count():
+        card = pg.locator('.post-card:has(.pc-who[aria-label="' + text + '"])').first
+    if not card.count():
         rid = pg.evaluate('(text) => { const d=JSON.parse(localStorage.getItem("xmum-chiwan-map:data:v1")); return d && d.reviews.find(r => r.text === text)?.id; }', text)
         card = pg.locator('.post-card').filter(has=pg.locator('[data-id="' + str(rid) + '"]'))
     card.locator('.pc-open').click(); pg.wait_for_timeout(250)
@@ -1099,13 +1101,16 @@ with sync_playwright() as p:
     check('no sample re-seed after clearing', page.locator('.sample-note').count() == 0)
     # 首页：大家最新分享的记录（不是示例），两列卡片，有照片的放照片
     check('after reload: the app opens on home', page.get_attribute('#tabbar [data-tab="home"]', 'aria-current') == 'page' and page.get_attribute('#panel', 'data-snap') == 'page')
-    cards = page.locator('.post-card .pc-place').all_inner_texts()
+    cards = page.locator('.post-card .pc-place > span').all_inner_texts()
     check('home: my public records show as cards, newest first, private ones not', 'Kafe Ujian' not in cards and '测试椰浆饭' in cards and page.locator('.post-card', has_text='其实还行').count() == 0, cards)
     page.wait_for_function('[...document.querySelectorAll(".post-card .pc-cover img")].some(i => i.naturalWidth > 0)', timeout=5000)
     cg = page.evaluate('''(() => { const cs = [...document.querySelectorAll(".post-card")].map(c => c.getBoundingClientRect()); const cv = document.querySelector(".post-card .pc-cover").getBoundingClientRect();
       return [cs.length >= 1 && cv.width < innerWidth / 2, Math.abs(cv.width - cv.height) < 2, document.documentElement.scrollWidth <= innerWidth]; })()''')
     check('home: two columns of square covers, no sideways scroll', cg == [True, True, True], cg)
     check('home: records without photos are omitted', page.locator('.post-card', has_text='Kafe Ujian').count() == 0 and page.locator('.post-card .pc-words').count() == 0)
+    lay = page.evaluate('''(() => { const c = document.querySelector(".post-card"); const t = c.querySelector(".pc-text"), pl = c.querySelector(".pc-place"), w = c.querySelector(".pc-who");
+      return [!!t && t.getBoundingClientRect().top < pl.getBoundingClientRect().top, pl.classList.contains("small") && parseFloat(getComputedStyle(pl).fontSize) < parseFloat(getComputedStyle(t).fontSize), w.innerText.indexOf(w.getAttribute("aria-label")) < 0]; })()''')
+    check('home card: review text first, shop name small below, author shows only the avatar', lay == [True, True, True], lay)
     page.screenshot(path=os.path.join(SHOTS, '06c-mobile-home-cards.png'))
     star = page.locator('.post-card', has_text='测试椰浆饭').first.locator('.pc-save')
     star.click(); page.wait_for_timeout(200)
@@ -1297,6 +1302,13 @@ with sync_playwright() as p:
     st5 = page5.evaluate('JSON.parse(localStorage.getItem("xmum-chiwan-map:data:v1"))')
     check('v1 data migrated (0 -> not rated)', st5['version'] == 2 and [r['rating'] for r in st5['reviews']] == [None, 3] and st5['wishlist'] == [], st5)
     tab(page5, 'home')
+    lb = page5.evaluate('(() => { const b = document.querySelector(".home-top .home-lang"); return [!!b, b && b.textContent, document.querySelectorAll(".home-favorites").length]; })()')
+    check('home top-right: a language button (ENG) replaced the favorites star', lb == [True, 'ENG', 0], lb)
+    page5.click('.home-lang'); page5.wait_for_timeout(250)
+    lb2 = page5.evaluate('[document.documentElement.lang || state.lang, document.querySelector(".home-lang").textContent]')
+    page5.click('.home-lang'); page5.wait_for_timeout(250)
+    check('home language button switches to English and back (button then reads 中文 / ENG)', 'en' in lb2[0] and lb2[1] == '中文' and page5.inner_text('.home-lang') == 'ENG', lb2)
+    check('review photos show no repeated "Uploaded / 上传" date text', page5.evaluate('document.querySelectorAll(".photo-date").length') == 0)
     check('home: only old shares -> says nothing new this month and offers older ones', '最近一个月' in page5.inner_text('.home-empty') and page5.locator('[data-action="home-all-time"]').count() == 1)
     page5.click('[data-action="home-all-time"]')
     page5.locator('.post-card .pc-open').first.click(); page5.wait_for_timeout(200)
@@ -1791,9 +1803,9 @@ with sync_playwright() as p:
     check('stars: dragging off the first star gives 0', zero7 == '0', zero7)
     page7.click('[data-action="back"]'); page7.wait_for_timeout(200)
     tab(page7, 'home')
-    fi7 = page7.locator('.post-card', has_text='测试号 B').first
+    fi7 = page7.locator('.post-card:has(.pc-who[aria-label="测试号 B"])').first
     check('home card: each record shows its own stars (3.5 = three and a half)', fi7.locator('.stars-mini').get_attribute('aria-label') == '3.5 分' and fi7.evaluate('e => [...e.querySelectorAll(".stars-mini .st-fill")].map(f => f.style.width).join()') == '100%,100%,100%,50%,0%')
-    who7 = [x.split(' · ')[0] for x in page7.locator('.post-card .pc-who > span:not(.avatar)').all_inner_texts()]
+    who7 = page7.locator('.post-card .pc-who').evaluate_all('es => es.map(e => e.getAttribute("aria-label"))')
     check('home: newest first (C’s 0, then B, then A), A’s private record not there', who7 == ['测试号 C', '测试号 B', '甲'], who7)
     fi7.locator('.pc-open').click(); page7.wait_for_timeout(250)
     page7.click('[data-action="post-place"]'); page7.wait_for_timeout(250)
@@ -1808,8 +1820,8 @@ with sync_playwright() as p:
     check('person page: turning it on is saved on the profile', page7.get_attribute('[data-action="page-public"]', 'aria-checked') == 'true' and d7p['profile'].get('page_public') is True)
     acct7('甲')
     tab(page7, 'home')
-    card_b = page7.locator('.post-card', has_text='测试号 B').first
-    check('person page: B’s name on the home card is tappable, C’s is not', card_b.locator('.pc-who[data-action="person"]').count() == 1 and page7.locator('.post-card', has_text='测试号 C').first.locator('.pc-who[data-action="person"]').count() == 0)
+    card_b = page7.locator('.post-card:has(.pc-who[aria-label="测试号 B"])').first
+    check('person page: B’s name on the home card is tappable, C’s is not', card_b.locator('.pc-who[data-action="person"]').count() == 1 and page7.locator('.post-card:has(.pc-who[aria-label="测试号 C"])').first.locator('.pc-who[data-action="person"]').count() == 0)
     card_b.locator('.pc-who').click(); page7.wait_for_timeout(400)
     names_p = page7.evaluate('window.__map.getSource("places").data.features.map(f => f.properties.name)')
     check('person page: tapping the name opens B’s page (not the post)', page7.evaluate('state.view') == 'person' and page7.inner_text('.person-head h1') == '测试号 B' and page7.locator('.person-stats b').all_inner_texts() == ['1', '0', '1'], page7.inner_text('#view')[:200])
@@ -2085,7 +2097,7 @@ with sync_playwright() as p:
     page6.evaluate('window.__map.jumpTo({ center: [101.703, 2.8329], zoom: 14.6 })'); page6.wait_for_timeout(300)
     page6.evaluate('window.__map.getBounds = undefined; window.__sb.db.poi = window.__sb.db.poi.filter(r => r.id !== "ddd" && r.id !== "eee")')
     tab(page6, 'home'); page6.wait_for_timeout(300)
-    check('remote: home shows other people’s public posts with their name', page6.locator('.post-card', has_text='小B').count() == 1 and page6.locator('.post-card', has_text='秘密').count() == 0)
+    check('remote: home shows other people’s public posts with their name', page6.locator('.post-card:has(.pc-who[aria-label="小B"])').count() == 1 and page6.locator('.post-card', has_text='秘密').count() == 0)
     via_home(page6, '小B', to_place=False)
     check('remote: the post no longer shows where they are from', '小B' in page6.inner_text('.post-who') and '来自' not in page6.inner_text('.post-who') and page6.inner_text('.post-text') == '好吃', page6.inner_text('#view')[:200])
     page6.click('[data-action="back"]'); page6.wait_for_timeout(200)

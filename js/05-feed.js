@@ -55,12 +55,12 @@
     var items = homeReviews(), h = '';
     if (isMobile()) {
       h += '<div class="home-top"><div class="home-brand"><span class="app-logo" role="img" aria-label="雪团"><img src="assets/app-icon-sheet.png" alt=""></span><b>雪团</b></div>' +
-        '<button type="button" class="home-search" data-action="search">' + '<img src="assets/search-pin.png" width="24" height="24" alt=""><span>' + esc(t('searchPh')) + '</span></button>' + favoritesButtonHTML('home-favorites') + appShareButton() + '</div>' +
+        '<button type="button" class="home-search" data-action="search">' + '<img src="assets/search-pin.png" width="24" height="24" alt=""><span>' + esc(t('searchPh')) + '</span></button>' + langButtonHTML() + appShareButton() + '</div>' +
         '<div class="home-map" id="home-map"><button type="button" class="home-map-btn" data-action="tab" data-tab="explore" aria-label="' + esc(t('openMap')) + '">' +
         '<span class="hm-pill">' + CTRL_ICON.compass + esc(t('openMap')) + '</span></button>' +
         '<div class="home-attrib">' + $('.attrib').innerHTML + '</div></div>';
     }
-    if (!isMobile()) h += '<div style="display:flex;justify-content:flex-end">' + favoritesButtonHTML('home-favorites') + appShareButton() + '</div>';
+    if (!isMobile()) h += '<div style="display:flex;justify-content:flex-end">' + langButtonHTML() + appShareButton() + '</div>';
     h += '<div class="home-sec"><h2>' + esc(t('latest')) + '</h2><button type="button" class="btn primary small home-publish" data-action="new-post">' + ICON.pen + esc(state.lang === 'en' ? 'Post' : '发帖') + '</button></div>';
     h += homeFiltersHTML();
     /* 首次加载：先放四张灰卡片占位（不再是一行字 + 空白），加载完换成真卡片 */
@@ -84,11 +84,15 @@
     var cover = n
       ? '<img data-photo="' + esc(r.photos[0]) + '" data-small loading="lazy" decoding="async" alt="">' + (n > 1 ? '<span class="fi-count">' + ICON.camera + n + '</span>' : '')
       : '<span class="pc-words' + (p.mode === 'travel' ? ' travel' : '') + '"><i aria-hidden="true">' + c.emoji + '</i><span>' + esc(text || catName(c)) + '</span></span>';
-    var score = (r.rating != null ? starsMiniHTML(r.rating) : '') + (r.price ? priceToggleHTML(p,r.price,reviewPriceCurrency(p,r),'r:'+r.id) : '');
+    var score = (r.rating != null ? starsMiniHTML(r.rating) : '') + (r.price ? priceToggleHTML(p, r.price, reviewPriceCurrency(p, r), 'r:' + r.id) : '');
+    /* 用户 2026-11-02：图片下面先写点评（发帖有标题就写标题），店名缩小成一行小字，作者只留头像（不写名字） */
+    var lead = n ? (r.title || text) : '', place = r.title && !lead ? r.title : placeTitle(p);
     return '<li class="post-card"><div class="pc-open" data-action="open-post" data-id="' + esc(r.id) + '">' +
-      '<button type="button" class="pc-cover pc-hit" aria-label="' + esc(r.title || placeTitle(p)) + '">' + cover + '</button><span class="pc-body"><button type="button" class="pc-place pc-hit">' + esc(r.title || placeTitle(p)) + '</button>' +
+      '<button type="button" class="pc-cover pc-hit" aria-label="' + esc(r.title || placeTitle(p)) + '">' + cover + '</button><span class="pc-body">' +
+      (lead ? '<button type="button" class="pc-text pc-hit">' + esc(lead) + '</button>' : '') +
+      '<button type="button" class="pc-place pc-hit' + (lead ? ' small' : '') + '">' + (lead ? '<i aria-hidden="true">' + c.emoji + '</i>' : '') + '<span>' + esc(place) + '</span></button>' +
       (score ? '<span class="pc-score">' + score + '</span>' : '') +
-      '<span class="pc-who"' + personAttr(r.authorId) + '>' + avatarHTML(name, r.authorId) + '<span>' + esc(name) + ' · ' + esc(timeAgo(homeTime(r))) + '</span></span></span></div>' +
+      '<span class="pc-who"' + personAttr(r.authorId) + ' aria-label="' + esc(name) + '">' + avatarHTML(name, r.authorId) + '<span>' + esc(timeAgo(homeTime(r))) + '</span></span></span></div>' +
       saveBtnHTML(p.id, true) + '</li>';
   }
 

@@ -574,6 +574,11 @@
     var on=state.scope==='saved', label=state.lang==='en'?'Saved places':'收藏';
     return '<button type="button" class="icon-btn flat favorites-entry '+(extra||'')+'" data-action="open-favorites" aria-label="'+esc(label)+'" title="'+esc(label)+'">'+(on?ICON.starOn:ICON.star)+'</button>';
   }
+  /* 首页右上角：中英切换（用户 2026-11-02 换掉了收藏星星；收藏在足迹页里进） */
+  function langButtonHTML() {
+    var en = state.lang === 'en';
+    return '<button type="button" class="home-lang" data-action="set-lang" data-lang="' + (en ? 'zh' : 'en') + '" aria-label="' + (en ? '切换到中文' : 'Switch to English') + '">' + (en ? '中文' : 'ENG') + '</button>';
+  }
   function footprintToolsHTML(saved) {
     var en=state.lang==='en', n=activeFilterCount();
     var modes=saved?['food','travel']:['both','food','travel'];
