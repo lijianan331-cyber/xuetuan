@@ -171,8 +171,8 @@
       food: '美食', travel: '旅行', scenery: '美景',
       catAll: '全部',
       scoreAria: '{n} 分', legend: '评分',
-      dist_walk: '步行 · 1.5km 内', dist_short: '短途打车 · 1.5–10km', dist_mid: '中距离 · 10–40km', dist_far: '更远 · 40km 以上',
-      tier_walk: '步行可达', tier_short: '短途打车', tier_mid: '中距离', tier_far: '吉隆坡及更远',
+      dist_walk: '步行 · 校园周边', dist_short: '短途打车 · 6km 内', dist_mid: '中距离 · 龙溪 / IOI', dist_kl: '吉隆坡', dist_far: '出吉隆坡',
+      tier_walk: '步行可达', tier_short: '短途打车', tier_mid: '中距离打车', tier_kl: '吉隆坡', tier_far: '吉隆坡以外',
       feedFoodAll: '大家最近在吃', feedTravelAll: '大家最近去了', feedFoodMine: '我吃过的', feedTravelMine: '我去过的', feedBothMine: '我的足迹',
       mine_food: '美食', mine_travel: '旅行', mine_both: '合并', savedAll: '全部', savedWant: '还没去过', mineShow: '显示', subBeen: '去过', subSaved: '想去', savedShow: '想去里', filterCat: '分类',
       modeToTravel: '切换到美景地图', modeToFood: '切换到美食地图', litCountries: '点亮国家', litN: '已去 {n} 国', worldFail: '国家边界没加载出来，等下再试',
@@ -275,8 +275,8 @@
       food: 'Food', travel: 'Travel', scenery: 'Scenery',
       catAll: 'All',
       scoreAria: 'Score {n}', legend: 'Score',
-      dist_walk: 'Walk · under 1.5 km', dist_short: 'Short ride · 1.5–10 km', dist_mid: 'Mid trip · 10–40 km', dist_far: 'Further · 40 km+',
-      tier_walk: 'Walkable', tier_short: 'Short ride', tier_mid: 'Mid-distance', tier_far: 'KL & beyond',
+      dist_walk: 'Walk · around campus', dist_short: 'Short ride · within 6 km', dist_mid: 'Mid ride · Dengkil / IOI', dist_kl: 'Kuala Lumpur', dist_far: 'Beyond KL',
+      tier_walk: 'Walkable', tier_short: 'Short ride', tier_mid: 'Mid ride', tier_kl: 'Kuala Lumpur', tier_far: 'Beyond KL',
       feedFoodAll: 'What people are eating', feedTravelAll: 'Where people went', feedFoodMine: 'Places I’ve eaten', feedTravelMine: 'Places I’ve been', feedBothMine: 'My footprints',
       mine_food: 'Food', mine_travel: 'Travel', mine_both: 'Both', savedAll: 'All', savedWant: 'Not been yet', mineShow: 'Show', subBeen: 'Been', subSaved: 'Wishlist', savedShow: 'Wishlist', filterCat: 'Category',
       modeToTravel: 'Switch to the scenery map', modeToFood: 'Switch to the food map', litCountries: 'Countries', litN: '{n} visited', worldFail: 'Couldn’t load country borders. Try again later.',
@@ -1540,11 +1540,14 @@
     });
   })();
 
-  /* 美食按出行范围分四层（PRD 第九节），按到 XMUM 的直线距离算 */
+  /* 美食按出行范围分层，按到 XMUM 的直线距离算（用户 2026-11-02 重新定的，量了实际的店）：
+     步行 = 学校、Bell、Monet、南边住宅区夜市（≤1.3km）；短途打车 = 西边 29 号路的麦当劳(1.7km)、Kota Warisan、Gao Gao 一带（≤6km）；
+     中距离 = 龙溪(Dengkil)、IOI City Mall(约15km)、布城（≤20km）；吉隆坡 = 市区和西边几个区（≤50km）；再远 = 出了吉隆坡 */
   var DIST_TIERS = [
-    { id: 'walk', max: 1500 },
-    { id: 'short', max: 10000 },
-    { id: 'mid', max: 40000 },
+    { id: 'walk', max: 1300 },
+    { id: 'short', max: 6000 },
+    { id: 'mid', max: 20000 },
+    { id: 'kl', max: 50000 },
     { id: 'far', max: Infinity }
   ];
   /* XMUM 校园大致的长方形范围（北边的路、东边 Persiaran Sunsuria、南边 Jalan Sunsuria，用户 2026-11-02 截图里量的）。

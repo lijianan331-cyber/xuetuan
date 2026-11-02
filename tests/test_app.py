@@ -142,7 +142,7 @@ def touch_drag(pg, x, y0, y1, steps=8):
 
 def tier(x):
     d = dist_m(x['lat'], x['lng'])
-    return 'walk' if d <= 1500 else 'short' if d <= 10000 else 'mid' if d <= 40000 else 'far'
+    return 'walk' if d <= 1300 else 'short' if d <= 6000 else 'mid' if d <= 20000 else 'kl' if d <= 50000 else 'far'
 
 def map_expr(e, z, props):
     """Evaluate the small subset of MapLibre expressions the app builds (interpolate / step on zoom, match, case, get, ==, *)."""
@@ -746,7 +746,7 @@ with sync_playwright() as p:
     page.click('[data-action="filters"]')
     page.wait_for_timeout(100)
     cats_food = len(set(x['cat'] for x in FOOD_S))
-    check('filter sheet: category, score (with legend), distance, price', page.locator('#bsheet').is_visible() and page.locator('#bsheet [data-action="cat"]').count() >= cats_food + 1 and page.locator('#bsheet .legend').count() == 1 and page.locator('[data-action="set-score"]').count() == 3 and page.locator('[data-action="set-dist"]').count() == 5 and page.locator('#bsheet input#flt-price[type="range"]').count() == 1 and page.inner_text('#flt-price-val') == '不限')
+    check('filter sheet: category, score (with legend), distance, price', page.locator('#bsheet').is_visible() and page.locator('#bsheet [data-action="cat"]').count() >= cats_food + 1 and page.locator('#bsheet .legend').count() == 1 and page.locator('[data-action="set-score"]').count() == 3 and page.locator('[data-action="set-dist"]').count() == 6 and page.locator('#bsheet input#flt-price[type="range"]').count() == 1 and page.inner_text('#flt-price-val') == '不限')
     page.click('#bsheet [data-action="cat"][data-cat="cn"]')
     page.wait_for_timeout(150)
     fc = page.evaluate('window.__map.getSource("places").data.features.map(f => f.properties.name)')
@@ -767,7 +767,11 @@ with sync_playwright() as p:
     page.wait_for_timeout(150)
     mid = sorted(page.evaluate('window.__map.getSource("places").data.features.map(f => f.properties.name)'))
     want_mid = sorted([x['name'] for x in FOOD_S if tier(x) == 'mid'])
-    check('distance filter: mid-range', mid == want_mid and '亚罗街' in mid, (mid, want_mid))
+    check('distance filter: mid-range (Dengkil / IOI / Putrajaya, not KL)', mid == want_mid and '布城湖边海鲜' in mid and '亚罗街' not in mid, (mid, want_mid))
+    page.click('[data-action="set-dist"][data-v="kl"]')
+    page.wait_for_timeout(150)
+    kl = page.evaluate('window.__map.getSource("places").data.features.map(f => f.properties.name)')
+    check('distance filter: KL tier has KL places (Jalan Alor)', '亚罗街' in kl and sorted(kl) == sorted([x['name'] for x in FOOD_S if tier(x) == 'kl']), kl)
     # 价位滑条：挡位不均匀（60 以下密，100 往上稀，最多 500），拉到 x 显示 x 的 2/3–4/3
     page.click('[data-action="set-dist"][data-v="any"]')
     page.wait_for_timeout(100)
@@ -1818,6 +1822,9 @@ with sync_playwright() as p:
     check('person page: picking a photo makes it my avatar (square-cropped), shown on my page', avp == [True, True, '甲', True], avp)
     tab(page7, 'me')
     check('me page: the header shows the same avatar photo', page7.locator('.me-head .avatar.has-photo img').count() == 1)
+    page7.click('.me-head[data-action="edit-profile"]'); page7.wait_for_timeout(150)
+    check('me page: tapping my avatar / name opens the same avatar + name dialog', page7.locator('#profile-form #pf-dialog-name').count() == 1 and page7.input_value('#pf-dialog-name') == '甲')
+    page7.click('#profile-form [data-modal="no"]'); page7.wait_for_timeout(100)
     tab(page7, 'explore')
     check('person page: switching tabs leaves it', page7.evaluate('[state.view, state.scope, state.person]') == ['feed', 'all', None])
     tab(page7, 'foot'); foot_sub(page7, 'mine')

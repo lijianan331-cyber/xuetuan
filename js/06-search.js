@@ -542,8 +542,9 @@
       var inner = '<b>' + n + '</b><small>' + esc(t(key)) + '</small>';
       return sub ? '<button type="button" class="me-stat" data-action="foot-sub" data-v="' + sub + '">' + inner + '</button>' : '<div class="me-stat">' + inner + '</div>';
     }
-    return '<div class="me-head">' + avatarHTML(pf.name || '?', pf.id) + '<span class="me-id"><b' + (pf.name ? '' : ' class="muted"') + ' id="me-name">' + esc(pf.name || t('meNoName')) + '</b>' +
-      '<small>' + esc(home ? t('fromPrefix') + home.city : t('meNoHome')) + '</small></span></div>' +
+    /* 点头像或名字：换头像、改名字（用户 2026-11-02） */
+    return '<button type="button" class="me-head me-edit" data-action="edit-profile" aria-label="' + esc(state.lang === 'en' ? 'Edit avatar and name' : '修改头像和名字') + '">' + avatarHTML(pf.name || '?', pf.id) + '<span class="me-id"><b' + (pf.name ? '' : ' class="muted"') + ' id="me-name">' + esc(pf.name || t('meNoName')) + '</b>' +
+      '<small>' + esc(home ? t('fromPrefix') + home.city : t('meNoHome')) + '</small></span><span class="ph-pen">' + esc(state.lang === 'en' ? 'Edit' : '修改') + '</span></button>' +
       '<div class="me-stats">' + stat(Object.keys(been).length, 'meBeen', 'mine') + stat(want, 'meWant', 'saved') + stat(shared, 'meShared') + '</div>';
   }
   function renderMe() {

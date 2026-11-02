@@ -998,3 +998,5 @@ button.post-who { width: 100%; }
 .ph-busy.has-img img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: .55; }
 .ph-busy.has-img span { position: relative; background: rgba(255, 255, 255, .85); color: var(--ink, #16324a); border-radius: 999px; padding: 2px 8px; font-weight: 600; }
 .hero-slide { cursor: zoom-in; }
+.me-edit { width: 100%; border: 0; background: none; text-align: left; color: inherit; font: inherit; cursor: pointer; }
+.me-edit .me-id { flex: 1; min-width: 0; }
