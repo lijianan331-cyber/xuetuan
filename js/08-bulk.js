@@ -66,7 +66,7 @@
   window.__bulkWarm = bulkWarm; /* 测试用 */
   /* 照片里存的小图（EXIF 缩略图）当预览，比解码整张原图省内存；小图没按拍摄方向转，自己转 */
   function readPhotoMeta(file, b) {
-    if (videoFile(file) && file.size > MEDIA_MAX_BYTES) return Promise.reject(new Error('clipBig'));
+    if (videoFile(file) && file.size > CLIP_INPUT_MAX_BYTES) return Promise.reject(new Error('clipBig'));
     if (file.size > MEDIA_MAX_BYTES && (file.type === 'image/gif' || /\.gif$/i.test(file.name || ''))) return Promise.reject(new Error('gifTooBig'));
     if (videoFile(file)) return prepareMedia(file).then(function (media) {
       var url = URL.createObjectURL(media.thumb); b.urls.push(url);

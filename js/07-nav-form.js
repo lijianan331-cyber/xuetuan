@@ -429,10 +429,10 @@
     $$('[aria-invalid]').forEach(function (el) { el.removeAttribute('aria-invalid'); });
   }
 
-  /* 动图和短视频（用户 2026-10-28：动图可以，视频 5 秒以内）。
+  /* 动图和短视频（用户 2026-10-28：动图可以；2026-11-02 视频放宽至 10 秒、原文件 30MB）。
      GIF 原样存；小视频优先保留原文件，普通添加的大文件可尝试 720p 重录。编码兼容性仍取决于浏览器，不能保证任意格式都能播放。
      都另做一张 jpg 小图，地图和列表用小图，点开才动 */
-  var CLIP_MAX_SEC = 5, MEDIA_MAX_BYTES = 5 * 1024 * 1024;
+  var CLIP_MAX_SEC = 10, CLIP_INPUT_MAX_BYTES = 30 * 1024 * 1024, MEDIA_MAX_BYTES = 5 * 1024 * 1024;
   var MEDIA_TYPES = { gif: 'image/gif', mp4: 'video/mp4', mov: 'video/quicktime', webm: 'video/webm' };
   function isClip(id) { return /\.(mp4|mov|webm)$/i.test(id || ''); }
   function isGif(id) { return /\.gif$/i.test(id || ''); }
@@ -466,6 +466,7 @@
     return new Promise(function (resolve) { cv.toBlob(function (b) { cv.width = cv.height = 0; resolve(b); }, 'image/jpeg', 0.8); });
   }
   function prepareClip(file) {
+    if (file.size > CLIP_INPUT_MAX_BYTES) return Promise.reject(new Error('clipBig'));
     var src = URL.createObjectURL(file), v = document.createElement('video');
     v.muted = true; v.playsInline = true; v.setAttribute('playsinline', ''); v.preload = 'auto';
     function waitFor(ev, ms) {

@@ -2196,10 +2196,10 @@ with sync_playwright() as p:
     page6.set_input_files('#f-file', photo)
     page6.wait_for_function('document.querySelectorAll("#f-photos .ph-edit").length === 1', timeout=8000)
     page6.wait_for_function('!document.querySelector("#cat-guess").hidden && document.querySelector("#cat-guess").textContent.indexOf("火锅") !== -1', timeout=5000)
-    # 动图照样动，视频 5 秒以内（重录成小的；长的不收）
+    # 动图照样动，视频 10 秒以内（重录成小的；长的不收）
     gif_p, clip_p, long_p = os.path.join(SHOTS, 'm.gif'), os.path.join(SHOTS, 'm.webm'), os.path.join(SHOTS, 'long.webm')
     Image.new('RGB', (200, 150), (255, 0, 0)).save(gif_p, save_all=True, append_images=[Image.new('RGB', (200, 150), (0, 0, 255))], duration=200, loop=0)
-    for p_, secs in ((clip_p, 2), (long_p, 7)):
+    for p_, secs in ((clip_p, 2), (long_p, 11)):
         subprocess.run(['ffmpeg', '-y', '-loglevel', 'error', '-f', 'lavfi', '-i', 'testsrc=size=320x240:rate=15', '-t', str(secs), '-c:v', 'libvpx', '-b:v', '200k', p_], check=True)
     page6.set_input_files('#f-file', [gif_p, clip_p])
     page6.wait_for_function('document.querySelectorAll("#f-photos .ph-edit:not(.ph-busy)").length === 3', timeout=15000)
@@ -2211,8 +2211,8 @@ with sync_playwright() as p:
     check('unsaved animated GIF can be enlarged', page6.is_visible('#lb-img'))
     page6.click('[data-action="lb-close"]')
     page6.set_input_files('#f-file', long_p)
-    page6.wait_for_function('document.querySelector("#toast") && document.querySelector("#toast").textContent.indexOf("5 秒以内") !== -1', timeout=15000)
-    check('a video over 5 seconds is turned away', page6.locator('#f-photos .ph-edit:not(.ph-busy)').count() == 3)
+    page6.wait_for_function('document.querySelector("#toast") && document.querySelector("#toast").textContent.indexOf("10 秒以内") !== -1', timeout=15000)
+    check('a video over 10 seconds is turned away', page6.locator('#f-photos .ph-edit:not(.ph-busy)').count() == 3)
     large_gif = os.path.join(SHOTS, 'large.gif')
     Path(large_gif).write_bytes(Path(gif_p).read_bytes() + bytes(5 * 1024 * 1024))
     page6.set_input_files('#f-file', large_gif)
@@ -2374,7 +2374,7 @@ with sync_playwright() as p:
     page6.evaluate('window.__mediaBefore=window.__sb.db.visits.map(v=>v.id)')
     page6.set_input_files('#bulk-file', [gif_p, clip_p, long_p])
     page6.wait_for_function('document.querySelectorAll(".bk-card").length===2',timeout=15000)
-    check('bulk accepts GIF and short video, gives a visible reason for long video', '5 秒以内' in page6.inner_text('#view'))
+    check('bulk accepts GIF and short video, gives a visible reason for long video', '10 秒以内' in page6.inner_text('#view'))
     page6.click('#bk-0 [data-action="bulk-preview"]')
     page6.wait_for_function('document.querySelector("#lb-vid").readyState>=2')
     check('bulk short video preview plays before import', page6.is_visible('#lb-vid'))
