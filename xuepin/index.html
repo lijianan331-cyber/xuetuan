@@ -1,0 +1,2557 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>雪拼 · XMUM 拼车</title>
+<meta name="description" content="雪拼：XMUM 同学一起拼车，去机场、商场、KL 都能找人。">
+<meta name="theme-color" content="#FFF8F0">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/svg+xml" href="icons/xuepin-icon.svg">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/xuepin-icon-192.png">
+<link rel="apple-touch-icon" href="icons/xuepin-icon-180.png">
+<meta name="apple-mobile-web-app-title" content="雪拼">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Overpass:wght@400;600;700;800&family=Noto+Sans+SC:wght@400;500;700;800&display=swap">
+<style>
+[hidden]{display:none!important}
+body{margin:0}
+/* Layout: one phone column with a bottom tab bar (hall / messages / trips). Hall = road-sign header + ride slips + one-line composer; a ride's chat opens full screen. */
+/* 雪拼配色：和图标一样的橙色；和雪团一样只做浅色 */
+:root{
+  --bg:#FFF8F0;
+  --surface:#FFFFFF;
+  --sunk:#FFF3E6;
+  --ink:#2A1A0A;
+  --muted:#7A6450;
+  --line:#F0DCC6;
+  --plate:#C9590A;      /* 深橙：路线牌、主按钮 */
+  --plate-ink:#FFFFFF;
+  --link:#B4500A;
+  --route:#FFC24D;      /* 图标的亮橙黄 */
+  --route-ink:#3A2200;
+  --route-soft:#FFF1D2;
+  --ok:#137A4C;
+  --ok-soft:#DDF1E6;
+  --danger:#B42318;
+  --scrim:rgba(42,26,10,.45);
+  --f-ui:"Overpass","Noto Sans SC","PingFang SC","Hiragino Sans GB","Microsoft YaHei",system-ui,sans-serif;
+  --r-card:12px;
+  --r-ctl:10px;
+  color-scheme:light;
+}
+html,body{background:var(--bg)}
+body{color:var(--ink);font-family:var(--f-ui);font-size:15px;line-height:1.5;-webkit-tap-highlight-color:transparent}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
+body.lock{overflow:hidden}
+
+.gutter{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+
+/* header */
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);border-bottom:1px solid var(--line)}
+.top-inner{max-width:560px;margin:0 auto;padding-block:12px 10px;display:grid;gap:12px}
+.brand-row{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.brand{display:flex;align-items:center;gap:8px;font-weight:800;font-size:21px;letter-spacing:.02em}
+.brand .logo{width:32px;height:32px;border-radius:9px;flex:none;box-shadow:0 1px 3px rgba(150,70,0,.25)}
+.brand .sub{font-size:13px;font-weight:700;color:var(--muted);letter-spacing:0}
+.mode.login{all:unset;cursor:pointer;font-size:13px;font-weight:800;color:var(--plate-ink);background:var(--plate);border-radius:16px;padding:6px 12px 5px;white-space:nowrap}
+.sister{display:block;text-align:center;margin:18px 0 6px;font-size:13px;color:var(--muted)}
+.sister a{color:var(--link);font-weight:700;text-decoration:none}
+.mode{font-size:12px;font-weight:700;color:var(--muted);display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.mode .dot{width:8px;height:8px;border-radius:50%;background:var(--muted)}
+.mode.live .dot{background:var(--ok)}
+.mode.demo .dot{background:var(--route)}
+
+.seg{display:grid;grid-template-columns:1fr 1fr;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:3px;gap:3px}
+.seg-btn{all:unset;box-sizing:border-box;text-align:center;padding:9px 6px 8px;border-radius:9px;font-weight:700;font-size:15px;color:var(--muted);cursor:pointer}
+.seg-btn.on{background:var(--plate);color:var(--plate-ink)}
+.seg-btn .c{font-weight:600;opacity:.75;margin-left:5px;font-variant-numeric:tabular-nums}
+
+.chips-scroll{max-width:560px;margin:0 auto;overflow-x:auto;scrollbar-width:none}
+.chips-scroll::-webkit-scrollbar{display:none}
+.chips{display:flex;gap:8px;padding-block:0 12px;width:max-content}
+.chips::after{content:"";flex:none;width:1px}
+.chip{all:unset;box-sizing:border-box;display:inline-flex;align-items:center;gap:6px;padding:7px 12px 6px;border-radius:999px;background:var(--surface);border:1px solid var(--line);font-size:14px;font-weight:600;white-space:nowrap;cursor:pointer}
+.chip.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.chip .n{font-size:12px;min-width:18px;height:18px;border-radius:9px;display:inline-grid;place-items:center;background:var(--sunk);color:var(--ink);font-variant-numeric:tabular-nums;padding:0 5px;box-sizing:border-box;line-height:1}
+.chip.on .n{background:var(--route);color:var(--route-ink)}
+
+/* road sign plate */
+.plate{display:inline-flex;align-items:center;gap:7px;max-width:100%;box-sizing:border-box;background:var(--plate);color:var(--plate-ink);border-radius:6px;padding:5px 10px 4px;box-shadow:inset 0 0 0 2px var(--plate),inset 0 0 0 3.5px var(--plate-ink);font-weight:800;font-size:15px;letter-spacing:.01em;line-height:1.25}
+.plate > span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.plate .home{font-weight:600;opacity:.8;flex:none}
+.plate .arr{width:18px;height:11px;flex:none}
+.plate .unk{opacity:.7;font-weight:600}
+.plate-sm{font-size:15px;padding:4px 9px 3px}
+.plate-xs{font-size:13px;padding:3px 8px 2px;gap:5px;box-shadow:inset 0 0 0 1.5px var(--plate),inset 0 0 0 2.5px var(--plate-ink)}
+.plate-xs .arr{width:14px;height:9px}
+.plate-lg{font-size:21px;padding:9px 15px 7px;gap:10px}
+.plate-lg .arr{width:24px;height:14px}
+
+/* banner */
+.banner{max-width:560px;margin:0 auto;padding-block:12px 0}
+.banner-in{display:flex;flex-wrap:wrap;gap:4px 12px;align-items:center;background:var(--route);color:var(--route-ink);border-radius:10px;padding:9px 12px 8px;font-size:13px;font-weight:600}
+.banner-in button{all:unset;cursor:pointer;text-decoration:underline;font-weight:800}
+
+/* pages */
+.wrap{max-width:560px;margin:0 auto;padding-block:16px calc(96px + env(safe-area-inset-bottom,0px));display:grid;gap:20px;align-content:start}
+body.t-hall .wrap{padding-bottom:calc(190px + env(safe-area-inset-bottom,0px))}
+.page-h{margin:0;font-size:24px;font-weight:800;letter-spacing:.01em}
+.sec-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:10px}
+.sec-h{font-size:13px;letter-spacing:.06em;color:var(--muted);font-weight:700;margin:0}
+.sec-n{font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+.list{display:grid;gap:10px}
+
+.ride{all:unset;box-sizing:border-box;display:grid;grid-template-columns:62px minmax(0,1fr);gap:12px;width:100%;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-card);padding:14px 14px 12px;cursor:pointer;transition:transform .1s}
+.ride:active{transform:scale(.99)}
+.when{display:flex;flex-direction:column;align-items:flex-start;gap:3px;padding-top:2px;min-width:0}
+.day{font-size:12px;color:var(--muted);font-weight:600;white-space:nowrap}
+.clock{font-size:24px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.clock.word{font-size:20px;letter-spacing:0}
+.sfx{font-size:12px;font-weight:700;color:var(--ink);white-space:nowrap;font-variant-numeric:tabular-nums}
+.asap{background:var(--route);color:var(--route-ink);font-weight:800;font-size:13px;padding:3px 7px 2px;border-radius:4px;white-space:nowrap}
+.what{display:grid;gap:8px;min-width:0;justify-items:start}
+.meta{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;font-size:13px;color:var(--muted)}
+.left b{color:var(--ink);font-size:15px;font-variant-numeric:tabular-nums}
+.fare{font-variant-numeric:tabular-nums}
+.seats{display:inline-flex;gap:4px;align-items:center}
+.seats i{width:10px;height:10px;border-radius:50%;display:block}
+.d-own{background:var(--ink)}
+.d-join{background:var(--ok)}
+.d-empty{box-shadow:inset 0 0 0 1.5px var(--muted)}
+.by{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);min-width:0;max-width:100%;flex-wrap:wrap}
+.gd{font-size:12px;font-weight:700;padding:1px 7px 0;border-radius:4px;background:var(--sunk);color:var(--ink);border:1px solid var(--line);white-space:nowrap}
+.by .note{overflow:hidden;white-space:nowrap;text-overflow:ellipsis;min-width:0;max-width:100%}
+.ex{font-size:11px;border:1px solid var(--line);border-radius:4px;padding:0 5px;color:var(--muted);white-space:nowrap}
+.tag{font-size:12px;font-weight:700;padding:2px 8px 1px;border-radius:999px;white-space:nowrap}
+.tag-ok{background:var(--ok-soft);color:var(--ok)}
+.tag-muted{background:var(--sunk);color:var(--muted);border:1px solid var(--line)}
+.tag-plate{background:var(--plate);color:var(--plate-ink)}
+.tag-warn{background:var(--route);color:var(--route-ink)}
+
+.empty{background:var(--surface);border:1px dashed var(--line);border-radius:var(--r-card);padding:22px 18px;display:grid;gap:12px;justify-items:start}
+.empty h3{margin:0;font-size:17px;text-wrap:balance}
+.empty p{margin:0;color:var(--muted);font-size:14px}
+.link-btn{all:unset;color:var(--link);font-weight:700;cursor:pointer;font-size:14px}
+.link-btn.center{justify-self:center}
+.loading{color:var(--muted);font-size:14px;margin:0}
+
+/* buttons */
+.btn{all:unset;box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:46px;padding:10px 16px 9px;border-radius:12px;font-weight:700;font-size:15px;cursor:pointer;text-align:center}
+.btn.primary{background:var(--plate);color:var(--plate-ink)}
+.btn.ghost{background:var(--surface);color:var(--ink);border:1px solid var(--line)}
+.btn.danger{color:var(--danger)}
+.btn.big{width:100%;min-height:52px;font-size:17px}
+.btn[disabled]{opacity:.5;cursor:default}
+.mini{all:unset;box-sizing:border-box;padding:6px 11px 5px;border-radius:8px;border:1px solid var(--line);background:var(--surface);font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap}
+.mini.primary{background:var(--plate);color:var(--plate-ink);border-color:var(--plate)}
+.mini.danger{color:var(--danger)}
+.mini[disabled]{opacity:.5;cursor:default}
+.ride:focus-visible,.btn:focus-visible,.mini:focus-visible,.chip:focus-visible,.seg-btn:focus-visible,.pk:focus-visible,.link-btn:focus-visible,.c-btn:focus-visible,.x:focus-visible,.stepper button:focus-visible,.send:focus-visible,.tab:focus-visible,.trow:focus-visible,.back:focus-visible,.node:focus-visible{outline:2px solid var(--link);outline-offset:2px}
+
+/* dock: composer + tab bar */
+.dock{position:fixed;left:0;right:0;bottom:0;z-index:6;background:var(--surface);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px)}
+.composer{padding-block:10px 8px;border-bottom:1px solid var(--line)}
+.composer-in{max-width:560px;margin:0 auto;display:grid;gap:8px}
+.preview{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;font-size:13px;color:var(--muted);min-width:0}
+.preview .pv-t{color:var(--ink);font-weight:700;font-variant-numeric:tabular-nums}
+.preview .miss{background:var(--route-soft);color:var(--ink);border:1px solid var(--route);border-radius:4px;padding:0 6px;font-weight:700;font-size:12px}
+.preview .soft{font-size:12px}
+.cbar{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center}
+.say{box-sizing:border-box;width:100%;min-height:44px;padding:10px 14px;border-radius:22px;border:1px solid var(--line);background:var(--sunk);color:var(--ink);font:inherit;font-size:16px}
+.say::placeholder{color:var(--muted);opacity:.85}
+.say:focus{outline:2px solid var(--link);outline-offset:0;border-color:transparent}
+.say:disabled{opacity:.6}
+.send{all:unset;box-sizing:border-box;min-height:44px;padding:0 18px;border-radius:22px;background:var(--plate);color:var(--plate-ink);font-weight:800;font-size:15px;cursor:pointer;display:inline-flex;align-items:center;white-space:nowrap}
+.send.alt{background:var(--sunk);color:var(--ink);border:1px solid var(--line)}
+.send[disabled]{opacity:.5;cursor:default}
+.tabbar{max-width:560px;margin:0 auto;display:grid;grid-template-columns:repeat(3,1fr)}
+.tab{all:unset;box-sizing:border-box;position:relative;display:grid;justify-items:center;gap:1px;padding:8px 0 6px;color:var(--muted);font-size:12px;font-weight:700;cursor:pointer}
+.tab svg{width:25px;height:25px}
+.tab.on{color:var(--link)}
+.badge{position:absolute;top:3px;left:calc(50% + 8px);min-width:18px;height:18px;border-radius:9px;background:var(--route);color:var(--route-ink);font-size:11px;font-weight:800;display:inline-grid;place-items:center;padding:0 5px;box-sizing:border-box;line-height:1}
+
+/* messages list */
+.tlist{display:grid;gap:10px}
+.trow{all:unset;box-sizing:border-box;display:grid;gap:6px;width:100%;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px;cursor:pointer}
+.trow-top{display:flex;align-items:center;gap:8px;min-width:0}
+.unread{margin-left:auto;flex:none;min-width:20px;height:20px;border-radius:10px;background:var(--route);color:var(--route-ink);font-size:12px;font-weight:800;display:inline-grid;place-items:center;padding:0 6px;box-sizing:border-box}
+.trow-sub{font-size:13px;color:var(--muted);display:flex;flex-wrap:wrap;gap:4px 10px;font-variant-numeric:tabular-nums}
+.trow-last{font-size:14px;color:var(--ink);overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.trow-last.dim{color:var(--muted)}
+
+/* thread (full screen) */
+.thread{position:fixed;inset:0;z-index:12;background:var(--bg);display:flex;flex-direction:column;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+.th-head{background:var(--surface);border-bottom:1px solid var(--line);flex:none}
+.th-head-in{max-width:560px;margin:0 auto;padding-block:10px;display:grid;gap:8px}
+.th-top{display:flex;align-items:center;gap:10px;min-width:0}
+.back{all:unset;flex:none;width:36px;height:36px;display:grid;place-items:center;border-radius:50%;background:var(--sunk);cursor:pointer;color:var(--ink)}
+.back svg{width:20px;height:20px}
+.th-title{display:grid;gap:2px;min-width:0;justify-items:start}
+.th-when{font-size:13px;font-weight:700;color:var(--muted);font-variant-numeric:tabular-nums}
+.th-meta{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;font-size:13px;color:var(--muted)}
+.th-tools{display:flex;flex-wrap:wrap;gap:8px}
+.contacts summary{cursor:pointer;font-size:13px;font-weight:700;color:var(--link)}
+.contacts[open] summary{margin-bottom:8px}
+.th-body{flex:1;overflow-y:auto;overscroll-behavior:contain}
+.th-body-in{max-width:560px;margin:0 auto;padding-block:14px;display:flex;flex-direction:column;gap:10px}
+.th-input{background:var(--surface);border-top:1px solid var(--line);flex:none}
+.th-form{max-width:560px;margin:0 auto;padding-block:10px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center}
+.sys{align-self:center;font-size:12px;color:var(--muted);background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:3px 10px 2px;text-align:center;max-width:90%;overflow-wrap:anywhere}
+.sys.good{color:var(--ok);background:var(--ok-soft);border-color:transparent;font-weight:700}
+.evt{display:grid;gap:8px;padding:12px;border:1px solid var(--route);background:var(--route-soft);border-radius:12px}
+.evt.done{border-color:var(--line);background:var(--surface)}
+.evt-h{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-weight:700}
+.req-msg{margin:0;font-size:14px;overflow-wrap:anywhere}
+.bub{align-self:flex-start;max-width:82%;display:grid;gap:2px;justify-items:start}
+.bub .who{font-size:11px;color:var(--muted);font-weight:700;font-variant-numeric:tabular-nums}
+.bub .txt{background:var(--surface);border:1px solid var(--line);padding:7px 11px 6px;border-radius:12px 12px 12px 4px;font-size:15px;overflow-wrap:anywhere}
+.bub.me{align-self:flex-end;justify-items:end}
+.bub.me .txt{background:var(--plate);color:var(--plate-ink);border-color:var(--plate);border-radius:12px 12px 4px 12px}
+
+/* trips */
+.tsum{margin:0;font-size:15px;color:var(--muted)}
+.tsum b{color:var(--ink);font-variant-numeric:tabular-nums}
+.mapcard{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:6px 6px 10px;display:grid;gap:4px}
+.map{width:100%;height:auto;display:block;max-width:100%}
+.map .road{stroke:var(--line);stroke-linecap:round}
+.map .road.on{stroke:var(--plate)}
+.map .node{cursor:pointer}
+.map .node circle{fill:var(--surface);stroke:var(--muted);stroke-width:2}
+.map .node.on circle{fill:var(--plate);stroke:var(--plate)}
+.map .node.sel circle{stroke:var(--route);stroke-width:4}
+.map .nl{fill:var(--muted);font-size:12px;font-weight:700;font-family:var(--f-ui)}
+.map .node.on .nl{fill:var(--ink)}
+.map .pill rect{fill:var(--route)}
+.map .pill text{fill:var(--route-ink);font-size:11px;font-weight:800;font-family:var(--f-ui)}
+.map .home rect{fill:var(--plate)}
+.map .home .inner{fill:none;stroke:var(--plate-ink);stroke-width:1.5}
+.map .home text{fill:var(--plate-ink);font-weight:800;font-size:14px;font-family:var(--f-ui)}
+.mapcap{margin:0;text-align:center;font-size:12px;color:var(--muted)}
+.trip{display:grid;grid-template-columns:64px minmax(0,1fr) auto;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+.trip .tdate{font-size:14px;font-weight:800;font-variant-numeric:tabular-nums}
+.trip .tdate span{display:block;font-size:12px;color:var(--muted);font-weight:600}
+.trip-r{display:grid;gap:4px;justify-items:start;min-width:0}
+.pcard{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;display:grid;gap:10px}
+
+/* sheets */
+.sheet-wrap{position:fixed;inset:0;z-index:20;display:flex;align-items:flex-end;justify-content:center}
+.sheet-wrap.copy{z-index:30}
+.backdrop{position:absolute;inset:0;background:var(--scrim)}
+.sheet{position:relative;width:100%;max-width:560px;max-height:calc(100% - 28px - env(safe-area-inset-top,0px));overflow-y:auto;overscroll-behavior:contain;background:var(--surface);border-radius:18px 18px 0 0;padding-bottom:env(safe-area-inset-bottom,0px);animation:up .22s ease-out}
+@keyframes up{from{transform:translateY(28px);opacity:.5}to{transform:none;opacity:1}}
+.grab{width:40px;height:4px;border-radius:2px;background:var(--line);margin:8px auto 0}
+.sheet-pad{padding-left:max(18px,env(safe-area-inset-left,0px));padding-right:max(18px,env(safe-area-inset-right,0px));padding-block:12px 22px;display:grid;gap:18px}
+.sheet-title{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.sheet-title h2{margin:0;font-size:20px;font-weight:800}
+.x{all:unset;flex:none;width:36px;height:36px;display:grid;place-items:center;border-radius:50%;background:var(--sunk);cursor:pointer;color:var(--muted);font-size:15px}
+
+/* form */
+.field{display:grid;gap:8px}
+.lab{font-size:13px;font-weight:700;color:var(--muted);letter-spacing:.02em}
+.pick{display:flex;flex-wrap:wrap;gap:8px}
+.pk{all:unset;box-sizing:border-box;padding:8px 12px 7px;border-radius:10px;border:1px solid var(--line);background:var(--sunk);font-weight:600;font-size:14px;cursor:pointer;white-space:nowrap}
+.pk.on{background:var(--plate);border-color:var(--plate);color:var(--plate-ink)}
+.pick.sm .pk{padding:6px 10px 5px;font-size:13px}
+.inp{box-sizing:border-box;width:100%;min-height:46px;padding:10px 12px;border-radius:var(--r-ctl);border:1px solid var(--line);background:var(--sunk);color:var(--ink);font:inherit;font-size:16px}
+.inp::placeholder{color:var(--muted);opacity:.8}
+.inp:focus{outline:2px solid var(--link);outline-offset:0;border-color:transparent}
+.inp-time{max-width:170px;font-variant-numeric:tabular-nums}
+.time-row{display:flex;flex-wrap:wrap;align-items:center;gap:10px;font-weight:700}
+textarea.inp{resize:none;line-height:1.5}
+.two{grid-template-columns:1fr 1fr;gap:12px}
+.two > div{display:grid;gap:8px;min-width:0}
+.stepper{display:grid;grid-template-columns:44px 1fr 44px;align-items:center;border:1px solid var(--line);border-radius:var(--r-ctl);background:var(--sunk);overflow:hidden}
+.stepper button{all:unset;height:44px;display:grid;place-items:center;font-size:20px;font-weight:700;cursor:pointer;color:var(--ink)}
+.stepper button:disabled{opacity:.3;cursor:default}
+.sv{text-align:center;font-size:20px;font-weight:800;font-variant-numeric:tabular-nums}
+.count-row{display:grid;grid-template-columns:1fr 150px;align-items:center;gap:12px}
+.hint{margin:0;font-size:13px;color:var(--muted)}
+.err{margin:0;font-size:14px;color:var(--danger);font-weight:600}
+.rm{display:grid;grid-template-columns:auto 1fr;align-items:center;gap:10px;font-weight:800}
+.said{margin:0;padding:10px 12px;border-radius:10px;background:var(--sunk);border:1px solid var(--line);font-size:15px;overflow-wrap:anywhere}
+.said .k{display:block;margin-bottom:2px}
+.callout{margin:0;padding:10px 12px;border-radius:10px;background:var(--route-soft);border:1px solid var(--route);font-size:14px;font-weight:600}
+
+/* detail */
+.d-head{display:grid;gap:10px;justify-items:start}
+.d-when{font-size:16px;font-weight:700;font-variant-numeric:tabular-nums}
+.d-grid{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--line);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.d-cell{background:var(--surface);padding:10px 12px;display:grid;gap:2px;min-width:0;align-content:start}
+.d-cell.wide{grid-column:1 / -1}
+.k{font-size:12px;color:var(--muted);font-weight:600}
+.v{font-size:16px;font-weight:700;display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-variant-numeric:tabular-nums}
+.s{font-size:12px;color:var(--muted)}
+.d-note{margin:0;padding:10px 12px;background:var(--sunk);border-radius:10px;font-size:14px;overflow-wrap:anywhere}
+.act{display:grid;gap:12px}
+.c-list{display:grid;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--surface)}
+.c-row{display:grid;grid-template-columns:70px minmax(0,1fr) auto;align-items:center;gap:10px;padding:10px 12px;border-top:1px solid var(--line)}
+.c-row:first-child{border-top:0}
+.c-k{font-size:12px;color:var(--muted);font-weight:700}
+.c-v{font-variant-numeric:tabular-nums;font-weight:600;user-select:all;-webkit-user-select:all;overflow-wrap:anywhere}
+.c-btn{all:unset;box-sizing:border-box;padding:7px 12px 6px;border-radius:9px;font-weight:700;font-size:14px;background:var(--plate);color:var(--plate-ink);cursor:pointer;text-decoration:none;white-space:nowrap}
+.c-btn.alt{background:var(--sunk);color:var(--ink);border:1px solid var(--line)}
+.row-btns{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(84px + env(safe-area-inset-bottom,0px));z-index:40;background:var(--ink);color:var(--bg);padding:10px 16px 9px;border-radius:999px;font-weight:600;font-size:14px;width:max-content;max-width:calc(100% - 32px);box-sizing:border-box;text-align:center}
+body.t-hall .toast{bottom:calc(150px + env(safe-area-inset-bottom,0px))}
+
+@media (prefers-reduced-motion: reduce){
+  .sheet{animation:none}
+  .ride{transition:none}
+  .ride:active{transform:none}
+}
+</style>
+
+<header class="top">
+  <div class="top-inner gutter">
+    <div class="brand-row">
+      <div class="brand"><img class="logo" src="icons/xuepin-icon-180.png" alt=""><span>雪拼</span><span class="sub">XMUM 拼车</span></div>
+      <span id="modeTag" class="mode"><span class="dot"></span><span id="modeText">连接中…</span></span>
+    </div>
+    <div class="seg" id="segDir" role="tablist" aria-label="方向">
+      <button id="dirOut" class="seg-btn on" role="tab" data-act="dir" data-v="out">从 XMUM 出发</button>
+      <button id="dirBack" class="seg-btn" role="tab" data-act="dir" data-v="back">回 XMUM</button>
+    </div>
+  </div>
+  <div class="chips-scroll" id="chipsWrap"><div id="chips" class="chips gutter" aria-label="按地点筛选"></div></div>
+</header>
+
+<div id="banner" class="banner gutter" hidden><div class="banner-in" id="bannerIn"></div></div>
+
+<main id="hall" class="wrap gutter">
+  <section>
+    <div class="sec-head"><h2 class="sec-h" id="listTitle">从 XMUM 出发</h2><span class="sec-n" id="listCount"></span></div>
+    <div id="rideList" class="list"><p class="loading">正在加载拼车…</p></div>
+  </section>
+</main>
+
+<main id="msgs" class="wrap gutter" hidden>
+  <h1 class="page-h">消息</h1>
+  <div id="threadList" class="tlist"></div>
+</main>
+
+<main id="trips" class="wrap gutter" hidden>
+  <h1 class="page-h">我的行程</h1>
+  <div id="tripTop" class="act"></div>
+  <section>
+    <div class="sec-head"><h2 class="sec-h" id="tripListTitle">记录</h2><button class="link-btn" data-act="t-add">＋ 记一笔</button></div>
+    <div id="tripList" class="list"></div>
+  </section>
+  <section>
+    <div class="sec-head"><h2 class="sec-h">我的资料（可不填）</h2></div>
+    <div class="pcard">
+      <div id="pGender" hidden></div>
+      <span class="lab">WhatsApp</span>
+      <input id="p-wa" class="inp" inputmode="tel" placeholder="比如 012-345 6789">
+      <span class="lab">微信号</span>
+      <input id="p-wx" class="inp" placeholder="微信号">
+      <p class="hint" id="pHint">只给同一单里拼上的人看。登录后存在你的雪团账号里，换手机也在。</p>
+      <div id="acct" class="act"></div>
+    </div>
+  </section>
+  <p class="sister">同一个账号也能用 <a href="../">雪团 · XMUM 美食地图</a></p>
+</main>
+
+<section id="thread" class="thread" hidden aria-label="拼车聊天">
+  <div class="th-head"><div class="th-head-in gutter" id="thHead"></div></div>
+  <div class="th-body" id="thBodyWrap"><div class="th-body-in gutter" id="thBody"></div></div>
+  <div class="th-input">
+    <form class="th-form gutter" id="chatForm" autocomplete="off">
+      <input id="chat-in" class="say" maxlength="200" enterkeyhint="send" placeholder="说点什么，比如在哪集合" aria-label="聊天消息">
+      <button class="send" id="chatBtn" type="submit">发送</button>
+    </form>
+  </div>
+</section>
+
+<div class="dock">
+  <div class="composer gutter" id="composer">
+    <div class="composer-in">
+      <div id="preview" class="preview" aria-live="polite" hidden></div>
+      <form class="cbar" id="sayForm" autocomplete="off">
+        <input id="say" class="say" maxlength="80" enterkeyhint="send" placeholder="说一句就发：蹲6点前ioi回学校 2=2" aria-label="一句话发拼车">
+        <button class="send alt" id="sayBtn" type="submit">填表</button>
+      </form>
+    </div>
+  </div>
+  <nav class="tabbar gutter" aria-label="主菜单">
+    <button class="tab on" id="tab-hall" data-act="tab" data-v="hall">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5 20.5 20.5"/></svg>
+      <span>拼车大厅</span>
+    </button>
+    <button class="tab" id="tab-msgs" data-act="tab" data-v="msgs">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.5c4.97 0 9 3.36 9 7.5s-4.03 7.5-9 7.5c-1.1 0-2.15-.16-3.12-.46L4 20l1.4-3.7C3.9 14.94 3 13.06 3 11c0-4.14 4.03-7.5 9-7.5z"/></svg>
+      <span>消息</span>
+      <span class="badge" id="msgBadge" hidden></span>
+    </button>
+    <button class="tab" id="tab-trips" data-act="tab" data-v="trips">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="18" cy="5.5" r="2.3"/><circle cx="6" cy="18.5" r="2.3"/><path d="M15.7 5.5H9a3.25 3.25 0 0 0 0 6.5h6a3.25 3.25 0 0 1 0 6.5H8.3"/></svg>
+      <span>我的行程</span>
+    </button>
+  </nav>
+</div>
+
+<div id="sheet" class="sheet-wrap" hidden>
+  <div class="backdrop" data-act="close"></div>
+  <div class="sheet" role="dialog" aria-modal="true"><div class="grab"></div><div id="sheetBody"></div></div>
+</div>
+
+<div id="copyWrap" class="sheet-wrap copy" hidden>
+  <div class="backdrop" data-act="copy-close"></div>
+  <div class="sheet" role="dialog" aria-modal="true">
+    <div class="grab"></div>
+    <div class="sheet-pad">
+      <div class="sheet-title"><h2>手动复制</h2><button class="x" data-act="copy-close" aria-label="关闭">✕</button></div>
+      <p class="hint">自动复制没成功。长按下面的文字，全选后复制。</p>
+      <textarea id="copyText" class="inp" rows="7" readonly></textarea>
+      <button class="btn ghost" data-act="copy-close">好了</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.3/dist/umd/supabase.js"></script>
+<script>
+var APP_URL = location.origin + location.pathname;
+
+var PLACES = [
+  { id: "kip", name: "KIP Mall" },
+  { id: "mcd", name: "McD" },
+  { id: "ioi", name: "IOI City Mall" },
+  { id: "klia", name: "KLIA 机场" },
+  { id: "klia1", name: "KLIA T1" },
+  { id: "klia2", name: "KLIA T2" },
+  { id: "mitsui", name: "机场奥特莱斯" },
+  { id: "sunway", name: "双威金字塔" },
+  { id: "city", name: "KL 市区" },
+  { id: "klcc", name: "KLCC" },
+  { id: "pavilion", name: "Pavilion" },
+  { id: "trx", name: "TRX" },
+  { id: "other", name: "其他地点" }
+];
+var PNAME = {};
+PLACES.forEach(function (p) { PNAME[p.id] = p.name; });
+
+var FILTERS = [
+  { id: "all", label: "全部", set: null },
+  { id: "kip", label: "KIP Mall", set: ["kip"] },
+  { id: "mcd", label: "McD", set: ["mcd"] },
+  { id: "ioi", label: "IOI", set: ["ioi"] },
+  { id: "airport", label: "机场", set: ["klia", "klia1", "klia2", "mitsui"] },
+  { id: "sunway", label: "双威", set: ["sunway"] },
+  { id: "city", label: "KL 市区", set: ["city", "klcc", "pavilion", "trx"] },
+  { id: "klcc", label: "KLCC", set: ["klcc", "city"] },
+  { id: "pavilion", label: "Pavilion", set: ["pavilion", "city"] },
+  { id: "trx", label: "TRX", set: ["trx", "city"] },
+  { id: "other", label: "其他", set: ["other"] }
+];
+
+/* schematic map: XMUM in the middle, places placed by rough direction, not to scale */
+var MAP_HOME = { x: 180, y: 236 };
+var MAP_NODES = [
+  { id: "kl", label: "KL 市区", x: 150, y: 46 },
+  { id: "sunway", label: "双威", x: 60, y: 104 },
+  { id: "ioi", label: "IOI City", x: 238, y: 130 },
+  { id: "kip", label: "KIP Mall", x: 66, y: 262 },
+  { id: "mcd", label: "McD", x: 292, y: 222 },
+  { id: "klia", label: "KLIA 机场", x: 150, y: 356 },
+  { id: "mitsui", label: "奥特莱斯", x: 268, y: 332 }
+];
+var NODE_OF = { kip: "kip", mcd: "mcd", ioi: "ioi", klia: "klia", klia1: "klia", klia2: "klia", mitsui: "mitsui",
+  sunway: "sunway", city: "kl", klcc: "kl", pavilion: "kl", trx: "kl", other: "other" };
+var NODE_NAME = { kl: "KL 市区", sunway: "双威", ioi: "IOI City", kip: "KIP Mall", mcd: "McD", klia: "KLIA 机场", mitsui: "奥特莱斯", other: "其他地点" };
+
+var PROFILE_KEY = "xmum-carpool-me";
+var READ_KEY = "xmum-carpool-read";
+var WEEK = "日一二三四五六";
+var GENDER = {};
+var GENDER_OPTS = [["m", "男"], ["f", "女"], ["bag", "沃尔玛塑料袋"], ["", "无"]];
+var PERIOD_OPTS = ["上午", "中午", "下午", "傍晚", "晚上", ""];
+
+/* ---- sentence parser ---- */
+var CN_DIGIT = { "零": 0, "〇": 0, "一": 1, "二": 2, "两": 2, "三": 3, "四": 4, "五": 5, "六": 6, "七": 7, "八": 8, "九": 9 };
+
+function cnNum(s) {
+  if (s == null || s === "") return NaN;
+  if (/^\d+$/.test(s)) return parseInt(s, 10);
+  var m;
+  if (s === "十") return 10;
+  if ((m = s.match(/^十([一二三四五六七八九])$/))) return 10 + CN_DIGIT[m[1]];
+  if ((m = s.match(/^([一二两三四五六七八九])十([一二三四五六七八九])?$/))) return CN_DIGIT[m[1]] * 10 + (m[2] ? CN_DIGIT[m[2]] : 0);
+  if (s.length === 1 && CN_DIGIT[s] !== undefined) return CN_DIGIT[s];
+  return NaN;
+}
+
+var PLACE_RULES = [
+  { re: /机场\s*奥特莱斯|奥特莱斯|奥莱|mitsui|outlet|三井/, id: "mitsui" },
+  { re: /klia\s*2|二号航站楼?|二航|(^|[^a-z])t2(?![0-9a-z])/, id: "klia2" },
+  { re: /klia\s*1|一号航站楼?|一航|(^|[^a-z])t1(?![0-9a-z])/, id: "klia1" },
+  { re: /机场|klia|airport/, id: "klia" },
+  { re: /kip\s*mall|kip/, id: "kip" },
+  { re: /mcd|麦当劳|麦记|金拱门|mekdi|mcdonald/, id: "mcd" },
+  { re: /ioi\s*city\s*mall|ioi\s*city|ioi\s*mall|ioi/, id: "ioi" },
+  { re: /sunway\s*pyramid|sunway|双威|金字塔|pyramid/, id: "sunway" },
+  { re: /klcc|双子塔|双峰塔|国油/, id: "klcc" },
+  { re: /pavilion|柏威年/, id: "pavilion" },
+  { re: /trx|the\s*exchange/, id: "trx" },
+  { re: /市区|市中心|吉隆坡|武吉免登|bukit\s*bintang|(^|[^a-z])kl(?![a-z])/, id: "city" },
+  { re: /mid\s*valley|谷中城/, id: "other", name: "Mid Valley" },
+  { re: /布城|putrajaya/, id: "other", name: "布城" },
+  { re: /赛城|cyberjaya/, id: "other", name: "Cyberjaya" },
+  { re: /aeon|永旺/, id: "other", name: "AEON" },
+  { re: /nilai/, id: "other", name: "Nilai" },
+  { re: /商场|(^|[^a-z])mall/, id: "other", name: "商场" }
+];
+
+var PERIODS = {
+  "凌晨": [0, 6], "上午": [8, 12], "中午": [11, 14], "下午": [13, 18], "傍晚": [17, 19.5], "晚上": [18, 23.99]
+};
+
+function blank(t, idx, len) {
+  return t.slice(0, idx) + new Array(len + 1).join(" ") + t.slice(idx + len);
+}
+
+function parseRide(text, now) {
+  now = now || Date.now();
+  var raw = String(text || "").trim();
+  var t = raw.toLowerCase()
+    .replace(/[，。！？、；,!?;]/g, " ")
+    .replace(/：/g, ":").replace(/＝/g, "=").replace(/～/g, "~");
+
+  function at(day, h, m) {
+    var d = new Date(now);
+    d.setDate(d.getDate() + day);
+    d.setHours(0, 0, 0, 0);
+    return d.getTime() + Math.round((h * 60 + (m || 0)) * 60000);
+  }
+
+  /* direction */
+  var back = /回\s*(学校|校|xmum|厦大|宿舍|来|去|马校)|返校|(到|去)\s*(学校|xmum|厦大)/.test(t);
+  var outSure = /(学校|xmum|厦大|宿舍|校门)\s*(出发|去|到)|从\s*(学校|xmum|厦大)/.test(t) || /(去|到)/.test(t);
+  var dir = back ? "back" : "out";
+  var dirSure = back || outSure;
+
+  /* places */
+  var found = [];
+  PLACE_RULES.forEach(function (rule) {
+    var m = t.match(rule.re);
+    if (m) {
+      found.push({ id: rule.id, name: rule.name || "", idx: m.index });
+      t = blank(t, m.index, m[0].length);
+    }
+  });
+  found.sort(function (a, b) { return a.idx - b.idx; });
+  var places = [], otherNames = [];
+  found.forEach(function (f) {
+    if (f.id === "other") otherNames.push(f.name);
+    if (places.indexOf(f.id) < 0) places.push(f.id);
+  });
+  var otherName = otherNames.join(" / ");
+  if (otherName === "商场" && /都行|随便|哪个都|都可以|都ok/.test(t)) otherName = "商场（哪个都行）";
+
+  /* fare (before people/time so "rm60" digits don't leak) */
+  var fare = null;
+  var fm = t.match(/(?:rm|马币|令吉)\s*(\d+(?:\.\d+)?)/) || t.match(/(\d+(?:\.\d+)?)\s*(?:rm|马币|令吉|块|元)(?![a-z])/);
+  if (fm) {
+    fare = parseFloat(fm[1]);
+    t = blank(t, fm.index, fm[0].length);
+  }
+
+  /* people */
+  var have = null, need = null;
+  var pe = t.match(/(\d|[一二两三四五六])\s*[=等]\s*(\d|[一二两三四五六])(?!\s*[点:\d])/);
+  if (pe) {
+    have = cnNum(pe[1]); need = cnNum(pe[2]);
+    t = blank(t, pe.index, pe[0].length);
+  } else {
+    var pn = t.match(/(?:差|缺)\s*(\d|[一二两三四五])\s*(?:个|位|人)?/) ||
+             t.match(/(?:收|找|再来|还要|再要)\s*(\d|[一二两三四五])\s*(?:个|位)?\s*人/);
+    if (pn) { need = cnNum(pn[1]); t = blank(t, pn.index, pn[0].length); }
+    var ph = t.match(/(?:我们|这边|已有|现在有)\s*(\d|[一二两三四五])\s*(?:个|位)?\s*人/);
+    if (ph) { have = cnNum(ph[1]); t = blank(t, ph.index, ph[0].length); }
+  }
+  var peopleSure = have !== null || need !== null;
+  if (have === null && need === null) { have = 1; need = 3; }
+  else if (have === null) have = 1;
+  else if (need === null) need = Math.max(1, 4 - have);
+  have = Math.min(5, Math.max(1, have));
+  need = Math.min(5, Math.max(1, need));
+  if (have + need > 6) need = 6 - have;
+
+  /* day */
+  var dayOff = null;
+  if (/大后天/.test(t)) dayOff = 3;
+  else if (/后天/.test(t)) dayOff = 2;
+  else if (/明天|明早|明晚|明日|明儿|tmr|tomorrow/.test(t)) dayOff = 1;
+  else if (/今天|今晚|今早|今日|今儿|today|tonight/.test(t)) dayOff = 0;
+  if (dayOff === null) {
+    var wm = t.match(/(下周|下星期|下礼拜|这周|这星期|本周|周|星期|礼拜)\s*([一二三四五六日天])/);
+    if (wm) {
+      var target = "日一二三四五六".indexOf(wm[2] === "天" ? "日" : wm[2]);
+      var todayW = new Date(now).getDay();
+      var mon = function (w) { return w === 0 ? 7 : w; };
+      var diff;
+      if (/^下/.test(wm[1])) diff = 7 - mon(todayW) + mon(target);
+      else diff = (target - todayW + 7) % 7;
+      dayOff = diff;
+      t = blank(t, wm.index, wm[0].length);
+    }
+  }
+  if (dayOff === null) {
+    var dm = t.match(/(\d{1,2})\s*(?:月|\/)\s*(\d{1,2})\s*[日号]?/);
+    var dn = dm ? null : t.match(/(\d{1,2})\s*号/);
+    if (dm || dn) {
+      var nd = new Date(now);
+      var target2;
+      if (dm) target2 = new Date(nd.getFullYear(), parseInt(dm[1], 10) - 1, parseInt(dm[2], 10));
+      else {
+        target2 = new Date(nd.getFullYear(), nd.getMonth(), parseInt(dn[1], 10));
+        if (target2.getTime() < at(0, 0, 0)) target2 = new Date(nd.getFullYear(), nd.getMonth() + 1, parseInt(dn[1], 10));
+      }
+      var dd = Math.round((target2.getTime() - at(0, 0, 0)) / 86400000);
+      if (dd >= 0 && dd < 60) dayOff = dd;
+      var mm0 = dm || dn;
+      t = blank(t, mm0.index, mm0[0].length);
+    }
+  }
+
+  /* period */
+  var period = "";
+  if (/凌晨/.test(t)) period = "凌晨";
+  else if (/傍晚|黄昏/.test(t)) period = "傍晚";
+  else if (/中午|noon/.test(t)) period = "中午";
+  else if (/下午|午后|afternoon/.test(t)) period = "下午";
+  else if (/早上|早晨|上午|今早|明早|清早|一早|morning/.test(t)) period = "上午";
+  else if (/晚上|今晚|明晚|晚饭|夜里|tonight|evening/.test(t)) period = "晚上";
+
+  function resolve(h, m) {
+    var hh = -1;
+    if (h >= 13 && h <= 23) hh = h;
+    else if (period === "下午" || period === "傍晚" || period === "晚上") hh = h < 12 ? h + 12 : h;
+    else if (period === "中午") hh = h <= 3 ? h + 12 : h;
+    else if (period === "凌晨" || period === "上午") hh = h === 12 ? 0 : h;
+    if (hh >= 0) {
+      if (dayOff === null) {
+        var x = at(0, hh, m);
+        return x < now - 10 * 60000 ? at(1, hh, m) : x;
+      }
+      return at(dayOff, hh, m);
+    }
+    if (dayOff === null) {
+      var lim = now - 10 * 60000;
+      var c = [at(0, h, m)];
+      if (h < 12) c.push(at(0, h + 12, m));
+      for (var i = 0; i < c.length; i++) if (c[i] >= lim) return c[i];
+      return at(1, h >= 1 && h <= 6 ? h + 12 : h, m);
+    }
+    return at(dayOff, h >= 1 && h <= 6 ? h + 12 : h, m);
+  }
+
+  /* clock */
+  var asap = /现在|马上|立刻|立即|即刻|这就走|now|asap/.test(t);
+  var kind = "", time = null, timeEnd = null;
+  var NUMS = "(\\d{1,2}|[零一二两三四五六七八九十]{1,3})";
+  var r2 = t.match(/(\d{1,2}):(\d{2})\s*(?:到|至|-|~|—)\s*(\d{1,2}):(\d{2})/);
+  var r1 = r2 ? null : t.match(new RegExp(NUMS + "\\s*(?:点|:00)?\\s*(半)?\\s*(?:到|至|-|~|—)\\s*" + NUMS + "\\s*点\\s*(半)?"));
+  if (r2 || r1) {
+    var h1, m1, h2, m2;
+    if (r2) { h1 = +r2[1]; m1 = +r2[2]; h2 = +r2[3]; m2 = +r2[4]; }
+    else { h1 = cnNum(r1[1]); m1 = r1[2] ? 30 : 0; h2 = cnNum(r1[3]); m2 = r1[4] ? 30 : 0; }
+    if (h1 >= 0 && h1 <= 23 && h2 >= 0 && h2 <= 23) {
+      time = resolve(h1, m1);
+      var span = (h2 * 60 + m2) - (h1 * 60 + m1);
+      if (span <= 0) span += 12 * 60;
+      timeEnd = time + span * 60000;
+      kind = "range";
+    }
+  } else {
+    var reClock = new RegExp(
+      "(\\d{1,2}):(\\d{2})|" + NUMS +
+      "\\s*点(?:(半)|(一刻)|(三刻)|(\\d{2})|(\\d{1,2})\\s*分|([零一二三四五六七八九十]{2,3})|([零一二三四五六七八九十])分)?");
+    var cm = t.match(reClock);
+    var en = t.match(/(\d{1,2})(?:[:.](\d{2}))?\s*(am|pm)/);
+    var h = null, mi = 0, endIdx = 0, startIdx = 0;
+    if (en && (!cm || en.index <= cm.index)) {
+      h = +en[1]; mi = en[2] ? +en[2] : 0;
+      if (en[3] === "pm" && h < 12) h += 12;
+      if (en[3] === "am" && h === 12) h = 0;
+      if (h < 13) period = period || (en[3] === "pm" ? "下午" : "上午");
+      startIdx = en.index; endIdx = en.index + en[0].length;
+    } else if (cm) {
+      if (cm[1]) { h = +cm[1]; mi = +cm[2]; }
+      else {
+        h = cnNum(cm[3]);
+        if (cm[4]) mi = 30;
+        else if (cm[5]) mi = 15;
+        else if (cm[6]) mi = 45;
+        else if (cm[7]) mi = +cm[7];
+        else if (cm[8]) mi = +cm[8];
+        else if (cm[9]) mi = cnNum(cm[9]);
+        else if (cm[10]) mi = cnNum(cm[10]);
+      }
+      startIdx = cm.index; endIdx = cm.index + cm[0].length;
+    }
+    if (h !== null && h >= 0 && h <= 24 && mi >= 0 && mi < 60) {
+      if (h === 24) h = 0;
+      time = resolve(h, mi);
+      kind = /^\s*(之前|以前|前|before)/.test(t.slice(endIdx)) || /(before|by)\s*$/.test(t.slice(0, startIdx)) ? "before" : "at";
+    }
+  }
+  if (kind === "before" && asap) asap = false;
+  if (!kind && period) {
+    var pr = PERIODS[period];
+    var d0 = dayOff;
+    if (d0 === null) d0 = at(0, pr[1], 0) < now ? 1 : 0;
+    time = at(d0, pr[0], 0);
+    timeEnd = at(d0, pr[1], 0);
+    kind = "loose";
+    asap = false;
+  }
+  if (!kind && dayOff !== null) {
+    time = at(dayOff, 9, 0);
+    timeEnd = at(dayOff, 23.99, 0);
+    kind = "loose";
+    period = "";
+    asap = false;
+  }
+  var timeSure = !!kind || asap;
+  if (!kind) { asap = true; kind = "asap"; time = now; }
+  if (asap && kind !== "asap") asap = false;
+
+  return {
+    raw: raw, places: places, otherName: otherName, dir: dir, dirSure: dirSure,
+    kind: kind, time: time, timeEnd: timeEnd, period: kind === "loose" ? period : "",
+    have: have, need: need, peopleSure: peopleSure, timeSure: timeSure, fare: fare
+  };
+}
+
+
+var S = {
+  tab: "hall",
+  thread: null,
+  dir: "out",
+  filter: "all",
+  mode: "loading",
+  hasDb: false,
+  liveReady: false,
+  liveError: false,
+  live: { rides: [], joins: [], msgs: [], trips: [] },
+  demo: { rides: [], joins: [], msgs: [], trips: [] },
+  liveId: null,
+  isOwner: false,
+  canWrite: false,
+  db: null,
+  sheet: null,
+  form: null,
+  trip: null,
+  sheetCount: 1,
+  tripNode: "",
+  hashDone: false,
+  confirmDelete: null,
+  busy: false
+};
+var seen = { ready: false, pend: {}, st: {}, msg: {} };
+
+/* simulated users: only run on the artifact owner's own screen, so friends never see fake activity */
+var SIM = false;
+function simOn() { return S.mode === "live" && SIM && S.isOwner; }
+function isSim(uid) { return typeof uid === "string" && uid.indexOf("sim-") === 0; }
+function pick(a) { return a[Math.floor(Math.random() * a.length)]; }
+var SIM_OWNER_OK = ["看到了，同意了。快到的时候在这里说一下你在哪。", "OK 同意了，我会提前 5 分钟到。", "好，同意了。到了说一声，我穿黑色外套。"];
+var SIM_ASK = ["可以带我一个吗？我一个人。", "我也要去，时间可以的。", "我在宿舍楼下，可以一起吗？"];
+var SIM_THANKS = ["谢谢！我穿白色上衣，到了在这里说一声。", "好的谢谢！我大概提前 5 分钟到。"];
+var SIM_CHAT = ["好的，收到。", "我快到了。", "OK，到了见。", "没问题。"];
+
+function cur() { return S.mode === "demo" ? S.demo : S.live; }
+function me() { return S.mode === "demo" ? "me" : S.liveId; }
+function $(id) { return document.getElementById(id); }
+
+function esc(s) {
+  return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+    return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+  });
+}
+
+function loadMe() {
+  try { return JSON.parse(localStorage.getItem(PROFILE_KEY)) || {}; } catch (e) { return {}; }
+}
+function saveMe(p) {
+  try { localStorage.setItem(PROFILE_KEY, JSON.stringify(p)); } catch (e) {}
+}
+function readMap() {
+  try { return JSON.parse(localStorage.getItem(READ_KEY)) || {}; } catch (e) { return {}; }
+}
+function markRead(rideId) {
+  var m = readMap();
+  m[S.mode + ":" + rideId] = Date.now();
+  try { localStorage.setItem(READ_KEY, JSON.stringify(m)); } catch (e) {}
+}
+function lastRead(rideId) { return readMap()[S.mode + ":" + rideId] || 0; }
+
+function genderPickHTML(val, act) {
+  var h = '<div class="pick">';
+  GENDER_OPTS.forEach(function (o) {
+    h += '<button class="pk' + ((val || "") === o[0] ? ' on' : '') + '" data-act="' + act + '" data-v="' + o[0] + '">' + o[1] + '</button>';
+  });
+  return h + '</div>';
+}
+
+/* time */
+function pad(n) { return n < 10 ? "0" + n : "" + n; }
+function clock(ts) { var d = new Date(ts); return pad(d.getHours()) + ":" + pad(d.getMinutes()); }
+function dayStart(ts) { var d = new Date(ts); d.setHours(0, 0, 0, 0); return d.getTime(); }
+function dayDiff(ts) { return Math.round((dayStart(ts) - dayStart(Date.now())) / 86400000); }
+function dayBase(off) { var d = new Date(); d.setDate(d.getDate() + off); d.setHours(0, 0, 0, 0); return d.getTime(); }
+function hm(s) {
+  var m = /^(\d{1,2}):(\d{2})$/.exec(s || "");
+  if (!m) return null;
+  return (parseInt(m[1], 10) * 60 + parseInt(m[2], 10)) * 60000;
+}
+function dayLabel(ts) {
+  var diff = dayDiff(ts);
+  if (diff === 0) return "今天";
+  if (diff === 1) return "明天";
+  if (diff === 2) return "后天";
+  if (diff === -1) return "昨天";
+  var d = new Date(ts);
+  return (d.getMonth() + 1) + "/" + d.getDate() + " 周" + WEEK[d.getDay()];
+}
+function fullDate(ts) {
+  var d = new Date(ts);
+  var diff = dayDiff(ts);
+  var pre = diff === 0 ? "今天 " : diff === 1 ? "明天 " : diff === 2 ? "后天 " : "";
+  return pre + (d.getMonth() + 1) + "月" + d.getDate() + "日 周" + WEEK[d.getDay()];
+}
+function ymd(ts) { var d = new Date(ts); return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()); }
+
+function kindOf(r) { return r.kind || (r.asap ? "asap" : "at"); }
+function rideTime(r) { return kindOf(r) === "asap" ? r.createdAt : r.time; }
+function endOf(r) {
+  var k = kindOf(r);
+  if (k === "asap") return r.createdAt + 45 * 60000;
+  if (k === "range" || k === "loose") return r.timeEnd || r.time;
+  return r.time;
+}
+function expired(r, graceMin) { return Date.now() > endOf(r) + graceMin * 60000; }
+
+function timeTail(r) {
+  var k = kindOf(r);
+  if (k === "before") return clock(r.time) + " 前";
+  if (k === "range") return clock(r.time) + "–" + clock(r.timeEnd);
+  if (k === "loose") return r.period || "时间待定";
+  return clock(r.time);
+}
+function timeText(r) {
+  if (kindOf(r) === "asap") return "马上出发";
+  return dayLabel(r.time) + " " + timeTail(r);
+}
+function timeFull(r) {
+  if (kindOf(r) === "asap") return "马上出发";
+  return fullDate(r.time) + " · " + timeTail(r);
+}
+
+/* places */
+function placesOf(r) { return [r.place].concat(r.alts || []); }
+function placeName(r) {
+  var ids = placesOf(r).filter(function (x) { return x; });
+  if (!ids.length) return "";
+  return ids.map(function (id) { return id === "other" ? (r.placeName || "其他地点") : (PNAME[id] || "?"); }).join(" / ");
+}
+function routeFrom(r) { return r.dir === "out" ? "XMUM" : (placeName(r) || "?"); }
+function routeTo(r) { return r.dir === "out" ? (placeName(r) || "?") : "XMUM"; }
+function filterById(f) {
+  for (var i = 0; i < FILTERS.length; i++) if (FILTERS[i].id === f) return FILTERS[i];
+  return FILTERS[0];
+}
+function matchFilter(r, f) {
+  var set = filterById(f).set;
+  if (!set) return true;
+  return placesOf(r).some(function (p) { return set.indexOf(p) >= 0; });
+}
+
+/* seats: only accepted requests take a seat */
+function jStatus(j) { return j.status || "accepted"; }
+function byCreated(a, b) { return (a.createdAt || 0) - (b.createdAt || 0); }
+function stats(r) {
+  var js = cur().joins.filter(function (j) { return j.rideId === r.id; }).sort(byCreated);
+  var acc = [], pend = [], joined = 0;
+  js.forEach(function (j) {
+    var s = jStatus(j);
+    if (s === "accepted") { acc.push(j); joined += j.count || 1; }
+    else if (s === "pending") pend.push(j);
+  });
+  var total = r.have + r.need;
+  var left = Math.max(0, r.need - joined);
+  var my = me();
+  var myJoin = null;
+  if (my) js.forEach(function (j) { if (j.uid === my) myJoin = j; });
+  return {
+    js: js, acc: acc, pend: pend, joined: joined, total: total, left: left,
+    full: left === 0, closed: r.status === "closed",
+    mine: !!my && r.owner === my, myJoin: myJoin
+  };
+}
+function myState(st) {
+  if (!st.myJoin) return "";
+  var s = jStatus(st.myJoin);
+  if (s === "pending" && (st.full || st.closed)) return "missed";
+  return s;
+}
+function openPend(st) { return st.full || st.closed ? [] : st.pend; }
+function inMain(x) {
+  return !x.st.closed && !x.st.full && !expired(x.r, 20) && !x.st.mine && !x.st.myJoin;
+}
+function byTime(a, b) { return rideTime(a.r) - rideTime(b.r); }
+function money(v) { return "RM" + (v % 1 === 0 ? v.toFixed(0) : v.toFixed(1)); }
+function perHead(r) {
+  if (!r.fare) return "";
+  return money(Math.ceil(r.fare / (r.have + r.need) * 10) / 10);
+}
+
+/* contact */
+function waDigits(s) {
+  var d = String(s || "").replace(/\D/g, "");
+  if (d.charAt(0) === "0") d = "6" + d;
+  return d;
+}
+function waLink(num, text) { return "https://wa.me/" + waDigits(num) + "?text=" + encodeURIComponent(text); }
+
+var ARROW = '<svg class="arr" viewBox="0 0 20 12" aria-hidden="true"><path d="M1 6h15M11 1.2 15.8 6 11 10.8" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+var BACK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>';
+
+function plateInner(r) {
+  var a = routeFrom(r), b = routeTo(r);
+  function part(x) {
+    if (x === "XMUM") return '<span class="home">XMUM</span>';
+    if (x === "?") return '<span class="unk">哪里？</span>';
+    return '<span>' + esc(x) + '</span>';
+  }
+  return part(a) + ARROW + part(b);
+}
+
+function dotsHTML(r, st) {
+  var h = '<span class="seats" aria-label="共 ' + st.total + ' 人，已有 ' + (r.have + Math.min(st.joined, r.need)) + ' 人">';
+  var i;
+  for (i = 0; i < r.have; i++) h += '<i class="d-own"></i>';
+  for (i = 0; i < Math.min(st.joined, r.need); i++) h += '<i class="d-join"></i>';
+  for (i = 0; i < st.left; i++) h += '<i class="d-empty"></i>';
+  return h + '</span>';
+}
+
+function statusHTML(st) {
+  if (st.closed) return '<span class="tag tag-muted">已结束</span>';
+  if (st.full) return '<span class="tag tag-ok">已拼满</span>';
+  return '<span class="left">还差 <b>' + st.left + '</b> 人</span>';
+}
+
+function whenHTML(r) {
+  var k = kindOf(r);
+  if (k === "asap") return '<span class="asap">马上走</span><span class="day">' + clock(r.createdAt) + ' 发</span>';
+  var h = '<span class="day">' + dayLabel(r.time) + '</span>';
+  if (k === "loose") return h + '<span class="clock word">' + esc(r.period || "待定") + '</span>';
+  h += '<span class="clock">' + clock(r.time) + '</span>';
+  if (k === "before") h += '<span class="sfx">之前</span>';
+  if (k === "range") h += '<span class="sfx">到 ' + clock(r.timeEnd) + '</span>';
+  return h;
+}
+
+function roleHTML(st) {
+  if (st.mine) {
+    var n = openPend(st).length;
+    return '<span class="tag tag-plate">我发起的</span>' + (n ? '<span class="tag tag-warn">' + n + ' 个申请</span>' : '');
+  }
+  var s = myState(st);
+  if (s === "accepted") return '<span class="tag tag-ok">已上车</span>';
+  if (s === "pending") return '<span class="tag tag-warn">等待同意</span>';
+  if (s) return '<span class="tag tag-muted">没拼上</span>';
+  return "";
+}
+
+function cardHTML(r, st) {
+  return '<button class="ride" data-act="open" data-id="' + esc(r.id) + '">' +
+    '<span class="when">' + whenHTML(r) + '</span>' +
+    '<span class="what">' +
+      '<span class="plate">' + plateInner(r) + '</span>' +
+      '<span class="meta">' + dotsHTML(r, st) + statusHTML(st) +
+        (r.fare ? '<span class="fare">人均 ' + perHead(r) + '</span>' : '') + '</span>' +
+      byHTML(r) +
+    '</span></button>';
+}
+
+function byHTML(r) {
+  var inner =
+    (GENDER[r.gender] ? '<span class="gd">' + GENDER[r.gender] + '</span>' : '') +
+    (r.example ? '<span class="ex">示例</span>' : '') +
+    (r.note ? '<span class="note">' + esc(r.note) + '</span>' : '');
+  return inner ? '<span class="by">' + inner + '</span>' : '';
+}
+
+/* ---------- render ---------- */
+function render() {
+  var tag = $("modeTag");
+  var text = "连接中…", cls = "mode";
+  if (S.mode === "demo") { text = "示例"; cls = "mode demo"; }
+  else if (S.mode === "live") { text = S.liveError ? "连接断了" : (S.canWrite ? "实时" : "只能查看"); if (!S.liveError) cls = "mode live"; }
+  if (S.mode === "live" && !S.liveId && !S.liveError) {
+    tag.outerHTML = '<button id="modeTag" class="mode login" data-act="login"><span id="modeText">' + (S.guest ? "绑定谷歌" : "登录") + '</span></button>';
+  } else {
+    if (tag.tagName === "BUTTON") { tag.outerHTML = '<span id="modeTag" class="mode"><span class="dot"></span><span id="modeText"></span></span>'; tag = $("modeTag"); }
+    tag.className = cls;
+    $("modeText").textContent = text;
+  }
+
+  var banner = $("banner");
+  if (S.mode === "demo") {
+    banner.hidden = false;
+    $("bannerIn").innerHTML = S.hasDb
+      ? '<span>正在看示例数据，只在这台设备上，不会保存。对方的同意和回复是模拟的。</span><button data-act="exit-demo">回到真实拼车</button>'
+      : '<span>示例模式：没连上共享数据，发布和申请只在这台设备上，刷新就没了。</span>';
+  } else {
+    banner.hidden = true;
+  }
+
+  renderTabs();
+  if (S.tab === "hall") renderHall();
+  if (S.tab === "msgs") { if (S.thread) renderThread(); else renderMsgs(); }
+  if (S.tab === "trips") renderTrips();
+}
+
+function renderTabs() {
+  ["hall", "msgs", "trips"].forEach(function (t) {
+    $("tab-" + t).className = "tab" + (S.tab === t ? " on" : "");
+    $("tab-" + t).setAttribute("aria-current", S.tab === t ? "page" : "false");
+    $(t).hidden = S.tab !== t;
+  });
+  $("segDir").hidden = S.tab !== "hall";
+  $("chipsWrap").hidden = S.tab !== "hall";
+  $("composer").hidden = S.tab !== "hall";
+  $("thread").hidden = !(S.tab === "msgs" && S.thread);
+  document.body.classList.remove("t-hall", "t-msgs", "t-trips");
+  document.body.classList.add("t-" + S.tab);
+  var n = totalUnread();
+  var b = $("msgBadge");
+  b.hidden = !n;
+  b.textContent = n > 99 ? "99+" : String(n);
+}
+
+function renderHall() {
+  var data = cur();
+  var all = data.rides.map(function (r) { return { r: r, st: stats(r) }; });
+  var vis = all.filter(inMain);
+
+  var outN = vis.filter(function (x) { return x.r.dir === "out"; }).length;
+  var backN = vis.length - outN;
+  $("dirOut").innerHTML = '从 XMUM 出发' + (outN ? '<span class="c">' + outN + '</span>' : '');
+  $("dirBack").innerHTML = '回 XMUM' + (backN ? '<span class="c">' + backN + '</span>' : '');
+  $("dirOut").className = "seg-btn" + (S.dir === "out" ? " on" : "");
+  $("dirBack").className = "seg-btn" + (S.dir === "back" ? " on" : "");
+  $("dirOut").setAttribute("aria-selected", S.dir === "out");
+  $("dirBack").setAttribute("aria-selected", S.dir === "back");
+
+  var dirVis = vis.filter(function (x) { return x.r.dir === S.dir; });
+  var ch = "";
+  FILTERS.forEach(function (f) {
+    var n = dirVis.filter(function (x) { return matchFilter(x.r, f.id); }).length;
+    ch += '<button class="chip' + (S.filter === f.id ? ' on' : '') + '" data-act="filter" data-v="' + f.id + '">' +
+      esc(f.label) + (n ? '<span class="n">' + n + '</span>' : '') + '</button>';
+  });
+  $("chips").innerHTML = ch;
+
+  var list = dirVis.filter(function (x) { return matchFilter(x.r, S.filter); }).sort(byTime);
+  var label = filterById(S.filter).label;
+  var title;
+  if (S.filter === "all") title = S.dir === "out" ? "从 XMUM 出发" : "回 XMUM";
+  else title = S.dir === "out" ? "XMUM → " + label : label + " → XMUM";
+  $("listTitle").textContent = title;
+  $("listCount").textContent = list.length ? list.length + " 单可申请" : "";
+
+  var box = $("rideList");
+  if (S.mode === "loading" || (S.mode === "live" && !S.liveReady && !S.liveError)) {
+    box.innerHTML = '<p class="loading">正在加载拼车…</p>';
+  } else if (S.mode === "live" && S.liveError && !data.rides.length) {
+    box.innerHTML = '<div class="empty"><h3>连接断了</h3><p>刷新页面再试一次。</p></div>';
+  } else if (!list.length) {
+    box.innerHTML = '<div class="empty"><h3>' + (S.filter === "all" ? "这个方向暂时没人拼" : "暂时没人拼 " + esc(title)) + '</h3>' +
+      '<p>在下面像发微信一样说一句就能发一单，比如“蹲明天上午10点去trx 2=2”。</p>' +
+      (S.filter !== "all" ? '<button class="link-btn" data-act="filter" data-v="all">看全部地点</button>' : '') +
+      (S.mode === "live" ? '<button class="link-btn" data-act="demo">看看示例</button>' : '') + '</div>';
+  } else {
+    box.innerHTML = list.map(function (x) { return cardHTML(x.r, x.st); }).join("");
+  }
+}
+
+/* ---------- messages ---------- */
+function rideMsgs(rideId) {
+  return cur().msgs.filter(function (m) { return m.rideId === rideId; }).sort(byCreated);
+}
+function lastActivity(r, st) {
+  var t = r.createdAt || 0;
+  st.js.forEach(function (j) { t = Math.max(t, j.createdAt || 0, j.decidedAt || 0); });
+  var ms = rideMsgs(r.id);
+  if (ms.length) t = Math.max(t, ms[ms.length - 1].createdAt || 0);
+  return t;
+}
+function myThreads() {
+  var out = [];
+  cur().rides.forEach(function (r) {
+    var st = stats(r);
+    if (!(st.mine || st.myJoin)) return;
+    if (Date.now() > endOf(r) + 3 * 86400000) return;
+    out.push({ r: r, st: st, t: lastActivity(r, st) });
+  });
+  out.sort(function (a, b) { return b.t - a.t; });
+  return out;
+}
+function threadUnread(r, st) {
+  var lr = lastRead(r.id);
+  var my = me();
+  var n = 0;
+  rideMsgs(r.id).forEach(function (m) { if (m.uid !== my && (m.createdAt || 0) > lr) n++; });
+  if (st.mine) openPend(st).forEach(function (j) { if ((j.createdAt || 0) > lr) n++; });
+  if (st.myJoin && st.myJoin.decidedAt && st.myJoin.decidedAt > lr) n++;
+  return n;
+}
+function totalUnread() {
+  var n = 0;
+  myThreads().forEach(function (x) {
+    if (S.tab === "msgs" && S.thread === x.r.id) return;
+    n += threadUnread(x.r, x.st);
+  });
+  return n;
+}
+
+function letterOf(st, uid) {
+  for (var i = 0; i < st.js.length; i++) if (st.js[i].uid === uid) return String.fromCharCode(65 + (i % 26));
+  return "";
+}
+function whoName(r, st, uid) {
+  if (uid === me()) return "我";
+  if (uid === r.owner) return "发起人";
+  var L = letterOf(st, uid);
+  return L ? "同学 " + L : "同学";
+}
+
+function lastLine(r, st) {
+  var ms = rideMsgs(r.id);
+  var lastM = ms.length ? ms[ms.length - 1] : null;
+  var lastJ = null;
+  st.js.forEach(function (j) { if (!lastJ || (j.createdAt || 0) > (lastJ.createdAt || 0)) lastJ = j; });
+  if (lastM && (!lastJ || lastM.createdAt >= (lastJ.createdAt || 0))) return whoName(r, st, lastM.uid) + "：" + lastM.text;
+  if (lastJ) return whoName(r, st, lastJ.uid) + " 申请加入 " + (lastJ.count || 1) + " 人";
+  return "";
+}
+
+function renderMsgs() {
+  var box = $("threadList");
+  var ths = myThreads();
+  if (!ths.length) {
+    box.innerHTML = '<div class="empty"><h3>还没有消息</h3><p>在拼车大厅申请加入一单，或者自己发一单，聊天就会出现在这里。</p></div>';
+    return;
+  }
+  box.innerHTML = ths.map(function (x) {
+    var r = x.r, st = x.st;
+    var u = threadUnread(r, st);
+    var line = lastLine(r, st);
+    return '<button class="trow" data-act="thread" data-id="' + esc(r.id) + '">' +
+      '<span class="trow-top"><span class="plate plate-xs">' + plateInner(r) + '</span>' + roleHTML(st) +
+      (u ? '<span class="unread">' + u + '</span>' : '') + '</span>' +
+      '<span class="trow-sub"><span>' + esc(timeText(r)) + '</span><span>' +
+        (st.closed ? "已结束" : st.full ? "已拼满" : "还差 " + st.left + " 人") + '</span></span>' +
+      '<span class="trow-last' + (line ? '' : ' dim') + '">' + esc(line || (st.mine ? "还没人申请。复制到群里试试。" : "")) + '</span>' +
+      '</button>';
+  }).join("");
+}
+
+function openThread(id) {
+  if (S.sheet) closeSheet();
+  S.tab = "msgs";
+  S.thread = id;
+  S.confirmDelete = null;
+  $("chat-in").value = "";
+  document.body.classList.add("lock");
+  render();
+  var w = $("thBodyWrap");
+  w.scrollTop = w.scrollHeight;
+}
+function closeThread() {
+  S.thread = null;
+  document.body.classList.remove("lock");
+  render();
+}
+
+function sysLine(text, good) { return '<div class="sys' + (good ? ' good' : '') + '">' + esc(text) + '</div>'; }
+
+function threadItems(r, st) {
+  var items = [];
+  st.js.forEach(function (j) {
+    var who = whoName(r, st, j.uid);
+    var n = j.count || 1;
+    var s = jStatus(j);
+    var live = s === "pending" && !st.full && !st.closed;
+    var h = '<div class="evt' + (live ? '' : ' done') + '"><div class="evt-h"><span>' + esc(who) + ' 申请加入 ' + n + ' 人' +
+      (GENDER[j.gender] ? ' · ' + GENDER[j.gender] : '') + '</span><span class="s">' + (j.createdAt ? clock(j.createdAt) : '') + '</span></div>' +
+      (j.msg ? '<p class="req-msg">“' + esc(j.msg) + '”</p>' : '');
+    if (s === "pending") {
+      if (!live) h += '<p class="s">已满或已结束，没拼上。</p>';
+      else if (st.mine) {
+        var can = n <= st.left;
+        h += '<div class="row-btns"><button class="btn ghost" data-act="req-no" data-id="' + esc(j.id) + '">拒绝</button>' +
+          '<button class="btn primary" data-act="req-ok" data-id="' + esc(j.id) + '"' + (can ? '' : ' disabled') + '>' + (can ? '同意' : '只剩 ' + st.left + ' 位') + '</button></div>';
+      } else h += '<p class="s">等发起人同意…</p>';
+    }
+    h += '</div>';
+    items.push({ t: j.createdAt || 0, html: h });
+  });
+  var decided = st.js.filter(function (j) { return j.decidedAt && jStatus(j) !== "pending"; })
+    .sort(function (a, b) { return a.decidedAt - b.decidedAt; });
+  var got = 0;
+  decided.forEach(function (j) {
+    var who = whoName(r, st, j.uid);
+    if (jStatus(j) === "accepted") {
+      got += j.count || 1;
+      items.push({ t: j.decidedAt, html: sysLine(who === "我" ? "发起人同意了你的申请，你已上车" : "已同意 " + who + "，" + (j.count || 1) + " 人上车", true) });
+      if (got >= r.need) items.push({ t: j.decidedAt + 1, html: sysLine("人齐了，这单已自动拼满", true) });
+    } else if (jStatus(j) === "declined") {
+      items.push({ t: j.decidedAt, html: sysLine(who === "我" ? "发起人没同意你的申请" : "没同意 " + who + " 的申请") });
+    }
+  });
+  rideMsgs(r.id).forEach(function (m) {
+    var mine = m.uid === me();
+    items.push({ t: m.createdAt || 0, html: '<div class="bub' + (mine ? ' me' : '') + '"><span class="who">' + esc(whoName(r, st, m.uid)) + ' · ' + clock(m.createdAt) + '</span>' +
+      '<span class="txt">' + esc(m.text) + '</span></div>' });
+  });
+  items.sort(function (a, b) { return a.t - b.t; });
+  return items;
+}
+
+function threadContacts(r, st) {
+  var rows = "";
+  if (st.mine) {
+    st.acc.forEach(function (j) {
+      var c = contactHTML(j, msgToJoiner(r));
+      if (c) rows += '<span class="lab">' + esc(whoName(r, st, j.uid)) + '</span>' + c;
+    });
+  } else if (myState(st) === "accepted") {
+    var c2 = contactHTML(r, msgToOwner(r, st.myJoin));
+    if (c2) rows += '<span class="lab">发起人</span>' + c2;
+  }
+  return rows ? '<details class="contacts"><summary>WhatsApp / 微信</summary><div class="act">' + rows + '</div></details>' : "";
+}
+
+function threadTools(r, st) {
+  var id = esc(r.id);
+  var h = "";
+  if (st.mine) {
+    h += '<button class="mini primary" data-act="share" data-id="' + id + '">复制到群</button>';
+    h += st.closed
+      ? '<button class="mini" data-act="reopen" data-id="' + id + '">重新开放</button>'
+      : '<button class="mini" data-act="close-ride" data-id="' + id + '">不拼了，结束</button>';
+    h += '<button class="mini danger" data-act="del" data-id="' + id + '">' + (S.confirmDelete === r.id ? "再点一次删除" : "删除") + '</button>';
+  } else {
+    var s = myState(st);
+    if (s === "pending") h += '<button class="mini" data-act="req-cancel" data-id="' + id + '">取消申请</button>';
+    else if (s === "accepted") {
+      h += '<button class="mini" data-act="share" data-id="' + id + '">复制拼车信息</button>';
+      h += '<button class="mini danger" data-act="req-cancel" data-id="' + id + '">退出拼车</button>';
+    } else if (s) h += '<button class="mini" data-act="req-cancel" data-id="' + id + '">删掉这条</button>';
+  }
+  return h ? '<div class="th-tools">' + h + '</div>' : "";
+}
+
+function renderThread() {
+  var r = findRide(S.thread);
+  var head = $("thHead"), body = $("thBody"), wrap = $("thBodyWrap");
+  var backBtn = '<button class="back" data-act="back" aria-label="返回消息列表">' + BACK + '</button>';
+  if (!r) {
+    head.innerHTML = '<div class="th-top">' + backBtn + '<span class="th-when">这条拼车已经被删除了</span></div>';
+    body.innerHTML = "";
+    $("chat-in").disabled = true; $("chatBtn").disabled = true;
+    return;
+  }
+  var st = stats(r);
+  head.innerHTML = '<div class="th-top">' + backBtn +
+    '<div class="th-title"><span class="plate plate-sm">' + plateInner(r) + '</span><span class="th-when">' + esc(timeFull(r)) + '</span></div></div>' +
+    '<div class="th-meta">' + dotsHTML(r, st) + statusHTML(st) + (r.fare ? '<span>人均 ' + perHead(r) + '</span>' : '') +
+      (GENDER[r.gender] ? '<span class="gd">发起人 · ' + GENDER[r.gender] + '</span>' : '') +
+      (r.src === "sim" ? '<span class="ex">模拟用户 · 会自动回复</span>' : '') + (r.example ? '<span class="ex">示例</span>' : '') + '</div>' +
+    threadTools(r, st) + threadContacts(r, st);
+
+  var near = wrap.scrollHeight - wrap.scrollTop - wrap.clientHeight < 120;
+  var items = threadItems(r, st);
+  var intro = '';
+  if (r.raw) intro += '<div class="sys">原话：' + esc(r.raw) + '</div>';
+  if (r.note) intro += '<div class="sys">备注：' + esc(r.note) + '</div>';
+  if (!items.length) {
+    intro += st.mine
+      ? sysLine("还没人申请。点上面“复制到群”，把这单发到拼车群里。")
+      : sysLine("说句话吧，比如你在哪等。");
+  }
+  body.innerHTML = intro + items.map(function (x) { return x.html; }).join("");
+  if (near) wrap.scrollTop = wrap.scrollHeight;
+
+  var s = myState(st);
+  var canTalk = st.mine || s === "pending" || s === "accepted";
+  $("chat-in").disabled = !canTalk;
+  $("chatBtn").disabled = !canTalk;
+  $("chat-in").placeholder = canTalk ? "说点什么，比如在哪集合" : "没拼上，不能再发消息了";
+  markRead(r.id);
+  var n = totalUnread();
+  $("msgBadge").hidden = !n;
+  $("msgBadge").textContent = String(n);
+}
+
+/* ---------- trips ---------- */
+function myTrips() {
+  var data = cur(), out = [];
+  if (me()) {
+    data.rides.forEach(function (r) {
+      var st = stats(r);
+      var inRide = (st.mine && st.acc.length > 0) || myState(st) === "accepted";
+      if (inRide && endOf(r) < Date.now()) {
+        out.push({ id: "r-" + r.id, auto: true, dir: r.dir, place: r.place, placeName: r.placeName || "", time: rideTime(r) });
+      }
+    });
+  }
+  data.trips.forEach(function (t) {
+    out.push({ id: t.id, auto: false, dir: t.dir, place: t.place, placeName: t.placeName || "", time: t.time });
+  });
+  out.sort(function (a, b) { return b.time - a.time; });
+  return out;
+}
+function nodeCounts(trips) {
+  var seenKey = {}, c = {};
+  trips.forEach(function (t) {
+    var n = NODE_OF[t.place] || "other";
+    var k = n + "|" + dayStart(t.time);
+    if (seenKey[k]) return;
+    seenKey[k] = 1;
+    c[n] = (c[n] || 0) + 1;
+  });
+  return c;
+}
+function mapSVG(counts) {
+  var hx = MAP_HOME.x, hy = MAP_HOME.y;
+  var h = '<svg class="map" viewBox="0 0 360 392" role="img" aria-label="去过的地方示意图">';
+  MAP_NODES.forEach(function (n) {
+    var c = counts[n.id] || 0;
+    var w = c ? Math.min(3 + c * 1.5, 11) : 3;
+    h += '<line x1="' + hx + '" y1="' + hy + '" x2="' + n.x + '" y2="' + n.y + '" class="road' + (c ? ' on' : '') + '" stroke-width="' + w + '"' + (c ? '' : ' stroke-dasharray="2 7"') + '/>';
+  });
+  MAP_NODES.forEach(function (n) {
+    var c = counts[n.id] || 0;
+    var sel = S.tripNode === n.id;
+    h += '<g class="node' + (c ? ' on' : '') + (sel ? ' sel' : '') + '" data-act="tnode" data-v="' + n.id + '" tabindex="0" role="button" aria-label="' + n.label + ' ' + c + ' 次">';
+    h += '<circle cx="' + n.x + '" cy="' + n.y + '" r="' + (sel ? 10 : 8) + '"/>';
+    h += '<text class="nl" x="' + n.x + '" y="' + (n.y - 16) + '" text-anchor="middle">' + n.label + '</text>';
+    if (c) {
+      var label = c + " 次";
+      var pw = 14 + label.length * 7;
+      h += '<g class="pill"><rect x="' + (n.x + 13) + '" y="' + (n.y - 10) + '" width="' + pw + '" height="20" rx="10"/>' +
+        '<text x="' + (n.x + 13 + pw / 2) + '" y="' + (n.y + 4) + '" text-anchor="middle">' + label + '</text></g>';
+    }
+    h += '</g>';
+  });
+  h += '<g class="home"><rect x="' + (hx - 36) + '" y="' + (hy - 16) + '" width="72" height="32" rx="6"/>' +
+    '<rect class="inner" x="' + (hx - 33) + '" y="' + (hy - 13) + '" width="66" height="26" rx="4"/>' +
+    '<text x="' + hx + '" y="' + (hy + 5) + '" text-anchor="middle">XMUM</text></g>';
+  return h + '</svg>';
+}
+
+function renderTrips() {
+  var trips = myTrips();
+  var counts = nodeCounts(trips);
+  var visits = 0, places = 0, best = "", bestN = 0;
+  Object.keys(counts).forEach(function (k) {
+    visits += counts[k]; places++;
+    if (counts[k] > bestN) { bestN = counts[k]; best = NODE_NAME[k] || k; }
+  });
+  var sum = visits
+    ? '<p class="tsum">一共去了 <b>' + visits + '</b> 次 · <b>' + places + '</b> 个地方 · 最常去 <b>' + esc(best) + '</b>（' + bestN + ' 次）</p>'
+    : '<p class="tsum">还没有行程。拼成的单过了出发时间会自动记在这里，也可以手动记一笔。' +
+      (S.mode === "live" ? ' <button class="link-btn" data-act="demo">看看示例</button>' : '') + '</p>';
+  $("tripTop").innerHTML = sum + '<div class="mapcard">' + mapSVG(counts) + '<p class="mapcap">示意图，不按真实距离。点地点看记录。</p></div>';
+
+  var shown = S.tripNode ? trips.filter(function (t) { return (NODE_OF[t.place] || "other") === S.tripNode; }) : trips;
+  $("tripListTitle").textContent = S.tripNode ? "记录 · " + (NODE_NAME[S.tripNode] || "") : "记录";
+  var list = $("tripList");
+  if (!shown.length) {
+    list.innerHTML = '<p class="hint">' + (S.tripNode ? '这里还没去过。<button class="link-btn" data-act="tnode" data-v="">看全部</button>' : '还没有记录。') + '</p>';
+  } else {
+    list.innerHTML = shown.map(function (t) {
+      var d = new Date(t.time);
+      var r = { dir: t.dir, place: t.place, alts: [], placeName: t.placeName };
+      return '<div class="trip"><span class="tdate">' + (d.getMonth() + 1) + '/' + d.getDate() + '<span>周' + WEEK[d.getDay()] + '</span></span>' +
+        '<span class="trip-r"><span class="plate plate-xs">' + plateInner(r) + '</span><span class="s">' + (t.auto ? "拼车" : "手动记的") + '</span></span>' +
+        (t.auto ? '<span></span>' : '<button class="mini danger" data-act="t-del" data-id="' + esc(t.id) + '">删除</button>') + '</div>';
+    }).join("");
+  }
+}
+
+function fillProfile() {
+  var p = loadMe();
+  $("pGender").innerHTML = genderPickHTML(p.gender || "", "p-gender");
+  $("p-wa").value = p.wa || "";
+  $("p-wx").value = p.wx || "";
+}
+
+function openTripAdd() {
+  if (!canWrite()) { askLogin("记行程"); return; }
+  S.trip = { dir: "out", place: "", placeName: "", date: ymd(Date.now()) };
+  S.sheet = { type: "trip" };
+  showSheet();
+  renderTripSheet();
+}
+function renderTripSheet() {
+  var t = S.trip;
+  var h = '<div class="sheet-pad"><div class="sheet-title"><h2>记一笔</h2><button class="x" data-act="close" aria-label="关闭">✕</button></div>';
+  h += '<div class="field"><span class="lab">方向</span><div class="seg">' +
+    '<button class="seg-btn' + (t.dir === "out" ? ' on' : '') + '" data-act="t-dir" data-v="out">从 XMUM 出发</button>' +
+    '<button class="seg-btn' + (t.dir === "back" ? ' on' : '') + '" data-act="t-dir" data-v="back">回 XMUM</button></div></div>';
+  h += '<div class="field"><span class="lab">' + (t.dir === "out" ? "去了哪" : "从哪回来") + '</span><div class="pick">';
+  PLACES.forEach(function (p) {
+    h += '<button class="pk' + (t.place === p.id ? ' on' : '') + '" data-act="t-place" data-v="' + p.id + '">' + esc(p.name) + '</button>';
+  });
+  h += '</div>';
+  if (t.place === "other") h += '<input id="t-placeName" class="inp" maxlength="30" placeholder="地点名" value="' + esc(t.placeName) + '">';
+  h += '</div>';
+  h += '<div class="field"><span class="lab">哪天</span><input id="t-date" class="inp inp-time" type="date" max="' + ymd(Date.now()) + '" value="' + esc(t.date) + '"></div>';
+  h += '<p class="err" id="t-err" hidden></p>';
+  h += '<button class="btn primary big" data-act="t-save">记下来</button></div>';
+  $("sheetBody").innerHTML = h;
+}
+async function saveTrip() {
+  var t = S.trip;
+  var err = function (m) { var el = $("t-err"); el.textContent = m; el.hidden = false; };
+  if (!t.place) return err("选一下地点。");
+  if (t.place === "other" && !t.placeName.trim()) return err("写一下地点名。");
+  var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(t.date || "");
+  if (!m) return err("选一下日期。");
+  var ts = new Date(+m[1], +m[2] - 1, +m[3], 12, 0, 0).getTime();
+  if (dayStart(ts) > dayStart(Date.now())) return err("只能记已经去过的。");
+  var doc = { dir: t.dir, place: t.place, placeName: t.place === "other" ? t.placeName.trim().slice(0, 30) : "", time: ts, createdAt: Date.now() };
+  if (S.mode === "demo") {
+    doc.id = "trip-" + randId();
+    S.demo.trips.push(doc);
+    closeSheet(); onData(); toast("记下了");
+    return;
+  }
+  try {
+    await API.addTrip(doc);
+    closeSheet(); toast("记下了");
+  } catch (e) { err(writeErr(e)); }
+}
+async function deleteTrip(id) {
+  if (S.mode === "demo") {
+    S.demo.trips = S.demo.trips.filter(function (t) { return t.id !== id; });
+    onData();
+    return;
+  }
+  try { await API.deleteTrip(id); } catch (e) { toast(writeErr(e)); }
+}
+
+/* ---------- one-line composer ---------- */
+function rideFromParse(p) {
+  return {
+    dir: p.dir, place: p.places[0] || "", alts: p.places.slice(1), placeName: p.otherName || "",
+    kind: p.kind, asap: p.kind === "asap", time: p.time, timeEnd: p.timeEnd || null, period: p.period || "",
+    have: p.have, need: p.need, fare: p.fare || null, note: "", raw: p.raw, createdAt: Date.now()
+  };
+}
+
+function updatePreview() {
+  var v = $("say").value.trim();
+  var box = $("preview");
+  var btn = $("sayBtn");
+  if (!v) {
+    box.hidden = true;
+    btn.textContent = "填表";
+    btn.className = "send alt";
+    return;
+  }
+  btn.textContent = "发布";
+  btn.className = "send";
+  var p = parseRide(v);
+  var r = rideFromParse(p);
+  var h = '<span class="plate plate-xs">' + plateInner(r) + '</span>';
+  h += '<span class="pv-t">' + esc(timeText(r)) + '</span>';
+  h += '<span class="pv-t">' + r.have + ' 等 ' + r.need + '</span>';
+  if (r.fare) h += '<span class="pv-t">' + money(r.fare) + '</span>';
+  if (!p.places.length) h += '<span class="miss">没认出地点</span>';
+  if (!p.timeSure) h += '<span class="soft">没写时间，按现在</span>';
+  if (!p.peopleSure) h += '<span class="soft">没写人数，按 1 等 3</span>';
+  box.innerHTML = h;
+  box.hidden = false;
+}
+
+async function sayPost() {
+  var v = $("say").value.trim();
+  if (!v) { openNew(null); return; }
+  if (!canWrite()) { askLogin("发拼车"); return; }
+  var p = parseRide(v);
+  if (!p.places.length) { openNew(p, "没认出地点，选一下就能发。"); return; }
+  var ride = rideFromParse(p);
+  if (endOf(ride) < Date.now()) { openNew(p, "这个时间已经过了，改一下。"); return; }
+  var prof = loadMe();
+  ride.gender = prof.gender || "";
+  ride.wa = prof.wa || "";
+  ride.wx = prof.wx || "";
+  var ok = await saveRide(ride, function (msg) { toast(msg); });
+  if (ok) { $("say").value = ""; updatePreview(); $("say").blur(); }
+}
+
+/* ---------- sheets ---------- */
+function showSheet() { $("sheet").hidden = false; document.body.classList.add("lock"); }
+function closeSheet() {
+  $("sheet").hidden = true;
+  if (!(S.tab === "msgs" && S.thread)) document.body.classList.remove("lock");
+  S.sheet = null; S.form = null; S.trip = null;
+}
+
+function findRide(id) {
+  var rs = cur().rides;
+  for (var i = 0; i < rs.length; i++) if (rs[i].id === id) return rs[i];
+  return null;
+}
+function findJoin(id) {
+  var js = cur().joins;
+  for (var i = 0; i < js.length; i++) if (js[i].id === id) return js[i];
+  return null;
+}
+
+function openRide(id) {
+  S.sheet = { type: "ride", id: id };
+  S.sheetCount = 1;
+  showSheet();
+  renderRideSheet();
+}
+
+function renderRideSheet() {
+  if (!S.sheet || S.sheet.type !== "ride") return;
+  var body = $("sheetBody");
+  var r = findRide(S.sheet.id);
+  if (!r) {
+    var waiting = S.mode === "live" && !S.liveReady;
+    body.innerHTML = '<div class="sheet-pad"><div class="sheet-title"><h2>拼车详情</h2><button class="x" data-act="close" aria-label="关闭">✕</button></div>' +
+      '<p class="hint">' + (waiting ? "加载中…" : "这条拼车已经被删除了。") + '</p></div>';
+    return;
+  }
+  var st = stats(r);
+  body.innerHTML = '<div class="sheet-pad">' + rideTopHTML(r, st) + '<div class="act">' + rideSheetAct(r, st) + '</div></div>';
+}
+
+function rideTopHTML(r, st) {
+  var cells = [];
+  cells.push('<div class="d-cell"><span class="k">人数</span><span class="v">' + dotsHTML(r, st) + (r.have + Math.min(st.joined, r.need)) + ' / ' + st.total + '</span>' +
+    '<span class="s">发起方 ' + r.have + ' 人' + (st.joined ? ' · 已上车 ' + st.joined + ' 人' : '') + '</span></div>');
+  cells.push('<div class="d-cell"><span class="k">状态</span><span class="v">' + statusHTML(st) + '</span>' +
+    (openPend(st).length ? '<span class="s">' + openPend(st).length + ' 个人在申请</span>' : '') + '</div>');
+  if (r.fare) {
+    cells.push('<div class="d-cell"><span class="k">车费</span><span class="v">预估 ' + money(r.fare) + '</span><span class="s">满员人均 ' + perHead(r) + '</span></div>');
+  }
+  if (GENDER[r.gender]) cells.push('<div class="d-cell"><span class="k">发起人</span><span class="v">' + GENDER[r.gender] + '</span></div>');
+  if (cells.length % 2 === 1) cells[cells.length - 1] = cells[cells.length - 1].replace('class="d-cell"', 'class="d-cell wide"');
+
+  var when = kindOf(r) === "asap"
+    ? '<span class="asap">马上走</span> ' + clock(r.createdAt) + ' 发布'
+    : esc(timeFull(r));
+
+  return '<div class="sheet-title"><span class="lab">拼车详情</span><button class="x" data-act="close" aria-label="关闭">✕</button></div>' +
+    '<div class="d-head"><span class="plate plate-lg">' + plateInner(r) + '</span>' +
+    '<span class="d-when">' + when + '</span>' +
+    (r.example ? '<span class="ex">示例数据</span>' : '') +
+    (r.src === "sim" ? '<span class="ex">模拟用户 · 会自动回复</span>' : '') + '</div>' +
+    '<div class="d-grid">' + cells.join("") + '</div>' +
+    (r.raw ? '<p class="said"><span class="k">原话</span>' + esc(r.raw) + '</p>' : '') +
+    (r.note ? '<p class="d-note">' + esc(r.note) + '</p>' : '');
+}
+
+function stepperHTML(k, val, min, max, act) {
+  return '<div class="stepper">' +
+    '<button data-act="' + act + '" data-k="' + k + '" data-d="-1" aria-label="减一"' + (val <= min ? ' disabled' : '') + '>−</button>' +
+    '<span class="sv">' + val + '</span>' +
+    '<button data-act="' + act + '" data-k="' + k + '" data-d="1" aria-label="加一"' + (val >= max ? ' disabled' : '') + '>+</button></div>';
+}
+
+function rideSheetAct(r, st) {
+  var id = esc(r.id);
+  if (st.mine) return '<button class="btn primary big" data-act="thread" data-id="' + id + '">去消息里管理这单</button>';
+  if (st.myJoin) return '<button class="btn primary big" data-act="thread" data-id="' + id + '">去聊天</button>';
+  if (st.closed) return '<p class="hint">发起人已经结束了这单。</p>';
+  if (st.full) return '<p class="hint">这单已经拼满了。看看别的，或者自己发一单。</p>';
+  if (expired(r, 20)) return '<p class="hint">这单的出发时间已经过了。</p>';
+  if (!canWrite()) {
+    return '<button class="btn primary big" data-act="login">' + (S.guest ? "绑定谷歌后申请" : "登录后申请") + '</button>' +
+      '<p class="hint">和雪团同一个账号。游客号只能看，绑定谷歌后才能申请和发单。</p>' +
+      '<button class="link-btn center" data-act="share" data-id="' + id + '">复制这单发到群里</button>';
+  }
+  var c = Math.max(1, Math.min(S.sheetCount, st.left));
+  S.sheetCount = c;
+  var h = "";
+  if (st.left > 1) h += '<div class="count-row"><span class="lab">你们几个人</span>' + stepperHTML("count", c, 1, st.left, "s-step") + '</div>';
+  h += '<button class="btn primary big" data-act="apply" data-id="' + id + '">申请加入' + (c > 1 ? '（' + c + ' 人）' : '') + '</button>';
+  h += '<p class="hint">点了直接进聊天，发起人同意就算上车。</p>';
+  h += '<button class="link-btn center" data-act="share" data-id="' + id + '">复制这单发到群里</button>';
+  return h;
+}
+
+function contactHTML(p, msg) {
+  if (!p.wa && !p.wx) return "";
+  var h = '<div class="c-list">';
+  if (p.wa) {
+    h += '<div class="c-row"><span class="c-k">WhatsApp</span><span class="c-v">+' + esc(waDigits(p.wa)) + '</span>' +
+      '<a class="c-btn" href="' + esc(waLink(p.wa, msg)) + '" target="_blank" rel="noopener">发消息</a></div>';
+  }
+  if (p.wx) {
+    h += '<div class="c-row"><span class="c-k">微信</span><span class="c-v">' + esc(p.wx) + '</span>' +
+      '<button class="c-btn alt" data-act="copy" data-v="' + esc(p.wx) + '">复制</button></div>';
+  }
+  return h + '</div>';
+}
+function msgToOwner(r, j) {
+  return "你好，我在雪拼上加入了你 " + timeText(r) + " " + routeFrom(r) + " → " + routeTo(r) + " 的拼车（" + (j.count || 1) + " 人）。";
+}
+function msgToJoiner(r) {
+  return "你好，你在雪拼上加入了我 " + timeText(r) + " " + routeFrom(r) + " → " + routeTo(r) + " 的拼车，集合地点：";
+}
+
+/* ---------- new ride form ---------- */
+function nextSlot() {
+  var step = 30 * 60000;
+  return Math.ceil((Date.now() + 20 * 60000) / step) * step;
+}
+function hmToTs(s) { var v = hm(s); return dayBase(0) + (v === null ? 0 : v); }
+
+function openNew(p, callout) {
+  if (!canWrite()) { askLogin("发拼车"); return; }
+  var f = {
+    dir: S.dir, places: [], placeName: "",
+    day: 0, kind: "at", time: "", timeEnd: "", period: "",
+    have: 1, need: 2, fare: "", note: "", raw: "",
+    callout: callout || ""
+  };
+  if (p) {
+    f.dir = p.dir;
+    f.places = p.places.slice();
+    f.placeName = p.otherName || "";
+    if (p.kind === "asap") { f.day = "now"; }
+    else {
+      f.day = Math.min(6, Math.max(0, dayDiff(p.time)));
+      f.kind = p.kind;
+      f.time = clock(p.time);
+      f.timeEnd = p.timeEnd ? clock(p.timeEnd) : "";
+      f.period = p.period || "";
+    }
+    f.have = p.have; f.need = p.need;
+    f.fare = p.fare ? String(p.fare) : "";
+    f.raw = p.raw;
+  } else {
+    var set = filterById(S.filter).set;
+    if (set && S.filter !== "airport") f.places = [set[0]];
+    var slot = nextSlot();
+    f.day = Math.max(0, dayDiff(slot));
+    f.time = clock(slot);
+  }
+  if (!f.time) f.time = clock(nextSlot());
+  if (!f.timeEnd) f.timeEnd = clock(hmToTs(f.time) + 3600000);
+  S.form = f;
+  S.sheet = { type: "new" };
+  showSheet();
+  renderNewSheet();
+}
+
+function dayOptions() {
+  var out = [{ v: "now", label: "现在" }];
+  for (var i = 0; i < 7; i++) {
+    var d = new Date(); d.setDate(d.getDate() + i);
+    var label = i === 0 ? "今天" : i === 1 ? "明天" : i === 2 ? "后天" : "周" + WEEK[d.getDay()] + " " + (d.getMonth() + 1) + "/" + d.getDate();
+    out.push({ v: i, label: label });
+  }
+  return out;
+}
+function capHint(f) {
+  var total = f.have + f.need;
+  if (total > 4) return "共 " + total + " 人，要叫 6 座车（车费会贵一点）。";
+  return "共 " + total + " 人，普通 4 座车就够。";
+}
+function perHint(f) {
+  var fare = parseFloat(f.fare);
+  if (!(fare > 0)) return "填了会显示满员时每人大概多少钱。";
+  return "满员 " + (f.have + f.need) + " 人，每人约 " + money(Math.ceil(fare / (f.have + f.need) * 10) / 10) + "。";
+}
+
+function renderNewSheet() {
+  var f = S.form;
+  var h = '<div class="sheet-pad">';
+  h += '<div class="sheet-title"><h2>' + (f.raw ? "确认一下" : "发起拼车") + '</h2><button class="x" data-act="close" aria-label="关闭">✕</button></div>';
+  if (f.raw) h += '<p class="said"><span class="k">你说的</span>' + esc(f.raw) + '</p>';
+  if (f.callout) h += '<p class="callout">' + esc(f.callout) + '</p>';
+
+  h += '<div class="field"><span class="lab">方向</span><div class="seg">' +
+    '<button class="seg-btn' + (f.dir === "out" ? ' on' : '') + '" data-act="f-dir" data-v="out">从 XMUM 出发</button>' +
+    '<button class="seg-btn' + (f.dir === "back" ? ' on' : '') + '" data-act="f-dir" data-v="back">回 XMUM</button></div></div>';
+
+  h += '<div class="field"><span class="lab">' + (f.dir === "out" ? "去哪" : "从哪回来") + '（可以多选）</span><div class="pick">';
+  PLACES.forEach(function (p) {
+    h += '<button class="pk' + (f.places.indexOf(p.id) >= 0 ? ' on' : '') + '" data-act="f-place" data-v="' + p.id + '">' + esc(p.name) + '</button>';
+  });
+  h += '</div>';
+  if (f.places.indexOf("other") >= 0) {
+    h += '<input id="f-placeName" class="inp" maxlength="30" placeholder="地点名，比如 Mid Valley" value="' + esc(f.placeName) + '">';
+  }
+  h += '</div>';
+
+  h += '<div class="field"><span class="lab">什么时候走</span><div class="pick">';
+  dayOptions().forEach(function (o) {
+    h += '<button class="pk' + (f.day === o.v ? ' on' : '') + '" data-act="f-day" data-v="' + o.v + '">' + o.label + '</button>';
+  });
+  h += '</div>';
+  if (f.day === "now") {
+    h += '<p class="hint">列表上显示“马上走”，45 分钟后自动下架。</p>';
+  } else {
+    var kinds = [["at", "几点"], ["before", "几点前"], ["range", "时间段"], ["loose", "大概"]];
+    h += '<div class="pick sm">';
+    kinds.forEach(function (k) {
+      h += '<button class="pk' + (f.kind === k[0] ? ' on' : '') + '" data-act="f-kind" data-v="' + k[0] + '">' + k[1] + '</button>';
+    });
+    h += '</div>';
+    if (f.kind === "at" || f.kind === "before") {
+      h += '<div class="time-row"><input id="f-time" class="inp inp-time" type="time" value="' + esc(f.time) + '">' + (f.kind === "before" ? '<span>之前</span>' : '') + '</div>';
+    } else if (f.kind === "range") {
+      h += '<div class="time-row"><input id="f-time" class="inp inp-time" type="time" value="' + esc(f.time) + '"><span>到</span>' +
+        '<input id="f-timeEnd" class="inp inp-time" type="time" value="' + esc(f.timeEnd) + '"></div>';
+    } else {
+      h += '<div class="pick">';
+      PERIOD_OPTS.forEach(function (p) {
+        h += '<button class="pk' + (f.period === p ? ' on' : '') + '" data-act="f-period" data-v="' + p + '">' + (p || "待定") + '</button>';
+      });
+      h += '</div>';
+    }
+  }
+  h += '</div>';
+
+  h += '<div class="field two"><div><span class="lab">我们几个人</span>' + stepperHTML("have", f.have, 1, Math.min(5, 6 - f.need), "f-step") + '</div>' +
+    '<div><span class="lab">还差几个人</span>' + stepperHTML("need", f.need, 1, Math.min(5, 6 - f.have), "f-step") + '</div></div>';
+  h += '<p class="hint" style="margin-top:-8px">' + capHint(f) + '</p>';
+
+  h += '<div class="field"><span class="lab">预估车费（可不填）</span><div class="rm"><span>RM</span>' +
+    '<input id="f-fare" class="inp" inputmode="decimal" placeholder="比如 60" value="' + esc(f.fare) + '"></div>' +
+    '<p class="hint" id="f-per">' + perHint(f) + '</p></div>';
+
+  h += '<div class="field"><span class="lab">备注（可不填）</span>' +
+    '<input id="f-note" class="inp" maxlength="60" placeholder="比如：两个大箱子 / 在校门口集合" value="' + esc(f.note) + '"></div>';
+
+  h += '<p class="err" id="f-err" hidden></p>';
+  h += '<button class="btn primary big" id="f-submit" data-act="f-submit">发布拼车</button>';
+  h += '<p class="hint">联系方式在“我的行程”里设置一次就行。</p>';
+  h += '</div>';
+  $("sheetBody").innerHTML = h;
+}
+
+function formError(msg) {
+  var el = $("f-err");
+  if (!el) { toast(msg); return; }
+  el.textContent = msg;
+  el.hidden = false;
+  el.scrollIntoView({ block: "center", behavior: "smooth" });
+}
+
+function writeErr(e) {
+  var m = String((e && (e.message || e.details)) || "");
+  var c = e && e.code;
+  if (/too many rides/.test(m)) return "今天发的单太多了（最多 10 单），明天再来。";
+  if (/not enough seats/.test(m)) return "位置不够了，同意不了。";
+  if (/ride closed/.test(m)) return "这单已经结束了。";
+  if (c === "23505") return "你已经申请过这单了。";
+  if (c === "42501" || /row-level security/.test(m)) return S.liveId ? "没有权限做这个操作。" : "要先登录（绑定谷歌）。";
+  return "没成功，网络可能不稳，再试一次。";
+}
+
+function randId() { return "d" + Math.random().toString(36).slice(2, 9); }
+
+function buildRide(f) {
+  if (!f.places.length) return { err: "选一下地点。" };
+  if (f.places.indexOf("other") >= 0 && !f.placeName.trim()) return { err: "写一下“其他地点”是哪里。" };
+  var kind = f.day === "now" ? "asap" : f.kind;
+  var now = Date.now();
+  var time = now, timeEnd = null, period = "";
+  if (kind !== "asap") {
+    var base = dayBase(f.day);
+    if (kind === "loose") {
+      period = f.period;
+      var pr = period ? PERIODS[period] : [9, 23.99];
+      time = base + pr[0] * 3600000;
+      timeEnd = base + pr[1] * 3600000;
+      if (timeEnd < now) return { err: "这个时间段已经过了。" };
+    } else {
+      var t1 = hm(f.time);
+      if (t1 === null) return { err: "选一下几点。" };
+      time = base + t1;
+      if (kind === "range") {
+        var t2 = hm(f.timeEnd);
+        if (t2 === null) return { err: "选一下到几点。" };
+        timeEnd = base + t2;
+        if (timeEnd <= time) return { err: "结束时间要比开始晚。" };
+        if (timeEnd < now) return { err: "这个时间段已经过了。" };
+      } else if (time < now - 5 * 60000) {
+        return { err: "这个时间已经过了。换个时间，或者选“现在”。" };
+      }
+    }
+  }
+  if (f.have + f.need > 6) return { err: "一辆车最多 6 个人。" };
+  var fare = null;
+  if (String(f.fare).trim()) {
+    fare = parseFloat(f.fare);
+    if (!(fare > 0) || fare > 2000) return { err: "车费填个数字就行，比如 60。" };
+    fare = Math.round(fare * 100) / 100;
+  }
+  var prof = loadMe();
+  return {
+    ride: {
+      dir: f.dir, place: f.places[0], alts: f.places.slice(1),
+      placeName: f.places.indexOf("other") >= 0 ? f.placeName.trim().slice(0, 30) : "",
+      kind: kind, asap: kind === "asap", time: time, timeEnd: timeEnd, period: period,
+      have: f.have, need: f.need, fare: fare,
+      note: f.note.trim().slice(0, 60), raw: (f.raw || "").slice(0, 80),
+      gender: prof.gender || "", wa: prof.wa || "", wx: prof.wx || ""
+    }
+  };
+}
+
+async function saveRide(ride, onErr) {
+  ride.owner = me();
+  ride.status = "open";
+  ride.createdAt = Date.now();
+  if (ride.kind === "asap") ride.time = ride.createdAt;
+  if (S.mode === "demo") {
+    ride.id = randId();
+    S.demo.rides.push(ride);
+    afterPost(ride.id);
+    setTimeout(function () { demoIncoming(ride.id); }, 4000);
+    return true;
+  }
+  if (!S.liveId) { askLogin("发拼车"); return false; }
+  if (S.busy) return false;
+  S.busy = true;
+  try {
+    var ref = await API.addRide(ride);
+    S.busy = false;
+    afterPost(ref.id);
+    if (simOn()) setTimeout(function () { simIncoming(ref.id); }, 5000);
+    return true;
+  } catch (e) {
+    S.busy = false;
+    if (e && e.code === "invalid_argument") { S.canWrite = false; render(); }
+    onErr(writeErr(e));
+    return false;
+  }
+}
+
+async function submitRide() {
+  var f = S.form;
+  var b = buildRide(f);
+  if (b.err) return formError(b.err);
+  var btn = $("f-submit");
+  if (btn) { btn.disabled = true; btn.textContent = "发布中…"; }
+  var raw = f.raw;
+  var ok = await saveRide(b.ride, formError);
+  if (!ok && btn) { btn.disabled = false; btn.textContent = "发布拼车"; }
+  if (ok && raw) { $("say").value = ""; updatePreview(); }
+}
+
+function afterPost(id) {
+  openThread(id);
+  toast("已发布。点“复制到群”，拼得更快");
+}
+
+/* ---------- requests ---------- */
+async function sendRequest(id) {
+  if (S.busy) return;
+  var r = findRide(id);
+  if (!r) return;
+  var st = stats(r);
+  var count = Math.min(S.sheetCount || 1, st.left);
+  if (count < 1) { toast("这单已经满了"); return; }
+  var prof = loadMe();
+  var j = {
+    rideId: id, uid: me(), count: count, msg: "",
+    gender: prof.gender || "", wa: prof.wa || "", wx: prof.wx || "", status: "pending", createdAt: Date.now()
+  };
+  if (S.mode === "demo") {
+    j.id = id + "__me";
+    S.demo.joins.push(j);
+    openThread(id);
+    toast("申请已发出，可以直接跟发起人聊");
+    if (r.owner === "example") setTimeout(function () { demoAccept(id); }, 2200);
+    return;
+  }
+  if (!S.liveId) { askLogin("申请"); return; }
+  S.busy = true;
+  try {
+    await API.apply(id, count);
+    S.busy = false;
+    openThread(id);
+    toast("申请已发出，可以直接跟发起人聊");
+    if (simOn() && isSim(r.owner)) setTimeout(function () { simAccept(id); }, 2400);
+  } catch (e) {
+    S.busy = false;
+    toast(writeErr(e));
+  }
+}
+
+async function decide(jid, yes) {
+  var j = findJoin(jid);
+  if (!j) return;
+  var r = findRide(j.rideId);
+  if (!r) return;
+  var st = stats(r);
+  var n = j.count || 1;
+  if (yes && n > st.left) { toast("只剩 " + st.left + " 个位置，同意不了"); return; }
+  var status = yes ? "accepted" : "declined";
+  var fills = yes && n === st.left;
+  var msg = fills ? "人齐了，这单自动拼满" : (yes ? "已同意" : "已拒绝");
+  if (S.mode === "demo") {
+    j.status = status;
+    j.decidedAt = Date.now();
+    onData();
+    toast(msg);
+    if (yes) {
+      setTimeout(function () {
+        S.demo.msgs.push({ id: randId(), rideId: r.id, uid: j.uid, text: pick(SIM_THANKS), createdAt: Date.now() });
+        onData();
+      }, 1500);
+    }
+    return;
+  }
+  try {
+    await API.decide(jid, yes);
+    toast(msg);
+    if (yes && simOn() && isSim(j.uid)) simSay(r.id, j.uid, pick(SIM_THANKS), 1600);
+  } catch (e) { toast(writeErr(e)); }
+}
+
+async function cancelRequest(id) {
+  var leave = function () { if (S.thread === id) closeThread(); };
+  if (S.mode === "demo") {
+    S.demo.joins = S.demo.joins.filter(function (j) { return !(j.rideId === id && j.uid === "me"); });
+    leave(); onData(); toast("已退出");
+    return;
+  }
+  try {
+    await API.leave(id);
+    leave(); toast("已退出");
+  } catch (e) { toast(writeErr(e)); }
+}
+
+async function setStatus(id, status) {
+  if (S.mode === "demo") {
+    var r = findRide(id);
+    if (r) r.status = status;
+    onData();
+  } else {
+    try { await API.setStatus(id, status); } catch (e) { toast(writeErr(e)); return; }
+  }
+  toast(status === "closed" ? "已结束，这单不会再出现在大厅里" : "已重新开放");
+}
+
+async function deleteRide(id) {
+  var js = cur().joins.filter(function (j) { return j.rideId === id; });
+  if (S.mode === "demo") {
+    S.demo.rides = S.demo.rides.filter(function (r) { return r.id !== id; });
+    S.demo.joins = S.demo.joins.filter(function (j) { return j.rideId !== id; });
+    S.demo.msgs = S.demo.msgs.filter(function (m) { return m.rideId !== id; });
+    closeThread(); toast("已删除");
+    return;
+  }
+  try {
+    await API.deleteRide(id);
+    closeThread(); toast("已删除");
+  } catch (e) { toast(writeErr(e)); }
+}
+
+/* ---------- chat ---------- */
+async function sendChat() {
+  var inp = $("chat-in");
+  if (!inp || !S.thread || inp.disabled) return;
+  var text = inp.value.trim();
+  if (!text) return;
+  var rideId = S.thread;
+  var m = { rideId: rideId, uid: me(), text: text.slice(0, 200), createdAt: Date.now() };
+  inp.value = "";
+  var r = findRide(rideId);
+  if (S.mode === "demo") {
+    m.id = randId();
+    S.demo.msgs.push(m);
+    onData();
+    if (r) demoReply(r);
+    $("thBodyWrap").scrollTop = $("thBodyWrap").scrollHeight;
+    return;
+  }
+  try {
+    await API.say(rideId, m.text);
+    $("thBodyWrap").scrollTop = $("thBodyWrap").scrollHeight;
+    if (r && simOn()) {
+      var st = stats(r);
+      var other = null;
+      if (st.mine) { for (var i = 0; i < st.js.length; i++) if (isSim(st.js[i].uid) && jStatus(st.js[i]) !== "declined") { other = st.js[i].uid; break; } }
+      else if (isSim(r.owner)) other = r.owner;
+      if (other) simSay(rideId, other, pick(SIM_CHAT), 1500);
+    }
+  } catch (e) { inp.value = text; toast(writeErr(e)); }
+}
+
+/* ---------- share + copy ---------- */
+function shareText(r) {
+  var st = stats(r);
+  var s = "【雪拼·XMUM拼车】" + timeText(r) + "\n";
+  s += routeFrom(r) + " → " + routeTo(r) + "\n";
+  s += "现在 " + (r.have + Math.min(st.joined, r.need)) + " 人，" + (st.left ? "还差 " + st.left + " 人" : "已拼满");
+  if (r.fare) s += "｜预估 " + money(r.fare) + "，满员人均 " + perHead(r);
+  s += "\n";
+  if (r.note) s += "备注：" + r.note + "\n";
+  if (APP_URL) s += "点这里申请：" + APP_URL + "#r-" + r.id + "\n";
+  var c = [];
+  if (r.wa) c.push("WhatsApp wa.me/" + waDigits(r.wa));
+  if (r.wx) c.push("微信 " + r.wx);
+  if (c.length) s += "联系" + (GENDER[r.gender] ? "（" + GENDER[r.gender] + "）" : "") + "：" + c.join(" / ");
+  return s.trim();
+}
+
+function copyText(text, okMsg) {
+  var fail = function () {
+    $("copyText").value = text;
+    $("copyWrap").hidden = false;
+    $("copyText").focus();
+    $("copyText").select();
+  };
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function () { toast(okMsg || "已复制"); }, fail);
+      return;
+    }
+  } catch (e) {}
+  fail();
+}
+
+var toastTimer = null;
+function toast(msg) {
+  var el = $("toast");
+  el.textContent = msg;
+  el.hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(function () { el.hidden = true; }, 2600);
+}
+
+/* ---------- demo data (the other side is simulated) ---------- */
+function makeExamples() {
+  var lines = [
+    ["蹲 2 点半前 ioi 回学校 2=2", "f"],
+    ["收现在去kip 1=1", "m"],
+    ["明天上午10点去trx 3=1", ""],
+    ["蹲明天傍晚从市区回学校 2=2", "f"],
+    ["周三早上7点半去klia2 1=3 rm40", "bag"],
+    ["后天下午两到三点去双威 1=2 60块", "m"],
+    ["蹲明天去机场奥特莱斯 2=2", ""],
+    ["11点去麦当劳 差2人", "m"],
+    ["明晚8点 pavilion/trx 回学校 2=2", "f"]
+  ];
+  var now = Date.now();
+  S.demo.rides = [];
+  lines.forEach(function (x, i) {
+    var r = rideFromParse(parseRide(x[0], now));
+    r.id = "ex" + (i + 1);
+    r.gender = x[1]; r.wa = ""; r.wx = "";
+    r.status = "open"; r.owner = "example"; r.example = true;
+    r.createdAt = r.kind === "asap" ? now - 6 * 60000 : now - 40 * 60000;
+    if (r.kind === "asap") r.time = r.createdAt;
+    S.demo.rides.push(r);
+  });
+  S.demo.joins = [
+    { id: "ex1__a", rideId: "ex1", uid: "example-a", count: 1, gender: "m", wa: "", wx: "", status: "accepted", createdAt: now - 30 * 60000, decidedAt: now - 28 * 60000 },
+    { id: "ex4__b", rideId: "ex4", uid: "example-b", count: 1, gender: "f", wa: "", wx: "", status: "accepted", createdAt: now - 20 * 60000, decidedAt: now - 18 * 60000 }
+  ];
+  S.demo.msgs = [];
+  var past = [["ioi", "out", 2], ["ioi", "back", 2], ["ioi", "out", 6], ["ioi", "out", 11], ["ioi", "out", 19], ["kip", "out", 4],
+    ["kip", "back", 9], ["klia2", "out", 15], ["sunway", "out", 8], ["klcc", "out", 13], ["mcd", "out", 1]];
+  S.demo.trips = past.map(function (p, i) {
+    var d = new Date(now); d.setDate(d.getDate() - p[2]); d.setHours(14, 0, 0, 0);
+    return { id: "trip-ex" + i, dir: p[1], place: p[0], placeName: "", time: d.getTime() };
+  });
+}
+
+function demoAccept(rideId) {
+  if (S.mode !== "demo") return;
+  var r = findRide(rideId);
+  var j = findJoin(rideId + "__me");
+  if (!r || !j || j.status !== "pending") return;
+  var st = stats(r);
+  if ((j.count || 1) <= st.left) {
+    j.status = "accepted";
+    j.decidedAt = Date.now();
+    S.demo.msgs.push({ id: randId(), rideId: rideId, uid: r.owner, text: pick(SIM_OWNER_OK), createdAt: Date.now() + 1 });
+    toast("发起人同意了你的申请");
+  } else {
+    j.status = "declined";
+    j.decidedAt = Date.now();
+  }
+  onData();
+}
+
+function demoIncoming(rideId) {
+  if (S.mode !== "demo") return;
+  var r = findRide(rideId);
+  if (!r || stats(r).full) return;
+  var now = Date.now();
+  S.demo.joins.push({ id: rideId + "__example-r", rideId: rideId, uid: "example-r", count: 1, msg: "", gender: "f", wa: "", wx: "", status: "pending", createdAt: now });
+  S.demo.msgs.push({ id: randId(), rideId: rideId, uid: "example-r", text: pick(SIM_ASK), createdAt: now + 1 });
+  onData();
+  toast("有人申请加入你的拼车（模拟）");
+}
+
+function demoReply(r) {
+  var st = stats(r);
+  var other = st.mine ? (st.js[0] && st.js[0].uid) : r.owner;
+  if (!other) return;
+  setTimeout(function () {
+    if (S.mode !== "demo") return;
+    S.demo.msgs.push({ id: randId(), rideId: r.id, uid: other, text: pick(SIM_CHAT), createdAt: Date.now() });
+    onData();
+  }, 1400);
+}
+
+/* ---------- simulated users in live mode ---------- */
+function simSay(rideId, uid, text, delay) {
+  setTimeout(function () {
+    if (!simOn()) return;
+    S.db.collection("msgs").add({ rideId: rideId, uid: uid, text: text, createdAt: Date.now() }).catch(function () {});
+  }, delay);
+}
+
+async function simAccept(rideId) {
+  if (!simOn()) return;
+  try {
+    var ref = S.db.doc("joins/" + rideId + "__" + S.liveId);
+    var snap = await ref.get();
+    if (!snap.exists || snap.data().status !== "pending") return;
+    var r = findRide(rideId);
+    if (!r) return;
+    var ok = (snap.data().count || 1) <= stats(r).left;
+    await ref.update({ status: ok ? "accepted" : "declined", decidedAt: Date.now() });
+    if (ok) simSay(rideId, r.owner, pick(SIM_OWNER_OK), 900);
+  } catch (e) {}
+}
+
+function simIncoming(rideId) {
+  if (!simOn()) return;
+  var r = findRide(rideId);
+  if (!r || stats(r).full || r.status === "closed") return;
+  var uid = "sim-r" + Math.floor(100 + Math.random() * 900);
+  S.db.doc("joins/" + rideId + "__" + uid).set({
+    rideId: rideId, uid: uid, count: 1, msg: "", gender: pick(["f", "m", ""]),
+    wa: "", wx: "", status: "pending", createdAt: Date.now()
+  }).then(function () { simSay(rideId, uid, pick(SIM_ASK), 600); }).catch(function () {});
+}
+
+function enterDemo() {
+  if (!S.demo.rides.length) makeExamples();
+  S.mode = "demo";
+  if (S.sheet) closeSheet();
+  S.thread = null;
+  document.body.classList.remove("lock");
+  render();
+  checkHash();
+}
+function exitDemo() {
+  S.mode = "live";
+  if (S.sheet) closeSheet();
+  S.thread = null;
+  document.body.classList.remove("lock");
+  render();
+}
+
+/* live notifications while the page is open */
+function notify() {
+  if (S.mode !== "live" || !S.liveId) return;
+  var my = S.liveId;
+  var newPend = 0, accepted = 0, declined = 0, newMsg = null;
+  S.live.joins.forEach(function (j) {
+    var s = jStatus(j);
+    if (s === "pending" && !seen.pend[j.id]) {
+      seen.pend[j.id] = 1;
+      var r = findRide(j.rideId);
+      if (seen.ready && r && r.owner === my) newPend++;
+    }
+    if (j.uid === my) {
+      var prev = seen.st[j.id];
+      if (seen.ready && prev && prev !== s) {
+        if (s === "accepted") accepted++;
+        if (s === "declined") declined++;
+      }
+      seen.st[j.id] = s;
+    }
+  });
+  S.live.msgs.forEach(function (m) {
+    if (seen.msg[m.id]) return;
+    seen.msg[m.id] = 1;
+    if (!seen.ready || m.uid === my) return;
+    if (S.tab === "msgs" && S.thread === m.rideId) return;
+    var r = findRide(m.rideId);
+    if (!r) return;
+    var st = stats(r);
+    if (st.mine || st.myJoin) newMsg = whoName(r, st, m.uid) + "：" + m.text;
+  });
+  if (S.liveReady) seen.ready = true;
+  if (newPend) toast("有 " + newPend + " 个人申请加入你的拼车");
+  else if (accepted) toast("发起人同意了你的申请");
+  else if (declined) toast("有一单发起人没同意");
+  else if (newMsg) toast(newMsg.length > 30 ? newMsg.slice(0, 30) + "…" : newMsg);
+}
+
+function onData() {
+  render();
+  if (S.sheet && S.sheet.type === "ride") renderRideSheet();
+  checkHash();
+}
+
+function checkHash() {
+  if (S.hashDone) return;
+  var m = location.hash.match(/^#r-([\w.~-]+)$/);
+  if (!m) { S.hashDone = true; return; }
+  if (S.mode === "live" && !S.liveReady) return;
+  if (S.mode === "loading") return;
+  S.hashDone = true;
+  var r = findRide(m[1]);
+  if (r) { S.tab = "hall"; S.dir = r.dir; render(); openRide(r.id); }
+}
+
+/* ---------- events ---------- */
+document.addEventListener("click", function (e) {
+  var el = e.target.closest("[data-act]");
+  if (!el) return;
+  var act = el.getAttribute("data-act");
+  var v = el.getAttribute("data-v");
+  var id = el.getAttribute("data-id");
+
+  if (act === "tab") {
+    S.tab = v;
+    if (v !== "msgs") { S.thread = null; document.body.classList.remove("lock"); }
+    if (v === "trips") { fillProfile(); renderAcct(); }
+    render();
+    window.scrollTo(0, 0);
+  }
+  else if (act === "dir") { S.dir = v; render(); window.scrollTo(0, 0); }
+  else if (act === "filter") { S.filter = v; render(); }
+  else if (act === "open") openRide(id);
+  else if (act === "apply") sendRequest(id);
+  else if (act === "thread") openThread(id);
+  else if (act === "back") closeThread();
+  else if (act === "close") closeSheet();
+  else if (act === "demo") enterDemo();
+  else if (act === "exit-demo") exitDemo();
+  else if (act === "copy-close") $("copyWrap").hidden = true;
+  else if (act === "copy") copyText(v, "已复制微信号");
+  else if (act === "share") { var r = findRide(id); if (r) copyText(shareText(r), "已复制，去群里粘贴吧"); }
+  else if (act === "s-step") {
+    S.sheetCount = S.sheetCount + parseInt(el.getAttribute("data-d"), 10);
+    renderRideSheet();
+  }
+  else if (act === "f-dir") { S.form.dir = v; renderNewSheet(); }
+  else if (act === "f-place") {
+    var i = S.form.places.indexOf(v);
+    if (i >= 0) S.form.places.splice(i, 1); else S.form.places.push(v);
+    renderNewSheet();
+    if (v === "other" && i < 0 && $("f-placeName")) $("f-placeName").focus();
+  }
+  else if (act === "f-day") { S.form.day = v === "now" ? "now" : parseInt(v, 10); renderNewSheet(); }
+  else if (act === "f-kind") { S.form.kind = v; renderNewSheet(); }
+  else if (act === "f-period") { S.form.period = v; renderNewSheet(); }
+  else if (act === "f-step") {
+    var k = el.getAttribute("data-k");
+    S.form[k] = S.form[k] + parseInt(el.getAttribute("data-d"), 10);
+    renderNewSheet();
+  }
+  else if (act === "f-submit") submitRide();
+  else if (act === "req-ok") decide(id, true);
+  else if (act === "req-no") decide(id, false);
+  else if (act === "req-cancel") cancelRequest(id);
+  else if (act === "close-ride") setStatus(id, "closed");
+  else if (act === "reopen") setStatus(id, "open");
+  else if (act === "del") {
+    if (S.confirmDelete === id) { S.confirmDelete = null; deleteRide(id); }
+    else {
+      S.confirmDelete = id;
+      render();
+      setTimeout(function () {
+        if (S.confirmDelete === id) { S.confirmDelete = null; render(); }
+      }, 4000);
+    }
+  }
+  else if (act === "tnode") { S.tripNode = S.tripNode === v ? "" : (v || ""); renderTrips(); }
+  else if (act === "t-add") openTripAdd();
+  else if (act === "t-dir") { S.trip.dir = v; renderTripSheet(); }
+  else if (act === "t-place") { S.trip.place = v; renderTripSheet(); }
+  else if (act === "t-save") saveTrip();
+  else if (act === "t-del") deleteTrip(id);
+  else if (act === "login") login();
+  else if (act === "logout") logout();
+  else if (act === "p-gender") {
+    var p = loadMe(); p.gender = v; saveMe(p);
+    $("pGender").innerHTML = genderPickHTML(v, "p-gender");
+  }
+});
+
+document.addEventListener("keydown", function (e) {
+  if ((e.key === "Enter" || e.key === " ") && e.target.classList && e.target.classList.contains("node")) {
+    e.preventDefault();
+    e.target.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    return;
+  }
+  if (e.key !== "Escape") return;
+  if (!$("copyWrap").hidden) { $("copyWrap").hidden = true; return; }
+  if (S.sheet) { closeSheet(); return; }
+  if (S.thread) closeThread();
+});
+
+function onField(e) {
+  var t = e.target;
+  if (!t.id) return;
+  if (t.id === "say") { updatePreview(); return; }
+  if (S.form && t.id.indexOf("f-") === 0) {
+    var k = t.id.slice(2);
+    if (k in S.form) S.form[k] = t.value;
+    if (k === "fare" && $("f-per")) $("f-per").textContent = perHint(S.form);
+  } else if (S.trip && t.id.indexOf("t-") === 0) {
+    var k2 = t.id.slice(2);
+    if (k2 in S.trip) S.trip[k2] = t.value;
+  } else if (t.id === "p-wa" || t.id === "p-wx") {
+    var p = loadMe(); p[t.id.slice(2)] = t.value.trim(); saveMe(p);
+    API.saveContactsSoon();
+  }
+}
+document.addEventListener("input", onField);
+document.addEventListener("change", onField);
+
+document.addEventListener("submit", function (e) {
+  if (e.target.id === "sayForm") { e.preventDefault(); sayPost(); }
+  else if (e.target.id === "chatForm") { e.preventDefault(); sendChat(); }
+});
+
+setInterval(function () { if (S.mode !== "loading") render(); }, 60000);
+
+/* ---------- 账号 + 数据（Supabase，和雪团共用账号和数据库，表名 xp_*） ---------- */
+/* 地址和 publishable key 本来就是公开的；谁能看/改什么由数据库的 RLS 规则管 */
+var SB_URL = "https://pshxrwfjcbvqlixdxlzs.supabase.co";
+var SB_KEY = "sb_publishable_BhsWKzuwXJG2de1mg7kMkg_wL2Koj6C";
+var sb = (window.supabase && window.supabase.createClient && !/[?&]demo(=|&|$)/.test(location.search))
+  ? window.supabase.createClient(SB_URL, SB_KEY) : null;
+var LIVE_DAYS = 4;          /* 大厅只拉最近几天的单；自己参与的单另外拉 */
+S.guest = false;
+S.email = "";
+S.contacts = {};
+
+function canWrite() { return S.mode === "demo" || (S.mode === "live" && !!S.liveId); }
+function msOf(t) { return t ? Date.parse(t) : null; }
+function isoOf(ms) { return ms == null ? null : new Date(ms).toISOString(); }
+function chk(res) { if (res.error) throw res.error; return res.data; }
+
+function rideIn(x) {
+  return {
+    id: x.id, owner: x.owner, dir: x.dir, place: x.place, alts: x.alts || [], placeName: x.place_name || "",
+    kind: x.kind, asap: x.kind === "asap", time: msOf(x.time), timeEnd: msOf(x.time_end), period: x.period || "",
+    have: x.have, need: x.need, fare: x.fare == null ? null : Number(x.fare), note: x.note || "", raw: x.raw || "",
+    status: x.status, createdAt: msOf(x.created_at), gender: "", wa: "", wx: ""
+  };
+}
+function joinIn(x) {
+  return { id: x.id, rideId: x.ride_id, uid: x.uid, count: x.count, msg: x.msg || "", status: x.status,
+    createdAt: msOf(x.created_at), decidedAt: msOf(x.decided_at), gender: "", wa: "", wx: "" };
+}
+function msgIn(x) { return { id: x.id, rideId: x.ride_id, uid: x.uid, text: x.text, createdAt: msOf(x.created_at) }; }
+function tripIn(x) { return { id: x.id, dir: x.dir, place: x.place, placeName: x.place_name || "", time: msOf(x.time), createdAt: msOf(x.created_at) }; }
+function byId(list) { var m = {}; list.forEach(function (x) { m[x.id] = x; }); return Object.keys(m).map(function (k) { return m[k]; }); }
+
+var API = {
+  load: async function () {
+    var since = isoOf(Date.now() - LIVE_DAYS * 86400000);
+    var my = S.liveId;
+    var jobs = [
+      sb.from("xp_rides").select("*").gte("time", since).order("time", { ascending: false }).limit(400),
+      sb.from("xp_joins").select("*, xp_rides!inner(time)").gte("xp_rides.time", since).limit(1000)
+    ];
+    if (my) {
+      jobs.push(sb.from("xp_rides").select("*").eq("owner", my).order("time", { ascending: false }).limit(200));
+      jobs.push(sb.from("xp_joins").select("*, xp_rides(*)").eq("uid", my).limit(300));
+      jobs.push(sb.from("xp_joins").select("*, xp_rides!inner(owner)").eq("xp_rides.owner", my).limit(1000));
+      jobs.push(sb.from("xp_msgs").select("*").order("created_at", { ascending: false }).limit(600));
+      jobs.push(sb.from("xp_contacts").select("*"));
+      jobs.push(sb.from("xp_trips").select("*").order("time", { ascending: false }).limit(500));
+    }
+    var res = await Promise.all(jobs);
+    res.forEach(chk);
+    var rides = res[0].data.slice(), joins = res[1].data.slice(), msgs = [], trips = [], contacts = {};
+    if (my) {
+      rides = rides.concat(res[2].data);
+      res[3].data.forEach(function (j) { if (j.xp_rides) rides.push(j.xp_rides); joins.push(j); });
+      joins = joins.concat(res[4].data);
+      msgs = res[5].data;
+      res[6].data.forEach(function (c) { contacts[c.user_id] = c; });
+      trips = res[7].data;
+    }
+    rides = byId(rides).map(rideIn);
+    joins = byId(joins).map(joinIn);
+    rides.forEach(function (r) { var c = contacts[r.owner]; if (c) { r.wa = c.wa; r.wx = c.wx; } });
+    joins.forEach(function (j) { var c = contacts[j.uid]; if (c) { j.wa = c.wa; j.wx = c.wx; } });
+    S.live.rides = rides;
+    S.live.joins = joins;
+    S.live.msgs = msgs.map(msgIn);
+    S.live.trips = trips.map(tripIn);
+    S.contacts = contacts;
+    if (my && contacts[my]) {
+      var p = loadMe();
+      if (!p.wa && !p.wx) { p.wa = contacts[my].wa; p.wx = contacts[my].wx; saveMe(p); if (S.tab === "trips") fillProfile(); }
+    }
+  },
+  addRide: async function (r) {
+    API.saveContacts();
+    var row = await sb.from("xp_rides").insert({
+      dir: r.dir, place: r.place, alts: r.alts || [], place_name: r.placeName || "", kind: r.kind,
+      time: isoOf(r.kind === "asap" ? Date.now() : r.time), time_end: isoOf(r.timeEnd), period: r.period || "",
+      have: r.have, need: r.need, fare: r.fare, note: r.note || "", raw: r.raw || ""
+    }).select("id").single().then(chk);
+    await refresh();
+    return row;
+  },
+  apply: async function (rideId, count) {
+    API.saveContacts();
+    chk(await sb.from("xp_joins").insert({ ride_id: rideId, count: count }));
+    await refresh();
+  },
+  decide: async function (jid, yes) { chk(await sb.rpc("xp_decide", { join_id: jid, yes: yes })); await refresh(); },
+  leave: async function (rideId) { chk(await sb.from("xp_joins").delete().eq("ride_id", rideId).eq("uid", S.liveId)); await refresh(); },
+  setStatus: async function (id, status) { chk(await sb.from("xp_rides").update({ status: status }).eq("id", id)); await refresh(); },
+  deleteRide: async function (id) { chk(await sb.from("xp_rides").delete().eq("id", id)); await refresh(); },
+  say: async function (rideId, text) { chk(await sb.from("xp_msgs").insert({ ride_id: rideId, text: text })); await refresh(); },
+  addTrip: async function (t) {
+    chk(await sb.from("xp_trips").insert({ dir: t.dir, place: t.place, place_name: t.placeName || "", time: isoOf(t.time) }));
+    await refresh();
+  },
+  deleteTrip: async function (id) { chk(await sb.from("xp_trips").delete().eq("id", id)); await refresh(); },
+  saveContacts: function () {
+    if (!sb || !S.liveId) return Promise.resolve();
+    var p = loadMe();
+    var wa = String(p.wa || "").slice(0, 20), wx = String(p.wx || "").slice(0, 30);
+    var old = S.contacts[S.liveId];
+    if (old ? (old.wa === wa && old.wx === wx) : (!wa && !wx)) return Promise.resolve();
+    S.contacts[S.liveId] = { user_id: S.liveId, wa: wa, wx: wx };
+    return sb.from("xp_contacts").upsert({ wa: wa, wx: wx, updated_at: new Date().toISOString() }, { onConflict: "user_id" })
+      .then(function (res) { if (res.error) { delete S.contacts[S.liveId]; } });
+  },
+  saveContactsSoon: function () {
+    clearTimeout(API._ct);
+    API._ct = setTimeout(API.saveContacts, 800);
+  }
+};
+
+var loading = null, again = false;
+async function refresh() {
+  if (!sb || S.mode !== "live") return;
+  if (loading) { again = true; return loading; }
+  loading = (async function () {
+    try {
+      do { again = false; await API.load(); } while (again);
+      S.liveReady = true; S.liveError = false;
+    } catch (e) {
+      if (!S.liveReady) S.liveError = true;
+    }
+    loading = null;
+    notify();
+    onData();
+  })();
+  return loading;
+}
+var refreshTimer = null;
+function refreshSoon() { clearTimeout(refreshTimer); refreshTimer = setTimeout(refresh, 400); }
+
+function setAuth(session) {
+  var u = session && session.user;
+  var full = !!(u && !u.is_anonymous);
+  var id = full ? u.id : null;
+  var changed = id !== S.liveId || S.guest !== !!(u && u.is_anonymous);
+  S.liveId = id;
+  S.canWrite = full;
+  S.guest = !!(u && u.is_anonymous);
+  S.email = (u && u.email) || "";
+  if (changed) seen = { ready: false, pend: {}, st: {}, msg: {} };
+  return changed;
+}
+
+function askLogin(what) {
+  S.sheet = { type: "login" };
+  var guest = S.guest;
+  $("sheetBody").innerHTML = '<div class="sheet-pad"><div class="sheet-title"><h2>' + (guest ? "绑定谷歌" : "登录") + '后才能' + esc(what || "使用") + '</h2>' +
+    '<button class="x" data-act="close" aria-label="关闭">✕</button></div>' +
+    '<p class="hint">雪拼和雪团用同一个账号，在雪团登录过这里就不用再登。' +
+    (guest ? '你现在是游客号，只能看；绑定谷歌后还是同一个号，雪团的记录都在。' : '') + '</p>' +
+    '<button class="btn primary big" data-act="login">' + (guest ? "绑定谷歌账号" : "用谷歌登录") + '</button>' +
+    '<p class="hint">WhatsApp / 微信只给同一单里拼上的人看。</p></div>';
+  showSheet();
+}
+function authReturn() { return location.origin + location.pathname + location.hash; }
+function login() {
+  if (!sb) { toast("现在是示例模式，没连上服务器"); return; }
+  var opts = { provider: "google", options: { redirectTo: authReturn() } };
+  var p = S.guest ? sb.auth.linkIdentity(opts) : sb.auth.signInWithOAuth(opts);
+  p.then(function (res) { if (res && res.error) toast("登录没成功：" + res.error.message); });
+}
+function logout() {
+  if (!sb) return;
+  sb.auth.signOut().then(function () { toast("已退出"); });
+}
+function renderAcct() {
+  var box = $("acct");
+  if (!box) return;
+  if (S.mode !== "live") { box.innerHTML = ""; return; }
+  box.innerHTML = S.liveId
+    ? '<p class="hint">已登录' + (S.email ? '：' + esc(S.email) : '') + ' <button class="link-btn" data-act="logout">退出</button></p>'
+    : '<button class="btn ghost" data-act="login">' + (S.guest ? "绑定谷歌后保存到账号" : "登录后保存到账号") + '</button>';
+}
+
+/* ---------- start ---------- */
+async function init() {
+  render();
+  if (!sb) { enterDemo(); return; }
+  S.db = sb;
+  S.hasDb = true;
+  S.mode = "live";
+  try {
+    var res = await sb.auth.getSession();
+    setAuth(res.data && res.data.session);
+  } catch (e) {}
+  sb.auth.onAuthStateChange(function (ev, session) {
+    /* 回调里不能直接再调 supabase，放到下一轮 */
+    setTimeout(function () {
+      if (!setAuth(session)) return;
+      if (S.sheet && S.sheet.type === "login" && S.liveId) closeSheet();
+      renderAcct();
+      API.saveContacts();
+      refresh();
+    }, 0);
+  });
+  render();
+  renderAcct();
+  await refresh();
+  API.saveContacts();
+  try {
+    sb.channel("xuepin")
+      .on("postgres_changes", { event: "*", schema: "public", table: "xp_rides" }, refreshSoon)
+      .on("postgres_changes", { event: "*", schema: "public", table: "xp_joins" }, refreshSoon)
+      .on("postgres_changes", { event: "*", schema: "public", table: "xp_msgs" }, refreshSoon)
+      .subscribe();
+  } catch (e) {}
+  /* 实时连不上时的兜底：页面开着每 20 秒拉一次，切回来马上拉 */
+  setInterval(function () { if (!document.hidden) refresh(); }, 20000);
+  document.addEventListener("visibilitychange", function () { if (!document.hidden) refresh(); });
+}
+
+fillProfile();
+init();
+</script>
