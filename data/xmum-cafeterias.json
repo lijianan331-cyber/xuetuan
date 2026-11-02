@@ -428,5 +428,32 @@
    "semesterBreak": "",
    "comingSoon": false
   }
- ]
+ ],
+ "blockCoords": {
+  "B1": {
+   "lat": 2.83245,
+   "lng": 101.70651
+  },
+  "D6": {
+   "lat": 2.83412,
+   "lng": 101.70651
+  },
+  "LY3": {
+   "lat": 2.8344,
+   "lng": 101.70344
+  },
+  "Music Island": {
+   "lat": 2.83319,
+   "lng": 101.70315
+  },
+  "A3": {
+   "lat": 2.83124,
+   "lng": 101.70373
+  },
+  "IAEC": {
+   "lat": 2.83064,
+   "lng": 101.70043
+  }
+ },
+ "blockCoordsSource": "tapped by the user on tools/blocks.html, 2026-11-02"
 }
