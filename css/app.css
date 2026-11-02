@@ -970,3 +970,5 @@ button.post-who { width: 100%; }
 .hero-slide { cursor: zoom-in; }
 .me-edit { width: 100%; border: 0; background: none; text-align: left; color: inherit; font: inherit; cursor: pointer; }
 .me-edit .me-id { flex: 1; min-width: 0; }
+.post-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.btn.danger-text { color: var(--danger); }

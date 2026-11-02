@@ -97,10 +97,10 @@
     var r = store.review(state.postId), p = r && placeById(r.placeId);
     if (!p || (r.visibility !== 'public' && !isMine(r))) { goFeed(); return; }
     var name = authorLabel(r), from = '', text = reviewText(r), c = catOf(p);
-    /* 自己的帖子：右上角直接编辑、删除（用户 2026-11-02） */
-    var own = isMine(r) ? '<span class="post-own"><button type="button" class="link-btn" data-action="edit-review" data-id="' + esc(r.id) + '">' + esc(t('edit')) + '</button>' +
-      '<button type="button" class="link-btn danger" data-action="del-review" data-id="' + esc(r.id) + '">' + esc(t('del')) + '</button></span>' : '';
-    var h = '<div class="view-top"><button type="button" class="icon-btn flat" data-action="back" aria-label="' + esc(t('back')) + '">' + ICON.back + '</button>' + own + '</div>';
+    /* 自己的帖子：编辑、删除放在下面“收藏”那一排（用户 2026-11-02：右上角不显眼） */
+    var own = isMine(r) ? '<button type="button" class="btn small ghost" data-action="edit-review" data-id="' + esc(r.id) + '">' + esc(t('edit')) + '</button>' +
+      '<button type="button" class="btn small ghost danger-text" data-action="del-review" data-id="' + esc(r.id) + '">' + esc(t('del')) + '</button>' : '';
+    var h = '<div class="view-top"><button type="button" class="icon-btn flat" data-action="back" aria-label="' + esc(t('back')) + '">' + ICON.back + '</button></div>';
     if (r.photos && r.photos.length) h += '<div class="photo-strip">' + r.photos.map(function (id) {
       return '<button type="button" class="ph" data-action="photo" data-id="' + esc(id) + '" data-group="post"><img data-photo="' + esc(id) + '" data-small alt=""></button>';
     }).join('') + '</div>';
@@ -116,7 +116,7 @@
     if (r.title) h += '<h1 class="post-title">' + esc(r.title) + '</h1>';
     if (text) h += '<p class="post-text">' + esc(text) + '</p>';
     h += '<ul class="near-list post-place">' + placeRowHTML(p, 'post-place', esc(catName(c)) + ' · ' + esc(distLabel(p)), '<span class="near-cta">' + esc(t('postPlace')) + '</span>') + '</ul>';
-    h += '<div class="actions post-actions">' + saveBtnHTML(p.id, false) + moderationControl(r) + '</div>';
+    h += '<div class="actions post-actions">' + saveBtnHTML(p.id, false) + own + moderationControl(r) + '</div>';
     view.innerHTML = h;
   }
 
