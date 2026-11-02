@@ -1315,16 +1315,50 @@
     return Math.round(m / 1000).toLocaleString(state.lang === 'zh' ? 'zh-CN' : 'en-MY') + ' km';
   }
   function fmtPrice(n) { var v = Math.round(n * 10) / 10; return v % 1 === 0 ? String(v) : v.toFixed(1); }
-  /* 人均按地点所在地的货币（用户 2026-11-02）：只认人民币（中国大陆）、新币、欧元、澳元、美元、加元、英镑，
+  /* 人均按地点所在地的货币（用户 2026-11-02）：人民币（中国大陆）、港币、澳门元、新币、欧元、澳元、美元、加元、英镑，
      别的地方（日本、韩国、台湾、泰国、印尼…）都用 RM。界面上只出货币符号，不出国家名。
      places.cc 存两位代码，新建地点时问 Photon；马来西亚大部分范围直接认，不用问 */
   var EURO_CC = 'AT BE BG HR CY EE FI FR DE GR IE IT LV LT LU MT NL PT SK SI ES MC SM VA AD ME XK'.split(' ');
-  var CUR_SYM = { CN: '¥', SG: 'S$', AU: 'A$', US: 'US$', CA: 'C$', GB: '£', EUR: '€' };
+  var CUR_SYM = { CN: '¥', HK: 'HK$', MO: 'MOP$', SG: 'S$', AU: 'A$', US: 'US$', CA: 'C$', GB: '£', EUR: '€' };
   /* 筛选“RM x 左右”时换成 RM 大概比（2026-11 的约值，够筛选用） */
-  var CUR_RM = { CN: 0.6, SG: 3.3, AU: 2.8, US: 4.2, CA: 3.0, GB: 5.6, EUR: 4.8 };
+  var CUR_RM = { CN: 0.6, HK: 0.52, MO: 0.50, SG: 3.3, AU: 2.8, US: 4.2, CA: 3.0, GB: 5.6, EUR: 4.8 };
   function curKey(cc) { cc = String(cc || '').toUpperCase(); return EURO_CC.indexOf(cc) !== -1 ? 'EUR' : CUR_SYM[cc] ? cc : ''; }
-  var ccCache = new Map();
-  function ccKey(lat, lng) { return (+lat).toFixed(2) + ',' + (+lng).toFixed(2); }
+  var ccCache = new Map(), ccRequests = new Map();
+  /* Only a lookup candidate area, never a currency boundary: Shenzhen/Zhuhai must stay CNY. */
+  function regionalCurArea(lat, lng) { return lat > 22.05 && lat < 22.65 && lng > 113.45 && lng < 114.5; }
+  function ccKey(lat, lng) { var digits = regionalCurArea(lat, lng) ? 5 : 2; return (+lat).toFixed(digits) + ',' + (+lng).toFixed(digits); }
+  function photonCurrencyCC(props) {
+    props = props || {};
+    var cc = String(props.countrycode || '').toUpperCase(), region = String(props.state || '');
+    if (cc === 'CN') {
+      if (/香港|hong\s*kong|^HK$/i.test(region)) return 'HK';
+      if (/澳[門门]|macau|macao|^MO$/i.test(region)) return 'MO';
+    }
+    return /^[A-Z]{2}$/.test(cc) ? cc : '';
+  }
+  var regionalCurAsked = new Set(), regionalCurQueue = [], regionalCurActive = 0, regionalCurTimer = null;
+  function refreshRegionalCurrency() {
+    clearTimeout(regionalCurTimer);
+    regionalCurTimer = setTimeout(function () {
+      /* Refresh visible amounts, without rebuilding an unfinished form or photo import. */
+      if (state.view === 'form') {
+        var f = state.form, p = f && f.placeId ? placeById(f.placeId) : null, loc = f && formCurLoc(f, p), lab = $('label[for="f-price"]');
+        if (lab && loc) lab.textContent = t('priceFood', { c: p ? curSym(p) : curSymAt(ccNow(loc.lat, loc.lng)) });
+      } else if (state.bulk) (state.bulk.groups || []).forEach(setBulkCur);
+      else if (!state.picking && !document.querySelector('input:focus, textarea:focus, select:focus')) { render(); refreshMap(); }
+    }, 100);
+  }
+  function drainRegionalCurrency() {
+    if (regionalCurActive >= 2 || !regionalCurQueue.length) return;
+    var p = regionalCurQueue.shift(); regionalCurActive++;
+    ccAt(p.lat, p.lng).then(function (cc) { if (cc === 'HK' || cc === 'MO') refreshRegionalCurrency(); }).finally(function () { regionalCurActive--; drainRegionalCurrency(); });
+    drainRegionalCurrency();
+  }
+  function warmRegionalCurrency(p) {
+    var cc = String(p.cc || '').toUpperCase(), key = ccKey(p.lat, p.lng);
+    if ((cc && cc !== 'CN') || !regionalCurArea(p.lat, p.lng) || ccCache.has(key) || regionalCurAsked.has(key)) return;
+    regionalCurAsked.add(key); regionalCurQueue.push({ lat: p.lat, lng: p.lng }); drainRegionalCurrency();
+  }
   /* 新加坡和新山挨着，那一块不猜，要问 */
   function ccBox(lat, lng) {
     if (lat > 1.1 && lat < 1.6 && lng > 103.5 && lng < 104.2) return '';
@@ -1335,16 +1369,25 @@
     if (lat == null || lng == null) return Promise.resolve('');
     var known = ccNow(lat, lng), key = ccKey(lat, lng);
     if (known) return Promise.resolve(known);
+    if (ccRequests.has(key)) return ccRequests.get(key);
     if (window.__ccAt) return Promise.resolve(window.__ccAt(lat, lng)); /* 测试用 */
     var url = 'https://photon.komoot.io/reverse?lat=' + (+lat).toFixed(5) + '&lon=' + (+lng).toFixed(5) + '&limit=1';
     var ask = fetch(url).then(function (res) { return res.ok ? res.json() : null; }).then(function (json) {
-      var f = json && json.features && json.features[0], cc = String((f && f.properties && f.properties.countrycode) || '').toUpperCase();
-      if (/^[A-Z]{2}$/.test(cc)) { ccCache.set(key, cc); return cc; }
+      var f = json && json.features && json.features[0], cc = photonCurrencyCC(f && f.properties);
+      if (/^[A-Z]{2}$/.test(cc)) { ccCache.set(key, cc); if (regionalCurAsked.has(key) && (cc === 'HK' || cc === 'MO')) refreshRegionalCurrency(); return cc; }
       return '';
     }).catch(function () { return ''; });
-    return Promise.race([ask, new Promise(function (r) { setTimeout(function () { r(''); }, 3000); })]);
+    var request = Promise.race([ask, new Promise(function (r) { setTimeout(function () { r(''); }, 3000); })]);
+    ccRequests.set(key, request);
+    request.finally(function () { ccRequests.delete(key); });
+    return request;
   }
-  function placeCC(p) { return (p && (p.cc || ccNow(p.lat, p.lng))) || ''; }
+  function placeCC(p) {
+    if (!p) return '';
+    if (p.lat != null && p.lng != null) warmRegionalCurrency(p);
+    var stored = String(p.cc || '').toUpperCase(), cached = ccNow(p.lat, p.lng);
+    return (!stored || stored === 'CN' ? cached || stored : stored) || '';
+  }
   function curSymAt(cc) { return CUR_SYM[curKey(cc)] || 'RM'; }
   function curSym(p) { return curSymAt(placeCC(p)); }
   function money(p, n) { return curSym(p) + ' ' + fmtPrice(n); }
