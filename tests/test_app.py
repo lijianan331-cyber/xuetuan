@@ -113,21 +113,27 @@ def via_home(pg, text, to_place=True):
     if to_place:
         pg.click('[data-action="post-place"]'); pg.wait_for_timeout(300)
 def set_mode(pg, mode):
-    # 地图右上角的切换按钮：吃的地图上显示飞机（切去玩乐），玩乐地图上显示餐具
-    if pg.evaluate('document.documentElement.classList.contains("mode-travel")') != (mode == 'travel'):
-        pg.click('[data-action="toggle-mode"]')
-        pg.wait_for_timeout(200)
+    direct = pg.locator('#view .foot-mode-group [data-action="mine-mode"][data-v="'+mode+'"]')
+    if direct.count() and direct.is_visible():
+        direct.click(); pg.wait_for_timeout(200)
+    elif pg.evaluate('document.documentElement.classList.contains("mode-travel")') != (mode == 'travel'):
+        pg.click('[data-action="toggle-mode"]'); pg.wait_for_timeout(200)
+
+def open_filters(pg):
+    direct=pg.locator('#view [data-action="foot-filters"]')
+    if direct.count() and direct.is_visible(): direct.click()
+    else: pg.click('#map-ctrls [data-action="filters"]')
+
+
 def foot_sub(pg, value=None):
-    # The visited/wishlist switch now lives in the footprint filter sheet.
-    if pg.locator('#bsheet').is_hidden():
-        pg.click('#view [data-action="foot-filters"]')
-    if value:
-        pg.click('#bsheet [data-action="mine-sub"][data-v="%s"]' % value)
-        pg.wait_for_timeout(100)
-    selected = pg.get_attribute('#bsheet [data-action="mine-sub"][aria-pressed="true"]', 'data-v')
-    pg.click('#bsheet [data-action="sheet-close"]')
+    # Saved places have their own star entry; the Footprints tab always returns to visits.
+    if value == 'saved' and pg.evaluate('state.scope') != 'saved':
+        pg.click('#view [data-action="open-favorites"]')
+    elif value == 'mine' and pg.evaluate('state.scope') != 'mine':
+        pg.click('#tabbar [data-tab="foot"]')
     pg.wait_for_timeout(100)
-    return selected
+    return pg.evaluate('state.scope')
+
 
 def touch_drag(pg, x, y0, y1, steps=8):
     # 真的手指拖动（CDP 触摸事件），会走浏览器自己的滚动
@@ -734,7 +740,7 @@ with sync_playwright() as p:
     check('wishlist stays under the footprints tab', page.get_attribute('#tabbar [data-tab="foot"]', 'aria-current') == 'page' and foot_sub(page) == 'saved')
     saved_feats = page.evaluate('window.__map.getSource("places").data.features.map(f => [f.properties.name, f.properties.saved])')
     check('saved map shows only saved place (no extra star there)', saved_feats == [['亚罗街', False]], saved_feats)
-    check('saved list shows the place', page.locator('.near-item', has_text='亚罗街').count() == 1 and page.inner_text('.view-title') == '想去吃的', page.inner_text('.view-title'))
+    check('saved list shows the place', page.locator('.near-item', has_text='亚罗街').count() == 1 and page.inner_text('.view-title') == '我的收藏', page.inner_text('.view-title'))
     stored = page.evaluate('JSON.parse(localStorage.getItem("xmum-chiwan-map:data:v1"))')
     check('saving is not a visit (no new review)', len(stored['wishlist']) == 1 and len([r for r in stored['reviews'] if r['placeId'] == 's-jalan-alor']) == 1, stored['wishlist'])
     page.locator('.near-item', has_text='亚罗街').click()
@@ -742,10 +748,10 @@ with sync_playwright() as p:
     page.click('[data-action="toggle-save"]')
     page.click('[data-action="back"]')
     page.wait_for_timeout(200)
-    check('unsaving empties the wishlist', page.locator('.empty', has_text='还没有想去的地方').count() == 1)
+    check('unsaving empties the wishlist', page.locator('.empty', has_text='还没有收藏的地方').count() == 1)
     tab(page, 'explore')
     tab(page, 'foot')
-    check('footprints tab remembers the wishlist side', foot_sub(page) == 'saved')
+    check('footprints tab returns to visits rather than a saved side', foot_sub(page) == 'mine')
     foot_sub(page, 'mine')
     tab(page, 'explore')
 
@@ -958,7 +964,7 @@ with sync_playwright() as p:
     check('home: Me header says where I am from', page.inner_text('.me-head small') == '来自 Sepang', page.inner_text('.me-head'))
     tab(page, 'foot')
     check('home: no house chip on the map any more', page.locator('#map-chips [data-action="mine-home-toggle"]').count() == 0)
-    page.click('#map-ctrls [data-action="filters"]'); page.wait_for_timeout(120)
+    open_filters(page); page.wait_for_timeout(120)
     sw = '#bsheet [data-action="mine-home-toggle"]'
     check('home: “显示我的家” switch lives in the filter sheet, off by default', page.locator(sw).count() == 1 and page.get_attribute(sw, 'aria-checked') == 'false' and '显示我的家' in page.inner_text(sw) and page.evaluate('window.__map.getSource("homes").data.features.length')==0)
     page.click(sw); page.wait_for_timeout(100)
@@ -1040,7 +1046,7 @@ with sync_playwright() as p:
     # language (in the Me tab)
     tab(page, 'me')
     page.click('[data-action="set-lang"][data-lang="en"]')
-    check('Me in English, tab bar too', page.locator('#tabbar .tab').all_inner_texts() == ['Home', 'Explore', 'Footprints', 'Me'] and 'Wishlist' in page.inner_text('.me-stats'), page.locator('#tabbar .tab').all_inner_texts())
+    check('Me in English, tab bar too', page.locator('#tabbar .tab').all_inner_texts() == ['Home', 'Explore', 'Footprints', 'Me'] and 'Saved' in page.inner_text('.me-stats'), page.locator('#tabbar .tab').all_inner_texts())
     tab(page, 'explore')
     page.wait_for_timeout(200)
     check('UI in English', page.inner_text('.view-title') == 'Explore food', page.inner_text('.view-title'))
@@ -1091,7 +1097,7 @@ with sync_playwright() as p:
     star = page.locator('.post-card', has_text='测试椰浆饭').first.locator('.pc-save')
     star.click(); page.wait_for_timeout(200)
     stw = page.evaluate('JSON.parse(localStorage.getItem("xmum-chiwan-map:data:v1")).wishlist.length')
-    check('home: the star on a card saves the place, right there', page.locator('.post-card', has_text='测试椰浆饭').first.locator('.pc-save').get_attribute('aria-pressed') == 'true' and stw == 1 and '足迹 · 想去' in page.inner_text('#toast'), stw)
+    check('home: the star on a card saves the place, right there', page.locator('.post-card', has_text='测试椰浆饭').first.locator('.pc-save').get_attribute('aria-pressed') == 'true' and stw == 1 and '点击星星' in page.inner_text('#toast'), stw)
     page.locator('.post-card', has_text='测试椰浆饭').first.locator('.pc-save').click(); page.wait_for_timeout(200)
     # 卡片 → 帖子（不是去地图）；帖子里的地点 → 探索地图；返回回到帖子，再返回回到首页
     via_home(page, '测试椰浆饭', to_place=False)
@@ -1176,7 +1182,7 @@ with sync_playwright() as p:
     page.evaluate('history.back()')
     page.wait_for_timeout(300)
     check('phone back closes the map card instead of leaving the site', page.locator('.feed').count() == 1 and page.locator('#map .sel-pin').count() == 0 and page.url.startswith(APP))
-    page.click('#map-ctrls [data-action="filters"]')
+    open_filters(page)
     page.wait_for_timeout(200)
     page.evaluate('history.back()')
     page.wait_for_timeout(300)
@@ -1217,7 +1223,7 @@ with sync_playwright() as p:
     stored = page.evaluate('JSON.parse(localStorage.getItem("xmum-chiwan-map:data:v1"))')
     mz = [p_ for p_ in stored['places'] if p_['name'] == 'Muzium Uji']
     check('saving an unrecorded place: place + wishlist, no record', len(mz) == 1 and mz[0]['mode'] == 'travel' and mz[0]['cat'] == 'culture' and [w['placeId'] for w in stored['wishlist']] == [mz[0]['id']]
-          and not any(r['placeId'] == mz[0]['id'] for r in stored['reviews']) and '足迹 · 想去' in page.inner_text('#toast'), (mz, stored['wishlist']))
+          and not any(r['placeId'] == mz[0]['id'] for r in stored['reviews']) and '点击星星' in page.inner_text('#toast'), (mz, stored['wishlist']))
     check('saved unrecorded place: its page says nobody recorded it, red pin stays, saved', page.inner_text('.place-head h2') == 'Muzium Uji' and page.locator('.place-empty').count() == 1 and page.locator('#map .sel-pin').count() == 1
           and page.get_attribute('[data-action="toggle-save"]', 'aria-pressed') == 'true' and page.locator('[data-commit="place-score"]').count() == 1, page.inner_text('#view')[:200])
     page.click('[data-action="back"]'); page.wait_for_timeout(200)
@@ -1608,28 +1614,24 @@ with sync_playwright() as p:
     page5.wait_for_timeout(200)
     sv_all = sorted(page5.locator('#view .near-item b').all_inner_texts())
     check('saved shows everything I saved', sv_all == ['东京', '曼谷'], sv_all)
-    check('no all / not-been switch cluttering the saved list', page5.locator('#view [data-action="saved-want"]').count() == 0)
-    page5.click('#map-ctrls [data-action="filters"]')
-    page5.click('#bsheet [data-action="saved-want"][data-v="want"]')
+    check('saved status is directly available outside advanced filters', page5.locator('#view [data-action="saved-want"]').count() == 3)
+    page5.click('#view [data-action="saved-want"][data-v="want"]')
     page5.wait_for_timeout(200)
     sv_want = page5.locator('#view .near-item b').all_inner_texts()
     pins_want = page5.evaluate('window.__map.getSource("places").data.features.map(f => f.properties.name)')
     check('“not been yet” (in the filter sheet) drops places on my map (list + pins)', sv_want == ['东京'] and pins_want == ['东京'], (sv_want, pins_want))
-    check('filter badge counts it', page5.inner_text('#map-ctrls [data-action="filters"] b') == '1')
-    page5.click('#bsheet [data-action="sheet-close"]')
+    check('visit status is independent of advanced filter count', page5.locator('#view [data-action="saved-want"][data-v="want"][aria-pressed=true]').count() == 1)
     page5.screenshot(path=os.path.join(SHOTS, '15-saved-want.png'))
-    page5.click('#map-ctrls [data-action="filters"]')
-    page5.click('#bsheet [data-action="saved-want"][data-v="all"]')
-    page5.click('#bsheet [data-action="sheet-close"]')
+    page5.click('#view [data-action="saved-want"][data-v="all"]')
     foot_sub(page5, 'mine')
     tab(page5, 'explore')
     tab(page5, 'foot')
-    page5.click('#map-ctrls [data-action="filters"]')
+    open_filters(page5)
     page5.wait_for_timeout(100)
-    chips = page5.eval_on_selector_all('#bsheet [data-action="mine-mode"]', 'els => els.map(e => e.textContent.trim())')
-    check('my map filter: just food / travel / both', chips == ['美食', '玩乐', '合并'] and page5.locator('#bsheet [data-action="cat"], #bsheet [data-action="set-score"]').count() == 0, chips)
-    fw = page5.evaluate("[document.querySelector('.bsheet-foot').getBoundingClientRect().width, document.querySelector('.bsheet-foot .btn').getBoundingClientRect().width]")
-    check('my map filter: the only button spans the sheet', abs(fw[0] - fw[1]) < 2, fw)
+    chips = page5.eval_on_selector_all('#view .foot-mode-group [data-action="mine-mode"]', 'els => els.map(e => e.textContent.trim())')
+    check('my footprint modes are inline and the sheet has real filtering', chips == ['全部','美食','玩乐'] and page5.locator('#bsheet [data-action="cat"], #bsheet [data-action="set-score"]').count() > 0, chips)
+    check('my footprint filters provide reset and apply', page5.locator('#bsheet .bsheet-foot .btn').count() == 2)
+    page5.click('#bsheet [data-action="sheet-close"]')
     check('no sample note on my map', page5.locator('#view .sample-note').count() == 0)
     page5.click('[data-action="mine-mode"][data-v="food"]')
     page5.wait_for_timeout(200)
@@ -1640,8 +1642,7 @@ with sync_playwright() as p:
     check('merged map shows my food and travel', names5() == ['曼谷', '校门口饭'] and page5.inner_text('.view-title') == '我的足迹', (names5(), page5.inner_text('.view-title')))
     check('merged feed lists both', page5.locator('.feed-item').count() == 2)
     geo5 = page5.evaluate('(() => { const p = document.querySelector("#panel").getBoundingClientRect(), t = document.querySelector("#tabbar").getBoundingClientRect(); return Math.round(p.bottom) >= Math.round(t.top); })()')
-    check('sheet stays open and shows the choice', page5.get_attribute('#bsheet [data-action="mine-mode"][data-v="both"]', 'aria-pressed') == 'true')
-    page5.click('#bsheet [data-action="sheet-close"]')
+    check('inline all choice stays selected', page5.get_attribute('#view [data-action="mine-mode"][data-v="both"]', 'aria-pressed') == 'true')
     page5.wait_for_timeout(100)
     check('no country switch when zoomed in', page5.locator('[data-action="countries"]').count() == 0)
     check('country data not downloaded yet', world_calls == [])
@@ -1657,13 +1658,11 @@ with sync_playwright() as p:
     check('country layers visible', vis == ['visible'] * 3, vis)
     check('switch shows visited count', page5.inner_text('[data-action="countries"]') == '2' and page5.get_attribute('[data-action="countries"]', 'aria-pressed') == 'true', page5.inner_text('[data-action="countries"]'))
     page5.screenshot(path=os.path.join(SHOTS, '14-my-map-countries.png'))
-    page5.click('#map-ctrls [data-action="filters"]')
-    page5.click('[data-action="mine-mode"][data-v="food"]')
+    page5.click('#view [data-action="mine-mode"][data-v="food"]')
     page5.wait_for_timeout(300)
     vis = page5.evaluate('["ct-dim", "ct-lit", "ct-line"].map(id => window.__map.getLayer(id).layout.visibility)')
     check('food map hides countries', vis == ['none'] * 3, vis)
-    page5.click('[data-action="mine-mode"][data-v="travel"]')
-    page5.click('#bsheet [data-action="sheet-close"]')
+    page5.click('#view [data-action="mine-mode"][data-v="travel"]')
     page5.wait_for_timeout(300)
     vis = page5.evaluate('["ct-dim", "ct-lit", "ct-line"].map(id => window.__map.getLayer(id).layout.visibility)')
     check('travel map shows countries again', vis == ['visible'] * 3 and names5() == ['曼谷'], (vis, names5()))

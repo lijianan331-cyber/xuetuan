@@ -93,14 +93,14 @@
   }
   /* 收到最低时只露出标题这一截（像谷歌地图收起来的样子），不露半截列表：量到标题（和示例提示）的底边为止 */
   function peekH() {
-    var heads = view.querySelectorAll('.view-head, .sample-note, .place-head'), last = heads[heads.length - 1];
+    var heads = view.querySelectorAll('.view-head, .foot-tools, .sample-note, .place-head'), last = heads[heads.length - 1];
     if (!last) return 96;
     return clamp(Math.round(last.offsetTop + last.offsetHeight + 10), 64, 150);
   }
   function tabbarH() { var tb = $('#tabbar'); return tb && isMobile() ? tb.offsetHeight : 0; }
   /* 足迹的列表面板记住拉到多高，切回来时还是那样；首页、我的是整页，探索只有地图，都不记 */
   function rememberFeedSnap() {
-    if (state.view === 'feed' && state.tab === 'foot' && /^(peek|half|full)$/.test(state.snap)) state.feedSnap = state.snap;
+    if (state.view === 'feed' && state.tab === 'foot' && state.scope === 'mine' && /^(peek|half|full)$/.test(state.snap)) state.feedSnap = state.snap;
   }
   function setSnap(snap) {
     /* 收到最低时回到最上面，露出标题，不露半截列表 */
@@ -210,7 +210,7 @@
   /* 底部四栏（V2.0）：首页 = 地图预览 + 大家最新分享；探索 = 公开的大地图；
      足迹 = 我去过 / 想去（筛选里切换）；我的 = 资料和设置。加一笔只在足迹上 */
   function renderTabs() {
-    if (state.tab === 'foot' && state.scope !== 'all') state.mineSub = state.scope;
+    state.mineSub = 'mine';
     /* “我的”主页用分组卡片的灰底（css: html[data-page="me"]），只在资料页本身，不影响从这里打开的别的页面 */
     document.documentElement.dataset.page = state.view === 'feed' ? state.tab : state.view;
     $$('#tabbar [data-tab]').forEach(function (b) {
@@ -221,8 +221,8 @@
   var SCORE_STEPS = [0, 3, 4];
   var DIST_STEPS = ['any'].concat(DIST_TIERS.map(function (x) { return x.id; }));
   function activeFilterCount() {
-    if (state.scope === 'mine' || state.scope === 'person') return 0;
-    return (state.scope === 'saved' && state.savedWant ? 1 : 0) + (state.cat !== 'all' ? 1 : 0) + (state.minScore ? 1 : 0) + (state.dist !== 'any' ? 1 : 0) + (state.priceAbout ? 1 : 0);
+    if (state.scope === 'person') return 0;
+    return (state.cat !== 'all' ? 1 : 0) + (state.minScore ? 1 : 0) + (state.dist !== 'any' ? 1 : 0) + (state.priceAbout ? 1 : 0);
   }
   var CTRL_ICON = {
     search: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg>',
@@ -420,48 +420,26 @@
     return '<button type="button" class="chip" data-action="' + action + '" data-v="' + v + '" aria-pressed="' + on + '">' + esc(label) + '</button>';
   }
   function renderBSheet() {
-    var card = $('#bsheet-card'), h = '';
-    if (state.bsheet === 'filters') {
-      var food = state.mode === 'food', mine = state.scope === 'mine';
-      var shown = store.places().filter(function (p) { return inScope(p) && passesFilters(p); }).length;
-      h += '<div class="bsheet-head"><h3>' + esc(t('filtersTitle')) + '</h3></div>';
-      /* “看看大家来自哪”挪到“我的”页（用户 2026-11-01）：筛选只管挑吃的玩的 */
-      if (state.tab === 'foot') {
-        h += '<div class="field"><span class="f-label">' + esc(t('footprintShow')) + '</span><div class="chips-wrap">' +
-          ['mine', 'saved'].map(function (v) { return optHTML('mine-sub', v, state.scope === v, t(v === 'saved' ? 'subSaved' : 'subBeen')); }).join('') + '</div></div>';
+    var card=$('#bsheet-card'),h='';
+    if(state.bsheet==='filters') {
+      var mine=state.scope==='mine', both=mine&&state.mineBoth, food=both||state.mode==='food';
+      var shown=store.places().filter(function(p){return inScope(p)&&passesFilters(p);}).length;
+      h+='<div class="bsheet-head"><h3>'+esc(t('filtersTitle'))+'</h3></div>';
+      var modes=both?['food','travel']:[state.mode];
+      modes.forEach(function(mode){
+        h+='<div class="field"><span class="f-label">'+esc(both?t(mode==='food'?'food':'scenery')+' · '+t('filterCat'):t('filterCat'))+'</span><div class="chips-wrap">'+(mode===modes[0]?'<button type="button" class="chip" data-action="cat" data-cat="all" aria-pressed="'+(state.cat==='all')+'">'+esc(t('catAll'))+'</button>':'')+
+          catChoices(mode).map(function(c){return '<button type="button" class="chip" data-action="cat" data-cat="'+c.id+'" data-cat-mode="'+mode+'" aria-pressed="'+(state.cat===c.id)+'">'+catIconHTML(c)+esc(catName(c))+'</button>';}).join('')+'</div></div>';
+      });
+      h+='<div class="field"><span class="f-label">'+esc(t('filterScore'))+'<span class="legend" aria-hidden="true"><b>0</b><i></i><b>5</b></span></span><div class="chips-wrap">'+SCORE_STEPS.map(function(n){return optHTML('set-score',n,state.minScore===n,n?t('scoreOpt',{n:n}):t('anyOpt'));}).join('')+'</div></div>';
+      h+='<div class="field"><span class="f-label">'+esc(t('filterDist'))+'</span><div class="chips-wrap">'+DIST_STEPS.map(function(d){return optHTML('set-dist',d,state.dist===d,d==='any'?t('anyOpt'):t('dist_'+d));}).join('')+'</div></div>';
+      if(food) {
+        var pi=Math.max(0,PRICE_STOPS.indexOf(state.priceAbout));
+        h+='<div class="field price-field"><span class="f-label">'+esc(t('filterPrice'))+'<b id="flt-price-val"'+(pi?'':' class="muted"')+'>'+esc(priceLabel(state.priceAbout))+'</b></span><input type="range" id="flt-price" min="0" max="'+(PRICE_STOPS.length-1)+'" step="1" value="'+pi+'" style="--fill:'+(pi/(PRICE_STOPS.length-1)*100)+'%" aria-label="'+esc(t('filterPrice'))+'"><div class="price-ticks" aria-hidden="true"><span>'+esc(t('anyOpt'))+'</span><span>RM500</span></div></div>';
       }
-
-      if (mine) {
-        h += '<div class="field"><span class="f-label">' + esc(t('mineShow')) + '</span><div class="chips-wrap">' +
-          ['food', 'travel', 'both'].map(function (v) { return '<button type="button" class="chip" data-action="mine-mode" data-v="' + v + '" aria-pressed="' + (mineView() === v) + '">' + esc(t('mine_' + v)) + '</button>'; }).join('') + '</div></div>';
-        /* 我的家（小房子）开关放在筛选里（用户 2026-11-01），地图上不再单独一个按钮 */
-        if (store.myHome()) h += '<button type="button" class="switch-row" role="switch" data-action="mine-home-toggle" aria-checked="' + state.mineHomeOn + '">' +
-          '<span class="sw-text"><b>' + esc(state.lang === 'en' ? 'Show my home' : '显示我的家') + '</b><small>' + esc(state.lang === 'en' ? 'A little house on your hometown' : '在家乡的位置放一个小房子') + '</small></span><span class="switch" aria-hidden="true"></span></button>';
-      } else {
-        if (state.scope === 'saved') {
-          h += '<div class="field"><span class="f-label">' + esc(t('savedShow')) + '</span><div class="chips-wrap">' +
-            ['all', 'want'].map(function (v) { return optHTML('saved-want', v, (v === 'want') === state.savedWant, t(v === 'want' ? 'savedWant' : 'savedAll')); }).join('') + '</div></div>';
-        }
-        h += '<div class="field"><span class="f-label">' + esc(t('filterCat')) + '</span><div class="chips-wrap">' +
-          '<button type="button" class="chip" data-action="cat" data-cat="all" aria-pressed="' + (state.cat === 'all') + '">' + esc(t('catAll')) + '</button>' +
-          catChoices(state.mode).map(function (c) {
-            return '<button type="button" class="chip" data-action="cat" data-cat="' + c.id + '" aria-pressed="' + (state.cat === c.id) + '">' + catIconHTML(c) + esc(catName(c)) + '</button>';
-          }).join('') + '</div></div>';
-        h += '<div class="field"><span class="f-label">' + esc(t('filterScore')) + '<span class="legend" aria-hidden="true"><b>0</b><i></i><b>5</b></span></span><div class="chips-wrap">' +
-          SCORE_STEPS.map(function (n) { return optHTML('set-score', n, state.minScore === n, n ? t('scoreOpt', { n: n }) : t('anyOpt')); }).join('') + '</div></div>';
-        if (food) {
-          h += '<div class="field"><span class="f-label">' + esc(t('filterDist')) + '</span><div class="chips-wrap">' +
-            DIST_STEPS.map(function (d) { return optHTML('set-dist', d, state.dist === d, d === 'any' ? t('anyOpt') : t('dist_' + d)); }).join('') + '</div></div>';
-          var pi = Math.max(0, PRICE_STOPS.indexOf(state.priceAbout));
-          h += '<div class="field price-field"><span class="f-label">' + esc(t('filterPrice')) + '<b id="flt-price-val"' + (pi ? '' : ' class="muted"') + '>' + esc(priceLabel(state.priceAbout)) + '</b></span>' +
-            '<input type="range" id="flt-price" min="0" max="' + (PRICE_STOPS.length - 1) + '" step="1" value="' + pi + '" style="--fill:' + (pi / (PRICE_STOPS.length - 1) * 100) + '%" aria-label="' + esc(t('filterPrice')) + '">' +
-            '<div class="price-ticks" aria-hidden="true"><span>' + esc(t('anyOpt')) + '</span><span>RM500</span></div></div>';
-        }
-      }
-      h += '<div class="bsheet-foot' + (mine ? ' single' : '') + '">' + (mine ? '' : '<button type="button" class="btn ghost" data-action="clear-filters">' + esc(t('filterReset')) + '</button>') +
-        '<button type="button" class="btn primary" data-action="sheet-close">' + esc(t('filterShow', { n: shown })) + '</button></div>';
+      if(mine&&store.myHome()) h+='<button type="button" class="switch-row" role="switch" data-action="mine-home-toggle" aria-checked="'+state.mineHomeOn+'"><span class="sw-text"><b>'+esc(state.lang==='en'?'Show my home':'显示我的家')+'</b><small>'+esc(state.lang==='en'?'A little house on your hometown':'在家乡的位置放一个小房子')+'</small></span><span class="switch" aria-hidden="true"></span></button>';
+      h+='<div class="bsheet-foot"><button type="button" class="btn ghost" data-action="clear-filters">'+esc(t('filterReset'))+'</button><button type="button" class="btn primary" data-action="sheet-close">'+esc(t('filterShow',{n:shown}))+'</button></div>';
     }
-    card.innerHTML = h;
+    card.innerHTML=h;
   }
   /* 常去的地方：搜索框还没输字时列在搜索页里 */
   function areasHTML() {
@@ -569,7 +547,7 @@
     return store.reviews().filter(function (r) {
       var p = placeById(r.placeId);
       if (!p || !modeOk(p)) return false;
-      if (state.scope === 'mine' ? !isMine(r) : r.visibility !== 'public') return false;
+      if (state.scope === 'mine' ? (!isMine(r) || !ownVisitMatches(p,r)) : r.visibility !== 'public') return false;
       return passesFilters(p);
     }).sort(function (a, b) { return listTime(b) - listTime(a); }).slice(0, 80);
   }
@@ -589,9 +567,20 @@
   function savedPlaces() {
     return store.wishlist().slice().sort(function (a, b) { return b.createdAt - a.createdAt; })
       .map(function (w) { return placeById(w.placeId); })
-      .filter(function (p) { return p && p.mode === state.mode && visibleToMe(p) && !(state.savedWant && beenThere(p)) && passesFilters(p); });
+      .filter(function (p) { return p && p.mode === state.mode && visibleToMe(p) && savedStatusMatches(p) && passesFilters(p); });
   }
 
+  function favoritesButtonHTML(extra) {
+    var on=state.scope==='saved', label=state.lang==='en'?'Saved places':'收藏';
+    return '<button type="button" class="icon-btn flat favorites-entry '+(extra||'')+'" data-action="open-favorites" aria-label="'+esc(label)+'" title="'+esc(label)+'">'+(on?ICON.starOn:ICON.star)+'</button>';
+  }
+  function footprintToolsHTML(saved) {
+    var en=state.lang==='en', n=activeFilterCount();
+    var modes=saved?['food','travel']:['both','food','travel'];
+    var h='<div class="foot-tools"><div class="foot-mode-group" role="group" aria-label="'+esc(en?'Place type':'地点类型')+'">'+modes.map(function(m){return '<button type="button" class="chip" data-action="mine-mode" data-v="'+m+'" aria-pressed="'+((saved?state.mode:mineView())===m)+'">'+esc(m==='both'?(en?'All':'全部'):t(m==='food'?'food':'scenery'))+'</button>';}).join('')+'</div>'+favoritesButtonHTML()+'<button type="button" class="icon-btn flat foot-filter" data-action="foot-filters" aria-label="'+esc(t('filterBtn'))+'" title="'+esc(t('filterBtn'))+'">'+CTRL_ICON.filter+(n?'<b>'+n+'</b>':'')+'</button></div>';
+    if(saved) h+='<div class="saved-status" role="group" aria-label="'+esc(en?'Visit status':'到访状态')+'">'+['all','want','been'].map(function(v){var selected=state.savedWant?'want':state.savedStatus;return '<button type="button" class="chip" data-action="saved-want" data-v="'+v+'" aria-pressed="'+(selected===v)+'">'+esc(en?({all:'All',want:'Want to go',been:'Been'})[v]:({all:'全部',want:'想去',been:'去过'})[v])+'</button>';}).join('')+'</div>';
+    return h;
+  }
   /* 每一栏的首页都是 feed 这个视图：首页、我的各画各的；探索（地点）和足迹（我的记录 / 想去）用同一个列表 */
   function renderFeed() {
     if (state.tab === 'home') { renderHome(); return; }
@@ -608,8 +597,8 @@
     }[state.mode][state.scope];
     if (places) key = state.mode === 'food' ? 'placesFoodAll' : 'placesTravelAll';
     if (state.scope === 'mine' && state.mineBoth) key = 'feedBothMine';
-    var h = '<div class="view-head"><div class="title-row"><h2 class="view-title" data-action="expand">' + esc(t(key)) + '</h2><span class="count">' + items.length + '</span>' +
-      (state.tab === 'foot' ? '<button type="button" class="icon-btn flat foot-filter" data-action="foot-filters" aria-label="' + esc(t('filterBtn')) + '">' + CTRL_ICON.filter + '</button>' : '') + '</div></div>';
+    var h = '<div class="view-head"><div class="title-row">' + (saved ? '<button type="button" class="icon-btn flat" data-action="favorites-back" aria-label="'+esc(t('back'))+'">'+ICON.back+'</button>' : '') + '<h2 class="view-title" data-action="expand">' + esc(saved ? (state.lang==='en'?'Saved places':'我的收藏') : t(key)) + '</h2><span class="count">' + items.length + '</span></div></div>';
+    if (state.tab === 'foot') h += footprintToolsHTML(saved);
     if (state.tab === 'foot' && state.scope === 'mine') h += visitBulkHTML(items);
     if (store.hasSamples() && state.scope === 'all') {
       h += '<div class="sample-note"><span>' + esc(t('samplesShown')) + '</span><button type="button" class="link-btn" data-action="clear-samples">' + esc(t('clearSamples')) + '</button></div>';

@@ -335,7 +335,7 @@
   /* 谷歌说它是吃的还是玩的（用户 2026-11-01：批量加的海边日落被记成美食）：
      有餐厅、咖啡、酒吧这类就是美食；景点、海滩、公园、自然、博物馆、城市这类就是玩乐；都不像就不说 */
   var G_FOOD = /restaurant|^food$|food_|cafe|coffee|bakery|^bar$|_bar$|pub|meal_|tea|dessert|ice_cream|juice|diner|bistro|hawker|food_court/;
-  var G_TRAVEL = /tourist_attraction|natural_feature|^park$|_park$|beach|museum|zoo|aquarium|campground|hiking|landmark|monument|island|lake|mountain|waterfall|garden|scenic|observation|marina|temple|church|mosque|shrine|castle|historical|cultural|art_gallery|^locality$|administrative_area|sublocality|neighborhood|country|colloquial_area|airport|ski|national_park/;
+  var G_TRAVEL = /book_store|^library$|tourist_attraction|natural_feature|^park$|_park$|beach|museum|zoo|aquarium|campground|hiking|landmark|monument|island|lake|mountain|waterfall|garden|scenic|observation|marina|temple|church|mosque|shrine|castle|historical|cultural|art_gallery|^locality$|administrative_area|sublocality|neighborhood|country|colloquial_area|airport|ski|national_park/;
   function googleTypesMode(types) {
     types = (types || []).map(function (x) { return String(x).toLowerCase(); });
     if (types.some(function (x) { return G_FOOD.test(x); })) return 'food';

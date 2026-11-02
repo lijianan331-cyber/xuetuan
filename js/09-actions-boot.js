@@ -417,6 +417,8 @@
       case 'home-apply': render(); view.scrollTop = 0; break;
       /* 足迹标题旁边的 去过 / 想去 */
       case 'foot-filters': openBSheet('filters'); break;
+      case 'open-favorites': openFavorites(); break;
+      case 'favorites-back': closeFavorites(); break;
       case 'mine-sub':
         state.scope = state.mineSub = d.v;
         renderFilters(); refreshMap();
@@ -424,7 +426,7 @@
         if (state.bsheet) renderBSheet();
         break;
       /* 我的里点“去过 / 想去”的数字：去足迹的那一边 */
-      case 'foot-sub': state.mineSub = d.v; setTab('foot'); break;
+      case 'foot-sub': if(d.v==='saved') openFavorites(); else setTab('foot'); break;
       case 'open-post': openPost(d.id); break;
       case 'person': openPerson(d.uid); break;
       case 'page-public':
@@ -434,8 +436,8 @@
       case 'post-place': openPostPlace(d.id); break;
       case 'save-place': { if (!store.signedIn()) toast(state.lang === 'en' ? 'Preparing to save…' : '正在准备收藏，请稍候…'); var spl = d.id; if (requireLogin(function () { savePlace(spl); })) savePlace(spl); break; }
       case 'save-preview': { var spv = state.preview; if (spv && requireLogin(function () { savePreview(spv); })) savePreview(spv); break; }
-      case 'cat': state.cat = d.cat; refilter(); break;
-      case 'saved-want': state.savedWant = d.v === 'want'; refilter(); break;
+      case 'cat': if(d.catMode && state.scope==='mine' && state.mineBoth){state.mineBoth=false;state.mode=d.catMode;} state.cat = d.cat; refilter(); break;
+      case 'saved-want': state.savedWant = d.v === 'want'; state.savedStatus=d.v; refilter(); break;
       case 'mine-mode': if (state.view !== 'feed') goFeed(); setMineView(d.v); if (state.bsheet) renderBSheet(); break;
       case 'homes-open':
         setTab('explore'); if (state.mode !== 'travel') setMode('travel', { noFly: true });
@@ -462,7 +464,7 @@
       case 'sheet-close': closeBSheet(); break;
       case 'set-score': state.minScore = +d.v; refilter(); break;
       case 'set-dist': state.dist = d.v; refilter(); break;
-      case 'clear-filters': state.savedWant = false; state.cat = 'all'; state.priceAbout = 0; state.minScore = 0; state.dist = 'any'; renderFilters(); refreshMap(); render(); if (state.bsheet) renderBSheet(); break;
+      case 'clear-filters': state.cat = 'all'; state.priceAbout = 0; state.minScore = 0; state.dist = 'any'; renderFilters(); refreshMap(); render(); if (state.bsheet) renderBSheet(); break;
       case 'search': rememberFeedSnap(); state.view = 'search'; render(); setSnap('full'); break;
       case 'search-retry': osm.q = ''; osm.ck = ''; queueOsmSearch(); renderSearchResults(); break;
       case 'set-lang': setLang(d.lang); break;
@@ -607,6 +609,7 @@
   /* 关掉最上面那一层：大图 → 弹窗 → 底部弹层 → 选点 → 子页面 */
   /* 再往下一层是别的栏的首页：手机返回键回到“首页”这一栏再离开网站（[建议]，像大部分 App）；Esc 不换栏 */
   function stepBack(key) {
+    if (state.view==='feed' && state.scope==='saved' && !state.bsheet && $('#modal').hidden && $('#lightbox').hidden) { closeFavorites(); return; }
     if (!$('#lightbox').hidden) closeLightbox();
     else if (!$('#modal').hidden) closeModal(false);
     else if (state.bsheet) closeBSheet();

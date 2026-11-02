@@ -28,7 +28,10 @@ with sync_playwright() as p:
     pg.click('[data-action="pick-confirm"]')
     assert pg.input_value('#f-name')=='' and pg.input_value('#f-title')=='图片不能丢' and pg.locator('#f-photos .ph-edit').count()==1
     print('PASS dragging/empty map clears business selection while keeping the post draft')
-    pg.click('[data-action="form-cancel"]');scope['add'](pg);pg.click('[data-action="bulk-start"]');pg.set_input_files('#bulk-file',scope['photo']);pg.wait_for_selector('.bk-card')
+    pg.click('[data-action="form-cancel"]')
+    # The composer intentionally keeps a draft. Start the independent batch scenario without resuming it.
+    pg.evaluate('clearFormDraft()')
+    scope['add'](pg);pg.click('[data-action="bulk-start"]');pg.set_input_files('#bulk-file',scope['photo']);pg.wait_for_selector('.bk-card')
     scope['rate'](pg,4,'#bk-rate-0');pg.fill('[data-bk-comment="0"]','批量点评')
     pg.click('[data-action="bulk-map"]');shop(pg,'批量选择餐厅');pg.click('[data-action="pick-confirm"]')
     assert '批量选择餐厅' in pg.inner_text('#bk-0') and pg.locator('.bk-ph').count()==1 and pg.input_value('[data-bk-comment="0"]')=='批量点评' and scope['stars_val'](pg,'#bk-rate-0')=='4'

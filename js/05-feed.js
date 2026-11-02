@@ -55,12 +55,12 @@
     var items = homeReviews(), h = '';
     if (isMobile()) {
       h += '<div class="home-top"><div class="home-brand"><span class="app-logo" role="img" aria-label="雪团"><img src="assets/app-icon-sheet.png" alt=""></span><b>雪团</b></div>' +
-        '<button type="button" class="home-search" data-action="search">' + '<img src="assets/search-pin.png" width="24" height="24" alt=""><span>' + esc(t('searchPh')) + '</span></button>' + appShareButton() + '</div>' +
+        '<button type="button" class="home-search" data-action="search">' + '<img src="assets/search-pin.png" width="24" height="24" alt=""><span>' + esc(t('searchPh')) + '</span></button>' + favoritesButtonHTML('home-favorites') + appShareButton() + '</div>' +
         '<div class="home-map" id="home-map"><button type="button" class="home-map-btn" data-action="tab" data-tab="explore" aria-label="' + esc(t('openMap')) + '">' +
         '<span class="hm-pill">' + CTRL_ICON.compass + esc(t('openMap')) + '</span></button>' +
         '<div class="home-attrib">' + $('.attrib').innerHTML + '</div></div>';
     }
-    if (!isMobile()) h += '<div style="display:flex;justify-content:flex-end">' + appShareButton() + '</div>';
+    if (!isMobile()) h += '<div style="display:flex;justify-content:flex-end">' + favoritesButtonHTML('home-favorites') + appShareButton() + '</div>';
     h += '<div class="home-sec"><h2>' + esc(t('latest')) + '</h2><button type="button" class="btn primary small home-publish" data-action="new-post">' + ICON.pen + esc(state.lang === 'en' ? 'Post' : '发帖') + '</button></div>';
     h += homeFiltersHTML();
     /* 首次加载：先放四张灰卡片占位（不再是一行字 + 空白），加载完换成真卡片 */
@@ -149,7 +149,7 @@
     var filtered = filtersActive();
     var msg = filtered ? t('emptyFiltered')
       : state.scope === 'mine' ? t('emptyMine')
-      : state.scope === 'saved' ? t(state.savedWant && store.wishlist().length ? 'emptyWant' : 'emptySaved')
+      : state.scope === 'saved' ? (state.savedStatus==='been' && store.wishlist().length ? (state.lang==='en'?'None of your saved places have been visited yet.':'收藏中还没有去过的地方。') : t(state.savedWant && store.wishlist().length ? 'emptyWant' : 'emptySaved'))
       : t(state.mode === 'food' ? 'emptyFoodAll' : 'emptyTravelAll');
     var btn = filtered
       ? '<button type="button" class="link-btn" data-action="clear-filters">' + esc(t('clearFilters')) + '</button>'

@@ -69,8 +69,9 @@
     travel: [
       { id: 'island', zh: '海岛海滩', en: 'Islands & beaches', emoji: '🏝️', color: '#0E9BB5' },
       { id: 'city', zh: '城市街区', en: 'Cities', emoji: '🏙️', color: '#3B5BDB' },
-      { id: 'nature', zh: '自然徒步', en: 'Nature & hikes', emoji: '⛰️', color: '#2F9E44' },
-      { id: 'culture', zh: '人文古迹', en: 'Culture & heritage', emoji: '🏛️', color: '#A35A2B' },
+      { id: 'nature', zh: '公园自然', en: 'Parks & nature', emoji: '⛰️', color: '#2F9E44' },
+      { id: 'culture', zh: '人文展览', en: 'Culture & exhibitions', emoji: '🏛️', color: '#A35A2B' },
+      { id: 'books', zh: '书店阅读', en: 'Bookshops & reading', emoji: '📚', color: '#527DA3' },
       { id: 'mall', zh: '商场购物', en: 'Malls & shopping', emoji: '🛍️', color: '#C2255C' },
       { id: 'fun', zh: '玩乐活动', en: 'Activities', emoji: '🎡', color: '#F08C00' },
       { id: 'stay', zh: '住宿', en: 'Stays', emoji: '🏨', color: '#7048E8' },
@@ -174,11 +175,11 @@
       dist_walk: '步行 · 校园周边', dist_short: '短途打车 · 6km 内', dist_mid: '中距离 · 龙溪 / IOI', dist_kl: '吉隆坡', dist_far: '出吉隆坡',
       tier_walk: '步行可达', tier_short: '短途打车', tier_mid: '中距离打车', tier_kl: '吉隆坡', tier_far: '吉隆坡以外',
       feedFoodAll: '大家最近在吃', feedTravelAll: '大家最近去了', feedFoodMine: '我吃过的', feedTravelMine: '我去过的', feedBothMine: '我的足迹',
-      mine_food: '美食', mine_travel: '玩乐', mine_both: '合并', savedAll: '全部', savedWant: '还没去过', mineShow: '显示', subBeen: '去过', subSaved: '想去', savedShow: '想去里', filterCat: '分类',
+      mine_food: '美食', mine_travel: '玩乐', mine_both: '全部', savedAll: '全部', savedWant: '还没去过', mineShow: '显示', subBeen: '去过', subSaved: '想去', savedShow: '想去里', filterCat: '分类',
       modeToTravel: '切换到玩乐地图', modeToFood: '切换到美食地图', litCountries: '点亮国家', litN: '已去 {n} 国', worldFail: '国家边界没加载出来，等下再试',
       feedSavedFood: '想去吃的', feedSavedTravel: '想去的地方', placesFoodAll: '探索美食', placesTravelAll: '探索玩乐', exploreHint: '点地图上的图钉看大家的评价；大家最近分享了什么在“首页”。',
-      emptySaved: '还没有想去的地方，点“收藏”就会出现在这里。', emptyWant: '收藏的地方都去过了。', goExplore: '去探索',
-      wish: '收藏', wished: '已收藏', wishAdded: '收藏了，在“足迹 · 想去”里能找到', wishRemoved: '取消收藏了',
+      emptySaved: '还没有收藏的地方，点“收藏”就会出现在这里。', emptyWant: '收藏的地方都去过了。', goExplore: '去探索',
+      wish: '收藏', wished: '已收藏', wishAdded: '收藏了，点击星星就能找到', wishRemoved: '取消收藏了',
       emptyFoodAll: '这片还没人写过。',
       emptyTravelAll: '还没人分享去处。',
       emptyMine: '还没记录过地方。', emptyFiltered: '没有符合筛选的地方。', clearFilters: '清除筛选',
@@ -264,7 +265,7 @@
       tabsAria: '主菜单', tabHome: '首页', tabExplore: '探索', tabFoot: '足迹', tabMe: '我的',
       latest: '最新分享', latestEmpty: '还没有人分享。记下吃过、去过的地方，打开“分享到大地图”，就会出现在这里。', goRecord: '去记录',
       openMap: '探索地图', postPlace: '在地图上看', placeEmpty: '还没有人记录过这里。',
-      meBeen: '去过', meWant: '想去', meShared: '分享', meNoName: '还没起昵称', meNoHome: '还没设家乡', meGuest: '还没登录',
+      meBeen: '去过', meWant: '收藏', meShared: '分享', meNoName: '还没起昵称', meNoHome: '还没设家乡', meGuest: '还没登录',
       filterBtn: '筛选', filtersTitle: '筛选', filterScore: '评分', filterDist: '离学校多远', filterPrice: '人均价位', anyOpt: '不限',
       scoreOpt: '{n} 分以上', priceAbout: 'RM{n} 左右', filterReset: '重置', filterShow: '看 {n} 个地方',
       areasTitle: '去哪儿看', locWorld: '全球', locHere: '这附近', saveHere: '记住现在这片'
@@ -278,10 +279,10 @@
       dist_walk: 'Walk · around campus', dist_short: 'Short ride · within 6 km', dist_mid: 'Mid ride · Dengkil / IOI', dist_kl: 'Kuala Lumpur', dist_far: 'Beyond KL',
       tier_walk: 'Walkable', tier_short: 'Short ride', tier_mid: 'Mid ride', tier_kl: 'Kuala Lumpur', tier_far: 'Beyond KL',
       feedFoodAll: 'What people are eating', feedTravelAll: 'Where people went', feedFoodMine: 'Places I’ve eaten', feedTravelMine: 'Places I’ve been', feedBothMine: 'My footprints',
-      mine_food: 'Food', mine_travel: 'Things to do', mine_both: 'Both', savedAll: 'All', savedWant: 'Not been yet', mineShow: 'Show', subBeen: 'Been', subSaved: 'Wishlist', savedShow: 'Wishlist', filterCat: 'Category',
+      mine_food: 'Food', mine_travel: 'Things to do', mine_both: 'All', savedAll: 'All', savedWant: 'Not been yet', mineShow: 'Show', subBeen: 'Been', subSaved: 'Wishlist', savedShow: 'Wishlist', filterCat: 'Category',
       modeToTravel: 'Switch to things to do', modeToFood: 'Switch to the food map', litCountries: 'Countries', litN: '{n} visited', worldFail: 'Couldn’t load country borders. Try again later.',
       feedSavedFood: 'Food spots I saved', feedSavedTravel: 'Places I saved', placesFoodAll: 'Explore food', placesTravelAll: 'Explore things to do', exploreHint: 'Tap a pin to see what people said. Recent posts are on Home.',
-      emptySaved: 'Your wishlist is empty. Tap “Save” to keep places here.', emptyWant: 'You’ve been to every place you saved.', goExplore: 'Explore',
+      emptySaved: 'No saved places yet. Tap “Save” to keep places here.', emptyWant: 'You’ve been to every place you saved.', goExplore: 'Explore',
       wish: 'Save', wished: 'Saved', wishAdded: 'Saved. Find it under Footprints · Wishlist', wishRemoved: 'Removed from saved',
       emptyFoodAll: 'Nobody has written about this area yet.',
       emptyTravelAll: 'No places shared yet.',
@@ -368,7 +369,7 @@
       tabsAria: 'Main menu', tabHome: 'Home', tabExplore: 'Explore', tabFoot: 'Footprints', tabMe: 'Me',
       latest: 'Latest posts', latestEmpty: 'Nothing shared yet. Record a place you’ve been and switch on “Share on the big map” to see it here.', goRecord: 'Record one',
       openMap: 'Explore the map', postPlace: 'See on map', placeEmpty: 'Nobody has recorded this place yet.',
-      meBeen: 'Been', meWant: 'Wishlist', meShared: 'Shared', meNoName: 'No nickname yet', meNoHome: 'No hometown yet', meGuest: 'Not logged in',
+      meBeen: 'Been', meWant: 'Saved', meShared: 'Shared', meNoName: 'No nickname yet', meNoHome: 'No hometown yet', meGuest: 'Not logged in',
       filterBtn: 'Filters', filtersTitle: 'Filters', filterScore: 'Score', filterDist: 'Distance from campus', filterPrice: 'Price per person', anyOpt: 'Any',
       scoreOpt: '{n}+', priceAbout: 'About RM{n}', filterReset: 'Reset', filterShow: 'Show {n} places',
       areasTitle: 'Go to', locWorld: 'The world', locHere: 'Around here', saveHere: 'Save this area'
@@ -400,7 +401,7 @@
     lang: 'zh', mode: 'food', tab: 'home', scope: 'all', cat: 'all', priceAbout: 0, minScore: 0, dist: 'any',
     view: 'feed', placeId: null, postId: null, placeBack: null, form: null, nearby: null, query: '',
     homeMode: 'all', homeDays: HOME_DAYS, homeMin: 0, homeSort: 'newest', homeFiltersOpen: false, bootLoading: true, posting: false, snap: 'peek', feedSnap: 'peek', picking: null, preview: null, bsheet: null, me: null, styleKey: 'light',
-    person: null, personBack: null, mineBoth: false, countries: false, savedWant: false, mineSub: 'mine', homesOn: false, mineHomeOn: false, homes: null, homeBack: null, clusterPlaces: null, bulk: null
+    person: null, personBack: null, mineBoth: false, countries: false, savedWant: false, savedStatus: 'all', favoritesBack: null, mineSub: 'mine', homesOn: false, mineHomeOn: false, homes: null, homeBack: null, clusterPlaces: null, bulk: null
   };
   var map = null;
   var lastRenderedView = null;
@@ -1534,8 +1535,12 @@
     });
     return photos;
   }
+  function savedStatusMatches(p) {
+    var status = state.savedWant ? 'want' : state.savedStatus;
+    return status === 'want' ? !beenThere(p) : status === 'been' ? beenThere(p) : true;
+  }
   function inScope(p) {
-    if (state.scope === 'saved') return store.isSaved(p.id) && visibleToMe(p) && !(state.savedWant && beenThere(p));
+    if (state.scope === 'saved') return store.isSaved(p.id) && visibleToMe(p) && savedStatusMatches(p);
     return scopedReviews(p.id).length > 0;
   }
   function avgOf(list, key) {
@@ -1545,6 +1550,7 @@
      平均分不算 0 分（防恶意差评，用户 2026-10-27）；只有 0 分时才显示 0 */
   function stats(p) {
     var rs = scopedReviews(p.id);
+    if (state.scope === 'mine') rs = rs.filter(function (r) { return ownVisitMatches(p,r); });
     var scored = (state.scope === 'mine' ? rs : rs.filter(function (r) { return r.visibility === 'public'; }))
       .filter(function (r) { return r.rating != null; });
     var priced = rs.filter(function (r) { return r.price > 0; });
@@ -1697,15 +1703,28 @@
   function modeOk(p) { return p.mode === state.mode || (state.scope === 'mine' && state.mineBoth) || state.scope === 'person'; }
   function passesFilters(p, s) {
     if (!modeOk(p)) return false;
-    if (state.scope === 'mine' || state.scope === 'person') return true; /* 我的地图只分美食 / 玩乐，不用分类和筛选 */
+    if (state.scope === 'person') return true;
+    if (state.scope === 'mine' && !scopedReviews(p.id).some(function (r) { return ownVisitMatches(p,r); })) return false;
     if (state.cat !== 'all' && !catMatch(p, state.cat)) return false;
     s = s || stats(p);
     if (state.priceAbout && !priceFits(priceRM(p, s.avgPrice), state.priceAbout)) return false;
     if (state.minScore && !(s.score != null && s.score >= state.minScore)) return false;
-    if (state.mode === 'food' && state.dist !== 'any' && distTier(p) !== state.dist) return false;
+    if (state.dist !== 'any' && distTier(p) !== state.dist) return false;
     return true;
   }
-  function filtersActive() { return state.scope !== 'mine' && state.scope !== 'person' && ((state.scope === 'saved' && state.savedWant) || state.cat !== 'all' || !!state.priceAbout || !!state.minScore || state.dist !== 'any'); }
+  function ownVisitMatches(p,r) {
+    return (!state.minScore || (r.rating != null && r.rating >= state.minScore)) && (!state.priceAbout || priceFits(reviewPriceRM(p,r),state.priceAbout));
+  }
+  function filtersActive() { return state.scope !== 'person' && (state.cat !== 'all' || !!state.priceAbout || !!state.minScore || state.dist !== 'any'); }
+  var scopeFilterMemory = {};
+  function changeMapScope(next) {
+    if (state.scope === next) return;
+    var keys = ['cat','minScore','dist','priceAbout'], old = {};
+    keys.forEach(function(k){ old[k]=state[k]; }); scopeFilterMemory[state.scope] = old;
+    state.scope = next;
+    var saved = scopeFilterMemory[next] || {cat:'all',minScore:0,dist:'any',priceAbout:0};
+    keys.forEach(function(k){ state[k]=saved[k]; });
+  }
   function catOf(p) {
     var list = CATS[p.mode] || CATS.food;
     for (var i = 0; i < list.length; i++) if (list[i].id === p.cat) return list[i];

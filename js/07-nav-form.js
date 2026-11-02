@@ -4,6 +4,7 @@
   /* 每一栏的首页在手机上怎么放：首页、我的是整页；探索只有地图，不放列表（用户 2026-10-27）；
      足迹是能拖的列表面板，回到上次拉到的高度 */
   function feedSnapNow(snap) {
+    if (state.scope==='saved') return 'full';
     if (isMobile()) {
       if (state.tab === 'home' || state.tab === 'me') return 'page';
       if (state.tab === 'explore') return 'hidden';
@@ -27,7 +28,7 @@
   }
   /* 换一栏：地图跟着换（探索、首页看公开的，足迹看我的），回到那一栏的首页。
      再点一下当前这一栏：在子页面就回到这一栏的首页，已经在首页就滚回最上面 */
-  function scopeOfTab(tab) { return tab === 'foot' ? state.mineSub : 'all'; }
+  function scopeOfTab(tab) { return tab === 'foot' ? 'mine' : 'all'; }
   function setTab(tab) {
     if (state.form && state.form.saving) { toast(t('saveWorking')); return; }
     if (state.bsheet) closeBSheet();
@@ -36,6 +37,7 @@
       if (tab === state.tab) { state.scope = scopeOfTab(tab); renderFilters(); refreshMap(); goFeed(); return; }
     }
     if (tab === state.tab) {
+      if (tab === 'foot' && state.scope === 'saved') { changeMapScope('mine'); state.favoritesBack=null; state.mineSub='mine'; renderFilters(); refreshMap(); goFeed(); return; }
       if (state.view !== 'feed') goFeed();
       else if (view.scrollTo) view.scrollTo({ top: 0, behavior: reduceMotion ? 'auto' : 'smooth' });
       renderFilters();
@@ -46,15 +48,28 @@
     state.homesOn = false;
     state.preview = null; state.homes = null;
     var scope = scopeOfTab(tab);
-    if (scope !== state.scope) state.scope = scope;
+    if (scope !== state.scope) changeMapScope(scope);
     renderFilters(); refreshMap();
     goFeed();
+  }
+  function openFavorites() {
+    if (state.scope==='saved' && state.view==='feed') { closeFavorites(); return; }
+    if (state.form && state.form.saving) return;
+    if (state.bsheet) closeBSheet();
+    if (state.scope !== 'saved') state.favoritesBack = {tab:state.tab,mode:state.mode};
+    state.person=null; state.personBack=null; state.tab='foot'; state.mineSub='mine';
+    changeMapScope('saved'); renderFilters(); refreshMap(); goFeed('full');
+  }
+  function closeFavorites() {
+    var b=state.favoritesBack || {tab:'foot',mode:state.mode}; state.favoritesBack=null;
+    state.tab=b.tab; state.mode=b.mode; changeMapScope(scopeOfTab(b.tab));
+    renderFilters(); refreshMap(); goFeed();
   }
   /* 地图上的东西（地点、搜索结果、去哪儿看）在首页、我的里打开时，跳到探索去看 */
   function toMapTab() {
     if (state.tab !== 'home' && state.tab !== 'me') return;
     state.tab = 'explore';
-    if (state.scope !== 'all') { state.scope = 'all'; renderFilters(); refreshMap(); }
+    if (state.scope !== 'all') { changeMapScope('all'); renderFilters(); refreshMap(); }
     renderFilters();
   }
   function openPost(id) {
@@ -96,6 +111,7 @@
     if (opts.drop) setTimeout(function () { dropMarker(p); }, reduceMotion ? 0 : 900);
   }
   function back() {
+    if (state.view === 'feed' && state.scope === 'saved') { closeFavorites(); return; }
     if (state.view === 'add' && formKeepsDraft(state.form)) { returnPostComposer(); return; }
     if (state.view === 'person') { leavePerson(); return; }
     if (state.view === 'place' && state.placeBack && state.placeBack.person) { goFeed(); return; }
