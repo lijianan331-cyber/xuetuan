@@ -2676,6 +2676,13 @@ with sync_playwright() as p:
     check('bulk: Google types decide food or travel (food wins when both)', gm == ['travel', 'travel', 'food', 'food', None], gm)
     ga = pd.evaluate('[window.__googleTypesArea(["locality","political"]), window.__googleTypesArea(["administrative_area_level_2","political"]), window.__googleTypesArea(["tourist_attraction","natural_feature","point_of_interest","establishment"]), window.__googleTypesArea(["restaurant","food"])]')
     check('add: a Google city / area pick is flagged (Niagara Falls the city), a sight or shop is not', ga == [True, True, False, False], ga)
+    cs = pd.evaluate("""[
+      (window.__campusShop({osm: 'ovt/xmum-d6-103'}) || {}).name,
+      (window.__campusShop({name: '蜀之味大碗面', lat: 2.83412, lng: 101.70651}) || {}).name,
+      (window.__campusShop({name: 'Momoyo milk tea', lat: 2.8341, lng: 101.7064}) || {}).hours,
+      window.__campusShop({name: '蜀之味大碗面', lat: 3.15, lng: 101.71}),
+      window.XMUM_CAFES.shops.length]""")
+    check('campus cafeterias: matched by library id or by name near its block (hours from the school list), not far away', cs == ['Shu Zhi Wei 蜀之味', 'Shu Zhi Wei 蜀之味', '11:00am - 10:00pm', None, 34], cs)
     check('draft: no page errors', not errorsd, errorsd)
     ctxdr.close()
 

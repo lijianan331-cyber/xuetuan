@@ -975,3 +975,10 @@ button.post-who { width: 100%; }
 .person-note { margin: 0 0 12px; }
 #page-field .link-btn { margin-top: 6px; align-self: flex-start; }
 .visit-controls .visit-edit { margin-left: auto; color: var(--accent); background: transparent; font-weight: 600; }
+
+/* 校内餐厅营业时间（学校公布的表） */
+.campus-hours { display: grid; gap: 6px; margin: 12px 0 4px; padding: 12px 14px; border-radius: 14px; background: var(--surface-2); font-size: 13.5px; }
+.campus-hours div { display: grid; grid-template-columns: 4.6em 1fr; gap: 10px; align-items: baseline; }
+.campus-hours span { color: var(--muted); }
+.campus-hours b { font-weight: 600; white-space: pre-line; font-variant-numeric: tabular-nums; }
+.campus-hours small { color: var(--muted); font-size: 11.5px; }

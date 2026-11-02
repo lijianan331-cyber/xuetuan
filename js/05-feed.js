@@ -164,6 +164,30 @@
     if (APPLE) return 'https://maps.apple.com/?' + (view ? 'll=' + coords + '&q=' + encodeURIComponent(name || coords) : 'daddr=' + coords + '&dirflg=d' + (name ? '&q=' + encodeURIComponent(name) : ''));
     return view ? 'https://www.google.com/maps/search/?api=1&query=' + coords : 'https://www.google.com/maps/dir/?api=1&destination=' + coords;
   }
+  /* 校内餐厅的营业时间（用户 2026-11-02 发来学校的表，谷歌上没有）：
+     地点库里的 xmum-… 直接对上；自己记的店按名字（英文名或中文名）+ 在那栋楼 200 米内对上 */
+  function campusShop(x) {
+    var C = window.XMUM_CAFES;
+    if (!C || !x) return null;
+    var id = String(x.osm || '').replace(/^ovt\//, ''), name = String(x.name || '').toLowerCase();
+    return C.shops.filter(function (s) {
+      if (id === 'xmum-' + s.block.replace(/ /g, '').toLowerCase() + '-' + s.lot.toLowerCase()) return true;
+      var b = C.blocks[s.block];
+      if (!b || !name || !isFinite(x.lat) || haversine(b, x) > 200) return false;
+      var en = s.name.replace(/[^\x00-\x7f]+/g, ' ').trim().toLowerCase(), zh = (s.name.match(/[\u4e00-\u9fff]{2,}/) || [''])[0];
+      return (en.length >= 3 && name.indexOf(en) !== -1) || (zh && name.indexOf(zh) !== -1);
+    })[0] || null;
+  }
+  window.__campusShop = campusShop; /* 测试用 */
+  function campusHoursHTML(x) {
+    var s = campusShop(x), en = state.lang === 'en';
+    if (!s) return '';
+    var rows = [[en ? 'Hours' : '营业时间', s.hours.replace(/; /g, '\n')]];
+    if (s.offDay) rows.push([en ? 'Day off' : '休息日', s.offDay]);
+    if (s.semesterBreak) rows.push([en ? 'Semester break' : '学期假', s.semesterBreak.replace(/; /g, '\n')]);
+    return '<div class="campus-hours">' + rows.map(function (r) { return '<div><span>' + esc(r[0]) + '</span><b>' + esc(r[1]) + '</b></div>'; }).join('') +
+      '<small>' + esc('XMUM ' + s.block + ' · ' + s.lot + (en ? ' · from the campus list, may change' : ' · 学校公布的时间，可能有变')) + '</small></div>';
+  }
   function renderPlace() {
     var p = placeById(state.placeId);
     if (!p) { goFeed(); return; }
@@ -193,7 +217,7 @@
       '<div class="place-head">' + (/^g\//.test(p.osm || '') ? '<div class="google-place-title" data-google-place="' + esc(p.osm.slice(2)) + '" role="status">' + esc(t('googleLoading')) + '</div>' : '<h2>' + esc(placeTitle(p)) + '</h2>') +
       (placeSub(p) ? '<div class="alt">' + esc(placeSub(p)) + '</div>' : '') +
       '<div class="tags">' + tags + '</div></div>' +
-      '<div class="actions place-actions">' + actions + '</div>' +
+      '<div class="actions place-actions">' + actions + '</div>' + campusHoursHTML(p) +
       /* 别人记过、我还没记的地方：直接在这里打分添加，不用再去搜 */
       (beenThere(p) ? '' : quickRateHTML('place-score', p.mode, false)) +
       /* 照片放中间一大张，左右滑；右下角小按钮才放大看（用户 2026-11-01） */

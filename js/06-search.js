@@ -518,7 +518,7 @@
       ? '<div class="place-head g-head"><div class="g-detail" id="g-detail"></div><div class="tags"><span class="tag">' + esc(t('distFrom', { d: fmtDist(haversine(XMUM, r)) })) + '</span></div></div>'
       : '<div class="place-head"><h2>' + esc(r.name) + '</h2>' + (r.alt ? '<div class="alt">' + esc(r.alt) + '</div>' : '') + '<div class="tags">' + tags + '</div></div>';
     view.innerHTML = '<div class="view-top"><button type="button" class="icon-btn flat" data-action="back" aria-label="' + esc(t('back')) + '">' + ICON.back + '</button></div>' +
-      head +
+      head + campusHoursHTML(r) +
       quickRateHTML('preview-score', r.mode, true) +
       /* 还没去过也能先收藏（想去） */
       '<div class="actions"><a class="btn" href="' + esc(mapsHref(coords, r.name)) + '" target="_blank" rel="noopener">' + ICON.nav + esc(t(APPLE ? 'navApple' : 'navGoogle')) + '</a>' +

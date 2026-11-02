@@ -345,3 +345,4 @@ V2.0 是现在的方向（不是不可推翻），先只做 P0。对照分析：
 - [x] 2026-11-01 刷屏（30 个游客号各发 1 条公开帖）之后：游客号只能存私密，分享 / 发帖 / 公开家乡 / 个人主页前提示先绑定谷歌；数据库加 restrictive 规则（supabase/migrations/20261101183000_guests_cannot_share.sql，需在 SQL 编辑器里跑）。
 
 - [x] 2026-11-02 开屏升级为写实 XMUM 风格红顶楼与椰林：雪团加速冲击、碎雪飞散下落、校园逐渐覆雪，文案“xmumer的图鉴”，自动进入应用。两张生成的 WebP 合计约 371KB，无视频/付费接口；支持跳过、减少动态效果、同标签会话只播一次、后台/异常硬退出，地图与账号继续并行加载。素材提示词见 ASSET-LAUNCH.md。
+- [x] 校内餐厅（用户 2026-11-02 发来学校的营业时间表，谷歌上没有）：38 家存进 data/xmum-cafeterias.json，楼的位置用户在 tools/blocks.html 上点的；营业中的 34 家写进线上地点库 poi（id xmum-楼-铺位，scripts/xmum-cafeterias.sql，用户同意后已执行），搜店名或“奶茶”“杂菜饭”能搜到。地点页 / 搜索预览显示营业时间、休息日、学期假时间（data/xmum-cafeterias.js 由 scripts/gen-xmum-cafeterias.py 生成）。
