@@ -2679,7 +2679,7 @@ with sync_playwright() as p:
     check('draft: no page errors', not errorsd, errorsd)
     ctxdr.close()
 
-    # 2026-11-01 界面精修 + 开屏动画（雪团扔过来，椰林和 XMUM 楼被雪盖白，再进首页）
+    # 2026-11-01 界面精修；开屏 2026-11-02 改成短版（全屏雪团蓝 + 雪团子 + “雪团” + 小雪 + 底部一句话）
     ctxui = browser.new_context(viewport={'width': 375, 'height': 780}, has_touch=True)
     route_all(ctxui)
     errorsui = []
@@ -2688,11 +2688,11 @@ with sync_playwright() as p:
     pu.wait_for_function('window.__map && window.__map.getSource("places")', timeout=8000)
     check('splash: automated browsers skip it unless ?splash', pu.evaluate('!document.getElementById("splash") && !document.documentElement.classList.contains("splash-on")'))
     t0 = time.time(); pu.goto(APP + '?splash')
-    sp0 = pu.evaluate('(() => { const s = document.getElementById("splash"); return [!!s && getComputedStyle(s).display !== "none", document.documentElement.classList.contains("splash-on"), document.querySelectorAll("#sp-flakes i").length > 20, !!(s && s.querySelector(".sp-ball")), !!(s && s.querySelectorAll(".sp-scene .sp-frost").length), !!(s && s.querySelector(".sp-brand img"))]; })()')
-    check('splash: ?splash shows the snowball, palms + campus scene, snowflakes and logo', sp0 == [True] * 6, sp0)
-    pu.wait_for_function('!document.getElementById("splash")', timeout=7000)
+    sp0 = pu.evaluate('(() => { const s = document.getElementById("splash"); if (!s) return null; const m = s.querySelector(".sp-mark").getBoundingClientRect(), t = s.querySelector(".sp-tag"); return [getComputedStyle(s).display !== "none", document.querySelectorAll("#sp-flakes i").length >= 20, document.querySelectorAll("#sp-flakes i.sf").length > 0, !!s.querySelector(".sp-mark .sp-ball"), s.querySelector(".sp-mark b").textContent, t.textContent, Math.abs((m.left + m.right) / 2 - innerWidth / 2) < 2, t.getBoundingClientRect().bottom < innerHeight, !s.querySelector(".sp-scene, .sp-splat")]; })()')
+    check('splash: full screen, snowball + 雪团 centred, light snow, tagline at the bottom, no old scene', sp0 == [True, True, True, True, '雪团', 'XMUMer 的图鉴', True, True, True], sp0)
+    pu.wait_for_function('!document.getElementById("splash")', timeout=4000)
     sp1 = [round(time.time() - t0, 1), pu.evaluate('document.documentElement.className.includes("splash")')]
-    check('splash: ends by itself in about 3 s and hands over to the app', sp1[0] < 5.5 and not sp1[1], sp1)
+    check('splash: short, ends by itself in under ~2 s and hands over to the app', sp1[0] < 2.6 and not sp1[1], sp1)
     pu.goto(APP + '?splash'); pu.wait_for_timeout(250)
     t1 = time.time(); pu.click('#splash')
     pu.wait_for_function('!document.getElementById("splash")', timeout=3000)
@@ -2703,18 +2703,18 @@ with sync_playwright() as p:
     ctxsp.add_init_script('Object.defineProperty(navigator, "webdriver", { get: () => false })')
     psp = ctxsp.new_page(); psp.goto(APP)
     first = psp.evaluate('!!document.getElementById("splash")')
-    psp.wait_for_function('!document.getElementById("splash")', timeout=7000)
+    psp.wait_for_function('!document.getElementById("splash")', timeout=4000)
     psp.reload(); psp.wait_for_timeout(300)
     again = psp.evaluate('!!document.getElementById("splash")')
     check('splash: plays when the app opens, not again on reload in the same tab', first and not again, [first, again])
     ctxsp.close()
-    # 系统设了“减少动态效果”：不扔球不下雪，直接是盖了雪的校园，很快进入
+    # 系统设了“减少动态效果”：不下雪不弹出，静止的 logo，很快进入
     ctxrm = browser.new_context(viewport={'width': 375, 'height': 780}, reduced_motion='reduce')
     route_all(ctxrm)
     prm = ctxrm.new_page(); prm.goto(APP + '?splash')
-    rm = prm.evaluate('(() => { const b = document.querySelector(".sp-ball"), f = document.querySelector(".sp-frost"); return [!!document.getElementById("splash"), b ? getComputedStyle(b).display : null, document.querySelectorAll("#sp-flakes i").length, f ? +getComputedStyle(f).opacity : null]; })()')
-    check('splash: reduced motion = no thrown ball or snowfall, just the snowy campus', rm[:3] == [True, 'none', 0] and rm[3] is not None and rm[3] > 0.8, rm)
-    prm.wait_for_function('!document.getElementById("splash")', timeout=3500)
+    rm = prm.evaluate('(() => { const m = document.querySelector(".sp-mark"); return [!!document.getElementById("splash"), document.querySelectorAll("#sp-flakes i").length, m ? getComputedStyle(m).animationName : null, m ? +getComputedStyle(m).opacity : null]; })()')
+    check('splash: reduced motion = no snowfall or pop, a still logo', rm == [True, 0, 'none', 1], rm)
+    prm.wait_for_function('!document.getElementById("splash")', timeout=2500)
     ctxrm.close()
     pu.goto(APP)
     pu.wait_for_function('window.__map && window.__map.getSource("places")', timeout=8000); pu.wait_for_timeout(300)
