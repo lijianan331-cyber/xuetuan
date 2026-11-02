@@ -267,11 +267,17 @@
     renderPickResults('loading');
     pickQ.timer = setTimeout(function () {
       var c = map ? map.getCenter() : XMUM;
-      withTimeout(photonSearch(q, { lat: c.lat, lng: c.lng }), SEARCH_TIMEOUT).then(function (rs) {
+      /* Photon 认不出中文城市的简称（搜“广州”没结果，要“广州市”，用户 2026-11-02）：
+         同时问维基（城市、景点认得中文），中文再多问一次“…市”；哪个有结果用哪个 */
+      var at = { lat: c.lat, lng: c.lng }, cjk = /[\u4e00-\u9fff]/.test(q) && !/[市县区镇]$/.test(q);
+      function soft(p) { return withTimeout(p, SEARCH_TIMEOUT).then(function (r) { return r || []; }, function () { return null; }); }
+      Promise.all([soft(wikiSearch(q)), soft(photonSearch(q, at)), cjk ? soft(photonSearch(q + '市', at)) : Promise.resolve([])]).then(function (got) {
         if (seq !== pickQ.seq) return;
-        pickQ.results = (rs || []).slice(0, 6);
+        if (got[0] === null && got[1] === null) { pickQ.results = []; renderPickResults('fail'); return; }
+        var photon = (got[1] || []).concat(got[2] || []), towns = townsIn(photon);
+        pickQ.results = mergeResults(snapToTown(got[0] || [], towns), photon).slice(0, 6);
         renderPickResults('done');
-      }, function () { if (seq === pickQ.seq) { pickQ.results = []; renderPickResults('fail'); } });
+      });
     }, 250);
   }
   function pickGo(k) {

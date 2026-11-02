@@ -852,6 +852,22 @@
     }).join('');
     box.innerHTML = h;
   }
+  /* 谷歌文字搜索，只要城市（locality），算进每天的谷歌次数 */
+  function googleCities(q) {
+    if (gsearch.disabled || googleDay().n >= GOOGLE_DAILY) return Promise.reject(new Error('google off'));
+    if (window.__googleCities) return Promise.resolve(window.__googleCities(q)); /* 测试用 */
+    return loadGoogle().then(function () { return google.maps.importLibrary('places'); }).then(function (lib) {
+      var Place = (lib && lib.Place) || (google.maps.places && google.maps.places.Place);
+      if (!Place || !Place.searchByText) throw new Error('no searchByText');
+      googleCount();
+      return Place.searchByText({ textQuery: q, fields: ['displayName', 'location', 'formattedAddress'], includedType: 'locality', maxResultCount: 5, language: state.lang === 'en' ? 'en' : 'zh-CN' });
+    }).then(function (res) {
+      return ((res && res.places) || []).map(function (pl) {
+        var lat = typeof pl.location.lat === 'function' ? pl.location.lat() : pl.location.lat, lng = typeof pl.location.lng === 'function' ? pl.location.lng() : pl.location.lng;
+        return { osm: 'g/' + pl.id, name: pl.displayName || q, where: pl.formattedAddress || '', lat: round6(lat), lng: round6(lng), mode: 'travel', cat: 'city', precision: 'city' };
+      }).filter(function (r) { return isFinite(r.lat) && isFinite(r.lng); });
+    });
+  }
   function queueHomeSearch() {
     var q = homeQ.q.trim();
     clearTimeout(homeQ.timer);
@@ -864,13 +880,28 @@
       var photon = fetch(url).then(function (res) { if (!res.ok) throw new Error('photon ' + res.status); return res.json(); }).then(parsePhoton);
       Promise.all([withTimeout(wikiSearch(q), SEARCH_TIMEOUT).catch(fail), withTimeout(photon, SEARCH_TIMEOUT).catch(fail)]).then(function (rs) {
         if (seq !== homeQ.seq) return;
-        if (!rs[0] && !rs[1]) { homeQ.status = 'fail'; renderHomeResults(); return; }
         var towns = townsIn(rs[1]);
         var wiki = snapToTown(rs[0] || [], towns).filter(function (r) { return r.cat === 'city' && (r.zoom || 10) >= 7; });
         var cities = snapToTown(rs[1] || [], towns).filter(function (r) { return r.precision === 'city'; });
+        /* Photon 只给英文名（搜“厦门”出来 Xiamen，用户 2026-11-02）：中文搜的，附近有中文维基词条就用它的名字，
+           没有就第一个城市直接用打的字；英文名放到下面一行 */
+        var cjk = /[\u4e00-\u9fff]/;
+        if (cjk.test(q)) cities = cities.map(function (r, i) {
+          if (cjk.test(r.name)) return r;
+          var w = (rs[0] || []).filter(function (x) { return cjk.test(x.name) && haversine(x, r) < 40000; })[0];
+          var zh = w ? w.name : i === 0 ? q : '';
+          return zh ? Object.assign({}, r, { name: zh, where: [r.name, r.where].filter(Boolean).join(' · ') }) : r;
+        });
         homeQ.results = mergeResults(wiki, cities).slice(0, 8);
-        homeQ.status = 'done';
-        renderHomeResults();
+        if (homeQ.results.length) { homeQ.status = 'done'; renderHomeResults(); return; }
+        /* 两个免费来源都没给（常常是 Photon 超时，搜 Almaty 都出不来，用户 2026-11-02）：再问谷歌，只要城市 */
+        withTimeout(googleCities(q), 8000).then(function (gs) {
+          if (seq !== homeQ.seq) return;
+          homeQ.results = gs || []; homeQ.status = 'done'; renderHomeResults();
+        }, function () {
+          if (seq !== homeQ.seq) return;
+          homeQ.results = []; homeQ.status = rs[0] || rs[1] ? 'done' : 'fail'; renderHomeResults();
+        });
       });
     }, 200);
   }

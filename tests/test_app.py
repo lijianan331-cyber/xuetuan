@@ -219,6 +219,8 @@ def route_all(ctx, supabase=False):
             return route.fulfill(status=200, body=PHOTON_REV, headers={'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'})
         if 'photon.komoot.io/api/' in url:
             photon_calls.append(url)
+            if 'q=nowhere' in url:
+                return route.fulfill(status=503, body='busy', headers={'Access-Control-Allow-Origin': '*'})
             return route.fulfill(status=200, body=PHOTON_SG if 'q=Singapura' in url else PHOTON, headers={'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'})
         if 'wikipedia.org/w/api.php' in url:
             wiki_calls.append(url)
@@ -2383,7 +2385,17 @@ with sync_playwright() as p:
     check('remote: profile shows account', 'a@example.com' in page6.inner_text('.account-row'))
     # 我的家：搜城市（只要城市），写进 homes 表，默认不公开
     page6.click('#home-field [data-action="home-set"]')
+    page6.fill('#home-q', '槟城')
+    page6.wait_for_selector('[data-action="home-result"]', timeout=5000)
+    zh_h = page6.locator('[data-action="home-result"]').first.inner_text()
+    check('remote home: a Chinese search shows the city in Chinese, English name underneath (厦门 showed Xiamen)', zh_h.startswith('槟城') and 'George Town' in zh_h, zh_h)
+    page6.evaluate('window.__googleCities = q => [{osm: "g/x", name: "阿拉木图", where: "哈萨克斯坦", lat: 43.24, lng: 76.89, mode: "travel", cat: "city", precision: "city"}]')
+    page6.fill('#home-q', 'nowhere almaty')
+    page6.wait_for_selector('[data-action="home-result"]', timeout=6000)
+    check('remote home: when Photon / Wikipedia give nothing, Google finds the city (Almaty failed)', page6.locator('[data-action="home-result"] b').all_inner_texts() == ['阿拉木图'])
+    page6.evaluate('delete window.__googleCities')
     page6.fill('#home-q', 'george')
+    page6.wait_for_timeout(300)
     page6.wait_for_selector('[data-action="home-result"]', timeout=5000)
     rows_h = page6.locator('[data-action="home-result"] b').all_inner_texts()
     check('remote home: city search lists only cities', rows_h == ['George Town'], rows_h)
@@ -2728,6 +2740,10 @@ with sync_playwright() as p:
     pd.click('[data-action="pick-cancel"]'); pd.wait_for_timeout(150)
     add(pd); pd.wait_for_timeout(150); pd.click('[data-action="add-pin"]'); pd.wait_for_timeout(100)
     check('pick search: box is empty again next time', pd.input_value('#pick-q') == '')
+    n_ph = len(photon_calls)
+    pd.fill('#pick-q', '巴厘岛'); pd.wait_for_selector('#pick-results [data-action="pick-go"]', timeout=5000)
+    names = pd.locator('#pick-results [data-action="pick-go"] b').all_inner_texts()
+    check('pick search: Chinese city names also ask Wikipedia and “…市” on Photon (广州 found nothing)', '巴厘岛' in names and any('%E5%B7%B4%E5%8E%98%E5%B2%9B%E5%B8%82' in u for u in photon_calls[n_ph:]), [names, photon_calls[n_ph:]])
     pd.click('[data-action="pick-cancel"]'); pd.wait_for_timeout(150)
     # 美食 / 玩乐的简单判断，不用模型
     sky = pd.evaluate("""(() => {
