@@ -250,7 +250,7 @@
       (beenThere(p) ? '' : quickRateHTML('place-score', p.mode, false)) +
       /* 照片放中间一大张，左右滑；右下角小按钮才放大看（用户 2026-11-01） */
       (photos.length ? '<div class="place-hero' + (photos.length === 1 ? ' single' : '') + '"><div class="hero-track" id="hero-track">' + photos.map(function (id) {
-        return '<div class="hero-slide' + (isClip(id) ? ' is-clip' : '') + '" data-id="' + esc(id) + '"><img data-photo="' + esc(id) + '" data-small alt=""></div>';
+        return '<div class="hero-slide' + (isClip(id) ? ' is-clip' : '') + '" data-id="' + esc(id) + '" data-action="hero-photo"><img data-photo="' + esc(id) + '" data-small alt=""></div>';
       }).join('') + '</div>' +
         (photos.length > 1 ? '<span class="hero-count" id="hero-count">1 / ' + photos.length + '</span>' : '') +
         '<button type="button" class="hero-zoom" data-action="hero-zoom" aria-label="' + esc(state.lang === 'en' ? 'View larger' : '放大看') + '">' + ICON.expand + '</button></div>' : '');
@@ -384,7 +384,9 @@
     box.innerHTML = f.photos.map(function (ph) {
       var img = ph.existing ? '<img data-photo="' + esc(ph.id) + '" data-small alt="">' : '<img src="' + (ph.preview || ph.url) + '" decoding="async" alt="">';
       return '<div class="ph-edit' + (isClip(ph.id) ? ' is-clip' : isGif(ph.id) ? ' is-gif' : '') + '"><button type="button" class="ph-preview" data-action="f-photo-preview" data-id="' + esc(ph.id) + '" aria-label="' + esc(t('photoPreview')) + '">' + img + '</button><button type="button" class="ph-del" data-action="f-photo-del" data-id="' + ph.id + '" aria-label="' + esc(t('del')) + '">×</button></div>';
-    }).join('') + (f.mediaBusy ? '<div class="ph-edit ph-busy">' + esc(t('mediaPreparing')) + '</div>' : '') + (f.photos.length + (f.mediaBusy || 0) < MAX_PHOTOS ? '<button type="button" class="ph-add" data-action="f-photo-add">' + ICON.camera + '<span>' + esc(t('addPhoto')) + '</span></button>' : '');
+    }).join('') + (f.mediaBusy ? (f.busyPreviews && f.busyPreviews.length ? f.busyPreviews : ['']).map(function (u) {
+      return '<div class="ph-edit ph-busy' + (u ? ' has-img' : '') + '">' + (u ? '<img src="' + u + '" decoding="async" alt="">' : '') + '<span>' + esc(t('mediaPreparing')) + '</span></div>';
+    }).join('') : '') + (f.photos.length + (f.mediaBusy || 0) < MAX_PHOTOS ? '<button type="button" class="ph-add" data-action="f-photo-add">' + ICON.camera + '<span>' + esc(t('addPhoto')) + '</span></button>' : '');
     hydratePhotos(box);
     var submit = $('#f-submit');
     if (submit && !f.saving) { submit.disabled = !!f.mediaBusy; submit.textContent = t(f.mediaBusy ? 'mediaPreparing' : f.editId ? 'saveEdit' : 'publish'); }
@@ -535,6 +537,7 @@
   function openAdd(post) {
     if (post !== true && !state.form && resumeFormDraft(false)) return;
     state.posting = post === true;
+    loadExifr().catch(function () {});
     rememberFeedSnap();
     state.view = 'add'; state.query = ''; state.form = null;
     render();

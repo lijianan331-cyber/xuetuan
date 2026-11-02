@@ -288,6 +288,13 @@
       document.head.appendChild(el);
     });
   }
+  /* 读照片拍摄时间 / 位置的小库：点“+”时就先在后台下好，选照片时不用再等它（用户 2026-11-02 嫌读照片慢） */
+  var exifrLoading = null;
+  function loadExifr() {
+    if (window.exifr) return Promise.resolve();
+    if (!exifrLoading) exifrLoading = loadScript(EXIFR_URL).catch(function (e) { exifrLoading = null; throw e; });
+    return exifrLoading;
+  }
   function loadWorld() {
     if (world.loading) return world.loading;
     world.loading = Promise.all([

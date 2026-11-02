@@ -476,6 +476,8 @@
       case 'toggle-save': { var tpid = state.placeId; if (tpid && requireLogin(function () { toggleSave(tpid); })) toggleSave(tpid); break; }
       case 'copy-coords': copyCoords(d.c); break;
       case 'photo': openLightbox(d.id, d.group); break;
+      /* 点照片任何地方都放大（右下角的放大图标只是提示，用户 2026-11-02） */
+      case 'hero-photo': if (state.placeId) openPlacePhotos(state.placeId, d.id); break;
       case 'hero-zoom': { var hs = $('#hero-track'); if (hs && state.placeId) openPlacePhotos(state.placeId, hs.children[heroIndex()].dataset.id); break; }
       case 'edit-profile': pendingAvatar = null; openProfileDialog(); break;
       case 'pf-avatar-pick': $('#pf-avatar-file').click(); break;

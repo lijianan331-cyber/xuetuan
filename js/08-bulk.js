@@ -17,29 +17,52 @@
     state.view = 'bulk'; state.form = null;
     render();
     setSnap('full');
-    (window.exifr ? Promise.resolve() : loadScript(EXIFR_URL)).then(function () {
-      return list.reduce(function (chain, file) {
-        return chain.then(function () {
-          if (state.bulk !== b) return;
+    loadExifr().then(function () {
+      /* 三张一起读（以前一张一张读）；不再多，几十张一起解码手机内存会不够 */
+      var queue = list.slice();
+      function worker() {
+        var file = queue.shift();
+        if (!file || state.bulk !== b) return Promise.resolve();
+        return readOne(file).then(worker);
+      }
+      function readOne(file) {
           return readPhotoMeta(file, b).then(function (it) {
             if (it) b.items.push(it); b.read++;
             var el = $('#bk-progress');
             if (el) el.textContent = t('bulkReading', { n: b.read, m: b.total });
           }).catch(function (e) { b.read++; b.rejected.push(file.name + '：' + t(e && ['clipLong', 'clipBig', 'gifTooBig'].indexOf(e.message) !== -1 ? e.message : videoFile(file) ? 'clipRead' : 'photoReadFail', { n: CLIP_MAX_SEC })); });
-        });
-      }, Promise.resolve());
+      }
+      return Promise.all([worker(), worker(), worker()]);
     }).then(function () {
       if (state.bulk !== b) return;
       b.groups = groupPhotos(b);
       render();
       findNames(b);
       bulkSkyGuess(b);
+      bulkWarm(b);
     }, function () {
       if (state.bulk !== b) return;
       b.error = true;
       render();
     });
   }
+  /* 选完照片就在后台一张一张压缩、上传（用户 2026-11-02：存 3 条要十几秒，慢在点保存后才压缩上传）。
+     一次只处理一张，免得几十张一起解码把手机内存撑爆；只处理勾上的照片。保存时直接用已经传好的 */
+  function bulkWarm(b) {
+    if (b.warming) return;
+    b.warming = true;
+    function next() {
+      if (state.bulk !== b || b.saving) { b.warming = false; return; }
+      var ph = null;
+      (b.groups || []).some(function (g) { return g.photos.some(function (x) { if (x.on && !x.media && !x.warmFail) { ph = x; return true; } return false; }); });
+      if (!ph) { b.warming = false; return; }
+      (ph.prepared ? Promise.resolve(ph.prepared) : prepareMedia(ph.file)).then(function (out) {
+        if (out && out.blob) { ph.media = mediaPhoto(out); if (store.preupload) store.preupload([ph.media]); } else ph.warmFail = true;
+      }, function () { ph.warmFail = true; }).then(function () { setTimeout(next, 0); });
+    }
+    next();
+  }
+  window.__bulkWarm = bulkWarm; /* 测试用 */
   /* 照片里存的小图（EXIF 缩略图）当预览，比解码整张原图省内存；小图没按拍摄方向转，自己转 */
   function readPhotoMeta(file, b) {
     if (videoFile(file) && file.size > MEDIA_MAX_BYTES) return Promise.reject(new Error('clipBig'));
@@ -520,7 +543,7 @@
     var g = state.bulk && state.bulk.groups && state.bulk.groups[i], p = g && g.photos[j];
     if (!p || state.bulk.saving) return;
     if (!p.on && g.photos.filter(function (x) { return x.on; }).length >= MAX_PHOTOS) { toast(t('bulkPhotoMax', { n: MAX_PHOTOS })); return; }
-    p.on = !p.on;
+    p.on = !p.on; if (p.on && state.bulk) bulkWarm(state.bulk);
     el.setAttribute('aria-pressed', String(p.on));
     el.textContent = p.on ? '✓' : '○';
     el.closest('.bk-ph').setAttribute('data-on', String(p.on));
@@ -598,6 +621,7 @@
       var photos = [];
       return g.photos.filter(function (ph) { return ph.on; }).reduce(function (chain, ph) {
         return chain.then(function () {
+          if (ph.media) { photos.push(ph.media); return; }
           return (ph.prepared ? Promise.resolve(ph.prepared) : prepareMedia(ph.file)).then(function (out) {
             if (out.blob) photos.push(mediaPhoto(out));
           }, function (e) { toast(t(e && e.message === 'gifTooBig' ? 'gifTooBig' : 'photoReadFail')); });

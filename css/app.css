@@ -994,3 +994,7 @@ button.post-who { width: 100%; }
 .pf-av-btn { border: 0; background: none; padding: 0; display: flex; flex-direction: column; align-items: center; gap: 6px; color: var(--accent); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
 .pf-av-btn .avatar { width: 64px; height: 64px; font-size: 24px; }
 .pf-av-btn i { font-style: normal; }
+.ph-busy.has-img { position: relative; padding: 0; overflow: hidden; }
+.ph-busy.has-img img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: .55; }
+.ph-busy.has-img span { position: relative; background: rgba(255, 255, 255, .85); color: var(--ink, #16324a); border-radius: 999px; padding: 2px 8px; font-weight: 600; }
+.hero-slide { cursor: zoom-in; }

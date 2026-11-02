@@ -549,21 +549,32 @@
   /* 发帖也读照片的拍摄时间（用户 2026-11-01）：记录的日期用最早那张照片拍的时间，
      首页按这个时间推，几年前的照片不会被当成新动态。读不到就用保存的时间 */
   function formTakenAt(f, file) {
-    (window.exifr ? Promise.resolve() : loadScript(EXIFR_URL)).then(function () {
-      return window.exifr.parse(file, ['DateTimeOriginal', 'CreateDate']);
-    }).then(function (x) {
-      var t0 = x && (x.DateTimeOriginal || x.CreateDate), ts = t0 instanceof Date ? t0.getTime() : NaN;
-      if (state.form !== f || !isFinite(ts) || ts > Date.now() || ts < Date.UTC(2000, 0, 1)) return;
+    /* 照片里没有拍摄时间（有的手机交给网页时会去掉）就退回文件的修改时间，和批量添加一样（用户 2026-11-02：单条加的照片显示“刚刚”） */
+    function use(ts) {
+      if (state.form !== f || !isFinite(ts) || ts > Date.now() || ts < Date.UTC(2000, 0, 1)) return false;
       if (!f.takenAt || ts < f.takenAt) f.takenAt = ts;
-    }).catch(function () {});
+      return true;
+    }
+    loadExifr().then(function () {
+      return window.exifr.parse(file, ['DateTimeOriginal', 'CreateDate', 'ModifyDate']);
+    }).then(function (x) {
+      var t0 = x && (x.DateTimeOriginal || x.CreateDate || x.ModifyDate);
+      return use(t0 instanceof Date ? t0.getTime() : NaN);
+    }, function () { return false; }).then(function (ok) {
+      if (!ok && file.lastModified && file.lastModified < Date.now() - 3600000) use(file.lastModified);
+    });
   }
+  window.__formTakenAt = function (f, file) { formTakenAt(f, file); }; /* 测试用 */
   function addFormPhotos(files) {
     var f = state.form;
     if (!f || f.saving) return;
     var list = Array.prototype.slice.call(files || []).filter(isMediaFile).slice(0, MAX_PHOTOS - f.photos.length - (f.mediaBusy || 0));
     f.mediaBusy = (f.mediaBusy || 0) + list.length;
+    /* 选完马上把照片本身显示出来（半透明 + “处理中”），压缩好了再换成正式的；不用干等着才看得到（用户 2026-11-02） */
+    f.busyPreviews = f.busyPreviews || [];
+    var previews = list.map(function (file) { var u = videoFile(file) ? '' : URL.createObjectURL(file); f.busyPreviews.push(u); return u; });
     renderFormPhotos();
-    list.reduce(function (chain, file) {
+    list.reduce(function (chain, file, k) {
       return chain.then(function () {
         var clip = videoFile(file);
         return prepareMedia(file).then(function (out) {
@@ -577,6 +588,9 @@
           toast(t(e && (e.message === 'clipLong' || e.message === 'clipBig' || e.message === 'gifTooBig') ? e.message : clip ? 'clipRead' : 'photoReadFail', { n: CLIP_MAX_SEC }));
         }).then(function () {
           f.mediaBusy--;
+          var i = f.busyPreviews.indexOf(previews[k]);
+          if (i !== -1) f.busyPreviews.splice(i, 1);
+          if (previews[k]) setTimeout(function () { URL.revokeObjectURL(previews[k]); }, 1000);
           if (state.form === f) renderFormPhotos();
         });
       });
