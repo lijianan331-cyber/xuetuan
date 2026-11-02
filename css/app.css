@@ -458,7 +458,9 @@ body[data-snap="page"] .panel-body { padding-top: env(safe-area-inset-top, 0px);
 .place-actions .btn { background: var(--accent-soft); font-weight: 600; }
 .place-actions .btn.primary { font-weight: 700; }
 .place-actions .btn.primary { margin-right: 0; background: var(--accent); }
-.place-actions .save-btn[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+/* 收藏了：按钮样子不变，只把星星点亮成金色（用户 2026-11-02：整块变色看着像按不了） */
+.save-btn[aria-pressed="true"], .save-btn[aria-pressed="true"]:disabled { opacity: 1; }
+.save-btn[aria-pressed="true"] svg, .pc-save[aria-pressed="true"] svg { color: #F5B400; }
 /* 地点页的照片：中间一大张，下一张露一点边，提示能滑 */
 .place-hero { position: relative; margin: 12px -18px 0; }
 .hero-track { display: flex; gap: 6px; overflow-x: auto; scroll-snap-type: x mandatory; scroll-padding: 0 18px; padding: 0 18px; scrollbar-width: none; overscroll-behavior-x: contain; }
@@ -804,7 +806,6 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
 .post-place { margin-top: 14px; border-top: 1px solid var(--line); }
 .post-place .near-item { border-bottom: 1px solid var(--line); }
 .post-actions { margin-top: 12px; }
-.post-actions .save-btn[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
 .place-empty { margin: 6px 0 0; color: var(--muted); font-size: 13px; }
 
 /* ---------- 我的：头像、昵称、来自哪、数量 ---------- */
