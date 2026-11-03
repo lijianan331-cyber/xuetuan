@@ -2230,7 +2230,7 @@ with sync_playwright() as p:
           and page6.evaluate('document.querySelector("#f-photos .is-clip img").naturalWidth') > 0)
     page6.locator('#f-photos').scroll_into_view_if_needed(); page6.screenshot(path=os.path.join(SHOTS, '15-media.png'))
     page6.click('#f-photos .is-gif [data-action="f-photo-preview"]')
-    page6.wait_for_function('document.querySelector("#lb-img").src.startsWith("blob:")')
+    page6.wait_for_function('document.querySelector("#lb-img").src.startsWith("blob:") && document.querySelector("#lb-img").complete && document.querySelector("#lb-img").naturalWidth > 0')
     check('unsaved animated GIF can be enlarged', page6.is_visible('#lb-img'))
     page6.click('[data-action="lb-close"]')
     page6.set_input_files('#f-file', long_p)
