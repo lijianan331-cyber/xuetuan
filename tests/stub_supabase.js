@@ -163,7 +163,7 @@
 
   function emit(event) { listeners.forEach(function (fn) { fn(event, session); }); }
   window.__sbLogin = function (id, email, extra) {
-    session = { user: Object.assign({ id: id, email: email },extra||{}) };
+    session = { access_token:'fixture-access-'+id, refresh_token:'fixture-refresh-'+id, user: Object.assign({ id: id, email: email },extra||{}) };
     if (!db.profiles.some(function (p) { return p.id === id; })) db.profiles.push({ id: id, name: '', country: '', region: '', city: '', district: '' });
     emit('SIGNED_IN');
   };

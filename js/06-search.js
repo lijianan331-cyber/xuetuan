@@ -542,10 +542,10 @@
   function meAccountHTML() {
     if (store.mode !== 'remote') return '';
     var en = state.lang === 'en';
-    if (!store.signedIn()) return '<div class="me-account"><span>' + esc(en ? 'Log in to keep your records on any device' : '登录后换手机也能找回记录') + '</span><button type="button" class="btn small primary" data-action="login">' + esc(t('login')) + '</button></div>';
-    if (store.isAnon()) return '<div class="me-account"><span>' + esc(en ? 'Guest account · link Google to share and keep records' : '匿名账号 · 绑定谷歌后才能分享，换手机也能找回') + '</span><button type="button" class="btn small primary" data-action="link-google">' + esc(en ? 'Link Google' : '绑定谷歌') + '</button></div>';
+    if (!store.signedIn()) return '<div class="me-account"><span>' + esc(en ? 'Log in to keep your records on any device' : '登录后换手机也能找回记录') + '</span><button type="button" class="btn small primary" data-action="login">' + esc(t('login')) + '</button></div>'+authReturnGuestHTML()+authWechatHintHTML();
+    if (store.isAnon()) return authGuestAccountHTML();
     var who = managedIdentity && managedIdentity.alt ? identityText('主号管理的小号', 'Managed second identity') : maskEmail(store.email());
-    return '<div class="me-account account-row"><span>' + esc((en ? 'Signed in · ' : '已登录 · ') + who) + '</span><button type="button" class="btn small ghost" data-action="logout">' + esc(t('logout')) + '</button></div>';
+    return '<div class="me-account account-row"><span>' + esc((en ? 'Signed in · ' : '已登录 · ') + who) + '</span><button type="button" class="btn small ghost" data-action="logout">' + esc(t('logout')) + '</button></div>'+authReturnGuestHTML();
   }
   function meHeadHTML() {
     var pf = me();

@@ -1131,6 +1131,11 @@ html[data-page="me"] .seg.me-lang button[aria-pressed="true"] { background: var(
 .me-account { display: flex; align-items: center; gap: 10px; margin: 0 0 12px; padding: 10px 12px 10px 14px; border-radius: 14px; background: var(--surface); box-shadow: 0 0 0 1px var(--hairline); font-size: 13px; color: var(--muted); }
 .me-account > span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .me-account .btn { flex: none; }
+.me-account.auth-guest { flex-wrap:wrap; }
+.auth-guest > span,.auth-guest > small { flex-basis:100%; }
+.auth-guest > small { font-size:12px; line-height:1.6; }
+.auth-choices { display:flex; flex-wrap:wrap; gap:8px; }
+.auth-browser-hint { margin:0 2px 12px; }
 .me-lines { border-radius: 18px; background: var(--surface); box-shadow: 0 0 0 1px var(--hairline); overflow: hidden; }
 .me-line { display: flex; align-items: center; gap: 8px; padding-right: 14px; }
 .me-line + .me-line { border-top: 1px solid var(--hairline); }

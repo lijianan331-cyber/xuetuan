@@ -568,7 +568,8 @@
       case 'osm-pick': pickOsm(+d.i); break;
       case 'campus-pick': pickResult(campusHits[+d.i]); break;
       case 'login': openLogin(); break;
-      case 'login-google': (store.isAnon && store.isAnon() ? store.linkGoogle() : store.signInWithGoogle()).catch(function (err) { toast(t('loginFail', { m: (err && err.message) || '' })); }); break;
+      case 'login-google': store.signInWithGoogle().catch(function (err) { toast(t('loginFail', { m: (err && err.message) || '' })); }); break;
+      case 'auth-return-guest': authReturnGuest(); break;
       case 'logout': store.signOut().catch(function () {}); break;
       case 'link-google': store.linkGoogle().catch(function (err) { toast(t('loginFail', { m: (err && err.message) || '' })); }); break;
       case 'upload-local': uploadLegacy(); break;
@@ -721,5 +722,6 @@
     state.bootLoading = false;
     if (state.view === 'form') captureFormDraft();
     renderChrome(); refreshMap(); render();
+    authFinishReturn();
   });
 

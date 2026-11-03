@@ -866,11 +866,11 @@
       });
     }
     function setSession(s) {
-      var before = uidNow();
+      var before = uidNow(), wasAnon = !!(session && session.user && session.user.is_anonymous), oldEmail = email;
       session = s;
       email = s && s.user ? s.user.email || '' : '';
       if (before !== uidNow()) { cache.admin = false; photoURLs.forEach(function (u) { if (/^blob:/.test(u)) URL.revokeObjectURL(u); }); photoURLs.clear(); photoExpiries.clear(); photoRequests.clear(); }
-      return before !== uidNow();
+      return before !== uidNow() || wasAnon !== !!(s && s.user && s.user.is_anonymous) || oldEmail !== email;
     }
 
     var profileTimer = null, profilePatch = {}, profileOwner = null, profileFlight = Promise.resolve();
@@ -1228,7 +1228,18 @@
   }
   /* 在安卓 app 里（壳的 UA 带 XueTuanApp）谷歌登录在手机浏览器里做，做完跳回 xuetuan://auth，app 再把结果交给网页。
      要在 Supabase 的 Redirect URLs 里加上 xuetuan://auth，否则会跳回网站。 */
-  function authReturnURL() { return /XueTuanApp\//.test(navigator.userAgent) ? 'xuetuan://auth' : location.origin + location.pathname; }
+  function authReturnURL() {
+    if (/XueTuanApp\//.test(navigator.userAgent)) return 'xuetuan://auth';
+    var u = new URL(location.href), token = u.searchParams.get('_vercel_share');u.search = '';u.hash = '';
+    if (token && /^[A-Za-z0-9_-]{10,200}$/.test(token)) u.searchParams.set('_vercel_share', token);
+    return u.href;
+  }
+  /* Capture only OAuth errors before the SDK consumes the fragment; never copy tokens into application state. */
+  var authCallbackProblem = (function () {
+    var hash = new URLSearchParams(location.hash.slice(1)), query = new URLSearchParams(location.search);
+    var code = hash.get('error_code') || query.get('error_code') || hash.get('error') || query.get('error');
+    return code ? { code: code, description: hash.get('error_description') || query.get('error_description') || '' } : null;
+  })();
   var sbClient = window.supabase && window.supabase.createClient && SUPABASE_URL ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { global: { headers: { 'x-xuetuan-device': browserDeviceId() } } }) : null;
   var store = (function () {
     var forceLocal = /[?&]local(=|&|$)/.test(location.search) || window.XUETUAN_LOCAL;
