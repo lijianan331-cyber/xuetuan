@@ -568,6 +568,7 @@
     var en = state.lang === 'en';
     function menu(icon,title,sub,action,href){return '<'+(href?'a href="'+href+'"':'button type="button" data-action="'+action+'"')+' class="me-menu-row">'+icon+'<span><b>'+esc(title)+'</b>'+(sub?'<small>'+esc(sub)+'</small>':'')+'</span><i aria-hidden="true">›</i></'+(href?'a':'button')+'>';}
     var h = meHeadHTML() + '<div class="me-shortcuts">' +
+      (remote ? menu(dmIcon,en?'Messages':'私信',en?'Requests and conversations':'私信申请与聊天','dm-open').replace('</b>','</b>'+dmBadgeHTML()) : '') +
       menu(CTRL_ICON.arrow,en?'Share my footprints':'分享我的足迹',en?'Maps and memories to take with you':'把去过的地方，做成一张地图','my-share') +
       menu(ICON.home,t('homesBtn'),publicHomeCount()?t('homesN',{n:publicHomeCount()}):'', 'homes-open').replace('me-menu-row','me-menu-row me-homes') +
       menu(ICON.pen,en?'Feedback & support':'意见反馈','','','contact.html') + '</div><div class="form me-settings">' + personal +
@@ -576,7 +577,7 @@
       (areas.length?'<details class="me-fold"><summary>'+esc(t('areas'))+'</summary><ul class="area-list">'+areas.map(function(a){return '<li><span>'+esc(a.name)+'</span><button type="button" class="link-btn danger" data-action="del-area" data-id="'+esc(a.id)+'">'+esc(t('del'))+'</button></li>';}).join('')+'</ul></details>':'') +
       '<details class="me-fold account-details"' + (accountOpen?' open':'') + '><summary>'+esc(en?'Account & identities':'账号与身份')+'</summary>'+account+identityCardHTML()+testAccountsHTML()+'</details>' +
       '<details class="me-fold data-details"' + (dataOpen?' open':'') + '><summary>'+esc(en?'Data & privacy':'数据与隐私')+'</summary><p class="note">'+esc(t(remote?'remoteNote':'localNote'))+'</p><div class="btn-row">'+dataButtons+'</div><p><a class="privacy-link" href="privacy.html" target="_blank" rel="noopener">'+esc(t('privacyLink'))+'</a> · <a class="privacy-link" href="contact.html">'+esc(en?'Contact us':'联系我们')+'</a></p></details>' +
-      (isModerator()?'<details class="me-fold admin-details"' + (adminOpen?' open':'') + '><summary>'+esc(en?'Moderation tools':'管理工具')+'</summary><p class="f-hint">'+esc(en?'Review reports or manage a public post.':'处理评论举报，或进入公开帖子管理内容。')+'</p><div class="btn-row"><button type="button" class="btn small" data-action="social-reports">'+esc(en?'Comment reports':'评论举报')+'</button><button type="button" class="btn small" data-action="moderation-clean">'+esc(en?'Retry media cleanup':'重试图片清理')+'</button></div><div id="social-reports"></div></details>':'') +
+      (isModerator()?'<details class="me-fold admin-details"' + (adminOpen?' open':'') + '><summary>'+esc(en?'Moderation tools':'管理工具')+'</summary><p class="f-hint">'+esc(en?'Review reports or manage a public post.':'处理评论举报，或进入公开帖子管理内容。')+'</p><div class="btn-row"><button type="button" class="btn small" data-action="social-reports">'+esc(en?'Comment reports':'评论举报')+'</button><button type="button" class="btn small" data-action="dm-reports">' + esc(en?'Private-message reports':'私信举报') + '</button><button type="button" class="btn small" data-action="moderation-clean">'+esc(en?'Retry media cleanup':'重试图片清理')+'</button></div><div id="social-reports"></div></details>':'') +
       '<p class="about">'+esc(t('about'))+'</p></div>';
     view.innerHTML = h;
   }

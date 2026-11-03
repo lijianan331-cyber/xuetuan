@@ -472,6 +472,7 @@
     var v = state.view, wasInCard = mapInCard();
     if (wasInCard) stage.insertBefore(mapEl, stage.firstChild);
     if (v === 'feed') renderFeed();
+    else if (v === 'messages') renderMessages();
     else if (v === 'post') renderPost();
     else if (v === 'person') renderPerson();
     else if (v === 'place') renderPlace();

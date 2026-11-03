@@ -79,13 +79,15 @@ def rate(pg, v, sel='.stars-input'):
     el.scroll_into_view_if_needed()
     stars = pg.locator(sel + ' .stars-track .st')
     if v == 0:
+        stars.nth(0).click(trial=True)
         b = stars.nth(0).bounding_box(); y = b['y'] + b['height'] / 2
         pg.mouse.move(b['x'] + b['width'] * 0.75, y); pg.mouse.down()
         pg.mouse.move(b['x'] - 12, y, steps=4); pg.mouse.up()
     else:
         i = math.ceil(v) - 1
         b = stars.nth(i).bounding_box()
-        pg.mouse.click(b['x'] + b['width'] * (0.25 if v % 1 else 0.75), b['y'] + b['height'] / 2)
+        # Locator clicks wait for the returning sheet animation; raw screen coordinates can hit its moving grip.
+        stars.nth(i).click(position={'x': b['width'] * (0.25 if v % 1 else 0.75), 'y': b['height'] / 2})
     pg.wait_for_timeout(150)
 def stars_val(pg, sel='#f-rating'):
     return pg.get_attribute(sel, 'aria-valuenow')
@@ -126,6 +128,7 @@ def open_filters(pg):
     direct=pg.locator('#view [data-action="foot-filters"]')
     if direct.count() and direct.is_visible(): direct.click()
     else: pg.click('#map-ctrls [data-action="filters"]')
+    pg.wait_for_selector('#bsheet-card .bsheet-foot .btn.primary', state='visible')
 
 
 def foot_sub(pg, value=None):
@@ -249,7 +252,7 @@ def route_all(ctx, supabase=False):
     ctx.route('**/*', handler)
 
 with sync_playwright() as p:
-    browser = p.chromium.launch(**({'channel': os.environ['XUETUAN_TEST_BROWSER_CHANNEL']} if os.environ.get('XUETUAN_TEST_BROWSER_CHANNEL') else {}))
+    browser = p.chromium.launch(slow_mo=int(os.environ.get('XUETUAN_TEST_SLOW_MO', '0')), **({'channel': os.environ['XUETUAN_TEST_BROWSER_CHANNEL']} if os.environ.get('XUETUAN_TEST_BROWSER_CHANNEL') else {}))
     slowctx = browser.new_context(viewport={'width':390,'height':844})
     route_all(slowctx, supabase=True)
     slowctx.add_init_script('window.__holdDbReads=true')
@@ -1019,7 +1022,7 @@ with sync_playwright() as p:
     page.click('[data-action="home-public"]')
     page.wait_for_timeout(150)
     check('home: public setting does not automatically overlay travel', page.evaluate('window.__map.getSource("homes").data.features.length') == 0)
-    check('home: switch on explains who sees it', page.get_attribute('[data-action="home-public"]', 'aria-checked') == 'true' and '来自 Sepang' in page.inner_text('#home-field'))
+    check('home: switch on explains city-only sharing', page.get_attribute('[data-action="home-public"]', 'aria-checked') == 'true' and 'Sepang' in page.inner_text('#home-field') and '仅展示城市，不含详细地址' in page.inner_text('#home-field'))
     tab(page, 'explore')
     toggle_homes(page)
     check('home: independent mode hides travel places', page.evaluate('window.__map.getSource("places").data.features.length') == 0)
@@ -2011,6 +2014,7 @@ with sync_playwright() as p:
     ft0 = pb.locator('.feed-list .fi-time').first.inner_text() if pb.locator('.feed-list .fi-time').count() else pb.locator('.fi-time').first.inner_text()
     check('footprints: listed by when they were added, not when the photos were taken', '刚刚' in ft0 or '分钟前' in ft0, ft0)
     pb.click('[data-action="foot-time"]')
+    pb.wait_for_function('document.querySelector("[data-action=foot-time]").getAttribute("aria-pressed")==="true" && Array.from(document.querySelectorAll(".fi-time")).some(el=>el.textContent.startsWith("拍于"))')
     ft1 = pb.locator('.fi-time').all_inner_texts()
     check('footprints: the photo-time button switches to when photos were taken', pb.get_attribute('[data-action="foot-time"]', 'aria-pressed') == 'true' and ft1 and ft1[0].startswith('拍于'), ft1[:3])
     pb.click('[data-action="foot-time"]')

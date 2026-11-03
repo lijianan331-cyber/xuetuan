@@ -111,6 +111,7 @@
     if (opts.drop) setTimeout(function () { dropMarker(p); }, reduceMotion ? 0 : 900);
   }
   function back() {
+    if (state.view === 'messages') { dmBack(); return; }
     if (state.view === 'feed' && state.scope === 'saved') { closeFavorites(); return; }
     if (state.view === 'add' && formKeepsDraft(state.form)) { returnPostComposer(); return; }
     if (state.view === 'person') { leavePerson(); return; }

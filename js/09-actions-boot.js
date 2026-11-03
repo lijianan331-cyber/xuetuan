@@ -384,6 +384,7 @@
     var el = e.target.closest('[data-action]');
     if (!el) return;
     var a = el.dataset.action, d = el.dataset;
+    if (handleDMAction(a,el)) return;
     if (handleIdentityAction(a)) return;
     if (handleSocialAction(a,el)) return;
     switch (a) {
@@ -714,6 +715,7 @@
   applyStaticI18n(); renderChrome(); render(); setSnap(incomingShare ? 'full' : feedSnapNow('peek')); perfStart(); initMap();
   if (incomingShare) loadWorld().then(function () { if (shareCard && !shareCard.own && state.view === 'share') render(); }, function () {});
   dataReady.then(function () {
+    dmRefreshBadge(true);
     state.bootLoading = false;
     if (state.view === 'form') captureFormDraft();
     renderChrome(); refreshMap(); render();

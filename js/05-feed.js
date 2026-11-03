@@ -143,6 +143,7 @@
       ? '<button type="button" class="person-head ph-edit-btn" data-action="edit-profile" aria-label="' + esc(en ? 'Edit avatar and name' : '修改头像和名字') + '">' + head + '<span class="ph-pen">' + esc(en ? 'Edit' : '修改') + '</span></button>'
       : '<div class="person-head">' + head + '</div>';
     h += '<div class="person-stats"><span><b>' + food + '</b>' + esc(en ? 'food' : '美食') + '</span><span><b>' + scen + '</b>' + esc(en ? 'things to do' : '玩乐') + '</span><span><b>' + rs.length + '</b>' + esc(en ? 'posts' : '分享') + '</span></div>';
+    if (!mine && store.mode === 'remote') h += '<button type="button" class="btn small" data-action="dm-open" data-peer="' + esc(id) + '" data-name="' + esc(name) + '">' + esc(en ? 'Message' : '发私信') + '</button>';
     if (mine && !store.pagePublic(id)) h += '<p class="f-hint person-note">' + esc(en ? 'Only you can open this page now. Turn it on in Me so classmates can.' : '现在只有你自己点得进来；在“我的”里打开后，同学点你的名字也能进来。') + '</p>';
     else h += '<p class="f-hint person-note">' + esc(en ? 'Only places shared to the big map are shown.' : '只显示分享到大地图的记录。') + '</p>';
     h += rs.length ? '<ul class="post-grid">' + rs.map(postCardHTML).join('') + '</ul>'
