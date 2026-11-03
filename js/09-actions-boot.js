@@ -258,7 +258,7 @@
   function openLightbox(id, group) {
     if (group === 'place' && state.placeId) { openPlacePhotos(state.placeId, id); return; }
     var ids = $$('[data-action="photo"][data-group="' + group + '"]', view).map(function (b) { return b.dataset.id; });
-    lb = { ids: ids.length ? ids : [id], i: Math.max(0, ids.indexOf(id)) };
+    lb = { ids: ids.length ? ids : [id], i: Math.max(0, ids.indexOf(id)), reviewId:group==='post'?state.postId:group&&group.indexOf('rv-')===0?group.slice(3):null };
     lbOpenBox();
     showLightbox();
     syncNavGuard();
@@ -282,8 +282,9 @@
     $('#lb-count').textContent = multi ? (lb.i + 1) + ' / ' + lb.ids.length : '';
     var id = lb.ids[lb.i], clip = isClip(id), img = $('#lb-img'), vid = $('#lb-vid');
     var place = lb.place || (lb.placeIds && lb.placeIds[id]);
-    var comment = $('#lb-comment'), review = place && scopedReviews(place).find(function (r) { return (r.photos || []).indexOf(id) !== -1; });
-    comment.textContent = review ? [lb.placeIds ? placeTitle(placeById(place)) : '', authorLabel(review), review.rating == null ? '' : fmtScore(review.rating) + ' / 5', review.text].filter(Boolean).join(' · ') : '';
+    var comment = $('#lb-comment'), review = place ? scopedReviews(place).find(function (r) { return (r.photos || []).indexOf(id) !== -1; }) : lb.reviewId&&store.review(lb.reviewId);
+    if(review&&((review.photos||[]).indexOf(id)===-1||(review.visibility!=='public'&&!isMine(review))))review=null;
+    comment.textContent = review ? [photoDateLabel(id,review),lb.placeIds ? placeTitle(placeById(place)) : '', authorLabel(review), review.rating == null ? '' : fmtScore(review.rating) + ' / 5', review.text].filter(Boolean).join(' · ') : photoDateLabel(id);
     comment.hidden = !comment.textContent;
     img.hidden = clip; vid.hidden = !clip;
     if (clip) img.removeAttribute('src'); else { vid.pause(); vid.removeAttribute('src'); }

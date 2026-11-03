@@ -589,7 +589,7 @@
   }
   function trLangShort() { return { zh: '中文', en: 'ENG', kk: 'KAZ', id: 'IND' }[trLang()]; }
   function langButtonHTML() {
-    return '<button type="button" class="home-lang" data-action="lang-menu" aria-label="Language">Language</button>';
+    return '<button type="button" class="home-lang" data-action="lang-menu" aria-label="Language / 语言">ENG</button>';
   }
   function langSheetHTML() {
     var cur = trLang();

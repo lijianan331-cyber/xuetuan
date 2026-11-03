@@ -585,8 +585,8 @@
     if (ph.preview && ph.preview !== ph.url) URL.revokeObjectURL(ph.preview);
     if (!ph.uploadedPath && !store.hasPhotoURL(ph.id)) URL.revokeObjectURL(ph.url);
   }
-  /* 发帖也读照片的拍摄时间（用户 2026-11-01）：记录的日期用最早那张照片拍的时间，
-     首页按这个时间推，几年前的照片不会被当成新动态。读不到就用保存的时间 */
+  /* 记录的到访日期用最早那张照片的拍摄时间，读不到就用保存时间。
+     首页另按首次记录/补图时间排序，评分和文字编辑不刷新时间。 */
   function formTakenAt(f, file) {
     /* 照片里没有拍摄时间（有的手机交给网页时会去掉）就退回文件的修改时间，和批量添加一样（用户 2026-11-02：单条加的照片显示“刚刚”） */
     function use(ts) {

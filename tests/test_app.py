@@ -1331,13 +1331,13 @@ with sync_playwright() as p:
     check('v1 data migrated (0 -> not rated)', st5['version'] == 2 and [r['rating'] for r in st5['reviews']] == [None, 3] and st5['wishlist'] == [], st5)
     tab(page5, 'home')
     lb = page5.evaluate('(() => { const b = document.querySelector(".home-top .home-lang"); return [!!b, b && b.textContent, document.querySelectorAll(".home-favorites").length]; })()')
-    check('home top-right: a language button (shows the current language) replaced the favorites star', lb == [True, 'Language', 0], lb)
+    check('home top-right: a compact ENG language menu button replaced the favorites star', lb == [True, 'ENG', 0], lb)
     page5.click('.home-lang'); page5.wait_for_timeout(250)
     opts = page5.locator('#bsheet [data-action="pick-lang"]').all_inner_texts()
     check('language menu offers 中文, English, Kazakh, Indonesian (Arabic dropped)', opts == ['中文', 'English', 'Қазақша', 'Bahasa Indonesia'], opts)
     page5.click('#bsheet [data-lang="kk"]'); page5.wait_for_timeout(250)
     lb2 = page5.evaluate('[state.lang, document.querySelector(".home-lang").textContent, document.querySelector("#bsheet").hidden, document.documentElement.lang]')
-    check('picking Kazakh: the button reads KAZ, menu closes, page lang kk', lb2 == ['en', 'Language', True, 'kk'], lb2)
+    check('picking Kazakh: the button stays ENG, menu closes, page lang kk', lb2 == ['en', 'ENG', True, 'kk'], lb2)
     tabs_kk = page5.inner_text('#tabbar')
     check('Kazakh: buttons and tabs are in Kazakh (Басты бет), categories too', 'Басты бет' in tabs_kk and page5.evaluate('catName(CATS.food[0])') == 'Қытай асханасы', tabs_kk)
     cov = page5.evaluate('''(() => { const U = window.XUETUAN_UI, miss = [];
@@ -1360,7 +1360,7 @@ with sync_playwright() as p:
     page5.evaluate("delete window.__translate; closeBSheet(); setTab('home')"); page5.wait_for_timeout(200)
     page5.click('.home-lang'); page5.wait_for_timeout(200); page5.click('#bsheet [data-lang="id"]'); page5.wait_for_timeout(250)
     idl = [page5.inner_text('.home-lang'), page5.evaluate('document.documentElement.lang'), 'Beranda' in page5.inner_text('body'), page5.evaluate('t("filterReset")')]
-    check('picking Indonesian: IND, page lang id, Beranda tab, filter Reset reads Atur ulang', idl == ['Language', 'id', True, 'Atur ulang'], idl)
+    check('picking Indonesian: ENG menu, page lang id, Beranda tab, filter Reset reads Atur ulang', idl == ['ENG', 'id', True, 'Atur ulang'], idl)
     page5.click('.home-lang'); page5.wait_for_timeout(200); page5.click('#bsheet [data-lang="en"]'); page5.wait_for_timeout(250)
     check('picking English goes back to English text', page5.evaluate('[state.lang, t("filterReset"), document.documentElement.lang]') == ['en', 'Reset', 'en'])
     page5.evaluate("setTab('me')"); page5.wait_for_timeout(250)
@@ -1370,7 +1370,7 @@ with sync_playwright() as p:
     check('Me page top right: a language button (ENG) opens the same 4-language menu, no 中|EN pill', ml == ['ENG', 0, 4], ml)
     page5.click('#bsheet [data-lang="zh"]'); page5.wait_for_timeout(250)
     page5.evaluate("setTab('home')"); page5.wait_for_timeout(250)
-    check('picking 中文 switches everything back', page5.evaluate('state.lang') == 'zh' and page5.inner_text('.home-lang') == 'Language')
+    check('picking 中文 switches everything back', page5.evaluate('state.lang') == 'zh' and page5.inner_text('.home-lang') == 'ENG')
     check('review photos show no repeated "Uploaded / 上传" date text', page5.evaluate('document.querySelectorAll(".photo-date").length') == 0)
     check('home: only old shares -> says nothing new this month and offers older ones', '最近一个月' in page5.inner_text('.home-empty') and page5.locator('[data-action="home-all-time"]').count() == 1)
     page5.click('[data-action="home-all-time"]')
@@ -2663,7 +2663,7 @@ with sync_playwright() as p:
        {id:'hf-scenery',place_id:'hf-travel',title:'首页新玩乐',rating:3,visibility:'public',updated_at:new Date(now-1000).toISOString()},
        {id:'hf-private',place_id:pid,title:'绝不公开的测试',rating:5,visibility:'private'},
        {id:'hf-old',place_id:pid,title:'旧动态测试',rating:4.5,visibility:'public',created_at:'2020-01-01T00:00:00Z',updated_at:'2020-01-01T00:00:00Z'},
-       {id:'hf-updated',place_id:pid,title:'补图后的旧足迹',rating:4,visibility:'public',created_at:'2020-01-01T00:00:00Z',updated_at:new Date(now).toISOString()}].forEach(r=>d.visits.push({user_id:d.visits.find(v=>v.place_id===pid).user_id,created_at:new Date(now).toISOString(),photos:['fixture.jpg'],text:'测试正文',...r}));
+       {id:'hf-updated',photos:['ph-'+now.toString(36)+'abcde.jpg'],place_id:pid,title:'补图后的旧足迹',rating:4,visibility:'public',created_at:'2020-01-01T00:00:00Z',updated_at:new Date(now).toISOString()}].forEach(r=>d.visits.push({user_id:d.visits.find(v=>v.place_id===pid).user_id,created_at:new Date(now).toISOString(),photos:['fixture.jpg'],text:'测试正文',...r}));
     }''',pv['place_id'])
     page6.evaluate('document.dispatchEvent(new Event("visibilitychange"))')
     page6.wait_for_selector('.post-card:has-text("首页新美食")')

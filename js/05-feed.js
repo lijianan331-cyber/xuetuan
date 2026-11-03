@@ -3,7 +3,7 @@
   /* ================= 首页 =================
    * 上面一张地图预览（点了去探索），下面是大家最新分享的记录：两列图文卡片，点卡片看帖子。
    * 只放真实的公开记录，不放示例；没有就诚实地说没有（V2.0） */
-  /* 首页按最近保存/补图时间排序；到访原日期独立显示（用户 2026-11-02）。 */
+  /* 首页按首次记录/补图时间排序，修改评分或文字不顶到最新；到访原日期独立显示。 */
   function homeTime(r) { return reviewActivityAt(r); }
   function homeEligible() { return store.reviews().filter(function (r) { return r.visibility === 'public' && !r.sample && r.photos && r.photos.length > 0 && placeById(r.placeId); }); }
   function homeReviews() {
@@ -24,11 +24,11 @@
   function homeFiltersHTML() {
     var en = state.lang === 'en', n = Number(state.homeDays !== HOME_DAYS) + Number(!!state.homeMin) + Number(state.homeSort !== 'newest');
     return '<div class="home-filters"><div class="home-filter-row">' + [['all',en?L('All'):'全部'],['food',t('food')],['travel',t('scenery')]].map(function (o) { return '<button type="button" class="chip" data-action="home-mode" data-v="' + o[0] + '" aria-pressed="' + (state.homeMode === o[0]) + '">' + esc(o[1]) + '</button>'; }).join('') +
-      '<div class="home-filter-menu"><button type="button" class="btn ghost home-filter-toggle" data-action="home-filters" aria-expanded="' + state.homeFiltersOpen + '" aria-controls="home-filter-panel">' + CTRL_ICON.filter + esc(en?L('Filter'):'筛选') + (n ? '<span class="home-filter-count">' + n + '</span>' : '') + '</button><div class="home-filter-panel" id="home-filter-panel"' + (state.homeFiltersOpen ? '' : ' hidden') + '>' +
+      '<div class="home-filter-actions"><div class="home-filter-menu"><button type="button" class="btn ghost home-filter-toggle" data-action="home-filters" aria-expanded="' + state.homeFiltersOpen + '" aria-controls="home-filter-panel">' + CTRL_ICON.filter + esc(en?L('Filter'):'筛选') + (n ? '<span class="home-filter-count">' + n + '</span>' : '') + '</button><div class="home-filter-panel" id="home-filter-panel"' + (state.homeFiltersOpen ? '' : ' hidden') + '>' +
       homeSelect('home-days',en?L('Time'):'时间',state.homeDays,[[3,en?L('3 days'):'最近三天'],[7,en?L('1 week'):'最近一周'],[30,en?L('1 month'):'最近一个月'],[0,en?L('All time'):'全部时间']]) +
       homeSelect('home-min',en?L('Rating'):'评分',state.homeMin,[[0,en?L('Any rating'):'不限评分'],[3,en?'3+':'3分以上'],[4,en?'4+':'4分以上'],[4.5,en?'4.5+':'4.5分以上']]) +
       homeSelect('home-sort',en?L('Sort'):'排序',state.homeSort,[['newest',en?L('Newest'):'最新动态'],['rating',en?L('Top rated'):'评分优先']]) + '</div></div>' +
-      '<button type="button" class="btn ghost home-refresh" data-action="home-refresh">' + esc(en?L('Refresh'):'刷新') + '</button></div></div>' +
+      '<button type="button" class="btn ghost home-refresh" data-action="home-refresh">' + esc(en?L('Refresh'):'刷新') + '</button></div></div></div>' +
       '<button type="button" class="btn ghost home-updates" data-action="home-apply" hidden>' + esc(en?L('New content · tap to update'):'有新内容，点击更新') + '</button>' +
       '<p class="home-privacy">' + ICON_LOCK + esc(en?L('Only public records with photos appear here. Private footprints stay private.'):'仅展示带图片的公开记录，私人足迹不会自动公开。') + '</p>';
   }
@@ -107,7 +107,7 @@
       '<button type="button" class="btn small ghost danger-text" data-action="del-review" data-id="' + esc(r.id) + '">' + esc(t('del')) + '</button>' : '';
     var h = '<div class="view-top"><button type="button" class="icon-btn flat" data-action="back" aria-label="' + esc(t('back')) + '">' + ICON.back + '</button></div>';
     if (r.photos && r.photos.length) h += '<div class="photo-strip">' + r.photos.map(function (id) {
-      return '<button type="button" class="ph" data-action="photo" data-id="' + esc(id) + '" data-group="post"><img data-photo="' + esc(id) + '" data-small alt=""></button>';
+      return '<button type="button" class="ph dated" data-action="photo" data-id="' + esc(id) + '" data-group="post"><img data-photo="' + esc(id) + '" data-small alt="">'+photoDateHTML(id,r)+'</button>';
     }).join('') + '</div>';
     var pw = avatarHTML(name, r.authorId) + '<span class="pw-text"><b>' + esc(name) + '</b><small>' + (from ? esc(t('fromPrefix') + from) + ' · ' : '') + esc(reviewTimeLabel(r)) + '</small></span>';
     h += personAttr(r.authorId)
@@ -262,7 +262,8 @@
       (beenThere(p) ? '' : quickRateHTML('place-score', p.mode, false)) +
       /* 照片放中间一大张，左右滑；右下角小按钮才放大看（用户 2026-11-01） */
       (photos.length ? '<div class="place-hero' + (photos.length === 1 ? ' single' : '') + '"><div class="hero-track" id="hero-track">' + photos.map(function (id) {
-        return '<div class="hero-slide' + (isClip(id) ? ' is-clip' : '') + '" data-id="' + esc(id) + '" data-action="hero-photo"><img data-photo="' + esc(id) + '" data-small alt=""></div>';
+        var owner=reviews.find(function(r){return (r.photos||[]).indexOf(id)!==-1;});
+        return '<div class="hero-slide' + (isClip(id) ? ' is-clip' : '') + '" data-id="' + esc(id) + '" data-action="hero-photo"><img data-photo="' + esc(id) + '" data-small alt="">'+photoDateHTML(id,owner)+'</div>';
       }).join('') + '</div>' +
         (photos.length > 1 ? '<span class="hero-count" id="hero-count">1 / ' + photos.length + '</span>' : '') +
         '<button type="button" class="hero-zoom" data-action="hero-zoom" aria-label="' + esc(state.lang === 'en' ? L('View larger') : '放大看') + '">' + ICON.expand + '</button></div>' : '');
@@ -362,7 +363,7 @@
     var f = state.form;
     if (!f) { goFeed(); return; }
     var p = f.placeId ? placeById(f.placeId) : null;
-    var isFood = (p ? p.mode : state.mode) === 'food';
+    var formMode = p ? p.mode : state.mode, isFood = formMode === 'food';
     var placeFields = formHasPlaceFields(f, p), combined = f.post || !!(f.draft && f.draft.title);
     var share = f.visibility === 'public';
     var curLoc = formCurLoc(f, p), cur = p ? curSym(p) : curSymAt(curLoc && ccNow(curLoc.lat, curLoc.lng));
@@ -378,7 +379,7 @@
       else h += '<div class="form-place">' + catIconHTML(p ? catOf(p) : catOf({ mode: state.mode, cat: f.cat })) + '<b>' + esc(p ? placeTitle(p) : ((f.draft && f.draft.name) || t(isFood ? 'unnamedFood' : 'unnamedTravel'))) + '</b></div>';
       h += '<div class="btn-row"><button type="button" class="btn" id="post-location" data-action="post-location">' + ICON.pin + esc(state.lang === 'en' ? L('Change place') : '更换地点') + '</button><button type="button" class="btn ghost" data-action="post-map">' + esc(t('addPin')) + '</button></div>';
       if (placeFields) h += '<div class="field"><span class="f-label" id="lbl-cat">' + esc(t('category')) + '</span><div class="chips-wrap one-line" role="group" aria-labelledby="lbl-cat">' +
-        catChoices(state.mode).map(function (c) {
+        catChoices(formMode).map(function (c) {
           return '<button type="button" class="chip" data-action="f-cat" data-cat="' + c.id + '" aria-pressed="' + (f.cat === c.id) + '">' + catIconHTML(c) + esc(catName(c)) + '</button>';
         }).join('') + '</div><p class="f-hint cat-guess" id="cat-guess" hidden></p></div>';
     }
@@ -389,7 +390,7 @@
       else h += fieldHTML('f-name', esc(t('name')), '<input id="f-name" class="input" maxlength="60"' + (f.lockedName ? ' readonly' : '') + ' placeholder="' + esc(t(isFood ? 'namePhFood' : 'namePhTravel')) + '">');
       h += '<div class="f-loc"><span>' + esc(t('location')) + '：' + f.loc.lat.toFixed(5) + ', ' + f.loc.lng.toFixed(5) + '</span><button type="button" class="link-btn" data-action="repick">' + esc(t('repick')) + '</button></div>';
       if (!f.post) h += '<div class="field"><span class="f-label" id="lbl-cat">' + esc(t('category')) + '</span><div class="chips-wrap one-line" role="group" aria-labelledby="lbl-cat">' +
-        catChoices(state.mode).map(function (c) {
+        catChoices(formMode).map(function (c) {
           return '<button type="button" class="chip" data-action="f-cat" data-cat="' + c.id + '" aria-pressed="' + (f.cat === c.id) + '">' + catIconHTML(c) + esc(catName(c)) + '</button>';
         }).join('') + '</div><p class="f-hint cat-guess" id="cat-guess" hidden></p></div>';
     }

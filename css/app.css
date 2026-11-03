@@ -468,6 +468,13 @@ body[data-snap="page"] .panel-body { padding-top: env(safe-area-inset-top, 0px);
 .hero-slide { position: relative; flex: 0 0 calc(100% - 64px); height: 236px; border-radius: 16px; overflow: hidden; background: var(--surface-2); scroll-snap-align: start; }
 .hero-slide:only-child { flex-basis: 100%; }
 .hero-slide img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.hero-slide:has(.photo-date) img { height:calc(100% - 24px); }
+.hero-slide .photo-date { height:24px; padding:3px 10px; background:var(--surface); text-align:left; font-size:12px; }
+.place-hero:has(.photo-date) .hero-count, .place-hero:has(.photo-date) .hero-zoom { bottom:34px; }
+.photo-strip .ph.dated { display:flex; flex-direction:column; height:auto; background:none; overflow:visible; border-radius:0; }
+.photo-strip .ph.dated img { height:136px; border-radius:14px; }
+.photo-strip .ph.dated:only-child img { height:180px; }
+.photo-strip .ph.dated .photo-date { font-size:12px; }
 .hero-slide.is-clip::after { content: '▶'; position: absolute; left: 10px; top: 10px; width: 24px; height: 24px; border-radius: 50%; background: rgba(0,0,0,.45); color: #fff; font-size: 11px; display: grid; place-items: center; }
 .hero-count { position: absolute; left: 28px; bottom: 10px; padding: 2px 9px; border-radius: 10px; background: rgba(10, 20, 30, .42); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); color: #fff; font-size: 11.5px; font-weight: 600; font-variant-numeric: tabular-nums; pointer-events: none; }
 .hero-zoom { position: absolute; right: 92px; bottom: 10px; width: 32px; height: 32px; padding: 0; border: 0; border-radius: 50%; background: rgba(10, 20, 30, .42); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); color: #fff; display: grid; place-items: center; }
@@ -678,6 +685,8 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
 .is-clip::after, .is-gif::after { position: absolute; left: 5px; bottom: 5px; padding: 1px 5px; border-radius: 6px; background: rgba(0,0,0,.55); color: #fff; font: 600 10px/1.5 system-ui, sans-serif; pointer-events: none; }
 .is-clip::after { content: '▶'; }
 .is-gif::after { content: 'GIF'; }
+.hero-slide.is-gif:has(.photo-date)::after { bottom:29px; }
+.ph.dated:has(.photo-date)::after, .ph.sm:has(.photo-date)::after { bottom:25px; }
 .ph-del { position: absolute; top: 4px; right: 4px; width: 24px; height: 24px; padding: 0; border: 0; border-radius: 50%; background: rgba(10, 25, 40, .6); color: #fff; font-size: 16px; line-height: 1; display: grid; place-items: center; }
 .ph-add {
   width: 72px; height: 72px; border: 1.5px dashed var(--line); border: 1.5px dashed color-mix(in srgb, var(--accent) 35%, var(--line)); border-radius: 14px; background: none; color: var(--accent);
@@ -741,11 +750,14 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
 .view-top + .photo-strip .ph { width: calc(100% - 64px); height: 280px; border-radius: 16px; scroll-snap-align: start; }
 .view-top + .photo-strip .ph:only-child { width: 100%; height: 300px; }
 .home-filters { display: flex; flex-direction: column; gap: 7px; margin-bottom: 10px; }
-.home-filter-row { display: flex; gap: 6px; align-items: center; }
+.home-filter-row { display: flex; flex-wrap:wrap; gap: 6px; align-items: center; }
 /* 全部 / 美食 / 美景：和“我的”页一样的分段条；筛选、刷新是两个轻的小按钮，不再是带框的大胶囊 */
-.home-filter-row > .chip { height: 30px; padding: 0 13px; font-size: 13px; color: var(--muted); }
+.home-filter-row > .chip { flex:none; height: 30px; padding: 0 13px; font-size: 13px; color: var(--muted); }
 .home-filter-row > .chip[aria-pressed="true"] { color: var(--accent); }
 .home-filter-menu { position: relative; margin-left: auto; }
+.home-filter-actions { position:relative; display:flex; flex:none; gap:6px; margin-left:auto; max-width:100%; }
+.home-filter-actions .home-filter-menu { position:static; margin-left:0; }
+.home-filter-actions .home-filter-panel { width:min(248px,calc(100vw - 44px)); }
 .home-filter-toggle, .home-refresh { height: 30px; min-height: 30px; padding: 0 11px; border: 0; background: var(--surface-2); color: #4D5E70; font-size: 12.5px; font-weight: 600; }
 .home-filter-toggle[aria-expanded="true"] { background: var(--accent-soft); color: var(--accent); }
 .home-filter-toggle { gap: 4px; }

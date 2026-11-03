@@ -1533,13 +1533,13 @@
     var dt = new Date(ts);
     return dt.getFullYear() + '-' + String(dt.getMonth() + 1).padStart(2, '0') + '-' + String(dt.getDate()).padStart(2, '0');
   }
-  /* 拍摄/到访时间保留；动态按最近保存或已知照片上传时间排序。 */
+  /* 内容编辑不刷新展示时间；只看原记录日期与照片ID中已有的添加时间。updated_at保留作内部修改时间。 */
   function photoUploadedAt(id) {
     var m = /(?:^|\/)ph-([0-9a-z]{8})/.exec(String(id || '')), n = m ? parseInt(m[1], 36) : 0;
     return n > 1.6e12 && n <= Date.now() + 864e5 ? n : 0;
   }
   function reviewActivityAt(r) {
-    return Math.max(Number(r.createdAt) || 0, Number(r.updatedAt) || 0,
+    return Math.max(Number(r.createdAt) || 0,
       (r.photos || []).reduce(function (latest, id) { return Math.max(latest, photoUploadedAt(id)); }, 0));
   }
   function visitDay(ts) {
@@ -1552,8 +1552,15 @@
     return (state.lang === 'en' ? L('Visited ') : '到访 ') + visitDay(r.createdAt) +
       (changed ? ' · ' + (state.lang === 'en' ? L('Updated ') : '更新于 ') + timeAgo(at) : ' · ' + timeAgo(at));
   }
-  /* 缩略图下面不再写“上传 / 到访”日期：评论上方已经有“到访 … · 更新于 …”（用户 2026-11-02：文字重复） */
-  function photoDateHTML() { return ''; }
+  function photoDateInfo(id,r) {
+    var uploaded=photoUploadedAt(id), at=uploaded||Number(r&&r.createdAt)||0;
+    return {at:at,label:uploaded?(state.lang==='en'?'Added ':'添加 '):(state.lang==='en'?'Visit date ':'记录日期 ')};
+  }
+  function photoDateLabel(id,r) { var d=photoDateInfo(id,r);return d.at?d.label+visitDay(d.at):''; }
+  function photoDateHTML(id,r) {
+    var d=photoDateInfo(id,r);if(!d.at)return '';
+    return '<time class="photo-date" datetime="'+esc(new Date(d.at).toISOString())+'" title="'+esc(photoDateLabel(id,r))+'" aria-label="'+esc(photoDateLabel(id,r))+'">'+esc(visitDay(d.at))+'</time>';
+  }
   function safeURL(u) {
     u = (u || '').trim();
     if (!u) return '';

@@ -17,7 +17,7 @@ with sync_playwright() as p:
  c.add_init_script('window.__sbSeed='+json.dumps(seed,ensure_ascii=False)+';')
  pg=c.new_page();pg.set_default_timeout(6000);errors=[];pg.on('pageerror',lambda e:errors.append(str(e)))
  pg.goto(s['APP']);pg.wait_for_function('!state.bootLoading')
- for file in ['stub_messages.js','stub_activity.js']:pg.evaluate(Path(__file__).with_name(file).read_text(encoding='utf-8'))
+ for file in ['stub_messages.js','stub_activity.js','stub_feedback.js']:pg.evaluate(Path(__file__).with_name(file).read_text(encoding='utf-8'))
  pg.evaluate('(id)=>{for(let i=1;i<=35;i++)__activity.rows.push({recipient:id,seq:i,event_type:i===35?"like":i===34?"reply":"comment",visit_id:"post",title:"合成分享",body:"<img src=x onerror=alert(1)> 测试评论 "+i,name:"合成同学",created_at:"2026-11-03T08:00:00Z",is_read:false,total:3});}',A)
  def login(user,guest=False):
   pg.evaluate('(v)=>__sbLogin(v[0],v[1]?"":"synthetic@example.com",{is_anonymous:v[1]})',[user,guest]);pg.wait_for_function('(id)=>me().id===id',arg=user)
@@ -48,7 +48,7 @@ with sync_playwright() as p:
  check('late old identity results are discarded',pg.evaluate('dmPanel.owner===me().id&&dmPanel.rows.length===0'))
  login(G,True);pg.evaluate('(id)=>__activity.rows.push({recipient:id,seq:80,event_type:"reply",visit_id:"post",title:"合成分享",body:"回复游客",name:"合成同学",is_read:false})',G)
  pg.evaluate('openMessages()');ready('comments');check('guest can receive replies',pg.locator('[data-action=dm-activity-open]').count()==1)
- pg.locator('[data-action=dm-tab][data-kind=inbox]').tap();pg.wait_for_selector('#modal:not([hidden])')
+ pg.evaluate('(id)=>openMessages(id,"合成同学")',B);pg.wait_for_selector('#modal:not([hidden])')
  check('guest private chat still requires binding',pg.evaluate('dmPanel.kind==="comments"') and '私信需要登录' in pg.inner_text('#modal'))
  pg.locator('[data-modal=no]').tap();pg.locator('[data-action=back]').tap();pg.wait_for_function('state.view!=="messages"')
  check('root activity returns to original screen',pg.evaluate('dmPanel===null'))
