@@ -582,7 +582,7 @@
     var en = state.lang === 'en';
     function menu(icon,title,sub,action,href){return '<'+(href?'a href="'+href+'"':'button type="button" data-action="'+action+'"')+' class="me-menu-row">'+icon+'<span><b>'+esc(title)+'</b>'+(sub?'<small>'+esc(sub)+'</small>':'')+'</span><i aria-hidden="true">›</i></'+(href?'a':'button')+'>';}
     var h = meHeadHTML() + '<div class="me-shortcuts">' +
-      (remote ? menu(dmIcon,en?L('Messages'):'消息',en?L('Requests and conversations'):'私信申请与聊天','dm-open').replace('</b>','</b>'+dmBadgeHTML()) : '') +
+      (remote ? menu(dmIcon,en?L('Messages'):'消息',en?L('Likes, comments and chats'):'点赞、评论与私信','dm-open').replace('</b>','</b>'+dmBadgeHTML()) : '') +
       menu(CTRL_ICON.arrow,en?L('Share my footprints'):'分享我的足迹',en?L('Maps and memories to take with you'):'把去过的地方，做成一张地图','my-share') +
       menu(ICON.home,t('homesBtn'),publicHomeCount()?t('homesN',{n:publicHomeCount()}):'', 'homes-open').replace('me-menu-row','me-menu-row me-homes') +
 '</div><div class="form me-settings">' + personal +

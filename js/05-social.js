@@ -1,4 +1,4 @@
-/* Lightweight post discussion. No home counters, notification centre, polling or private messages. */
+/* Lightweight public post discussion. Activity notifications and private chats live in 05-messages.js. */
 'use strict';
 var socialPanel = null, socialDrafts = new Map(), socialWrites = new Map(), socialEpoch = 0;
 var socialHeart = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M20.5 4.8a5.4 5.4 0 0 0-7.6 0l-.9.9-.9-.9a5.4 5.4 0 0 0-7.6 7.6L12 21l8.5-8.6a5.4 5.4 0 0 0 0-7.6Z"/></svg>';

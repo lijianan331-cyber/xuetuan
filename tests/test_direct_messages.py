@@ -26,7 +26,7 @@ with sync_playwright() as p:
  def chat():pg.locator('[data-action=dm-thread]').first.tap();ready('thread')
  def send(text):pg.locator('#dm-body').fill(text);pg.locator('[data-action=dm-send]').tap()
  def settled():pg.wait_for_function('dmPanel&&!dmBusy(dmPanel)&&!dmPanel.loading')
- pg.evaluate('openMessages()');pg.wait_for_selector('#modal:not([hidden])')
+ pg.evaluate('(id)=>openMessages(id,"合成同学乙")',C);pg.wait_for_selector('#modal:not([hidden])')
  check('anonymous users see login gate without creating another identity',not any(x[0]=='anon' for x in pg.evaluate('window.__sb.calls')))
  pg.locator('[data-modal=no]').tap();login(B)
  pg.evaluate('(id)=>openPerson(id)',C);pg.wait_for_selector('[data-action=dm-open][data-peer]')
