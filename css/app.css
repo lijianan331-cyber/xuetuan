@@ -1151,3 +1151,7 @@ button.pc-place { background: transparent; }
 .person-card { text-align: center; }
 .person-card .avatar { width: 56px; height: 56px; font-size: 22px; margin: 0 auto 8px; }
 .person-card .btn-row { justify-content: center; }
+
+/* Compact Halal filter beside food categories. */
+.halal-filter { display:inline-flex; align-items:center; justify-content:center; flex:none; width:36px; height:36px; margin-left:10px; padding:0; border:1px solid var(--hairline); border-radius:50%; background:var(--surface-2); color:var(--muted); font-family:inherit; font-size:10px; font-weight:600; cursor:pointer; }
+.halal-filter[aria-checked="true"] { background:#17804A; border-color:#17804A; color:#fff; }

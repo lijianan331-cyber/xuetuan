@@ -198,13 +198,7 @@
     trimBaseLabels();
     saveView();
     if (state.view === 'feed') render();
-    /* 换吃 / 玩时地图基本不动（用户 2026-10-27 嫌一换就飞到地球或一下放很大）：
-       玩时贴得太近就退到 TRAVEL_ZOOM（10 级用户嫌远，改 11）；吃时在看整个大洲以上，回到自己附近 */
-    if (map && !opts.noFly) {
-      var z = map.getZoom();
-      if (mode === 'travel' && z > TRAVEL_ZOOM) map.easeTo({ zoom: TRAVEL_ZOOM, duration: reduceMotion ? 0 : 500, padding: mapPadding() });
-      if (mode === 'food' && z < 5) flyTo([(state.me || XMUM).lng, (state.me || XMUM).lat], 12);
-    }
+    /* Switching food / things to do keeps the current camera; explicit location buttons still move it. */
   }
 
   function setLang(lang) {

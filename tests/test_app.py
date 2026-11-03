@@ -384,10 +384,10 @@ with sync_playwright() as p:
 
     # travel mode（探索地图上切换）
     tab(page, 'explore')
-    page.evaluate('window.__map.jumpTo({zoom: 14.5})')
+    page.evaluate('window.__map.jumpTo({zoom: 14.5});window.__switchCamera={center:window.__map.getCenter(),moves:window.__map.calls.filter(c=>c[0]==="move").length}')
     set_mode(page, 'travel')
     mv = page.evaluate('window.__map.calls.filter(c => c[0] === "move").slice(-1)[0][1]')
-    check('switching to travel only steps back to zoom 11, no jump to the globe', mv.get('zoom') == 11 and 'center' not in mv, mv)
+    check('switching to travel keeps center and zoom without moving', page.evaluate('window.__map.getZoom()===14.5&&JSON.stringify(window.__map.getCenter())===JSON.stringify(window.__switchCamera.center)&&window.__map.calls.filter(c=>c[0]==="move").length===window.__switchCamera.moves'))
     # 回 XMUM：定位按钮左边的学士帽，玩的地图回到 11 级，吃的地图回到 14.6 级
     page.evaluate('window.__map.jumpTo({center: [100.3, 5.4], zoom: 9})')
     page.click('.campus-btn')
