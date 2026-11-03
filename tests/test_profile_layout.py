@@ -15,10 +15,18 @@ with sync_playwright() as p:
  half=camera['padding']['bottom'];pg.evaluate("setSnap('peek')");camera=pg.evaluate('window.__map.calls.filter(c=>c[0]==="move").at(-1)[1]');assert camera['padding']['bottom']<half
  pg.evaluate("window.__map.jumpTo({center:[100,10]});setSnap('half')");camera=pg.evaluate('window.__map.calls.filter(c=>c[0]==="move").at(-1)[1]');assert camera['center']==[100,10]
  print('PASS global profile starts facing UTC+8, with upright camera and panel-aware padding; user rotation retained',flush=True)
- pg.evaluate("setTab('explore');openPlace('0');setSnap('full')");pg.locator('[data-action=visit-privacy][data-id=v0][data-v=private]').click();pg.wait_for_function('store.review("v0").visibility==="private"&&!visibilityBusy')
- assert pg.locator('[data-action=visit-privacy][data-id=v0][data-v=public]').count()==1 and pg.locator('[data-action=visit-privacy][data-id=v0][data-v=private]').get_attribute('aria-pressed')=='true'
- pg.locator('[data-action=visit-privacy][data-id=v0][data-v=public]').click();pg.wait_for_function('store.review("v0").visibility==="public"&&!visibilityBusy')
- assert pg.evaluate('store.review("v0").text')=='合成体验';print('PASS own review privacy toggles both ways without losing the review or text',flush=True)
+ pg.evaluate("setTab('explore');openPlace('0');setSnap('full')");pg.locator('.review-visibility[data-id=v0]').click();pg.wait_for_function('store.review("v0").visibility==="private"&&!visibilityBusy')
+ assert pg.locator('.review-visibility[data-id=v0]').count()==1 and pg.locator('.review-visibility[data-id=v0]').get_attribute('aria-checked')=='false'
+ pg.locator('.review-visibility[data-id=v0]').click();pg.wait_for_function('store.review("v0").visibility==="public"&&!visibilityBusy')
+ assert pg.evaluate('store.review("v0").text')=='合成体验';
+ switch=pg.locator('.review-visibility[data-id=v0]')
+ switch.dispatch_event('pointerdown',{'pointerId':1,'clientX':100,'clientY':100});pg.dispatch_event('body','pointerup',{'pointerId':1,'clientX':70,'clientY':100});pg.wait_for_function('store.review("v0").visibility==="private"&&!visibilityBusy')
+ switch=pg.locator('.review-visibility[data-id=v0]');switch.dispatch_event('pointerdown',{'pointerId':2,'clientX':70,'clientY':100});pg.dispatch_event('body','pointerup',{'pointerId':2,'clientX':100,'clientY':100});pg.wait_for_function('store.review("v0").visibility==="public"&&!visibilityBusy')
+ pg.locator('.review-visibility[data-id=v0]').dispatch_event('click');assert pg.evaluate('store.review("v0").visibility==="public"')
+ assert pg.evaluate('(()=>{let a=document.querySelector("[data-action=del-review]").getBoundingClientRect(),b=document.querySelector(".review-visibility").getBoundingClientRect();return b.left>a.right&&Math.abs(b.top-a.top)<5})()')
+ assert pg.evaluate('(()=>{let y=[...document.querySelectorAll(".stats .stat small")].map(e=>e.getBoundingClientRect().top);return Math.max(...y)-Math.min(...y)<1})()')
+ pg.screenshot(path=str(Path(ns['SHOTS'])/'review-inline-public-switch.png'))
+ print('PASS own review privacy toggles both ways without losing the review or text',flush=True)
  pg.evaluate("setTab('home');openPostComposer()");assert pg.locator('#f-text').count()==0
  assert pg.evaluate('document.querySelector("#f-photos").compareDocumentPosition(document.querySelector("#post-location"))&Node.DOCUMENT_POSITION_FOLLOWING')
  assert pg.evaluate('document.querySelector("#post-location").compareDocumentPosition(document.querySelector("#f-title"))&Node.DOCUMENT_POSITION_FOLLOWING')

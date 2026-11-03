@@ -594,7 +594,6 @@
   function langSheetHTML() {
     var cur = trLang();
     return '<div class="bsheet-head"><h3>' + esc(state.lang === 'en' ? L('Language') : '语言') + '</h3></div>' +
-      '<p class="f-hint">' + esc(state.lang === 'en' ? L('Kazakh and Indonesian also translate the buttons; reviews and posts translate when you tap “Translate”.') : '选哈萨克语或印尼语，按钮文字也会换；点评和帖子点「翻译」再翻。') + '</p>' +
       '<div class="lang-list">' + TR_LANGS.map(function (l) {
         return '<button type="button" class="lang-opt" data-action="pick-lang" data-lang="' + l[0] + '" aria-pressed="' + (cur === l[0]) + '">' + esc(l[1]) + '</button>';
       }).join('') + '</div>';

@@ -29,8 +29,7 @@
       homeSelect('home-min',en?L('Rating'):'评分',state.homeMin,[[0,en?L('Any rating'):'不限评分'],[3,en?'3+':'3分以上'],[4,en?'4+':'4分以上'],[4.5,en?'4.5+':'4.5分以上']]) +
       homeSelect('home-sort',en?L('Sort'):'排序',state.homeSort,[['newest',en?L('Newest'):'最新动态'],['rating',en?L('Top rated'):'评分优先']]) + '</div></div>' +
       '<button type="button" class="btn ghost home-refresh" data-action="home-refresh">' + esc(en?L('Refresh'):'刷新') + '</button></div></div></div>' +
-      '<button type="button" class="btn ghost home-updates" data-action="home-apply" hidden>' + esc(en?L('New content · tap to update'):'有新内容，点击更新') + '</button>' +
-      '<p class="home-privacy">' + ICON_LOCK + esc(en?L('Only public records with photos appear here. Private footprints stay private.'):'仅展示带图片的公开记录，私人足迹不会自动公开。') + '</p>';
+      '<button type="button" class="btn ghost home-updates" data-action="home-apply" hidden>' + esc(en?L('New content · tap to update'):'有新内容，点击更新') + '</button>';
   }
   var homeSyncPromise = null, homeApplyRequested = false;
   function homeVisible() { return !state.bootLoading && !document.hidden && state.tab === 'home' && state.view === 'feed' && !state.picking; }
@@ -129,8 +128,22 @@
       saveBtnHTML(p.id, false) + (own || moderationControl(r) ? '<span class="post-own">' + own + moderationControl(r) + '</span>' : '') + '</div>';
     if (r.visibility === 'public' && !r.sample) h += '<section id="post-social" class="post-social" aria-label="' + esc(state.lang === 'en' ? L('Post discussion') : '帖子互动') + '"></section>';
     view.innerHTML = h;
+    bindPostGallery();
     if (r.visibility === 'public' && !r.sample) mountPostSocial(r.id);
   }
+  function fitPostGallery() {
+    var g=$('.post-gallery');if(!g||!g.children.length)return;
+    var left=g.getBoundingClientRect().left,slide=Array.from(g.children).reduce(function(best,el){return !best||Math.abs(el.getBoundingClientRect().left-left)<Math.abs(best.getBoundingClientRect().left-left)?el:best;},null);
+    var img=slide&&slide.querySelector('img');if(!img||!img.naturalWidth)return;
+    var height=img.getBoundingClientRect().height;if(height>0&&Math.abs(g.getBoundingClientRect().height-height)>.5)g.style.height=height+'px';
+  }
+  function bindPostGallery() {
+    var g=$('.post-gallery');if(!g)return;
+    g.addEventListener('load',fitPostGallery,true);
+    g.addEventListener('scroll',fitPostGallery,{passive:true});
+    requestAnimationFrame(fitPostGallery);
+  }
+  window.addEventListener('resize',fitPostGallery,{passive:true});
 
   /* 私信图标（个人页右上角的小按钮） */
   var DM_ICON = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M4 5.5h16v10.5H9.5L5 19.5V16H4z"/></svg>';
@@ -338,9 +351,13 @@
       }).join('') + '</div>' : '') +
       (r.visibility === 'public' && !r.sample ? '<button type="button" class="link-btn social-entry" data-action="social-open" data-id="' + esc(r.id) + '">' + esc(state.lang === 'en' ? L('Discussion') : '评论') + '</button>' : '') +
       (isMine(r) ? '<div class="rv-actions"><button type="button" class="link-btn" data-action="edit-review" data-id="' + esc(r.id) + '">' + esc(t('edit')) + '</button>' +
-        '<button type="button" class="link-btn danger" data-action="del-review" data-id="' + esc(r.id) + '">' + esc(t('del')) + '</button></div>' : '') +
-      (isMine(r) ? visitPrivacyHTML(r,true) : '') + moderationControl(r) + '</div></li>';
+        '<button type="button" class="link-btn danger" data-action="del-review" data-id="' + esc(r.id) + '">' + esc(t('del')) + '</button>'+reviewVisibilityHTML(r)+'</div>' : '') +
+      moderationControl(r) + '</div></li>';
   }
+  var reviewSwipe={id:null,until:0};
+  function reviewVisibilityHTML(r) { return '<button type="button" class="review-visibility" role="switch" data-action="review-visibility" data-id="'+esc(r.id)+'" aria-checked="'+(r.visibility==='public')+'"'+(visibilityBusy?' disabled':'')+'><span>'+esc(state.lang==='en'?'Public':'公开')+'</span><span class="switch" aria-hidden="true"></span></button>'; }
+  function setReviewPublic(el,on) { if(visibilityBusy)return;var r=store.review(el.dataset.id);if(!r||!isMine(r))return;if(on==null)on=r.visibility!=='public';if(on&&guestBlocked())return;if(on===(r.visibility==='public'))return;changeVisitVisibility([r.id],on?'public':'private'); }
+  (function(){var drag=null;document.addEventListener('pointerdown',function(e){var el=e.target.closest('.review-visibility');drag=el&&!el.disabled?{el:el,x:e.clientX,y:e.clientY,id:e.pointerId}:null;});document.addEventListener('pointerup',function(e){var d=drag;drag=null;if(!d||d.id!==e.pointerId||Math.abs(e.clientY-d.y)>18||Math.abs(e.clientX-d.x)<14)return;reviewSwipe={id:d.el.dataset.id,until:Date.now()+600};setReviewPublic(d.el,e.clientX>d.x);});document.addEventListener('pointercancel',function(){drag=null;});})();
 
   function fieldHTML(id, label, control) {
     return '<div class="field"><label class="f-label" for="' + id + '">' + label + '</label>' + control + '<div class="f-err" id="err-' + id + '" hidden></div></div>';

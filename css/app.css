@@ -445,6 +445,8 @@ body[data-snap="page"] .panel-body { padding-top: env(safe-area-inset-top, 0px);
 .stat + .stat { padding-left: 12px; border-left: 1px solid var(--line); }
 .stat b { font-size: 18px; font-weight: 700; line-height: 1.1; letter-spacing: -.01em; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .stat small { color: var(--muted); font-size: 11px; }
+.stats .stat > b { min-height:32px; display:flex; align-items:center; }
+.stats .stat > small { line-height:18px; }
 /* 导航和复制：一个主按钮，其余是轻量的文字按钮 */
 .actions { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
 .actions .btn { flex: none; height: 34px; padding: 0 13px; border-radius: 999px; background: none; color: var(--accent); font-size: 13px; font-weight: 600; }
@@ -582,6 +584,11 @@ textarea.input { min-height: 98px; resize: vertical; line-height: 1.5; }
 .stars-mini .st-fill { position: absolute; inset: 0 auto 0 0; overflow: hidden; color: var(--c); }
 .fi-place .score { margin-left: 6px; }
 .rv-actions { display: flex; gap: 16px; }
+.review-visibility { display:inline-flex; align-items:center; gap:7px; border:0; padding:0; min-height:36px; background:none; color:var(--muted); font:inherit; font-size:13px; touch-action:pan-y; }
+.review-visibility .switch { width:36px; height:22px; }
+.review-visibility .switch::after { top:3px; left:3px; width:16px; height:16px; }
+.review-visibility[aria-checked="true"] .switch { background:var(--accent); }
+.review-visibility[aria-checked="true"] .switch::after { transform:translateX(14px); }
 .search-results .sec-title { margin: 16px 0 2px; }
 .search-results .sec-title:first-child { margin-top: 4px; }
 /* 谷歌的搜索列表：谷歌自己画（带谷歌标志，不能遮），只把字体、底色调成和我们一样 */
@@ -749,11 +756,10 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
 .view-top + .photo-strip { gap: 6px; scroll-snap-type: x mandatory; scroll-padding: 0 18px; overscroll-behavior-x: contain; margin-top: 4px; }
 .view-top + .photo-strip .ph { width: calc(100% - 64px); height: 280px; border-radius: 16px; scroll-snap-align: start; }
 .view-top + .photo-strip .ph:only-child { width: 100%; height: 300px; }
-/* 帖子图保持完整比例，统一画框；不沿用带日期缩略图的固定高度。 */
-.view-top + .post-gallery { align-items:flex-start; }
-.view-top + .post-gallery .ph, .view-top + .post-gallery .ph:only-child { position:relative; width:calc(100% - 24px); height:auto; aspect-ratio:4 / 3; border-radius:14px; }
-.view-top + .post-gallery .ph:only-child { width:100%; }
-.view-top + .post-gallery .ph img { position:absolute; inset:0; width:100%; height:100%; object-fit:contain; }
+/* 帖子图铺满屏宽，高度跟随原图；不加固定比例画框或留边。 */
+.view-top + .post-gallery { align-items:flex-start; padding:0; gap:0; scroll-padding:0; overflow-y:hidden; }
+.view-top + .post-gallery .ph, .view-top + .post-gallery .ph:only-child { position:relative; display:block; width:100%; height:auto; aspect-ratio:auto; border-radius:0; background:none; line-height:0; }
+.view-top + .post-gallery .ph img { position:static; display:block; width:100%; height:auto; max-height:none; aspect-ratio:auto; border-radius:0; }
 .home-filters { display: flex; flex-direction: column; gap: 7px; margin-bottom: 10px; }
 .home-filter-row { display: flex; flex-wrap:wrap; gap: 6px; align-items: center; }
 /* 全部 / 美食 / 美景：和“我的”页一样的分段条；筛选、刷新是两个轻的小按钮，不再是带框的大胶囊 */

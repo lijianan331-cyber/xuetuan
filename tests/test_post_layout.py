@@ -12,7 +12,7 @@ for name,size in [('portrait',(400,700)),('landscape',(800,400))]:
 with sync_playwright() as p:
  b=p.chromium.launch(channel='msedge',headless=True);c=b.new_context(viewport={'width':370,'height':780},has_touch=True,is_mobile=True);s['route_all'](c,True);c.add_init_script('window.__sbSeed='+json.dumps(seed,ensure_ascii=False));pg=c.new_page();pg.set_default_timeout(6000);errors=[];pg.on('pageerror',lambda e:errors.append(str(e)))
  pg.goto(s['APP']);pg.wait_for_function('!state.bootLoading');pg.evaluate('(photos)=>{store.photoURL=id=>Promise.resolve(photos[id]);setTab("home");openPost("r");}',photos);pg.wait_for_function('document.querySelector(".post-gallery img").naturalWidth>0')
- assert pg.evaluate('getComputedStyle(document.querySelector(".post-gallery img")).objectFit==="contain"')
+ assert pg.evaluate('(()=>{let i=document.querySelector(".post-gallery img"),r=i.getBoundingClientRect();return Math.abs(r.width-innerWidth)<1&&Math.abs(r.height/r.width-i.naturalHeight/i.naturalWidth)<.01})()')
  assert pg.locator('.post-gallery .photo-date').count()==0
  assert pg.locator('.post-actions [data-action=social-focus]').count()==0 and pg.locator('#social-body').count()==1
  assert 'RM 16' in pg.inner_text('.post-score') and '人均' not in pg.inner_text('.post-score') and 'MYR' not in pg.inner_text('.post-score')
@@ -23,6 +23,10 @@ with sync_playwright() as p:
  pg.locator('.post-gallery img').tap();pg.wait_for_function('!document.querySelector("#lightbox").hidden');pg.locator('[data-action=lb-close]').tap()
  pg.evaluate('store.review("r").photos=["landscape","portrait"];render()');pg.wait_for_function('[...document.querySelectorAll(".post-gallery img")].every(i=>i.naturalWidth>0)')
  assert pg.locator('.post-gallery .ph').count()==2 and pg.evaluate('document.documentElement.scrollWidth<=innerWidth')
+ pg.wait_for_function('Math.abs(document.querySelector(".post-gallery").getBoundingClientRect().height-innerWidth/2)<2')
+ pg.evaluate('document.querySelector(".post-gallery").scrollLeft=innerWidth');pg.wait_for_function('Math.abs(document.querySelector(".post-gallery").getBoundingClientRect().height-innerWidth*1.75)<2')
+ pg.evaluate('document.querySelector(".post-gallery").scrollLeft=0');pg.wait_for_function('Math.abs(document.querySelector(".post-gallery").getBoundingClientRect().height-innerWidth/2)<2')
  pg.locator('.post-gallery img').first.tap();pg.wait_for_function('!document.querySelector("#lightbox").hidden');assert pg.inner_text('#lb-count')=='1 / 2';pg.locator('#lb-next').tap();assert pg.inner_text('#lb-count')=='2 / 2';pg.locator('[data-action=lb-close]').tap()
  pg.screenshot(path=str(Path(s['SHOTS'])/'post-detail-clean-landscape.png'))
- assert not errors,errors;print('PASS phone portrait/landscape photos contain the full image; dates removed from gallery; original date beside rating; even body spacing; RM price; duplicate comment action removed; gallery and comments remain usable');b.close()
+ pg.evaluate("setTab('home')");assert pg.locator('.home-privacy').count()==0;pg.locator('.home-lang').tap();pg.wait_for_selector('#bsheet:not([hidden])');assert pg.locator('#bsheet .f-hint').count()==0 and pg.locator('[data-action=pick-lang]').count()==4
+ assert not errors,errors;print('PASS full-width natural photo ratios and active slide height; no letterbox/cropping; complete viewer; compact details; language and homepage explanation lines removed');b.close()

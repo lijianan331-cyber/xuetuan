@@ -405,6 +405,7 @@
       case 'visit-select': if (!visibilityBusy && store.review(d.id) && isMine(store.review(d.id))) { if(selectedVisits.has(d.id))selectedVisits.delete(d.id);else selectedVisits.add(d.id); var sy=view.scrollTop;render();view.scrollTop=sy; } break;
       case 'visit-all': if (!visibilityBusy) { var all=feedReviews().filter(isMine); var allOn=all.length && all.every(function(r){return selectedVisits.has(r.id);}); all.forEach(function(r){if(allOn)selectedVisits.delete(r.id);else selectedVisits.add(r.id);});var ay=view.scrollTop;render();view.scrollTop=ay; } break;
       case 'visit-privacy': if (d.v === 'public' && guestBlocked()) break; changeVisitVisibility([d.id],d.v); break;
+      case 'review-visibility': if(reviewSwipe.id!==d.id||Date.now()>reviewSwipe.until)setReviewPublic(el); break;
       case 'visit-bulk': if (d.v === 'public' && guestBlocked()) break; changeVisitVisibility(Array.from(selectedVisits),d.v); break;
       case 'home-mode': state.homeMode = ['all','food','travel'].indexOf(d.v) !== -1 ? d.v : 'all'; render(); view.scrollTop = 0; break;
       case 'home-filters': setHomeFiltersOpen(!state.homeFiltersOpen); break;
