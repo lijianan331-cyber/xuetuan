@@ -77,7 +77,7 @@ with sync_playwright() as p:
  pg.locator('[data-action=social-more]').tap();pg.wait_for_function('socialPanel.rows.length===60&&!socialPanel.loading')
  check('older comments paginate without duplicates',pg.evaluate('new Set(socialPanel.rows.map(c=>c.id)).size===60'))
  pg.evaluate("window.__sbLogin('"+A+"','admin@example.com')");pg.wait_for_function('isModerator()');pg.evaluate("setTab('me')")
- pg.locator('[data-action=social-reports]').tap();pg.wait_for_selector('#social-reports [data-action=social-mod-open]')
+ pg.locator('.admin-details').evaluate('e=>e.open=true');pg.locator('[data-action=social-reports]').tap();pg.wait_for_selector('#social-reports [data-action=social-mod-open]')
  pg.locator('#social-reports [data-action=social-mod-open]').first.tap();pg.locator('[data-action=social-mod-confirm][data-decision=delete]').tap();pg.wait_for_function('document.querySelector("#modal").hidden')
  check('administrator reviews reports and removes comment',pg.evaluate('window.__sb.db.social_comments.find(c=>c.id==="root").deleted'))
  pg.evaluate("openPost('post')");pg.wait_for_selector('[data-action=social-like]:enabled');pg.locator('#social-body').fill('账号切换前草稿')

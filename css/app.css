@@ -1026,6 +1026,26 @@ button.post-who { width: 100%; }
 .hero-slide { cursor: zoom-in; }
 .me-edit { width: 100%; border: 0; background: none; text-align: left; color: inherit; font: inherit; cursor: pointer; }
 .me-edit .me-id { flex: 1; min-width: 0; }
+.me-pencil { display:inline-flex; vertical-align:middle; color:var(--accent); margin-left:8px; }
+.me-pencil svg { width:16px; height:16px; }
+.me-shortcuts { margin:16px 0; border:1px solid var(--hairline); border-radius:18px; background:var(--surface); overflow:hidden; }
+.me-menu-row { display:flex; align-items:center; gap:12px; width:100%; padding:15px 16px; border:0; border-bottom:1px solid var(--hairline); background:none; color:var(--ink); text-decoration:none; text-align:left; font:inherit; }
+.me-menu-row:last-child { border-bottom:0; }
+.me-menu-row > svg { width:21px; height:21px; flex:none; color:var(--accent); }
+.me-menu-row > span { flex:1; min-width:0; }
+.me-menu-row b { display:block; font-size:14px; font-weight:600; }
+.me-menu-row small { display:block; font-size:12px; color:var(--muted); margin-top:3px; }
+.me-menu-row i { font-size:21px; font-style:normal; color:var(--muted); }
+html[data-page="me"] #view .me-menu-row.me-homes { margin:0; box-shadow:none; border-radius:0; }
+.me-fold { border:1px solid var(--hairline); border-radius:16px; background:var(--surface); margin:12px 0; padding:0 16px; }
+.me-fold > summary { cursor:pointer; padding:16px 0; font-size:14px; font-weight:600; color:var(--ink); }
+.me-fold[open] > summary { border-bottom:1px solid var(--hairline); margin-bottom:12px; }
+html[data-page="me"] #view .me-fold .field { padding:0; margin:12px 0; border:0; box-shadow:none; border-radius:0; }
+.me-fold .account-row { flex-wrap:wrap; gap:12px; font-size:13px; }
+.me-fold .account-row > span { overflow-wrap:anywhere; min-width:0; }
+.share-themes { gap:4px; padding:4px; }
+.share-themes button { flex:1 1 28%; font-size:12px; min-height:36px; }
+@media(max-width:600px) { .share-card { max-width:none; margin:14px -10px 18px; } }
 .post-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .btn.danger-text { color: var(--danger); }
 

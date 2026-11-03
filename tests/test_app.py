@@ -92,6 +92,7 @@ def stars_val(pg, sel='#f-rating'):
 def tab(pg, name):
     # 底部四栏：home 首页 / explore 探索 / foot 足迹 / me 我的
     pg.click('#tabbar [data-tab="%s"]' % name); pg.wait_for_timeout(250)
+    if name == 'me': pg.locator('details.me-fold').evaluate_all('els=>els.forEach(e=>e.open=true)')
 def add(pg):
     # 加一笔只在足迹上（地图右下角蓝色 +）：不在足迹就先切过去
     if 'scope-my' not in (pg.get_attribute('html', 'class') or ''):
@@ -1055,9 +1056,7 @@ with sync_playwright() as p:
     check('我的 page has a “看看大家来自哪” entry with the classmate count', '看看大家来自哪' in page.inner_text('.me-homes') and '位同学的家乡' in page.inner_text('.me-homes'), page.inner_text('.me-homes') if page.locator('.me-homes').count() else 'missing')
     page.wait_for_timeout(300)
     page.screenshot(path=os.path.join(SHOTS, '07-mobile-profile.png'))
-    page.click('[data-action="set-style"][data-style="dark"]')
-    page.wait_for_timeout(300)
-    check('missing dark style handled with toast', '加载不了' in page.inner_text('#toast'), page.inner_text('#toast'))
+    check('Me no longer offers the unreadable dark base map',page.locator('[data-action="set-style"][data-style="dark"]').count()==0)
     page.click('[data-action="set-style"][data-style="color"]')
     page.wait_for_timeout(300)
     st2 = page.evaluate('({setStyle: window.__map.calls.filter(c=>c[0]==="setStyle").length, layers: window.__map.layers.map(l=>l.id).length, images: Object.keys(window.__map.images).length, proj: window.__map.projection})')
@@ -1069,7 +1068,9 @@ with sync_playwright() as p:
 
     # language (in the Me tab)
     tab(page, 'me')
+    tab(page, 'home')
     page.click('[data-action="set-lang"][data-lang="en"]')
+    tab(page, 'me')
     check('Me in English, tab bar too', page.locator('#tabbar .tab').all_inner_texts() == ['Home', 'Explore', 'Footprints', 'Me'] and 'Saved' in page.inner_text('.me-stats'), page.locator('#tabbar .tab').all_inner_texts())
     tab(page, 'explore')
     page.wait_for_timeout(200)
@@ -1080,7 +1081,9 @@ with sync_playwright() as p:
     check('pin names use English alt names', 'Nasi Lemak Test 2' in names and 'Jalan Alor' in names, names)
     page.screenshot(path=os.path.join(SHOTS, '08-mobile-english.png'))
     tab(page, 'me')
+    tab(page, 'home')
     page.click('[data-action="set-lang"][data-lang="zh"]')
+    tab(page, 'me')
     tab(page, 'explore')
 
     # export
@@ -1735,7 +1738,7 @@ with sync_playwright() as p:
     tab(page7, 'me')
     chips7 = page7.locator('#test-accounts .chip').all_inner_texts()
     check('test accounts: Me lists three accounts to switch between (+ add one)', chips7 == ['没起名的号', '测试号 B', '测试号 C', '＋ 再加一个'] and page7.get_attribute('#test-accounts .chip >> nth=0', 'aria-pressed') == 'true', chips7)
-    page7.fill('#pf-name', '甲'); page7.wait_for_timeout(500)
+    page7.click('.me-edit'); page7.fill('#pf-dialog-name','甲'); page7.locator('#profile-form button[type=submit]').click(); page7.wait_for_timeout(500)
     check('me: the header follows the nickname as it is typed', page7.inner_text('#me-name') == '甲')
     add7('甲的公开店', True, 4)
     add7('甲的私密店', False, None)
@@ -1751,7 +1754,7 @@ with sync_playwright() as p:
     foot_sub(page7, 'mine')
     acct7('测试号 B')
     check('test accounts: switching says who you are now', '现在是：测试号 B' in page7.inner_text('#toast') and page7.get_attribute('#test-accounts [data-action="acct"] >> nth=1', 'aria-pressed') == 'true', page7.inner_text('#toast'))
-    check('test accounts: B has no home and its own nickname', page7.locator('#home-field .home-set-btn').count() == 1 and page7.input_value('#pf-name') == '测试号 B')
+    check('test accounts: B has no home and its own nickname', page7.locator('#home-field .home-set-btn').count() == 1 and page7.inner_text('#me-name') == '测试号 B')
     tab(page7, 'foot')
     check('test accounts: B’s own map is empty', page7.inner_text('.view-head .count') == '0', page7.inner_text('.view-head'))
     tab(page7, 'explore')

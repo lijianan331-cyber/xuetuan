@@ -701,7 +701,7 @@
   if (savedView) {
     if (savedView.lang === 'en' || savedView.lang === 'zh') state.lang = savedView.lang;
     if (savedView.mode === 'travel' || savedView.mode === 'food') state.mode = savedView.mode;
-    if (STYLE_URLS[savedView.styleKey]) state.styleKey = savedView.styleKey;
+    if (STYLE_URLS[savedView.styleKey]) state.styleKey = savedView.styleKey === 'dark' ? 'light' : savedView.styleKey;
     state.mineBoth = savedView.mineBoth === true; state.countries = savedView.countries === true; state.homesOn = false;
     state.mineHomeOn = savedView.mineHomeOn === true;
   }
