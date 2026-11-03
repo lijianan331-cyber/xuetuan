@@ -314,7 +314,7 @@ with sync_playwright() as p:
     check('opens on the home tab', page.get_attribute('#tabbar [data-tab="home"]', 'aria-current') == 'page')
     check('no right-side tool column, locate button kept', page.locator('.tools, [data-action="zoom-in"], [data-action="to-globe"], [data-action="basemap"]').count() == 0 and page.locator('.locate-btn').is_visible())
     acts = page.eval_on_selector_all('#map-ctrls button', 'els => els.map(e => e.dataset.action)')
-    check('map controls keep search, destination mode and filter actions', acts == ['search', 'toggle-mode', 'filters'] and page.locator('.topbar, .search-bar, #loc-name, .mode-switch, #filters').count() == 0, acts)
+    check('map controls keep search, destination mode, Halal and filter actions', acts == ['search', 'toggle-mode', 'halal-toggle', 'filters'] and page.locator('.topbar, .search-bar, #loc-name, .mode-switch, #filters').count() == 0, acts)
     check('map: small landscape pill switches to travel and filter is available', page.locator('#map-ctrls [data-action="toggle-mode"]').is_visible() and page.get_attribute('[data-action="toggle-mode"]', 'aria-label') == '切换到玩乐地图' and page.locator('#map-ctrls [data-action="filters"]').is_visible())
     ctl = page.evaluate('(() => { const c = document.querySelector("#map-ctrls").getBoundingClientRect(); return [c.top < 40, c.right <= innerWidth]; })()')
     check('map search bar fits the top edge', ctl == [True, True], ctl)
@@ -526,15 +526,17 @@ with sync_playwright() as p:
           cur == ['RMB SGD EUR EUR GBP USD CAD AUD MYR HKD MOP MYR MYR MYR MYR MYR MYR', 'RMB 35', 'MYR 12', 33, 10, 'MY', ''], cur)
     dk = page.evaluate('[distTier({lat: 2.8605, lng: 101.6790}), distTier({lat: 2.8545, lng: 101.6830}), distTier({lat: 2.8330, lng: 101.6850})]')
     check('Dengkil (龙溪) town counts as mid ride even though it is only ~4 km away; the McD on road 29 stays short', dk == ['mid', 'mid', 'short'], dk)
-    hl = page.evaluate('''() => { const sapid = {mode: 'food', osm: 'ovt/xmum-b1-g04', name: 'Sapid'}, mix = {mode: 'food', osm: 'ovt/xmum-d6-102', name: 'Da Cheng Xiao Shi'}, poke = {mode: 'food', osm: 'ovt/xmum-b1-g07', name: 'Poke Bowl Rice'};
-      const katsu = {mode: 'food', name: 'Katsu Lab', lat: 2.8287, lng: 101.7055}, mamak = {mode: 'food', cat: 'mamak', name: 'Restoran X', lat: 3.1, lng: 101.6}, xj = {mode: 'food', cat: 'cn', name: '新疆大盘鸡', lat: 3.1, lng: 101.6};
-      const H = window.XUETUAN_HALAL; H.places.push({keys: ['zz-halal-test'], lat: 2.8288, lng: 101.7053, v: 'halal'});
-      const near = {mode: 'food', name: 'ZZ-Halal-Test Bell', lat: 2.8290, lng: 101.7054}, far = {mode: 'food', name: 'zz-halal-test', lat: 2.86, lng: 101.70};
+    hl = page.evaluate('''() => { const F = (name, extra) => Object.assign({mode: 'food', cat: 'other', name: name, lat: 3.1, lng: 101.6}, extra || {});
+      const H = window.XUETUAN_HALAL; H.places.push({keys: ['zz-hh-test'], lat: 2.8288, lng: 101.7053, v: 'halal'}, {keys: ['mcd no test'], lat: 2.8288, lng: 101.7053, v: 'nonhalal'});
       const keep = state.halal; state.halal = 'halal';
-      const out = [JSON.stringify(placeHalal(sapid)), placeHalal(mix), halalTagHTML(poke).includes('无猪肉'), halalFits(sapid), halalFits(mix), halalFits(near), halalFits(far), filtersActive(), halalFits(poke), placeHalal(katsu).v, halalFits(mamak), halalFits(xj)];
-      state.halal = keep; H.places.pop(); return out; }''')
-    check('halal: confirmed campus/Bell list, school pork-free lots count, mamak and Xinjiang count; off-campus names match only near the listed spot',
-          hl == ['{"v":"halal","n":0,"guess":false}', None, True, True, False, True, False, True, True, 'nonhalal', True, True], hl)
+      const yes = [F('Sapid', {osm: 'ovt/xmum-b1-g04'}), F('Poke Bowl Rice', {osm: 'ovt/xmum-b1-g07'}), F('ZZ-HH-Test Bell', {lat: 2.8290, lng: 101.7054}), F("McDonald's Kota Warisan"), F('The Tokyo Restaurant'),
+        F('Pak Punjab'), F('Sukiya Putrajaya'), F('新疆大盘鸡', {cat: 'cn'}), F('Restoran X', {cat: 'mamak'}), F('Warung Y', {cat: 'malay'})].map(halalFits);
+      const no = [F('Da Cheng Xiao Shi', {osm: 'ovt/xmum-d6-102'}), F('Katsu Lab', {lat: 2.8287, lng: 101.7055}), F('zz-hh-test'), F('Uniq Nyonya Kitchen', {cat: 'malay'}), F('Bak Kut Teh Halal-ish'),
+        F('MCD no test', {lat: 2.8288, lng: 101.7053}), F('海底捞', {cat: 'hotpot'}), F('Sapid', {mode: 'travel'})].map(halalFits);
+      const out = [yes, no, halalTagHTML(F('Pak Punjab')).includes('>Halal<'), halalTagHTML(F('海底捞')), filtersActive(), activeFilterCount()];
+      state.halal = keep; H.places.pop(); H.places.pop(); return out; }''')
+    check('halal: confirmed list wins (incl. not-halal entries), then chain / Muslim-cuisine names, then mamak and Malay (not Nyonya); pork names never; button is not a filter count',
+          hl == [[True] * 10, [False] * 8, True, '', True, 0], hl)
     page.click('#f-submit')
     page.wait_for_timeout(600)
     check('after publish: place view', page.locator('.place-head h2').count() == 1 and page.inner_text('.place-head h2') == '测试椰浆饭', errors[-4:])
@@ -779,6 +781,14 @@ with sync_playwright() as p:
     check('footprints tab returns to visits rather than a saved side', foot_sub(page) == 'mine')
     foot_sub(page, 'mine')
     tab(page, 'explore')
+    # 美食图上一个小 Halal 按钮，紧挨着美食/玩乐胶囊；开了弹一句“仅供参考”
+    hb = page.evaluate('''(() => { const m = document.querySelector(".map-ctrls .mode-btn").getBoundingClientRect(), h = document.querySelector(".map-ctrls .halal-btn").getBoundingClientRect();
+      return [Math.abs(m.top + m.height / 2 - (h.top + h.height / 2)) < 2, h.left > m.right && h.left - m.right < 12, h.right < innerWidth - 50]; })()''')
+    check('halal: small button sits right next to the food/fun capsule, same row', hb == [True, True, True], hb)
+    page.click('.map-ctrls .halal-btn'); page.wait_for_timeout(150)
+    check('halal: tapping it turns it on and says to check yourself', page.get_attribute('.map-ctrls .halal-btn', 'aria-pressed') == 'true' and '请自行确认' in page.inner_text('#toast') and page.evaluate('state.halal') == 'halal')
+    page.click('.map-ctrls .halal-btn'); page.wait_for_timeout(150)
+    check('halal: tapping again turns it off', page.get_attribute('.map-ctrls .halal-btn', 'aria-pressed') == 'false' and not page.evaluate('state.halal'))
 
     # score + distance filters live in one filter sheet
     page.click('[data-action="filters"]')

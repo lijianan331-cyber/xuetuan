@@ -1425,55 +1425,48 @@
   function localPriceCurrency(p) { var cc = placeCC(p); return LOCAL_PRICE_CUR[EURO_CC.indexOf(cc) !== -1 ? 'EUR' : cc] || 'MYR'; }
   function defaultPriceCurrency(p) { return LOCAL_PRICE_CUR[curKey(placeCC(p))] || 'MYR'; }
   function priceRate(c) { return PRICE_RATE[validPriceCurrency(c) || 'MYR']; }
-  /* 清真（用户 2026-11-03）：每条记录可选 清真 / 无猪肉 / 非清真。地点上取大家选得最多的；
-     没人选过的校内餐厅，用学校餐厅表的菜系猜一个“可能清真”（穆斯林菜系、本身有认证的连锁），只当提示 */
+  /* Halal（用户 2026-11-03：不用分那么细，只标 Halal，地图上一个小按钮只看 Halal；自动判断，仅供参考）。
+     先看 data/halal.js 里用户确认过的名单（学校按 楼·铺位，校外按店名 + 200 米；名单说不是的就不是），
+     再按店名认清真连锁和穆斯林菜系，最后按分类（嘛嘛、马来餐；娘惹除外）。店名带猪肉的一律不算。
+     记录里的 halal 字段等 visits.halal 列建好后再用（同学自己标） */
   var HALAL = ['halal', 'porkfree', 'nonhalal'];
   function validHalal(v) { return HALAL.indexOf(v) !== -1 ? v : null; }
-  function halalName(v, guess) {
-    var en = state.lang === 'en';
-    if (guess) return en ? 'Maybe halal' : '可能清真';
-    return { halal: en ? 'Halal' : '清真', porkfree: en ? 'Pork-free' : '无猪肉', nonhalal: en ? 'Non-halal' : '非清真' }[v] || '';
-  }
-  function placeHalal(p) {
-    if (!p || p.mode !== 'food') return null;
-    var n = {}, best = null;
-    store.reviews().forEach(function (r) {
-      if (r.placeId !== p.id || !r.halal) return;
-      n[r.halal] = (n[r.halal] || 0) + 1;
-      /* 票数一样时偏保守：非清真 > 无猪肉 > 清真 */
-      if (!best || n[r.halal] > n[best] || (n[r.halal] === n[best] && HALAL.indexOf(r.halal) > HALAL.indexOf(best))) best = r.halal;
-    });
-    if (best) return { v: best, n: n[best], guess: false };
-    var L = halalListed(p);
-    return L ? { v: L.v, n: 0, guess: !!L.guess } : null;
-  }
-  /* 清真名单 data/halal.js（用户逐家确认）：校内按 楼-铺位 对上，校外按名字 + 200 米内对上 */
+  var HALAL_NO = /pork|猪|bak ?kut ?teh|肉骨茶|char ?siu|叉烧|siew ?yoke|烧肉|non[- ]?halal|beer|啤酒|wine bar/;
+  var HALAL_NAME = new RegExp([
+    'halal', 'mcdonald', "mcd\\b", '麦当劳', 'kfc', '肯德基', 'burger king', 'marrybrown', 'texas chicken', "a&w", 'domino', 'pizza hut', 'subway', 'nando',
+    'sukiya', 'yoshinoya', 'sushi king', 'the tokyo', 'pak punjab', 'punjab', 'pakistan', 'arab', 'mandi', 'kebab', 'shawarma', 'biryani', 'briyani',
+    'nasi kandar', 'mamak', 'ayam penyet', 'nasi lemak', 'zus coffee', 'tealive', 'chatime', 'starbucks', 'coffee bean', 'secret recipe', 'oldtown',
+    'papparich', 'llao llao', 'baskin', 'mixue', '蜜雪', '新疆', 'xinjiang', 'uyghur', 'uighur', '维吾尔', '兰州', 'lanzhou', 'muslim', '穆斯林', '清真'
+  ].join('|'));
+  function halalName() { return 'Halal'; }
+  /* 名单：返回 true / false（名单里说不是）/ null（名单里没有） */
   function halalListed(p) {
     var H = window.XUETUAN_HALAL;
     if (!H) return null;
     var s = typeof campusShop === 'function' && campusShop(p);
-    if (s && H.campus[s.block + ' · ' + s.lot]) return H.campus[s.block + ' · ' + s.lot];
+    if (s && H.campus[s.block + ' · ' + s.lot]) return H.campus[s.block + ' · ' + s.lot].v !== 'nonhalal';
     var name = String(p.name || '').toLowerCase();
     for (var i = 0; i < H.places.length; i++) {
       var x = H.places[i];
-      if (name && haversine(x, p) <= 200 && x.keys.some(function (k) { return name.indexOf(k) !== -1; })) return x;
+      if (name && haversine(x, p) <= 200 && x.keys.some(function (k) { return name.indexOf(k) !== -1; })) return x.v !== 'nonhalal';
     }
-    /* 用户 2026-11-03：嘛嘛档和新疆餐厅都算清真 */
-    if (p.cat === 'mamak' || /新疆|xinjiang|uyghur|uighur|维吾尔/.test(name)) return { v: 'halal' };
     return null;
   }
-  function halalFits(p) {
-    if (!state.halal) return true;
-    var h = placeHalal(p);
-    /* 学校公布的“无猪肉 / 穆斯林友好”档口也算进来 */
-    return !!h && (h.v === 'halal' || h.v === 'porkfree');
+  function isHalal(p) {
+    if (!p || p.mode !== 'food') return false;
+    var listed = halalListed(p);
+    if (listed !== null) return listed;
+    var name = (String(p.name || '') + ' ' + String(p.altName || '')).toLowerCase();
+    if (HALAL_NO.test(name)) return false;
+    if (HALAL_NAME.test(name)) return true;
+    return p.cat === 'mamak' || (p.cat === 'malay' && !/nyonya|娘惹|peranakan/.test(name));
   }
+  function placeHalal(p) { return isHalal(p) ? { v: 'halal' } : null; }
+  function halalFits(p) { return !state.halal || isHalal(p); }
   function halalTagHTML(p) {
-    var h = placeHalal(p);
-    if (!h) return '';
-    var en = state.lang === 'en';
-    var tip = h.guess ? (en ? 'Guessed from the campus cafeteria list, not confirmed' : '按学校餐厅表的菜系猜的，还没人确认') : (en ? h.n + ' people said so' : h.n + ' 人选了');
-    return '<span class="tag halal-tag ' + h.v + (h.guess ? ' guess' : '') + '" title="' + esc(tip) + '">' + esc(halalName(h.v, h.guess)) + (h.guess ? '' : '<small>' + h.n + '</small>') + '</span>';
+    if (!isHalal(p)) return '';
+    var tip = state.lang === 'en' ? 'Guessed from the name and category, please check yourself' : '按店名和分类自动判断，仅供参考，请自行确认';
+    return '<span class="tag halal-tag" title="' + esc(tip) + '">Halal</span>';
   }
   function reviewPriceCurrency(p, r) { return validPriceCurrency(r && r.priceCurrency) || defaultPriceCurrency(p); }
   function reviewPriceRM(p, r) { return r.price * priceRate(reviewPriceCurrency(p, r)); }
