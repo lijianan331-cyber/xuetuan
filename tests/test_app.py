@@ -1371,6 +1371,8 @@ with sync_playwright() as p:
     page5.click('#bsheet [data-lang="zh"]'); page5.wait_for_timeout(250)
     page5.evaluate("setTab('home')"); page5.wait_for_timeout(250)
     check('picking 中文 switches everything back', page5.evaluate('state.lang') == 'zh' and page5.inner_text('.home-lang') == 'ENG')
+    pd = page5.evaluate("(() => { const v = Date.parse('2026-10-29T12:00:00'); return [photoDateInfo('ph-' + Date.now().toString(36) + 'ab', {createdAt: v}).at === v, visitDay(photoDateInfo('ph-' + Date.now().toString(36) + 'ab', {createdAt: v}).at)]; })()")
+    check('photo date under a photo is the visit date, not the (re)upload day', pd == [True, '2026-10-29'], pd)
     check('review photos show no repeated "Uploaded / 上传" date text', page5.evaluate('document.querySelectorAll(".photo-date").length') == 0)
     check('home: only old shares -> says nothing new this month and offers older ones', '最近一个月' in page5.inner_text('.home-empty') and page5.locator('[data-action="home-all-time"]').count() == 1)
     page5.click('[data-action="home-all-time"]')

@@ -1572,9 +1572,11 @@
     return (state.lang === 'en' ? L('Visited ') : '到访 ') + visitDay(r.createdAt) +
       (changed ? ' · ' + (state.lang === 'en' ? L('Updated ') : '更新于 ') + timeAgo(at) : ' · ' + timeAgo(at));
   }
+  /* 照片下面的日期 = 这条记录的到访 / 拍照日期（用户 2026-11-04：编辑时重新上传的照片显示成了今天，不对）。
+     上传时间只在记录本身没有日期时才用 */
   function photoDateInfo(id,r) {
-    var uploaded=photoUploadedAt(id), at=uploaded||Number(r&&r.createdAt)||0;
-    return {at:at,label:uploaded?(state.lang==='en'?'Added ':'添加 '):(state.lang==='en'?'Visit date ':'记录日期 ')};
+    var visit=Number(r&&r.createdAt)||0, at=visit||photoUploadedAt(id);
+    return {at:at,label:visit?(state.lang==='en'?L('Visited '):'到访 '):(state.lang==='en'?'Added ':'添加 ')};
   }
   function photoDateLabel(id,r) { var d=photoDateInfo(id,r);return d.at?d.label+visitDay(d.at):''; }
   function photoDateHTML(id,r) {
