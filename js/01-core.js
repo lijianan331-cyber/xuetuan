@@ -1456,14 +1456,17 @@
     var name = String(p.name || '').toLowerCase();
     for (var i = 0; i < H.places.length; i++) {
       var x = H.places[i];
-      if (name && name.indexOf(x.key) !== -1 && haversine(x, p) <= 200) return x;
+      if (name && haversine(x, p) <= 200 && x.keys.some(function (k) { return name.indexOf(k) !== -1; })) return x;
     }
+    /* 用户 2026-11-03：嘛嘛档和新疆餐厅都算清真 */
+    if (p.cat === 'mamak' || /新疆|xinjiang|uyghur|uighur|维吾尔/.test(name)) return { v: 'halal' };
     return null;
   }
   function halalFits(p) {
     if (!state.halal) return true;
     var h = placeHalal(p);
-    return !!h && h.v === 'halal';
+    /* 学校公布的“无猪肉 / 穆斯林友好”档口也算进来 */
+    return !!h && (h.v === 'halal' || h.v === 'porkfree');
   }
   function halalTagHTML(p) {
     var h = placeHalal(p);

@@ -525,14 +525,15 @@ with sync_playwright() as p:
           cur == ['RMB SGD EUR EUR GBP USD CAD AUD MYR HKD MOP MYR MYR MYR MYR MYR MYR', 'RMB 35', 'MYR 12', 33, 10, 'MY', ''], cur)
     dk = page.evaluate('[distTier({lat: 2.8605, lng: 101.6790}), distTier({lat: 2.8545, lng: 101.6830}), distTier({lat: 2.8330, lng: 101.6850})]')
     check('Dengkil (龙溪) town counts as mid ride even though it is only ~4 km away; the McD on road 29 stays short', dk == ['mid', 'mid', 'short'], dk)
-    hl = page.evaluate('''() => { const sapid = {mode: 'food', osm: 'ovt/xmum-b1-g04', name: 'Sapid'}, mix = {mode: 'food', osm: 'ovt/xmum-d6-102', name: 'Da Cheng Xiao Shi'};
-      const H = window.XUETUAN_HALAL; H.places.push({key: 'zz-halal-test', lat: 2.8288, lng: 101.7053, v: 'halal'});
+    hl = page.evaluate('''() => { const sapid = {mode: 'food', osm: 'ovt/xmum-b1-g04', name: 'Sapid'}, mix = {mode: 'food', osm: 'ovt/xmum-d6-102', name: 'Da Cheng Xiao Shi'}, poke = {mode: 'food', osm: 'ovt/xmum-b1-g07', name: 'Poke Bowl Rice'};
+      const katsu = {mode: 'food', name: 'Katsu Lab', lat: 2.8287, lng: 101.7055}, mamak = {mode: 'food', cat: 'mamak', name: 'Restoran X', lat: 3.1, lng: 101.6}, xj = {mode: 'food', cat: 'cn', name: '新疆大盘鸡', lat: 3.1, lng: 101.6};
+      const H = window.XUETUAN_HALAL; H.places.push({keys: ['zz-halal-test'], lat: 2.8288, lng: 101.7053, v: 'halal'});
       const near = {mode: 'food', name: 'ZZ-Halal-Test Bell', lat: 2.8290, lng: 101.7054}, far = {mode: 'food', name: 'zz-halal-test', lat: 2.86, lng: 101.70};
       const keep = state.halal; state.halal = 'halal';
-      const out = [JSON.stringify(placeHalal(sapid)), placeHalal(mix), halalTagHTML(sapid).includes('可能清真'), halalFits(sapid), halalFits(mix), halalFits(near), halalFits(far), filtersActive()];
+      const out = [JSON.stringify(placeHalal(sapid)), placeHalal(mix), halalTagHTML(poke).includes('无猪肉'), halalFits(sapid), halalFits(mix), halalFits(near), halalFits(far), filtersActive(), halalFits(poke), placeHalal(katsu).v, halalFits(mamak), halalFits(xj)];
       state.halal = keep; H.places.pop(); return out; }''')
-    check('halal: listed campus shops show 可能清真, the switch keeps only halal shops; off-campus names match only near the listed spot',
-          hl == ['{"v":"halal","n":0,"guess":true}', None, True, True, False, True, False, True], hl)
+    check('halal: confirmed campus/Bell list, school pork-free lots count, mamak and Xinjiang count; off-campus names match only near the listed spot',
+          hl == ['{"v":"halal","n":0,"guess":false}', None, True, True, False, True, False, True, True, 'nonhalal', True, True], hl)
     page.click('#f-submit')
     page.wait_for_timeout(600)
     check('after publish: place view', page.locator('.place-head h2').count() == 1 and page.inner_text('.place-head h2') == '测试椰浆饭', errors[-4:])
