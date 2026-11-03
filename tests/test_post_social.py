@@ -25,9 +25,12 @@ with sync_playwright() as p:
  except Exception:
   print('DEBUG',errors,pg.evaluate('({view:state.view,panel:typeof socialPanel!=="undefined"&&socialPanel,calls:window.__sb.calls})'),pg.locator('#post-social').inner_text() if pg.locator('#post-social').count() else 'no panel',flush=True);raise
  check('place reviews open the same discussion as home posts',pg.evaluate('state.view==="post"&&state.postId==="post"'))
- pg.locator('[data-action=social-like]').tap();pg.wait_for_selector('#modal:not([hidden])')
- check('logged-out users get a binding gate without creating guest accounts',not any(x[0]=='anon' for x in pg.evaluate('window.__sb.calls')))
- pg.locator('[data-modal=no]').tap()
+ pg.locator('[data-action=social-like]').tap();pg.wait_for_function('store.isAnon()&&socialPanel&&socialPanel.data&&socialPanel.data.liked')
+ check('first like prepares a guest and completes without Google',pg.evaluate('window.__sb.calls.filter(c=>c[0]==="anon").length===1') and pg.is_hidden('#modal'))
+ pg.locator('[data-action=social-like]').tap();pg.wait_for_function('!socialPanel.data.liked')
+ pg.locator('#social-body').fill('游客也能评论');pg.locator('[data-action=social-send]').tap();pg.wait_for_function('socialPanel.rows.length===2&&!socialPanel.loading')
+ check('guest can comment without binding Google',pg.evaluate('window.__sb.db.social_comments.some(c=>c.user_id===me().id&&c.body==="游客也能评论")'))
+ pg.evaluate('window.__sb.db.social_comments=window.__sb.db.social_comments.filter(c=>c.id==="root")')
  pg.evaluate("window.__sbLogin('"+C+"','reader@example.com')");pg.wait_for_function('me().id==="'+C+'"');pg.wait_for_selector('[data-action=social-like]:enabled')
  check('readers do not receive public like totals',pg.locator('.social-private-count').count()==0)
  pg.locator('[data-action=social-like]').tap();pg.wait_for_function('document.querySelector("[data-action=social-like]").getAttribute("aria-pressed")==="true"')

@@ -842,7 +842,7 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
 .dm-badge[hidden] { display:none; }
 html[data-page="messages"] #view { display:flex; flex-direction:column; height:100%; }
 .dm-screen { display:flex; flex-direction:column; flex:1; min-height:0; }
-.dm-top { flex:none; gap:8px; }
+.dm-top { flex:none; gap:8px; padding-top:14px; padding-bottom:14px; min-height:58px; }
 .dm-top .view-title { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:17px; }
 .dm-top .btn { white-space:nowrap; }
 .dm-conversations { list-style:none; padding:0; margin:8px 0; }

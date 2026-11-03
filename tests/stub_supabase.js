@@ -37,7 +37,7 @@
       if(a.after_at)rows=rows.filter(function(c){return c.created_at<a.after_at || (c.created_at===a.after_at && c.id<a.after_id);});
       return {data:{comments:rows.slice(0,30),has_more:rows.length>30,liked:db.social_likes.some(function(l){return l.visit_id===v.id && l.user_id===uid();}),like_count:v.user_id===uid()?db.social_likes.filter(function(l){return l.visit_id===v.id;}).length:null},error:null};
     }
-    if(!uid() || session.user.is_anonymous)return err('XUETUAN_BIND_REQUIRED');
+    if(!uid())return err('XUETUAN_BIND_REQUIRED');
     var target=db.social_comments.find(function(c){return c.id===a.target_id && c.visit_id===v.id;});
     if(a.action==='like'){
       db.social_likes=db.social_likes.filter(function(l){return l.visit_id!==v.id || l.user_id!==uid();});

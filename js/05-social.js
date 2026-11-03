@@ -59,9 +59,7 @@ function socialError(e,reading) {
   return socialText('没有保存成功，请重试；评论仍保留。','Could not save. Retry; your text is kept.');
 }
 function socialAuth() {
-  if (store.mode !== 'remote' || (store.signedIn() && !isGuest())) return true;
-  openModal('<div class="modal-card" role="dialog" aria-modal="true"><h3>'+esc(socialText('登录后参与互动','Sign in to join in'))+'</h3><p class="f-hint">'+esc(socialText('点赞、评论和举报需要登录或绑定谷歌，减少游客刷屏。收藏和个人记录仍可匿名保存。','Sign in or link Google to like, comment or report. Private records and saves still work for guests.'))+'</p><div class="btn-row"><button type="button" class="btn primary" data-action="'+(isGuest()?'link-google':'login-google')+'">'+esc(socialText(isGuest()?'绑定谷歌':'谷歌登录',isGuest()?'Link Google':'Sign in with Google'))+'</button><button type="button" class="btn ghost" data-modal="no">'+esc(t('cancel'))+'</button></div></div>');
-  return false;
+  return store.mode !== 'remote' || store.signedIn() || requireLogin();
 }
 function currentSocial(p) { return socialPanel===p && socialKey(p.id)===p.key && state.view==='post' && state.postId===p.id && !!$('#post-social'); }
 function mountPostSocial(id) {
@@ -170,6 +168,16 @@ function handleSocialAction(action,el) {
   }
   if(!p || !currentSocial(p))return true;
   if(action==='social-refresh' || action==='social-more'){loadPostSocial(action==='social-more');return true;}
+  if(store.mode==='remote'&&!store.signedIn()){
+    var post=p.id,text=(socialDrafts.get(p.key)||{}).text||'';
+    requireLogin(function(){var owner=me().id,until=Date.now()+10000;function retry(){
+      if(me().id!==owner||state.view!=='post'||state.postId!==post)return;
+      var current=socialPanel;if(!current)return;
+      socialDrafts.set(current.key,{text:text});
+      if(current.data&&!current.loading){paintPostSocial();handleSocialAction(action,el);return;}
+      if(Date.now()<until)setTimeout(retry,80);
+    }retry();});return true;
+  }
   if(socialWrites.has(p.key))return true;
   if(action==='social-send'){sendSocialComment();return true;}
   if(action==='social-cancel-reply'){p.reply=null;paintPostSocial();return true;}
