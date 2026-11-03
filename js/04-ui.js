@@ -421,6 +421,7 @@
   }
   function renderBSheet() {
     var card=$('#bsheet-card'),h='';
+    if(state.bsheet==='lang') h=langSheetHTML();
     if(state.bsheet==='filters') {
       var mine=state.scope==='mine', both=mine&&state.mineBoth, food=both||state.mode==='food';
       var shown=store.places().filter(function(p){return inScope(p)&&passesFilters(p);}).length;
@@ -577,9 +578,25 @@
     return '<button type="button" class="icon-btn flat favorites-entry '+(extra||'')+'" data-action="open-favorites" aria-label="'+esc(label)+'" title="'+esc(label)+'">'+(on?ICON.starOn:ICON.star)+'</button>';
   }
   /* 首页右上角：中英切换（用户 2026-11-02 换掉了收藏星星；收藏在足迹页里进） */
+  /* 语言（用户 2026-11-03）：界面只有中文 / English；哈萨克语、阿拉伯语、印尼语只用来翻译点评和帖子（界面用英文）。
+     点了打开一个小菜单选语言；每条点评下面的「翻译」翻成这里选的语言 */
+  var TR_LANGS = [['zh', '中文', 'zh-CN'], ['en', 'English', 'en'], ['kk', 'Қазақша', 'kk'], ['ar', 'العربية', 'ar'], ['id', 'Bahasa Indonesia', 'id']];
+  var LS_TRLANG = 'xuetuan:trlang';
+  function trLang() {
+    var v = lsGet(LS_TRLANG);
+    return TR_LANGS.some(function (l) { return l[0] === v; }) && (v === 'kk' || v === 'ar' || v === 'id' ? state.lang === 'en' : v === state.lang) ? v : state.lang;
+  }
+  function trLangShort() { return { zh: '中文', en: 'ENG', kk: 'KAZ', ar: 'عربي', id: 'IND' }[trLang()]; }
   function langButtonHTML() {
-    var en = state.lang === 'en';
-    return '<button type="button" class="home-lang" data-action="set-lang" data-lang="' + (en ? 'zh' : 'en') + '" aria-label="' + (en ? '切换到中文' : 'Switch to English') + '">' + (en ? '中文' : 'ENG') + '</button>';
+    return '<button type="button" class="home-lang" data-action="lang-menu" aria-label="' + esc(state.lang === 'en' ? 'Language' : '语言') + '">' + esc(trLangShort()) + '</button>';
+  }
+  function langSheetHTML() {
+    var cur = trLang();
+    return '<div class="bsheet-head"><h3>' + esc(state.lang === 'en' ? 'Language' : '语言') + '</h3></div>' +
+      '<p class="f-hint">' + esc(state.lang === 'en' ? 'Kazakh, Arabic and Indonesian translate reviews and posts; buttons stay in English.' : '哈萨克语、阿拉伯语、印尼语用来翻译点评和帖子，按钮文字用英文。') + '</p>' +
+      '<div class="lang-list">' + TR_LANGS.map(function (l) {
+        return '<button type="button" class="lang-opt" data-action="pick-lang" data-lang="' + l[0] + '" aria-pressed="' + (cur === l[0]) + '"' + (l[0] === 'ar' ? ' dir="rtl"' : '') + '>' + esc(l[1]) + '</button>';
+      }).join('') + '</div>';
   }
   function footprintToolsHTML(saved) {
     var en=state.lang==='en', n=activeFilterCount();

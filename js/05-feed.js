@@ -118,7 +118,7 @@
     if (r.visibility === 'private') sc.push('<span class="pill">' + esc(t('visPrivateShort')) + '</span>');
     if (sc.length) h += '<div class="post-score">' + sc.join('<span class="sep">·</span>') + '</div>';
     if (r.title) h += '<h1 class="post-title">' + esc(r.title) + '</h1>';
-    if (text) h += '<p class="post-text">' + esc(text) + '</p>';
+    if (text) h += '<p class="post-text" data-tr="' + esc(r.id) + '">' + esc(text) + '</p>' + trButtonHTML(r.id);
     h += '<ul class="near-list post-place">' + placeRowHTML(p, 'post-place', esc(catName(c)) + ' · ' + esc(distLabel(p)), '<span class="near-cta">' + esc(t('postPlace')) + '</span>') + '</ul>';
     h += '<div class="actions post-actions">' + saveBtnHTML(p.id, false) + own + moderationControl(r) + '</div>';
     if (r.visibility === 'public' && !r.sample) h += '<section id="post-social" class="post-social" aria-label="' + esc(state.lang === 'en' ? 'Post discussion' : '帖子互动') + '"></section>';
@@ -282,12 +282,49 @@
     tr.addEventListener('scroll', function () { cnt.textContent = (heroIndex() + 1) + ' / ' + tr.children.length; }, { passive: true });
   }
 
+  /* 翻译（用户 2026-11-03，Google 翻译，key 在后端 xuetuan-translate）：点「翻译」才翻，翻成语言菜单里选的语言；
+     结果存在本机（同一段话同一种语言只翻一次），再点一下看原文 */
+  var TR_CACHE = 'xuetuan:tr:';
+  function trButtonHTML(id) { return '<button type="button" class="link-btn tr-btn" data-action="translate" data-id="' + esc(id) + '">' + esc(state.lang === 'en' ? 'Translate' : '翻译') + '</button>'; }
+  function trHash(s) { var h = 5381; for (var i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0; return (h >>> 0).toString(36) + s.length; }
+  function translateText(text, target) {
+    var code = TR_LANGS.filter(function (l) { return l[0] === target; })[0][2], key = TR_CACHE + code + ':' + trHash(text), hit = lsGet(key);
+    if (hit) return Promise.resolve(hit);
+    var call = window.__translate ? window.__translate([text], code)
+      : sbClient ? sbClient.functions.invoke('xuetuan-translate', { body: { q: [text], target: code } }).then(function (r) {
+        if (r.error) { var st = r.error.context && r.error.context.status; throw new Error(st === 503 ? 'no_key' : 'failed'); }
+        return r.data;
+      }) : Promise.reject(new Error('offline'));
+    return call.then(function (d) {
+      var out = d && d.translations && d.translations[0] && d.translations[0].text;
+      if (!out) throw new Error('failed');
+      lsSet(key, out);
+      return out;
+    });
+  }
+  function toggleTranslate(btn, id) {
+    var r = store.review(id), p = btn && btn.previousElementSibling;
+    if (!r || !p || !p.hasAttribute('data-tr') || btn.disabled) return;
+    var en = state.lang === 'en', orig = reviewText(r);
+    if (p.classList.contains('translated')) { p.textContent = orig; p.classList.remove('translated'); p.removeAttribute('dir'); btn.textContent = en ? 'Translate' : '翻译'; return; }
+    btn.disabled = true; btn.textContent = en ? 'Translating…' : '翻译中…';
+    var target = trLang();
+    translateText(orig, target).then(function (out) {
+      p.textContent = out; p.classList.add('translated');
+      if (target === 'ar') p.setAttribute('dir', 'rtl');
+      btn.textContent = en ? 'Show original' : '看原文';
+    }, function (e) {
+      btn.textContent = en ? 'Translate' : '翻译';
+      toast(e && e.message === 'no_key' ? (en ? 'Translation is not switched on yet.' : '翻译还没开通') : (en ? 'Could not translate. Try again later.' : '翻译失败，稍后再试'));
+    }).then(function () { btn.disabled = false; });
+  }
+  window.__translateText = translateText; /* 测试用 */
   function reviewHTML(r) {
     var name = authorLabel(r), from = '', meta = metaHTML(r), text = reviewText(r), go = canOpenPerson(r.authorId);
     return '<li class="review">' + (go ? '<button type="button" class="who-link rv-av"' + personAttr(r.authorId) + ' aria-label="' + esc(personLabel(name)) + '">' + avatarHTML(name, r.authorId) + '</button>' : avatarHTML(name, r.authorId)) + '<div class="rv-main">' +
       '<div class="rv-who">' + (go ? '<button type="button" class="who-link rv-name"' + personAttr(r.authorId) + ' tabindex="-1" aria-hidden="true"><b>' + esc(name) + '</b></button>' : '<b>' + esc(name) + '</b>') + (from ? '<span class="muted">' + esc(t('fromPrefix') + from) + '</span>' : '') + '<span class="fi-time">' + esc(reviewTimeLabel(r)) + '</span></div>' +
       (meta ? '<div class="rv-meta">' + meta + '</div>' : '') +
-      (text ? '<p class="rv-text">' + esc(text) + '</p>' : '') +
+      (text ? '<p class="rv-text" data-tr="' + esc(r.id) + '">' + esc(text) + '</p>' + trButtonHTML(r.id) : '') +
       (r.photos && r.photos.length ? '<div class="rv-photos">' + r.photos.map(function (id) {
         return '<button type="button" class="ph sm" data-action="photo" data-id="' + esc(id) + '" data-group="rv-' + esc(r.id) + '"><img data-photo="' + esc(id) + '" data-small alt="">' + photoDateHTML(id, r) + '</button>';
       }).join('') + '</div>' : '') +

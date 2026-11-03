@@ -471,6 +471,9 @@
       case 'search': rememberFeedSnap(); state.view = 'search'; render(); setSnap('full'); break;
       case 'search-retry': osm.q = ''; osm.ck = ''; queueOsmSearch(); renderSearchResults(); break;
       case 'set-lang': setLang(d.lang); break;
+      case 'lang-menu': openBSheet('lang'); break;
+      case 'pick-lang': lsSet(LS_TRLANG, d.lang); closeBSheet(); if (state.lang !== (d.lang === 'zh' ? 'zh' : 'en')) setLang(d.lang === 'zh' ? 'zh' : 'en'); else { renderChrome(); render(); } break;
+      case 'translate': toggleTranslate(el, d.id); break;
       case 'set-style': setBasemap(d.style); break;
       case 'campus': closeBSheet(); if (state.view === 'search') { toMapTab(); goFeed(); } flyTo([XMUM.lng, XMUM.lat], state.mode === 'travel' ? TRAVEL_ZOOM : 14.6); break;
       case 'locate': closeBSheet(); if (state.view === 'search') { toMapTab(); goFeed(); } locate(); break;

@@ -1084,3 +1084,10 @@ button.pc-place { background: transparent; }
 
 /* Halal（用户 2026-11-03）：地点页一个绿色小标签；开关在筛选里 */
 .tag.halal-tag { padding: 1px 8px; border-radius: 999px; background: #E3F4EA; color: #17804A; font-size: 12px; font-weight: 600; }
+
+/* 翻译（用户 2026-11-03）：点评下面一个小「翻译」；语言菜单一列 */
+.tr-btn { display: inline-block; margin: 2px 0 4px; padding: 2px 0; font-size: 12.5px; color: var(--accent); }
+.rv-text.translated, .post-text.translated { color: var(--ink); }
+.lang-list { display: grid; gap: 8px; margin: 10px 0 6px; }
+.lang-opt { height: 46px; padding: 0 16px; letter-spacing: 0; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); color: var(--ink); font: inherit; font-size: 15px; text-align: start; }
+.lang-opt[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); font-weight: 600; background: color-mix(in srgb, var(--accent) 8%, var(--surface)); }
