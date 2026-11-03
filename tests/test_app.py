@@ -1270,6 +1270,10 @@ with sync_playwright() as p:
     check('tapping that label again opens the saved place, not a new card', page.locator('[data-action="save-preview"]').count() == 0 and page.inner_text('.place-head h2') == 'Muzium Uji')
     page.click('[data-action="back"]'); page.wait_for_timeout(200)
     foot_sub(page, 'saved'); page.wait_for_timeout(200)
+    # This checks presence in the collection, independently of earlier saved-filter tests.
+    set_mode(page, 'travel'); open_filters(page)
+    page.click('#bsheet [data-action="clear-filters"]'); page.click('#bsheet [data-action="sheet-close"]')
+    page.click('#view [data-action="saved-want"][data-v="all"]')
     check('it is in footprints · wishlist (list + map)', page.locator('#view .near-item', has_text='Muzium Uji').count() == 1 and 'Muzium Uji' in page.evaluate('window.__map.getSource("places").data.features.map(f => f.properties.name)'))
     # 去了、记一笔、再删掉：想去的地点还在（本地版）
     page.locator('#view .near-item', has_text='Muzium Uji').click(); page.wait_for_timeout(250)
