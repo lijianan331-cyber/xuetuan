@@ -1320,9 +1320,21 @@
   /* ================= helpers ================= */
   function $(sel, root) { return (root || document).querySelector(sel); }
   function $$(sel, root) { return Array.prototype.slice.call((root || document).querySelectorAll(sel)); }
+  /* 哈萨克语 / 印尼语界面（用户 2026-11-03）：state.lang 仍是 'en'，英文文案经 L() 查 data/i18n-ui.js 换成译文 */
+  function uiLang() {
+    if (state.lang !== 'en') return state.lang;
+    var v = lsGet('xuetuan:trlang');
+    return v === 'kk' || v === 'id' ? v : 'en';
+  }
+  function L(s) {
+    if (state.lang !== 'en') return s;
+    var u = uiLang(), d = u !== 'en' && window.XUETUAN_UI && window.XUETUAN_UI[u];
+    return d && d[s] != null ? d[s] : s;
+  }
   function t(key, vars) {
     var table = I18N[state.lang] || I18N.zh;
     var s = table[key] != null ? table[key] : (I18N.zh[key] != null ? I18N.zh[key] : key);
+    if (state.lang === 'en') s = L(s);
     if (vars) s = s.replace(/\{(\w+)\}/g, function (m, k) { return vars[k] != null ? vars[k] : m; });
     return s;
   }
@@ -1476,7 +1488,7 @@
   function halalFits(p) { return !state.halal || isHalal(p); }
   function halalTagHTML(p) {
     if (!isHalal(p)) return '';
-    var tip = state.lang === 'en' ? 'Guessed from the name and category, please check yourself' : '按店名和分类自动判断，仅供参考，请自行确认';
+    var tip = state.lang === 'en' ? L('Guessed from the name and category, please check yourself') : '按店名和分类自动判断，仅供参考，请自行确认';
     return '<span class="tag halal-tag" title="' + esc(tip) + '">Halal</span>';
   }
   function reviewPriceCurrency(p, r) { return validPriceCurrency(r && r.priceCurrency) || defaultPriceCurrency(p); }
@@ -1487,7 +1499,7 @@
   function priceSelectOptions(p, current) { return priceChoices(p,current).map(function (c) { return '<option value="' + c + '"' + (c === current ? ' selected' : '') + '>' + esc(PRICE_SYM[c]) + '</option>'; }).join(''); }
   function formPriceFieldHTML() {
     var c = formPriceCurrency();
-    return fieldHTML('f-price', esc(t('priceFood',{c:PRICE_SYM[c]})), '<div class="price-input-row"><select id="f-price-currency" class="input price-unit" aria-label="' + esc(state.lang === 'en' ? 'Price currency' : '金额币种') + '">' + priceSelectOptions(formPricePlace(), c) + '</select><input id="f-price" class="input" type="number" inputmode="decimal" min="0" max="99999999.99" step="0.01"></div>');
+    return fieldHTML('f-price', esc(t('priceFood',{c:PRICE_SYM[c]})), '<div class="price-input-row"><select id="f-price-currency" class="input price-unit" aria-label="' + esc(state.lang === 'en' ? L('Price currency') : '金额币种') + '">' + priceSelectOptions(formPricePlace(), c) + '</select><input id="f-price" class="input" type="number" inputmode="decimal" min="0" max="99999999.99" step="0.01"></div>');
   }
   function updateFormCurrency() {
     var lab = $('label[for="f-price"]'), sel = $('#f-price-currency'), c = formPriceCurrency();
@@ -1502,7 +1514,7 @@
     var text = (approx ? (state.lang === 'en' ? '≈ ' : '约 ') : '') + PRICE_SYM[target] + ' ' + fmtPrice(n);
     if (local === 'MYR') return '<span>' + esc(text) + '</span>';
     var next = target === 'MYR' ? local : 'MYR';
-    var label = text + (state.lang === 'en' ? '; switch to ' : '，点击切换为 ') + PRICE_SYM[next] + (approx ? (state.lang === 'en' ? '; estimated rate' : '，估算汇率') : '');
+    var label = text + (state.lang === 'en' ? L('; switch to ') : '，点击切换为 ') + PRICE_SYM[next] + (approx ? (state.lang === 'en' ? L('; estimated rate') : '，估算汇率') : '');
     return '<button type="button" class="price-toggle" data-action="price-toggle" data-price-key="' + esc(key) + '" data-price-place="' + esc(p.id || '') + '" data-price-cc="' + esc(placeCC(p)) + '" data-price-amount="' + amount + '" data-price-source="' + source + '" data-price-target="' + target + '" aria-label="' + esc(label) + '" title="' + esc(label) + '"><span>' + esc(text) + '</span><i aria-hidden="true">↔</i></button>';
   }
   function togglePrice(el) {
@@ -1537,8 +1549,8 @@
   }
   function reviewTimeLabel(r) {
     var at = reviewActivityAt(r), changed = at > (r.createdAt || 0) + 60000;
-    return (state.lang === 'en' ? 'Visited ' : '到访 ') + visitDay(r.createdAt) +
-      (changed ? ' · ' + (state.lang === 'en' ? 'Updated ' : '更新于 ') + timeAgo(at) : ' · ' + timeAgo(at));
+    return (state.lang === 'en' ? L('Visited ') : '到访 ') + visitDay(r.createdAt) +
+      (changed ? ' · ' + (state.lang === 'en' ? L('Updated ') : '更新于 ') + timeAgo(at) : ' · ' + timeAgo(at));
   }
   /* 缩略图下面不再写“上传 / 到访”日期：评论上方已经有“到访 … · 更新于 …”（用户 2026-11-02：文字重复） */
   function photoDateHTML() { return ''; }
@@ -1569,19 +1581,19 @@
   function isMine(r) { return r.authorId === me().id; }
   function isModerator() { return !!(store.isAdmin && store.isAdmin()); }
   function moderationControl(r) {
-    return isModerator() && r.visibility === 'public' ? '<button type="button" class="link-btn danger" data-action="moderation" data-id="' + esc(r.id) + '">' + esc(state.lang === 'en' ? 'Moderate' : '管理内容') + '</button>' : '';
+    return isModerator() && r.visibility === 'public' ? '<button type="button" class="link-btn danger" data-action="moderation" data-id="' + esc(r.id) + '">' + esc(state.lang === 'en' ? L('Moderate') : '管理内容') + '</button>' : '';
   }
   function securitySaveError(e) {
     var msg = String(e && e.message || e || '');
-    if (/XUETUAN_.*BLOCKED/.test(msg)) return state.lang === 'en' ? 'Publishing is restricted for this account or browser.' : '该账号或浏览器已被限制发布。';
-    if (/XUETUAN_RATE_LIMIT/.test(msg)) return state.lang === 'en' ? 'Too many requests. Please try later.' : '操作太频繁，请稍后再试；草稿仍保留。';
-    if (/XUETUAN_RELOAD_REQUIRED/.test(msg)) return state.lang === 'en' ? 'Refresh to use the updated security settings.' : '防护已更新，请刷新页面后再操作。';
-    return state.lang === 'en' ? 'Save failed. Your draft is kept; please try again.' : '保存失败，草稿仍保留，请稍后重试。';
+    if (/XUETUAN_.*BLOCKED/.test(msg)) return state.lang === 'en' ? L('Publishing is restricted for this account or browser.') : '该账号或浏览器已被限制发布。';
+    if (/XUETUAN_RATE_LIMIT/.test(msg)) return state.lang === 'en' ? L('Too many requests. Please try later.') : '操作太频繁，请稍后再试；草稿仍保留。';
+    if (/XUETUAN_RELOAD_REQUIRED/.test(msg)) return state.lang === 'en' ? L('Refresh to use the updated security settings.') : '防护已更新，请刷新页面后再操作。';
+    return state.lang === 'en' ? L('Save failed. Your draft is kept; please try again.') : '保存失败，草稿仍保留，请稍后重试。';
   }
   function openModeration(id) {
     var r = store.review(id);
     if (!isModerator() || !r || r.visibility !== 'public') return;
-    openModal('<div class="modal-card" role="dialog" aria-modal="true"><h3>' + esc(state.lang === 'en' ? 'Moderate public content' : '管理公开内容') + '</h3><p>' + esc(state.lang === 'en' ? 'Remove this post and its media. A browser ban can be bypassed by clearing data or changing browsers.' : '删除会移除这条内容及其图片。封禁限制账号及已记录的浏览器标识；清除数据或更换浏览器可能绕过浏览器限制。') + '</p><button type="button" class="btn danger" data-action="moderation-confirm" data-id="' + esc(id) + '" data-decision="delete">' + esc(state.lang === 'en' ? 'Delete content and media' : '删除内容和图片') + '</button><button type="button" class="btn danger" data-action="moderation-confirm" data-id="' + esc(id) + '" data-decision="delete_and_ban">' + esc(state.lang === 'en' ? 'Delete and ban author' : '删除并封禁作者') + '</button><button type="button" class="btn ghost" data-modal="no">' + esc(t('cancel')) + '</button></div>');
+    openModal('<div class="modal-card" role="dialog" aria-modal="true"><h3>' + esc(state.lang === 'en' ? L('Moderate public content') : '管理公开内容') + '</h3><p>' + esc(state.lang === 'en' ? L('Remove this post and its media. A browser ban can be bypassed by clearing data or changing browsers.') : '删除会移除这条内容及其图片。封禁限制账号及已记录的浏览器标识；清除数据或更换浏览器可能绕过浏览器限制。') + '</p><button type="button" class="btn danger" data-action="moderation-confirm" data-id="' + esc(id) + '" data-decision="delete">' + esc(state.lang === 'en' ? L('Delete content and media') : '删除内容和图片') + '</button><button type="button" class="btn danger" data-action="moderation-confirm" data-id="' + esc(id) + '" data-decision="delete_and_ban">' + esc(state.lang === 'en' ? L('Delete and ban author') : '删除并封禁作者') + '</button><button type="button" class="btn ghost" data-modal="no">' + esc(t('cancel')) + '</button></div>');
   }
   var moderationBusy = false;
   function moderateVisit(id, decision) {
@@ -1590,7 +1602,7 @@
     $$('#modal button').forEach(function (b) { b.disabled = true; });
     store.moderateVisit(id,decision).then(function (r) {
       closeModal(); refreshMap(); goFeed();
-      toast(r.mediaOk ? (state.lang === 'en' ? 'Content removed' : r.banned ? '内容已删除，作者及已记录浏览器已封禁' : '内容和图片已删除') : (state.lang === 'en' ? 'Post removed; retry media cleanup in My account.' : '内容已删除，图片清理失败，可在“我的”重试清理'));
+      toast(r.mediaOk ? (state.lang === 'en' ? L('Content removed') : r.banned ? '内容已删除，作者及已记录浏览器已封禁' : '内容和图片已删除') : (state.lang === 'en' ? L('Post removed; retry media cleanup in My account.') : '内容已删除，图片清理失败，可在“我的”重试清理'));
     }, function (e) { toast(securitySaveError(e)); $$('#modal button').forEach(function (b) { b.disabled = false; }); }).then(function () { moderationBusy = false; });
   }
   /* 三种地图：all = 探索（公开记录），mine = 我的足迹，saved = 收藏（公开记录 + 我自己的） */
@@ -1836,7 +1848,7 @@
     /* 旧的“日韩”在筛日料或韩餐时都算上 */
     return p.cat === cat || (p.cat === 'jpkr' && (cat === 'jp' || cat === 'kr'));
   }
-  function catName(c) { return state.lang === 'en' ? c.en : c.zh; }
+  function catName(c) { return state.lang === 'en' ? L(c.en) : c.zh; }
   function precLabel(k) { return t({ exact: 'precExact', area: 'precArea', city: 'precCity' }[k] || 'precExact'); }
   function placeTitle(p) { var name = state.lang === 'en' ? (p.altName || p.name) : (p.name || p.altName); return /^(没起名的地方|没起名的店|Unnamed spot|Unnamed place)$/i.test(name || '') ? t('unnamedTravel') : name; }
   function placeSub(p) {
@@ -1859,7 +1871,7 @@
   function guestBlocked() {
     if (!isGuest()) return false;
     var en = state.lang === 'en';
-    openModal('<div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="guest-title"><h3 id="guest-title">' + esc(en ? 'Link Google to share' : '绑定谷歌后才能分享') + '</h3><p class="f-hint">' + esc(en ? 'Guest accounts can only keep private records. Link Google to share to the big map; everything you saved stays.' : '游客号只能存给自己看的记录。绑定谷歌后就能分享到大地图，已经存的记录都还在。') + '</p><div class="btn-row"><button type="button" class="btn primary" data-action="link-google">' + esc(en ? 'Link Google' : '绑定谷歌') + '</button><button type="button" class="btn ghost" data-modal="no">' + esc(en ? 'Not now' : '先不用') + '</button></div></div>');
+    openModal('<div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="guest-title"><h3 id="guest-title">' + esc(en ? L('Link Google to share') : '绑定谷歌后才能分享') + '</h3><p class="f-hint">' + esc(en ? L('Guest accounts can only keep private records. Link Google to share to the big map; everything you saved stays.') : '游客号只能存给自己看的记录。绑定谷歌后就能分享到大地图，已经存的记录都还在。') + '</p><div class="btn-row"><button type="button" class="btn primary" data-action="link-google">' + esc(en ? L('Link Google') : '绑定谷歌') + '</button><button type="button" class="btn ghost" data-modal="no">' + esc(en ? L('Not now') : '先不用') + '</button></div></div>');
     return true;
   }
   /* 个人主页：作者自己打开了才能点进（自己的总能点，看看别人眼里的样子） */
@@ -1873,8 +1885,8 @@
     var r = store.reviews().filter(function (x) { return x.authorId === id; })[0], en = state.lang === 'en';
     var name = (r && r.authorName) || t('anon');
     openModal('<div class="modal-card person-card" role="dialog" aria-modal="true" aria-labelledby="pcard-name">' + avatarHTML(name, id) + '<h3 id="pcard-name">' + esc(name) + '</h3>' +
-      '<p class="f-hint">' + esc(en ? 'This classmate keeps their page private.' : 'TA 还没公开主页') + '</p>' +
-      '<div class="btn-row"><button type="button" class="btn primary" data-action="dm-open" data-peer="' + esc(id) + '" data-name="' + esc(name) + '">' + esc(en ? 'Message' : '发私信') + '</button><button type="button" class="btn ghost" data-modal="no">' + esc(en ? 'Close' : '关闭') + '</button></div></div>');
+      '<p class="f-hint">' + esc(en ? L('This classmate keeps their page private.') : 'TA 还没公开主页') + '</p>' +
+      '<div class="btn-row"><button type="button" class="btn primary" data-action="dm-open" data-peer="' + esc(id) + '" data-name="' + esc(name) + '">' + esc(en ? L('Message') : '发私信') + '</button><button type="button" class="btn ghost" data-modal="no">' + esc(en ? L('Close') : '关闭') + '</button></div></div>');
   }
   function authorFrom(r) { var h = r.authorId && homeOf(r.authorId); return h && h.public ? h.city : ''; }
   function homeName(h) { return h.userId === me().id ? (me().name || t('you')) : (h.name || t('anon')); }

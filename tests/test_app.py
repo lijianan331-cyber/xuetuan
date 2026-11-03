@@ -1334,10 +1334,17 @@ with sync_playwright() as p:
     check('home top-right: a language button (shows the current language) replaced the favorites star', lb == [True, '中文', 0], lb)
     page5.click('.home-lang'); page5.wait_for_timeout(250)
     opts = page5.locator('#bsheet [data-action="pick-lang"]').all_inner_texts()
-    check('language menu offers 中文, English, Kazakh, Arabic, Indonesian', opts == ['中文', 'English', 'Қазақша', 'العربية', 'Bahasa Indonesia'], opts)
+    check('language menu offers 中文, English, Kazakh, Indonesian (Arabic dropped)', opts == ['中文', 'English', 'Қазақша', 'Bahasa Indonesia'], opts)
     page5.click('#bsheet [data-lang="kk"]'); page5.wait_for_timeout(250)
-    lb2 = page5.evaluate('[state.lang, document.querySelector(".home-lang").textContent, document.querySelector("#bsheet").hidden]')
-    check('picking Kazakh: buttons switch to English, the button reads KAZ, menu closes', lb2 == ['en', 'KAZ', True], lb2)
+    lb2 = page5.evaluate('[state.lang, document.querySelector(".home-lang").textContent, document.querySelector("#bsheet").hidden, document.documentElement.lang]')
+    check('picking Kazakh: the button reads KAZ, menu closes, page lang kk', lb2 == ['en', 'KAZ', True, 'kk'], lb2)
+    tabs_kk = page5.inner_text('#tabbar')
+    check('Kazakh: buttons and tabs are in Kazakh (Басты бет), categories too', 'Басты бет' in tabs_kk and page5.evaluate('catName(CATS.food[0])') == 'Қытай асханасы', tabs_kk)
+    cov = page5.evaluate('''(() => { const U = window.XUETUAN_UI, miss = [];
+      for (const k in I18N.en) { const v = I18N.en[k]; if (/[A-Za-z]{3}/.test(v) && !(v in U.kk)) miss.push(k); }
+      const a = Object.keys(U.kk).sort().join('|'), b = Object.keys(U.id).sort().join('|');
+      return [miss, a === b]; })()''')
+    check('every English text in I18N has a Kazakh line, and Kazakh/Indonesian cover the same texts', cov == [[], True], cov)
     # 翻译：点评下面「Translate」，翻成选的语言（测试里用假的翻译），再点看原文；结果存在本机
     rid = page5.evaluate('(() => { const r = store.reviews().find(r => r.placeId === "p-old"); r.text = "这家的面很好吃"; setTab("explore"); openPlace("p-old"); setSnap("full"); return r.id; })()'); page5.wait_for_timeout(300)
     page5.evaluate("window.__trCalls = []; window.__translate = (q, t) => { window.__trCalls.push(t); return Promise.resolve({translations: [{text: 'KK:' + q[0], src: 'zh-CN'}]}); }; 0")
@@ -1349,9 +1356,20 @@ with sync_playwright() as p:
     tr2 = [page5.locator('.review .rv-text').first.inner_text(), btn.inner_text()]
     btn.click(); page5.wait_for_timeout(200)
     check('translate: shows the Kazakh translation, Show original goes back, the second time comes from the device cache',
-          tr1 == ['KK:' + orig, 'Show original'] and tr2 == [orig, 'Translate'] and page5.evaluate('window.__trCalls') == ['kk'], [tr1, tr2, page5.evaluate('window.__trCalls')])
+          tr1 == ['KK:' + orig, 'Түпнұсқасын көру'] and tr2 == [orig, 'Аудару'] and page5.evaluate('window.__trCalls') == ['kk'], [tr1, tr2, page5.evaluate('window.__trCalls')])
     page5.evaluate("delete window.__translate; closeBSheet(); setTab('home')"); page5.wait_for_timeout(200)
-    page5.click('.home-lang'); page5.wait_for_timeout(200); page5.click('#bsheet [data-lang="zh"]'); page5.wait_for_timeout(250)
+    page5.click('.home-lang'); page5.wait_for_timeout(200); page5.click('#bsheet [data-lang="id"]'); page5.wait_for_timeout(250)
+    idl = [page5.inner_text('.home-lang'), page5.evaluate('document.documentElement.lang'), 'Beranda' in page5.inner_text('body'), page5.evaluate('t("filterReset")')]
+    check('picking Indonesian: IND, page lang id, Beranda tab, filter Reset reads Atur ulang', idl == ['IND', 'id', True, 'Atur ulang'], idl)
+    page5.click('.home-lang'); page5.wait_for_timeout(200); page5.click('#bsheet [data-lang="en"]'); page5.wait_for_timeout(250)
+    check('picking English goes back to English text', page5.evaluate('[state.lang, t("filterReset"), document.documentElement.lang]') == ['en', 'Reset', 'en'])
+    page5.evaluate("setTab('me')"); page5.wait_for_timeout(250)
+    ml = [page5.inner_text('.me-lang'), page5.locator('.seg.me-lang').count()]
+    page5.click('.me-lang'); page5.wait_for_timeout(250)
+    ml.append(page5.locator('#bsheet [data-action="pick-lang"]').count())
+    check('Me page top right: a language button (ENG) opens the same 4-language menu, no 中|EN pill', ml == ['ENG', 0, 4], ml)
+    page5.click('#bsheet [data-lang="zh"]'); page5.wait_for_timeout(250)
+    page5.evaluate("setTab('home')"); page5.wait_for_timeout(250)
     check('picking 中文 switches everything back', page5.evaluate('state.lang') == 'zh' and page5.inner_text('.home-lang') == '中文')
     check('review photos show no repeated "Uploaded / 上传" date text', page5.evaluate('document.querySelectorAll(".photo-date").length') == 0)
     check('home: only old shares -> says nothing new this month and offers older ones', '最近一个月' in page5.inner_text('.home-empty') and page5.locator('[data-action="home-all-time"]').count() == 1)

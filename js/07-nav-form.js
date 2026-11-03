@@ -177,7 +177,7 @@
   function formCancel() {
     var f = state.form, pid = f && f.placeId;
     if (f && f.saving) { toast(t('saveWorking')); return; }
-    if (f && !f.editId) { saveFormDraft(); if (f.drafted) setTimeout(function () { toast(state.lang === 'en' ? 'Draft kept: tap + to continue' : '草稿已存，下次点加号接着写'); }, 0); }
+    if (f && !f.editId) { saveFormDraft(); if (f.drafted) setTimeout(function () { toast(state.lang === 'en' ? L('Draft kept: tap + to continue') : '草稿已存，下次点加号接着写'); }, 0); }
     if (f) f.photos.forEach(releaseFormPreview);
     state.form = null; state.posting = false;
     if (pid && placeById(pid)) {
@@ -252,8 +252,8 @@
     var home = state.picking && state.picking.home;
     var mode = state.picking && state.picking.mode || state.mode;
     var selected = state.picking && state.picking.selected;
-    $('#pick-hint').textContent = selected ? (state.lang === 'en' ? 'Selected: ' : '已选：') + selected.name : t(home ? 'homePickHint' : mode === 'food' ? 'pickHintFood' : 'pickHintTravel') + (home ? '' : state.lang === 'en' ? ' · Or tap a business name/icon.' : ' · 也可以直接点店名或图标');
-    $('[data-action="pick-confirm"]').textContent = selected ? (state.lang === 'en' ? 'Choose this place' : '选择这家') : t('confirmSpot');
+    $('#pick-hint').textContent = selected ? (state.lang === 'en' ? L('Selected: ') : '已选：') + selected.name : t(home ? 'homePickHint' : mode === 'food' ? 'pickHintFood' : 'pickHintTravel') + (home ? '' : state.lang === 'en' ? L(' · Or tap a business name/icon.') : ' · 也可以直接点店名或图标');
+    $('[data-action="pick-confirm"]').textContent = selected ? (state.lang === 'en' ? L('Choose this place') : '选择这家') : t('confirmSpot');
     var prec = $('#pick-prec');
     if (mode === 'travel' && map && !home) {
       prec.innerHTML = esc(t('pickPrecision', { p: '§' })).replace('§', '<b>' + esc(precLabel(map.getZoom() >= 14 ? 'exact' : map.getZoom() >= 9 ? 'area' : 'city')) + '</b>');
@@ -270,8 +270,8 @@
     var en = state.lang === 'en';
     if (status === 'idle') { box.hidden = true; box.innerHTML = ''; return; }
     box.hidden = false;
-    if (status === 'loading' && !pickQ.results.length) { box.innerHTML = '<li class="muted">' + esc(en ? 'Searching…' : '搜索中…') + '</li>'; return; }
-    if (!pickQ.results.length) { box.innerHTML = '<li class="muted">' + esc(status === 'fail' ? (en ? 'Search failed, try again' : '搜索失败，再试一次') : (en ? 'Nothing found' : '没找到')) + '</li>'; return; }
+    if (status === 'loading' && !pickQ.results.length) { box.innerHTML = '<li class="muted">' + esc(en ? L('Searching…') : '搜索中…') + '</li>'; return; }
+    if (!pickQ.results.length) { box.innerHTML = '<li class="muted">' + esc(status === 'fail' ? (en ? L('Search failed, try again') : '搜索失败，再试一次') : (en ? L('Nothing found') : '没找到')) + '</li>'; return; }
     box.innerHTML = pickQ.results.map(function (r, k) {
       return '<li><button type="button" data-action="pick-go" data-k="' + k + '"><b>' + esc(r.name) + '</b>' + (r.where ? '<small>' + esc(r.where) + '</small>' : '') + '</button></li>';
     }).join('');
@@ -306,7 +306,7 @@
   }
   function resetPickSearch() {
     clearTimeout(pickQ.timer); pickQ.seq++; pickQ.results = [];
-    var q = $('#pick-q'); if (q) { q.value = ''; q.placeholder = state.lang === 'en' ? 'Search a city or area to fly there' : '搜城市、街区，地图飞过去'; }
+    var q = $('#pick-q'); if (q) { q.value = ''; q.placeholder = state.lang === 'en' ? L('Search a city or area to fly there') : '搜城市、街区，地图飞过去'; }
     renderPickResults('idle');
   }
   function endPick() {
@@ -749,11 +749,11 @@
     var p0 = f.placeId ? placeById(f.placeId) : null;
     var placeFields = formHasPlaceFields(f, p0);
     var bad = null;
-    if (f.post && !(d.title || '').trim()) { toast(state.lang === 'en' ? 'Add a title' : '请写一个标题'); bad = $('#f-title'); }
-    if (f.post && !f.photos.length) { toast(state.lang === 'en' ? 'Add at least one photo' : '请至少添加一张图片'); if (!bad) { $('#f-photos').scrollIntoView({ block: 'center' }); return; } }
+    if (f.post && !(d.title || '').trim()) { toast(state.lang === 'en' ? L('Add a title') : '请写一个标题'); bad = $('#f-title'); }
+    if (f.post && !f.photos.length) { toast(state.lang === 'en' ? L('Add at least one photo') : '请至少添加一张图片'); if (!bad) { $('#f-photos').scrollIntoView({ block: 'center' }); return; } }
     /* 评分选填（用户 2026-10-28）：不打分也能保存，地图上是蓝点 */
     if (bad) { bad.focus({ preventScroll: true }); centerInPanel(bad, !reduceMotion); return; }
-    if (f.post && !p0 && !f.loc) { toast(state.lang === 'en' ? 'Choose a place for your footprints' : '再选一个地点，就能保存到足迹了'); $('#post-location').scrollIntoView({ block: 'center' }); return; }
+    if (f.post && !p0 && !f.loc) { toast(state.lang === 'en' ? L('Choose a place for your footprints') : '再选一个地点，就能保存到足迹了'); $('#post-location').scrollIntoView({ block: 'center' }); return; }
 
     var btn = $('#f-submit');
     f.saving = true;
@@ -762,7 +762,7 @@
     frozen.forEach(function (el) { el.disabled = true; });
     var status = document.createElement('p'); status.className = 'save-status'; status.setAttribute('role', 'status');
     $('#place-form').appendChild(status);
-    function progress(stage, done, total) { status.textContent = stage === 'upload' ? t('saveUploading', { n: done, m: total }) : t('saveWriting'); if (btn) btn.textContent = stage === 'upload' ? (state.lang === 'en' ? 'Uploading ' : '上传 ') + done + '/' + total : t('saveWorking'); }
+    function progress(stage, done, total) { status.textContent = stage === 'upload' ? t('saveUploading', { n: done, m: total }) : t('saveWriting'); if (btn) btn.textContent = stage === 'upload' ? (state.lang === 'en' ? L('Uploading ') : '上传 ') + done + '/' + total : t('saveWorking'); }
     progress('write');
     if (f.visibility === 'public' && (d.nick || '').trim()) store.updateProfile({ name: d.nick.trim().slice(0, 20) });
     /* 编辑记录时没有名称框：已有地点的名字、位置不动，只改分类；原地点的“更多”里的字段照常改 */

@@ -163,7 +163,7 @@
       actions.hidden = !message || message === 'googleLoading' || message === 'googleSearching';
       actions.innerHTML = (retry ? '<button type="button" class="link-btn" data-action="google-retry">' + esc(t('googleRetry')) + '</button>' : '') +
         '<a href="https://www.google.com/maps/search/?api=1&amp;query=' + encodeURIComponent(box._googleContext ? box._googleContext.query().trim() : state.query.trim()) + '" target="_blank" rel="noopener noreferrer">' + esc(t('googleOpen')) + '</a>';
-      if (message && ['googleLoading','googleSearching','googleEmpty'].indexOf(message) === -1 && /MicroMessenger/i.test(navigator.userAgent)) actions.innerHTML += '<p class="f-hint">' + esc(state.lang === 'en' ? 'In WeChat, tap ··· at the top right and open this link in your browser.' : '微信内加载失败时，点右上角“···”→在浏览器中打开，再搜索。') + '</p>';
+      if (message && ['googleLoading','googleSearching','googleEmpty'].indexOf(message) === -1 && /MicroMessenger/i.test(navigator.userAgent)) actions.innerHTML += '<p class="f-hint">' + esc(state.lang === 'en' ? L('In WeChat, tap ··· at the top right and open this link in your browser.') : '微信内加载失败时，点右上角“···”→在浏览器中打开，再搜索。') + '</p>';
     }
   }
   function loadGoogle() {
@@ -368,8 +368,8 @@
       if (!ty || !googleTypesArea(ty) || state.form !== f || f.osm !== 'g/' + gid || !slot || $('#area-hint')) return;
       var hint = document.createElement('p');
       hint.className = 'f-hint area-hint'; hint.id = 'area-hint';
-      hint.innerHTML = esc(state.lang === 'en' ? 'This is a whole city or area, so the pin sits at its centre. For a spot (a waterfall, a shop), search its own name or ' : '这是一个城市 / 地区，位置在它的中心。想定在具体景点（比如瀑布）就搜景点自己的名字，或') +
-        '<button type="button" class="link-btn" data-action="area-repick">' + esc(state.lang === 'en' ? 'pick it on the map' : '在地图上点位置') + '</button>';
+      hint.innerHTML = esc(state.lang === 'en' ? L('This is a whole city or area, so the pin sits at its centre. For a spot (a waterfall, a shop), search its own name or ') : '这是一个城市 / 地区，位置在它的中心。想定在具体景点（比如瀑布）就搜景点自己的名字，或') +
+        '<button type="button" class="link-btn" data-action="area-repick">' + esc(state.lang === 'en' ? L('pick it on the map') : '在地图上点位置') + '</button>';
       slot.insertAdjacentElement('afterend', hint);
     });
   }
@@ -528,11 +528,11 @@
 
   /* 我的：上面是头像、昵称、来自哪、去过 / 想去 / 分享几个，下面是原来“我”里的资料和设置 */
   function onMeRoot() { return state.view === 'feed' && state.tab === 'me'; }
-  /* “我的”右上角的小语言切换（用户 2026-11-03 要回来，做小一点） */
+  /* “我的”右上角的语言按钮（用户 2026-11-03：不只中英，和首页一样点开选 中文 / English / Қазақша / Bahasa Indonesia） */
   function meLangHTML() {
-    return '<div class="seg me-lang" role="group" aria-label="Language">' +
-      '<button type="button" data-action="set-lang" data-lang="zh" aria-pressed="' + (state.lang === 'zh') + '">中</button>' +
-      '<button type="button" data-action="set-lang" data-lang="en" aria-pressed="' + (state.lang === 'en') + '">EN</button></div>';
+    return '<button type="button" class="me-lang" data-action="lang-menu" aria-label="Language / 语言">' +
+      '<svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9s-1.3 6.4-3.8 9c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg>' +
+      '<span>' + esc(trLangShort()) + '</span></button>';
   }
   /* 账号一行放在头像下面（用户 2026-11-03）：没登录 = 登录；游客 = 绑定谷歌；登录了 = 打码的邮箱 + 退出 */
   function maskEmail(e) {
@@ -542,10 +542,10 @@
   function meAccountHTML() {
     if (store.mode !== 'remote') return '';
     var en = state.lang === 'en';
-    if (!store.signedIn()) return '<div class="me-account"><span>' + esc(en ? 'Log in to keep your records on any device' : '登录后换手机也能找回记录') + '</span><button type="button" class="btn small primary" data-action="login">' + esc(t('login')) + '</button></div>'+authReturnGuestHTML()+authWechatHintHTML();
+    if (!store.signedIn()) return '<div class="me-account"><span>' + esc(en ? L('Log in to keep your records on any device') : '登录后换手机也能找回记录') + '</span><button type="button" class="btn small primary" data-action="login">' + esc(t('login')) + '</button></div>'+authReturnGuestHTML()+authWechatHintHTML();
     if (store.isAnon()) return authGuestAccountHTML();
     var who = managedIdentity && managedIdentity.alt ? identityText('主号管理的小号', 'Managed second identity') : maskEmail(store.email());
-    return '<div class="me-account account-row"><span>' + esc((en ? 'Signed in · ' : '已登录 · ') + who) + '</span><button type="button" class="btn small ghost" data-action="logout">' + esc(t('logout')) + '</button></div>'+authReturnGuestHTML();
+    return '<div class="me-account account-row"><span>' + esc((en ? L('Signed in · ') : '已登录 · ') + who) + '</span><button type="button" class="btn small ghost" data-action="logout">' + esc(t('logout')) + '</button></div>'+authReturnGuestHTML();
   }
   function meHeadHTML() {
     var pf = me();
@@ -562,7 +562,7 @@
       return sub ? '<button type="button" class="me-stat" data-action="foot-sub" data-v="' + sub + '">' + inner + '</button>' : '<div class="me-stat">' + inner + '</div>';
     }
     /* 点头像或名字：换头像、改名字（用户 2026-11-02） */
-    return '<div class="me-headrow"><button type="button" class="me-head me-edit" data-action="edit-profile" aria-label="' + esc(state.lang === 'en' ? 'Edit avatar and name' : '修改头像和名字') + '">' + avatarHTML(pf.name || '?', pf.id) + '<span class="me-id"><b' + (pf.name ? '' : ' class="muted"') + ' id="me-name">' + esc(pf.name || t('meNoName')) + '<span class="me-pencil" aria-hidden="true">' + ICON.pen + '</span></b>' +
+    return '<div class="me-headrow"><button type="button" class="me-head me-edit" data-action="edit-profile" aria-label="' + esc(state.lang === 'en' ? L('Edit avatar and name') : '修改头像和名字') + '">' + avatarHTML(pf.name || '?', pf.id) + '<span class="me-id"><b' + (pf.name ? '' : ' class="muted"') + ' id="me-name">' + esc(pf.name || t('meNoName')) + '<span class="me-pencil" aria-hidden="true">' + ICON.pen + '</span></b>' +
       '<small>' + esc(home ? t('fromPrefix') + home.city : t('meNoHome')) + '</small></span></button>' + meLangHTML() + '</div>' + meAccountHTML() +
       '<div class="me-stats">' + stat(Object.keys(been).length, 'meBeen', 'mine') + stat(want, 'meWant', 'saved') + stat(shared, 'meShared') + '</div>';
   }
@@ -582,16 +582,16 @@
     var en = state.lang === 'en';
     function menu(icon,title,sub,action,href){return '<'+(href?'a href="'+href+'"':'button type="button" data-action="'+action+'"')+' class="me-menu-row">'+icon+'<span><b>'+esc(title)+'</b>'+(sub?'<small>'+esc(sub)+'</small>':'')+'</span><i aria-hidden="true">›</i></'+(href?'a':'button')+'>';}
     var h = meHeadHTML() + '<div class="me-shortcuts">' +
-      (remote ? menu(dmIcon,en?'Messages':'私信',en?'Requests and conversations':'私信申请与聊天','dm-open').replace('</b>','</b>'+dmBadgeHTML()) : '') +
-      menu(CTRL_ICON.arrow,en?'Share my footprints':'分享我的足迹',en?'Maps and memories to take with you':'把去过的地方，做成一张地图','my-share') +
+      (remote ? menu(dmIcon,en?L('Messages'):'私信',en?L('Requests and conversations'):'私信申请与聊天','dm-open').replace('</b>','</b>'+dmBadgeHTML()) : '') +
+      menu(CTRL_ICON.arrow,en?L('Share my footprints'):'分享我的足迹',en?L('Maps and memories to take with you'):'把去过的地方，做成一张地图','my-share') +
       menu(ICON.home,t('homesBtn'),publicHomeCount()?t('homesN',{n:publicHomeCount()}):'', 'homes-open').replace('me-menu-row','me-menu-row me-homes') +
 '</div><div class="form me-settings">' + personal +
       '<div class="field"><span class="f-label">'+esc(t('basemap'))+'</span><div class="seg">'+
       ['light','color'].map(function(k){return '<button type="button" data-action="set-style" data-style="'+k+'" aria-pressed="'+(state.styleKey===k)+'">'+esc(t(styleLabelKey(k)))+'</button>';}).join('')+'</div></div>' +
       (areas.length?'<details class="me-fold"><summary>'+esc(t('areas'))+'</summary><ul class="area-list">'+areas.map(function(a){return '<li><span>'+esc(a.name)+'</span><button type="button" class="link-btn danger" data-action="del-area" data-id="'+esc(a.id)+'">'+esc(t('del'))+'</button></li>';}).join('')+'</ul></details>':'') +
-      ((identityCardHTML()+testAccountsHTML()) ? '<details class="me-fold account-details"' + (accountOpen?' open':'') + '><summary>'+esc(en?'Identities':'身份切换')+'</summary>'+identityCardHTML()+testAccountsHTML()+'</details>' : '') +
-      '<details class="me-fold data-details"' + (dataOpen?' open':'') + '><summary>'+esc(en?'Feedback & privacy':'意见反馈与隐私')+'</summary><a class="btn small me-feedback" href="contact.html">'+ICON.pen+esc(en?'Send feedback':'意见反馈')+'</a><p class="note">'+esc(t(remote?'remoteNote':'localNote'))+'</p><div class="btn-row">'+dataButtons+'</div><p><a class="privacy-link" href="privacy.html" target="_blank" rel="noopener">'+esc(t('privacyLink'))+'</a></p></details>' +
-      (isModerator()?'<details class="me-fold admin-details"' + (adminOpen?' open':'') + '><summary>'+esc(en?'Moderation tools':'管理工具')+'</summary><p class="f-hint">'+esc(en?'Review reports or manage a public post.':'处理评论举报，或进入公开帖子管理内容。')+'</p><div class="btn-row"><button type="button" class="btn small" data-action="social-reports">'+esc(en?'Comment reports':'评论举报')+'</button><button type="button" class="btn small" data-action="dm-reports">' + esc(en?'Private-message reports':'私信举报') + '</button><button type="button" class="btn small" data-action="moderation-clean">'+esc(en?'Retry media cleanup':'重试图片清理')+'</button></div><div id="social-reports"></div></details>':'') +
+      ((identityCardHTML()+testAccountsHTML()) ? '<details class="me-fold account-details"' + (accountOpen?' open':'') + '><summary>'+esc(en?L('Identities'):'身份切换')+'</summary>'+identityCardHTML()+testAccountsHTML()+'</details>' : '') +
+      '<details class="me-fold data-details"' + (dataOpen?' open':'') + '><summary>'+esc(en?L('Feedback & privacy'):'意见反馈与隐私')+'</summary><a class="btn small me-feedback" href="contact.html">'+ICON.pen+esc(en?L('Send feedback'):'意见反馈')+'</a><p class="note">'+esc(t(remote?'remoteNote':'localNote'))+'</p><div class="btn-row">'+dataButtons+'</div><p><a class="privacy-link" href="privacy.html" target="_blank" rel="noopener">'+esc(t('privacyLink'))+'</a></p></details>' +
+      (isModerator()?'<details class="me-fold admin-details"' + (adminOpen?' open':'') + '><summary>'+esc(en?L('Moderation tools'):'管理工具')+'</summary><p class="f-hint">'+esc(en?L('Review reports or manage a public post.'):'处理评论举报，或进入公开帖子管理内容。')+'</p><div class="btn-row"><button type="button" class="btn small" data-action="social-reports">'+esc(en?L('Comment reports'):'评论举报')+'</button><button type="button" class="btn small" data-action="dm-reports">' + esc(en?L('Private-message reports'):'私信举报') + '</button><button type="button" class="btn small" data-action="moderation-clean">'+esc(en?L('Retry media cleanup'):'重试图片清理')+'</button></div><div id="social-reports"></div></details>':'') +
       '<p class="about">'+esc(t('about'))+'</p></div>';
     view.innerHTML = h;
   }
@@ -599,7 +599,7 @@
   /* 本地版的测试账号：点一下就换成另一个人 */
   var shareCard = null;
   function appShareButton() {
-    return '<button type="button" class="icon-btn flat home-share" data-action="app-share" aria-label="' + esc(state.lang === 'en' ? 'Share XueTuan' : '分享雪团') + '"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3m-4 4 4-4 4 4M6 11H4v10h16V11h-2"/></svg></button>';
+    return '<button type="button" class="icon-btn flat home-share" data-action="app-share" aria-label="' + esc(state.lang === 'en' ? L('Share XueTuan') : '分享雪团') + '"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3m-4 4 4-4 4 4M6 11H4v10h16V11h-2"/></svg></button>';
   }
   function appShareURL() {
     var url = new URL(location.href), token = url.searchParams.get('_vercel_share');
@@ -609,21 +609,21 @@
   }
   function openAppShare() {
     var en = state.lang === 'en', url = appShareURL();
-    openModal('<div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="app-share-title"><h3 id="app-share-title">' + esc(en ? 'Share XueTuan' : '把雪团分享给朋友') + '</h3><p class="f-hint">' + esc(en ? 'Discover food and things to do with your classmates.' : '一起发现同学推荐的美食和玩乐。') + '</p><input id="app-share-link" class="input" readonly aria-label="' + esc(en ? 'Website link' : '网站链接') + '" value="' + esc(url) + '"><div class="btn-row"><button type="button" class="btn primary" data-action="app-share-system">' + esc(en ? 'More apps' : '系统分享') + '</button><button type="button" class="btn" data-action="app-share-copy">' + esc(en ? 'Copy link' : '复制链接') + '</button><a class="btn" href="https://wa.me/?text=' + encodeURIComponent('雪团 XueTuan · ' + url) + '" target="_blank" rel="noopener noreferrer">WhatsApp</a></div><p class="f-hint">' + esc(en ? 'WeChat / Instagram: copy the link and paste it in a chat. Available system share apps depend on your phone.' : '微信 / Instagram：复制链接后粘贴到聊天中；系统分享中的应用以手机实际支持为准。') + '</p><button type="button" class="btn ghost" data-modal="no">' + esc(en ? 'Close' : '关闭') + '</button></div>');
+    openModal('<div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="app-share-title"><h3 id="app-share-title">' + esc(en ? L('Share XueTuan') : '把雪团分享给朋友') + '</h3><p class="f-hint">' + esc(en ? L('Discover food and things to do with your classmates.') : '一起发现同学推荐的美食和玩乐。') + '</p><input id="app-share-link" class="input" readonly aria-label="' + esc(en ? L('Website link') : '网站链接') + '" value="' + esc(url) + '"><div class="btn-row"><button type="button" class="btn primary" data-action="app-share-system">' + esc(en ? L('More apps') : '系统分享') + '</button><button type="button" class="btn" data-action="app-share-copy">' + esc(en ? L('Copy link') : '复制链接') + '</button><a class="btn" href="https://wa.me/?text=' + encodeURIComponent('雪团 XueTuan · ' + url) + '" target="_blank" rel="noopener noreferrer">WhatsApp</a></div><p class="f-hint">' + esc(en ? L('WeChat / Instagram: copy the link and paste it in a chat. Available system share apps depend on your phone.') : '微信 / Instagram：复制链接后粘贴到聊天中；系统分享中的应用以手机实际支持为准。') + '</p><button type="button" class="btn ghost" data-modal="no">' + esc(en ? L('Close') : '关闭') + '</button></div>');
   }
   function copyAppShare() {
     function fallback() {
       var input = $('#app-share-link'); if (!input) return;
       input.focus(); input.select(); input.setSelectionRange(0,input.value.length);
       var copied = false; try { copied = document.execCommand('copy'); } catch (e) {}
-      toast(copied ? (state.lang === 'en' ? 'Link copied' : '链接已复制，可以粘贴给朋友了') : (state.lang === 'en' ? 'Long-press the selected link to copy' : '长按选中的链接，选择复制'));
+      toast(copied ? (state.lang === 'en' ? L('Link copied') : '链接已复制，可以粘贴给朋友了') : (state.lang === 'en' ? L('Long-press the selected link to copy') : '长按选中的链接，选择复制'));
     }
-    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(appShareURL()).then(function () { toast(state.lang === 'en' ? 'Link copied' : '链接已复制，可以粘贴给朋友了'); },fallback);
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(appShareURL()).then(function () { toast(state.lang === 'en' ? L('Link copied') : '链接已复制，可以粘贴给朋友了'); },fallback);
     else fallback();
   }
   function sendAppShare() {
     if (!navigator.share) { copyAppShare(); return; }
-    try { Promise.resolve(navigator.share({title:'雪团 XueTuan',text:state.lang === 'en' ? 'Discover food and things to do with classmates.' : '一起发现同学推荐的美食和玩乐。',url:appShareURL()})).catch(function (e) { if (!e || e.name !== 'AbortError') copyAppShare(); }); }
+    try { Promise.resolve(navigator.share({title:'雪团 XueTuan',text:state.lang === 'en' ? L('Discover food and things to do with classmates.') : '一起发现同学推荐的美食和玩乐。',url:appShareURL()})).catch(function (e) { if (!e || e.name !== 'AbortError') copyAppShare(); }); }
     catch (e) { copyAppShare(); }
   }
   function shareSnapshot(includePrivate) {
@@ -631,7 +631,7 @@
     store.reviews().forEach(function (r) { if (isMine(r) && !r.sample && (includePrivate || r.visibility === 'public')) ids.add(r.placeId); });
     var ps = Array.from(ids).map(placeById).filter(function (p) { return p && !p.sample; }), countries = {};
     if (world.fc) ps.forEach(function (p) { var i = countryAt(p.lng, p.lat); if (i >= 0) countries[i] = true; });
-    return { v: 1, name: (me().name || (state.lang === 'en' ? 'A XueTuan explorer' : '雪团同学')).slice(0, 20), food: ps.filter(function (p) { return p.mode === 'food'; }).length, scenery: ps.filter(function (p) { return p.mode === 'travel'; }).length, places: ps.length, countries: world.fc ? Object.keys(countries).length : null, countryIds: world.fc ? Object.keys(countries).map(function (i) { return String(world.fc.features[i].id).padStart(3, '0'); }).sort() : [], date: new Date().toISOString().slice(0, 10), privateCounts: !!includePrivate };
+    return { v: 1, name: (me().name || (state.lang === 'en' ? L('A XueTuan explorer') : '雪团同学')).slice(0, 20), food: ps.filter(function (p) { return p.mode === 'food'; }).length, scenery: ps.filter(function (p) { return p.mode === 'travel'; }).length, places: ps.length, countries: world.fc ? Object.keys(countries).length : null, countryIds: world.fc ? Object.keys(countries).map(function (i) { return String(world.fc.features[i].id).padStart(3, '0'); }).sort() : [], date: new Date().toISOString().slice(0, 10), privateCounts: !!includePrivate };
   }
   var FOOD_SHARE_AREAS = {'food-kl':[101.50,2.80,101.85,3.35],'food-xmum':[101.67,2.80,101.75,2.88]};
   function foodShareSnapshot(includePrivate, area) {
@@ -677,11 +677,11 @@
     d.theme = card.theme || d.theme || 'atlas';
     if (foodShareTheme(d.theme)) d.foodMap=foodShareSnapshot(card.includePrivate,d.theme);
     card.url = foodShareTheme(d.theme) ? appShareURL() : sharedCardURL(d); card.blob = null;
-    view.innerHTML = '<div class="view-top"><button type="button" class="icon-btn flat" data-action="back" aria-label="' + esc(t('back')) + '">' + ICON.back + '</button><h2 class="view-title">' + esc(en ? 'My footprint card' : '足迹分享卡') + '</h2></div>' +
-      (card.own ? '<div class="seg share-themes" style="margin-bottom:14px;display:flex;flex-wrap:wrap">' + [['atlas',en?'World map':'点亮世界'],['food-kl',en?'KL food':'KL 美食'],['food-xmum',en?'Near XMUM':'XMUM 附近'],['food-world',en?'World food':'世界美食'],['stats',en?'Minimal':'简洁数据']].map(function (x) { return '<button type="button" data-action="share-theme" data-v="' + x[0] + '" aria-pressed="' + (d.theme === x[0]) + '">' + esc(x[1]) + '</button>'; }).join('') + '</div><label class="f-hint"><input type="checkbox" id="share-private"' + (card.includePrivate ? ' checked' : '') + '> ' + esc(foodShareTheme(d.theme) ? (en ? 'Include private restaurants: locations and ratings will appear on the image' : '包含仅个人餐厅：图片将展示餐厅位置和评分') : (en ? 'Include private footprints: totals and countries only' : '包含仅个人足迹：只展示汇总和国家')) + '</label>' : '') +
-      '<div class="share-card"><canvas id="share-canvas" width="900" height="1120" role="img" aria-label="' + esc(d.name + ' · ' + d.food + (en ? ' restaurants, ' : ' 家餐厅，') + d.scenery + (en ? ' places to enjoy, ' : ' 处玩乐，') + d.places + (en ? ' places' : ' 个地点')) + '"></canvas></div>' +
-      '<p class="f-hint">' + esc(foodShareTheme(d.theme) ? (en ? 'Unique restaurants, coloured by your average rating. KL includes the Klang Valley and Sepang. Share the image for the full map; the link opens XueTuan.' : '餐厅去重，按自己的平均评分配色。KL 范围含巴生谷和雪邦；分享图片保留完整地图，链接用于打开雪团。') : en ? 'A snapshot of recorded footprints. Country counts are estimated from coordinates. No photos, reviews or hometown location are included.' : '统计来自已记录的足迹，国家/地区按坐标估算。不含照片、点评或家乡位置。') + '</p><div class="share-actions"><button type="button" class="btn primary" data-action="share-card">' + esc(en ? 'Share' : '分享') + '</button><button type="button" class="btn" data-action="save-share-card">' + esc(en ? 'Save image' : '保存图片') + '</button><button type="button" class="btn ghost" data-action="copy-share-card">' + esc(en ? 'Copy link' : '复制链接') + '</button></div>' +
-      '<input class="input share-link" id="share-link" readonly aria-label="' + esc(en ? 'Share link' : '分享链接') + '" value="' + esc(card.url) + '">' + (!card.own ? '<button type="button" class="btn primary" data-action="tab" data-tab="home">' + esc(en ? 'Explore XueTuan' : '打开雪团，一起发现') + '</button>' : '');
+    view.innerHTML = '<div class="view-top"><button type="button" class="icon-btn flat" data-action="back" aria-label="' + esc(t('back')) + '">' + ICON.back + '</button><h2 class="view-title">' + esc(en ? L('My footprint card') : '足迹分享卡') + '</h2></div>' +
+      (card.own ? '<div class="seg share-themes" style="margin-bottom:14px;display:flex;flex-wrap:wrap">' + [['atlas',en?L('World map'):'点亮世界'],['food-kl',en?L('KL food'):'KL 美食'],['food-xmum',en?L('Near XMUM'):'XMUM 附近'],['food-world',en?L('World food'):'世界美食'],['stats',en?L('Minimal'):'简洁数据']].map(function (x) { return '<button type="button" data-action="share-theme" data-v="' + x[0] + '" aria-pressed="' + (d.theme === x[0]) + '">' + esc(x[1]) + '</button>'; }).join('') + '</div><label class="f-hint"><input type="checkbox" id="share-private"' + (card.includePrivate ? ' checked' : '') + '> ' + esc(foodShareTheme(d.theme) ? (en ? L('Include private restaurants: locations and ratings will appear on the image') : '包含仅个人餐厅：图片将展示餐厅位置和评分') : (en ? L('Include private footprints: totals and countries only') : '包含仅个人足迹：只展示汇总和国家')) + '</label>' : '') +
+      '<div class="share-card"><canvas id="share-canvas" width="900" height="1120" role="img" aria-label="' + esc(d.name + ' · ' + d.food + (en ? L(' restaurants, ') : ' 家餐厅，') + d.scenery + (en ? L(' places to enjoy, ') : ' 处玩乐，') + d.places + (en ? L(' places') : ' 个地点')) + '"></canvas></div>' +
+      '<p class="f-hint">' + esc(foodShareTheme(d.theme) ? (en ? L('Unique restaurants, coloured by your average rating. KL includes the Klang Valley and Sepang. Share the image for the full map; the link opens XueTuan.') : '餐厅去重，按自己的平均评分配色。KL 范围含巴生谷和雪邦；分享图片保留完整地图，链接用于打开雪团。') : en ? L('A snapshot of recorded footprints. Country counts are estimated from coordinates. No photos, reviews or hometown location are included.') : '统计来自已记录的足迹，国家/地区按坐标估算。不含照片、点评或家乡位置。') + '</p><div class="share-actions"><button type="button" class="btn primary" data-action="share-card">' + esc(en ? L('Share') : '分享') + '</button><button type="button" class="btn" data-action="save-share-card">' + esc(en ? L('Save image') : '保存图片') + '</button><button type="button" class="btn ghost" data-action="copy-share-card">' + esc(en ? L('Copy link') : '复制链接') + '</button></div>' +
+      '<input class="input share-link" id="share-link" readonly aria-label="' + esc(en ? L('Share link') : '分享链接') + '" value="' + esc(card.url) + '">' + (!card.own ? '<button type="button" class="btn primary" data-action="tab" data-tab="home">' + esc(en ? L('Explore XueTuan') : '打开雪团，一起发现') + '</button>' : '');
     var canvas = $('#share-canvas');
     drawShareCard(canvas, d, en);
     var saveButton = $('[data-action="save-share-card"]');
@@ -697,7 +697,7 @@
     var grad = g.createLinearGradient(0, 0, 900, 1120);
     grad.addColorStop(0, '#e7f4ff'); grad.addColorStop(1, '#fbfdff'); g.fillStyle = grad; g.fillRect(0, 0, 900, 1120);
     g.fillStyle = '#3b89cc'; g.font = '700 32px sans-serif'; g.fillText('雪团 XueTuan', 64, 100);
-    g.fillStyle = '#23425f'; g.font = '700 48px sans-serif'; g.fillText(en ? 'Places become memories' : '每一处，都是我的故事', 64, 206);
+    g.fillStyle = '#23425f'; g.font = '700 48px sans-serif'; g.fillText(en ? L('Places become memories') : '每一处，都是我的故事', 64, 206);
     g.font = '30px sans-serif'; var name = d.name; while (g.measureText(name).width > 760) name = name.slice(0, -1); g.fillText(name, 64, 270);
     var labels = en ? ['Restaurants','Things to do','Countries / regions','Places'] : ['家餐厅','处玩乐','个国家 / 地区','个地点'];
     [d.food, d.scenery, d.countries, d.places].forEach(function (n, i) {
@@ -705,9 +705,9 @@
       g.fillStyle = '#ffffff'; g.fillRect(x, y, 376, 220); g.fillStyle = '#4b91c5'; g.font = '700 74px sans-serif'; g.fillText(n == null ? '—' : String(n), x + 28, y + 104);
       g.fillStyle = '#647e91'; g.font = '26px sans-serif'; g.fillText(labels[i], x + 28, y + 164);
     });
-    g.fillStyle = '#6e889b'; g.font = '24px sans-serif'; g.fillText(en ? 'Food, fun, and the stories in between.' : '记录美食与玩乐，发现同学的故事。', 64, 910);
-    g.font = '21px sans-serif'; g.fillText((d.privateCounts ? (en ? 'All recorded footprints' : '全部足迹数量') : (en ? 'Public footprints' : '公开足迹数量')) + ' · ' + d.date, 64, 978);
-    g.fillText(en ? 'Open the shared link to explore XueTuan.' : '打开分享链接，来雪团一起发现。', 64, 1040);
+    g.fillStyle = '#6e889b'; g.font = '24px sans-serif'; g.fillText(en ? L('Food, fun, and the stories in between.') : '记录美食与玩乐，发现同学的故事。', 64, 910);
+    g.font = '21px sans-serif'; g.fillText((d.privateCounts ? (en ? L('All recorded footprints') : '全部足迹数量') : (en ? L('Public footprints') : '公开足迹数量')) + ' · ' + d.date, 64, 978);
+    g.fillText(en ? L('Open the shared link to explore XueTuan.') : '打开分享链接，来雪团一起发现。', 64, 1040);
   }
   function drawAtlasCard(g, d, en) {
     var grad = g.createLinearGradient(0, 0, 900, 1120);
@@ -718,26 +718,26 @@
     g.fillStyle = light; g.fillRect(0, 0, 900, 1120);
     g.fillStyle = '#a4dce3'; g.font = '600 27px sans-serif'; g.fillText('雪团  XueTuan', 64, 82);
     g.textAlign = 'right'; g.fillStyle = '#74929f'; g.font = '18px sans-serif'; g.fillText('MY FOOTPRINTS', 836, 80); g.textAlign = 'left';
-    g.fillStyle = '#f4f7f6'; g.font = '600 ' + (en ? 49 : 53) + 'px sans-serif'; g.fillText(en ? 'A world of little memories.' : '我的世界，慢慢点亮', 64, 178);
+    g.fillStyle = '#f4f7f6'; g.font = '600 ' + (en ? 49 : 53) + 'px sans-serif'; g.fillText(en ? L('A world of little memories.') : '我的世界，慢慢点亮', 64, 178);
     g.fillStyle = '#a4b9c1'; g.font = '27px sans-serif';
     var name = d.name; while (g.measureText(name).width > 700) name = name.slice(0, -1);
-    g.fillText(name + (en ? ' · on the way' : ' · 在路上'), 64, 231);
+    g.fillText(name + (en ? L(' · on the way') : ' · 在路上'), 64, 231);
     g.fillStyle = '#9fe3df'; g.font = '500 74px sans-serif'; var count = d.countries == null ? '—' : String(d.countries); g.fillText(count, 64, 330);
-    var cw = g.measureText(count).width; g.font = '25px sans-serif'; g.fillStyle = '#c5d9df'; g.fillText(en ? 'countries / regions lit up' : '个国家 / 地区已点亮', 82 + cw, 323);
+    var cw = g.measureText(count).width; g.font = '25px sans-serif'; g.fillStyle = '#c5d9df'; g.fillText(en ? L('countries / regions lit up') : '个国家 / 地区已点亮', 82 + cw, 323);
     drawShareWorld(g, d, 24, 355, 852, 415);
-    g.fillStyle = '#8eabb7'; g.font = '20px sans-serif'; g.fillText(en ? '● Visited     ○ Still to discover' : '● 已留下足迹     ○ 等待探索', 64, 785);
+    g.fillStyle = '#8eabb7'; g.font = '20px sans-serif'; g.fillText(en ? L('● Visited     ○ Still to discover') : '● 已留下足迹     ○ 等待探索', 64, 785);
     g.strokeStyle = 'rgba(172,204,212,.2)'; g.lineWidth = 1; g.beginPath(); g.moveTo(64, 830); g.lineTo(836, 830); g.stroke();
     var vals = [d.food, d.scenery, d.places], labels = en ? ['Restaurants','Things to do','Places'] : ['家餐厅','处玩乐','个地点'];
     vals.forEach(function (n, i) { var x = 64 + i * 272;
       g.fillStyle = '#f2f6f5'; g.font = '500 58px sans-serif'; g.fillText(String(n), x, 907);
       g.fillStyle = '#93b0bd'; g.font = '24px sans-serif'; g.fillText(labels[i], x, 952);
     });
-    g.fillStyle = '#91aeba'; g.font = '20px sans-serif'; g.fillText(en ? 'Every little discovery counts.' : '把值得记住的，留在地图上。', 64, 1043);
-    g.fillStyle = '#647f8c'; g.font = '17px sans-serif'; g.fillText((d.privateCounts ? (en ? 'All footprints' : '全部足迹汇总') : (en ? 'Public footprints' : '公开足迹汇总')) + ' · ' + d.date, 64, 1081);
+    g.fillStyle = '#91aeba'; g.font = '20px sans-serif'; g.fillText(en ? L('Every little discovery counts.') : '把值得记住的，留在地图上。', 64, 1043);
+    g.fillStyle = '#647f8c'; g.font = '17px sans-serif'; g.fillText((d.privateCounts ? (en ? L('All footprints') : '全部足迹汇总') : (en ? L('Public footprints') : '公开足迹汇总')) + ' · ' + d.date, 64, 1081);
     g.textAlign = 'right'; g.fillText('XUETUAN / EXPLORE MORE', 836, 1081); g.textAlign = 'left';
   }
   function drawShareWorld(g, d, x, y, w, h) {
-    if (!world.fc) { g.fillStyle = '#9ab6c2'; g.font = '26px sans-serif'; g.fillText(state.lang === 'en' ? 'Map unavailable · totals preserved' : '地图暂未载入 · 足迹数据已保留', x + 40, y + h / 2); return; }
+    if (!world.fc) { g.fillStyle = '#9ab6c2'; g.font = '26px sans-serif'; g.fillText(state.lang === 'en' ? L('Map unavailable · totals preserved') : '地图暂未载入 · 足迹数据已保留', x + 40, y + h / 2); return; }
     var ids = new Set(d.countryIds || []);
     function project(c, offset) { return [x + (c[0] + offset + 180) / 360 * w, y + (85 - c[1]) / 145 * h]; }
     g.save(); g.beginPath(); g.rect(x, y, w, h); g.clip();
@@ -770,7 +770,7 @@
   function drawFoodShareCard(g,d,en){
     var f=d.foodMap,regional=!!FOOD_SHARE_AREAS[d.theme],foodKLImage=foodMapImages[d.theme],foodKLBounds=foodMapBounds[d.theme];
     g.fillStyle='#eef4fa';g.fillRect(0,0,900,1120);g.fillStyle='#2e7dcb';g.font='600 25px sans-serif';g.fillText('雪团 XueTuan / FOOD ATLAS',52,66);
-    g.fillStyle='#1b2a3a';g.font='600 46px sans-serif';g.fillText(d.theme==='food-xmum'?(en?'Food around XMUM':'我的 XMUM 周边美食'):d.theme==='food-kl'?(en?'My KL food map':'我的 KL 美食地图'):(en?'My world of food':'我吃过的世界'),52,140);
+    g.fillStyle='#1b2a3a';g.font='600 46px sans-serif';g.fillText(d.theme==='food-xmum'?(en?L('Food around XMUM'):'我的 XMUM 周边美食'):d.theme==='food-kl'?(en?L('My KL food map'):'我的 KL 美食地图'):(en?L('My world of food'):'我吃过的世界'),52,140);
     g.fillStyle='#687a8c';g.font='25px sans-serif';g.fillText(d.name.slice(0,20)+' · '+d.date,52,188);
     var y=210,h=600;g.fillStyle='#e0eaf1';g.fillRect(40,y,820,h);
     if(regional && foodKLImage) g.drawImage(foodKLImage,40,y,820,h);
@@ -790,11 +790,11 @@
       if(m.n>1){g.fillStyle='#fff';g.strokeStyle='rgba(0,0,0,.35)';g.lineWidth=2;g.font='700 23px sans-serif';g.textAlign='center';g.textBaseline='middle';g.strokeText(String(m.n),m.x,m.y);g.fillText(String(m.n),m.x,m.y);g.textAlign='left';g.textBaseline='alphabetic';}
     });g.restore();
     g.fillStyle='#687a8c';g.font='16px sans-serif';g.fillText(regional?(foodKLImage?'© OpenFreeMap · © OpenMapTiles · © OpenStreetMap':'Coordinate map · '+(d.theme==='food-xmum'?'XMUM / Kota Warisan / Dengkil':'Klang Valley / Sepang')):'World map · Natural Earth',52,835);
-    var legend=[[4,'4–5'],[3,'3–<4'],[2,'2–<3'],[1,'0–<2'],[null,en?'Unrated':'未评分']];
+    var legend=[[4,'4–5'],[3,'3–<4'],[2,'2–<3'],[1,'0–<2'],[null,en?L('Unrated'):'未评分']];
     legend.forEach(function(a,i){var x=58+i*161;g.fillStyle=foodRatingColor(a[0]);g.beginPath();g.arc(x,870,9,0,Math.PI*2);g.fill();g.fillStyle='#687a8c';g.font='20px sans-serif';g.fillText(a[1],x+18,877);});
     [f.total,f.visits,f.high].forEach(function(n,i){var x=52+i*272;g.fillStyle='#1b2a3a';g.font='600 58px sans-serif';g.fillText(String(n),x,963);g.fillStyle='#687a8c';g.font='24px sans-serif';g.fillText((en?['Restaurants','Visits','Rated 4+']:['家餐厅','次到访','家评分 ≥4'])[i],x,1005);});
-    g.fillStyle='#687a8c';g.font='21px sans-serif';g.fillText(!f.total?(en?'Your next discovery starts here.':'下一家好吃的，等你发现。'):(en?'One little dot, one delicious memory.':'每一个小点，都是吃过的好时光。'),52,1057);
-    g.font='17px sans-serif';g.fillText((d.privateCounts?(en?'Includes private restaurants':'包含仅个人餐厅'):(en?'Public restaurants only':'仅公开餐厅'))+' · XUETUAN',52,1095);
+    g.fillStyle='#687a8c';g.font='21px sans-serif';g.fillText(!f.total?(en?L('Your next discovery starts here.'):'下一家好吃的，等你发现。'):(en?L('One little dot, one delicious memory.'):'每一个小点，都是吃过的好时光。'),52,1057);
+    g.font='17px sans-serif';g.fillText((d.privateCounts?(en?L('Includes private restaurants'):'包含仅个人餐厅'):(en?L('Public restaurants only'):'仅公开餐厅'))+' · XUETUAN',52,1095);
   }
   function paintKLFoodMap(canvas,d,en){
     var key=d.theme,region=FOOD_SHARE_AREAS[key];
@@ -820,14 +820,14 @@
   function copyShareCard() {
     if (!shareCard) return;
     var field = $('#share-link');
-    function fallback() { if (field) { field.focus(); field.select(); } toast(state.lang === 'en' ? 'Copy the selected link' : '长按选中的链接即可复制'); }
-    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(shareCard.url).then(function () { toast(state.lang === 'en' ? 'Link copied' : '链接已复制'); }, fallback);
+    function fallback() { if (field) { field.focus(); field.select(); } toast(state.lang === 'en' ? L('Copy the selected link') : '长按选中的链接即可复制'); }
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(shareCard.url).then(function () { toast(state.lang === 'en' ? L('Link copied') : '链接已复制'); }, fallback);
     else fallback();
   }
   function sendShareCard() {
     if (!shareCard) return;
     if (!navigator.share) { copyShareCard(); return; }
-    var data = { title: '雪团 XueTuan', text: shareCard.data.name + (state.lang === 'en' ? '’s footprints' : '的雪团足迹'), url: shareCard.url };
+    var data = { title: '雪团 XueTuan', text: shareCard.data.name + (state.lang === 'en' ? L('’s footprints') : '的雪团足迹'), url: shareCard.url };
     if (shareCard.blob && navigator.canShare) { var files = [new File([shareCard.blob], 'xuetuan-footprints.png', { type: 'image/png' })]; if (navigator.canShare({ files: files })) data.files = files; }
     try { Promise.resolve(navigator.share(data)).catch(function (err) { if (err.name !== 'AbortError') copyShareCard(); }); } catch (err) { copyShareCard(); }
   }
@@ -859,16 +859,16 @@
   function homeFieldHTML() {
     var h = store.myHome(), en = state.lang === 'en';
     var main = '<button type="button" class="me-line-main' + (h ? ' home-row' : ' home-set-btn') + '" data-action="home-set">' + ICON.home +
-      '<span><b>' + esc(t('myHome')) + '</b><small>' + esc(h ? h.city : (en ? 'Not set · city only' : '未设置 · 只记城市')) + '</small></span>' + (h ? '' : '<i aria-hidden="true">›</i>') + '</button>';
-    var sw = !h ? '' : '<button type="button" class="me-switch" role="switch" data-action="home-public" aria-checked="' + h.public + '" aria-label="' + esc(en ? 'Share my hometown (city only)' : '公开家乡（只显示城市）') + '"><span class="me-sw-label">' + esc(en ? 'Public' : '公开') + '</span><span class="switch" aria-hidden="true"></span></button>';
+      '<span><b>' + esc(t('myHome')) + '</b><small>' + esc(h ? h.city : (en ? L('Not set · city only') : '未设置 · 只记城市')) + '</small></span>' + (h ? '' : '<i aria-hidden="true">›</i>') + '</button>';
+    var sw = !h ? '' : '<button type="button" class="me-switch" role="switch" data-action="home-public" aria-checked="' + h.public + '" aria-label="' + esc(en ? L('Share my hometown (city only)') : '公开家乡（只显示城市）') + '"><span class="me-sw-label">' + esc(en ? L('Public') : '公开') + '</span><span class="switch" aria-hidden="true"></span></button>';
     return '<div class="me-line" id="home-field">' + main + sw + '</div>';
   }
   /* 个人主页开关（默认关）：开了以后，同学点你的名字 / 头像能进你的主页，只看到你分享到大地图的记录 */
   function pageFieldHTML() {
     var on = store.pagePublic(me().id), en = state.lang === 'en';
     return '<div class="me-line" id="page-field"><button type="button" class="me-line-main" data-action="person" data-uid="' + esc(me().id) + '">' + PERSON_ICON +
-      '<span><b>' + esc(en ? 'My page' : '我的主页') + '</b><small>' + esc(on ? (en ? 'Classmates can open it' : '同学点你的名字能进来') : (en ? 'Only you can open it' : '只有自己能看')) + '</small></span></button>' +
-      '<button type="button" class="me-switch" role="switch" data-action="page-public" aria-checked="' + on + '" aria-label="' + esc(en ? 'Public profile' : '公开我的主页') + '"><span class="me-sw-label">' + esc(en ? 'Public' : '公开') + '</span><span class="switch" aria-hidden="true"></span></button></div>';
+      '<span><b>' + esc(en ? L('My page') : '我的主页') + '</b><small>' + esc(on ? (en ? L('Classmates can open it') : '同学点你的名字能进来') : (en ? L('Only you can open it') : '只有自己能看')) + '</small></span></button>' +
+      '<button type="button" class="me-switch" role="switch" data-action="page-public" aria-checked="' + on + '" aria-label="' + esc(en ? L('Public profile') : '公开我的主页') + '"><span class="me-sw-label">' + esc(en ? L('Public') : '公开') + '</span><span class="switch" aria-hidden="true"></span></button></div>';
   }
   var PERSON_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>';
   /* 点了地图上的小房子：谁的家、在哪 */
@@ -876,8 +876,8 @@
     var places = (state.clusterPlaces || []).map(placeById).filter(function (p) { return p && inScope(p) && passesFilters(p); });
     if (!places.length) { goFeed(); return; }
     view.innerHTML = '<div class="view-top"><button type="button" class="icon-btn flat" data-action="back" aria-label="' + esc(t('back')) + '">' + ICON.back + '</button><h2 class="view-title">' + esc(state.lang === 'en' ? places.length + ' nearby places' : '这里有 ' + places.length + ' 个地点') + '</h2></div>' +
-      '<p class="f-hint">' + esc(state.lang === 'en' ? 'Choose a place to see its photos and reviews.' : '位置相近，选择地点查看照片和点评。') + '</p>' +
-      (places.some(function (p) { return placePhotos(p).length; }) ? '<button type="button" class="btn small" data-action="cluster-photos">' + esc(state.lang === 'en' ? 'View all photos' : '查看全部照片') + '</button>' : '') + '<ul class="near-list cluster-list">' + places.map(function (p) {
+      '<p class="f-hint">' + esc(state.lang === 'en' ? L('Choose a place to see its photos and reviews.') : '位置相近，选择地点查看照片和点评。') + '</p>' +
+      (places.some(function (p) { return placePhotos(p).length; }) ? '<button type="button" class="btn small" data-action="cluster-photos">' + esc(state.lang === 'en' ? L('View all photos') : '查看全部照片') + '</button>' : '') + '<ul class="near-list cluster-list">' + places.map(function (p) {
         return placeRowHTML(p, 'open-place', esc(catName(catOf(p))) + ' · ' + esc(state.lang === 'en' ? placePhotos(p).length + ' photos' : placePhotos(p).length + ' 张照片'), stats(p).score != null ? scoreHTML(stats(p).score) : '');
       }).join('') + '</ul>';
   }

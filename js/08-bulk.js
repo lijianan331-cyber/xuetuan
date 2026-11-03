@@ -288,7 +288,7 @@
   }
   function bulkCommentHTML(g) {
     return '<div class="bk-note"><textarea class="input bk-comment" rows="1" data-bk-comment="' + g.i + '" maxlength="1000" placeholder="' + esc(t('review')) + '" aria-label="' + esc(t('review')) + '">' + esc(g.comment || '') + '</textarea>' +
-      '<select class="input price-unit" data-bk-currency="' + g.i + '" aria-label="' + esc(state.lang === 'en' ? 'Price currency' : '金额币种') + '"' + (g.mode === 'food' ? '' : ' hidden') + '>' + priceSelectOptions(bulkCurLoc(g),bulkPriceCurrency(g)) + '</select><input class="input bk-price" type="number" inputmode="decimal" min="0" max="99999999.99" step="0.01" data-bk-price="' + g.i + '" placeholder="' + esc(t('bulkPrice', { c: bulkCur(g) })) + '" aria-label="' + esc(t('priceFood', { c: bulkCur(g) })) + '" value="' + (g.price != null ? g.price : '') + '"' + (g.mode === 'food' ? '' : ' hidden') + '></div>';
+      '<select class="input price-unit" data-bk-currency="' + g.i + '" aria-label="' + esc(state.lang === 'en' ? L('Price currency') : '金额币种') + '"' + (g.mode === 'food' ? '' : ' hidden') + '>' + priceSelectOptions(bulkCurLoc(g),bulkPriceCurrency(g)) + '</select><input class="input bk-price" type="number" inputmode="decimal" min="0" max="99999999.99" step="0.01" data-bk-price="' + g.i + '" placeholder="' + esc(t('bulkPrice', { c: bulkCur(g) })) + '" aria-label="' + esc(t('priceFood', { c: bulkCur(g) })) + '" value="' + (g.price != null ? g.price : '') + '"' + (g.mode === 'food' ? '' : ' hidden') + '></div>';
   }
   function updateBulkMode(g) {
     updateBulkModeSeg(g);
@@ -298,8 +298,8 @@
   function bulkCardHTML(g) {
     var h = '<li class="bk-card" id="bk-' + g.i + '"><div class="bk-photos">' + g.photos.map(function (p, j) {
       return '<div class="bk-ph" data-on="' + p.on + '"><button type="button" class="bk-preview" data-action="bulk-preview" data-i="' + g.i + '" data-j="' + j + '" aria-label="' + esc(t('photoPreview')) + '">' +
-        '<img src="' + esc(p.url) + '" alt="" loading="lazy" decoding="async"' + (p.rot ? ' style="transform:rotate(' + p.rot + 'deg)"' : '') + '></button><button type="button" class="bk-check" data-action="bulk-ph" data-i="' + g.i + '" data-j="' + j + '" aria-label="' + esc(state.lang === 'en' ? 'Include this photo' : '是否导入这张照片') + '" aria-pressed="' + p.on + '">' + (p.on ? '✓' : '○') + '</button></div>';
-    }).join('') + '</div>' + (g.photos.length > 1 ? '<p class="bk-sort-hint">' + esc(state.lang === 'en' ? 'Hold a photo and drag to reorder · first is the cover' : '按住照片拖动换顺序，第一张是封面') + '</p>' : '');
+        '<img src="' + esc(p.url) + '" alt="" loading="lazy" decoding="async"' + (p.rot ? ' style="transform:rotate(' + p.rot + 'deg)"' : '') + '></button><button type="button" class="bk-check" data-action="bulk-ph" data-i="' + g.i + '" data-j="' + j + '" aria-label="' + esc(state.lang === 'en' ? L('Include this photo') : '是否导入这张照片') + '" aria-pressed="' + p.on + '">' + (p.on ? '✓' : '○') + '</button></div>';
+    }).join('') + '</div>' + (g.photos.length > 1 ? '<p class="bk-sort-hint">' + esc(state.lang === 'en' ? L('Hold a photo and drag to reorder · first is the cover') : '按住照片拖动换顺序，第一张是封面') + '</p>' : '');
     var meta = g.noLoc ? bulkDate(g.time) + ' ' + bulkClock(g.time) + ' · ' + t('bulkPhotos', { n: g.photos.length }) + ' · ' + t('bulkNoLoc')
       : bulkDate(g.time) + ' · ' + t('bulkPhotos', { n: g.photos.length });
     h += '<div class="bk-head"><div class="bk-meta" id="bk-meta-' + g.i + '">' + esc(meta) + '</div>' + bulkModeSegHTML(g) + '</div>';
@@ -384,7 +384,7 @@
     var q = (g.q || '').trim();
     if (q && g.plat != null && g.plng != null) g.known.push({ name: q.slice(0, 60), lat: g.plat, lng: g.plng, mode: g.mode, osm: '', here: true });
     return g.known.map(function (r, k) {
-      return '<button type="button" class="chip' + (r.here ? ' bk-here' : '') + '" data-action="bulk-known" data-i="' + g.i + '" data-k="' + k + '"><b>' + esc(r.here ? (state.lang === 'en' ? 'Use “' + r.name + '”' : '就用「' + r.name + '」') : r.name) + '</b><small>' + esc(r.here ? (state.lang === 'en' ? 'at the photo spot' : '位置用拍照的地方') : r.been ? t('bulkBeen') : String(r.where || '').split(',')[0]) + '</small></button>';
+      return '<button type="button" class="chip' + (r.here ? ' bk-here' : '') + '" data-action="bulk-known" data-i="' + g.i + '" data-k="' + k + '"><b>' + esc(r.here ? (state.lang === 'en' ? L('Use “') + r.name + '”' : '就用「' + r.name + '」') : r.name) + '</b><small>' + esc(r.here ? (state.lang === 'en' ? L('at the photo spot') : '位置用拍照的地方') : r.been ? t('bulkBeen') : String(r.where || '').split(',')[0]) + '</small></button>';
     }).join('');
   }
   function bulkTake(g, r) {
@@ -533,7 +533,7 @@
     if (b.rejected && b.rejected.length) h += '<p class="f-hint" role="status">' + b.rejected.slice(0, 4).map(esc).join('<br>') + '</p>';
     if (b.error) h += '<p class="empty small">' + esc(t('bulkLoadFail')) + '</p>';
     else if (!b.groups) h += '<p class="empty small" id="bk-progress">' + esc(t('bulkReading', { n: b.read, m: b.total })) + '</p>';
-    else if (!b.groups.length) h += '<p class="empty small">' + esc(b.rejected && b.rejected.length ? (state.lang === 'en' ? 'No files were imported. See the reasons above.' : '没有成功导入的文件，请查看上方原因。') : t('bulkNone')) + '</p>';
+    else if (!b.groups.length) h += '<p class="empty small">' + esc(b.rejected && b.rejected.length ? (state.lang === 'en' ? L('No files were imported. See the reasons above.') : '没有成功导入的文件，请查看上方原因。') : t('bulkNone')) + '</p>';
     else {
       h += '<p class="f-hint bk-sum">' + esc(t('bulkSum', { n: b.total, g: b.groups.length })) + (b.noGps ? ' ' + esc(t('bulkNoGps', { n: b.noGps })) : '') + '</p>';
       if (b.noGps) h += '<div class="bk-tip"><p>' + esc(t('bulkTip')) + '</p><button type="button" class="btn ghost small" data-action="bulk-files">' + ICON.folder + esc(t('bulkFiles')) + '</button></div>';

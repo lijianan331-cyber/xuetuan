@@ -38,11 +38,11 @@
   /* 改名字：个人主页点头像/名字打开（头像现在是名字的第一个字，改名字头像跟着变） */
   function openProfileDialog() {
     var en = state.lang === 'en', name = me().name || '';
-    openModal('<form class="modal-card" id="profile-form"><h3>' + esc(en ? 'Avatar and name' : '头像和名字') + '</h3>' +
-      '<div class="pf-preview"><button type="button" class="pf-av-btn" data-action="pf-avatar-pick" aria-label="' + esc(en ? 'Change photo' : '换头像照片') + '"><span id="pf-preview">' + avatarHTML(name || '?', me().id) + '</span><i>' + esc(en ? 'Change photo' : '换照片') + '</i></button>' +
+    openModal('<form class="modal-card" id="profile-form"><h3>' + esc(en ? L('Avatar and name') : '头像和名字') + '</h3>' +
+      '<div class="pf-preview"><button type="button" class="pf-av-btn" data-action="pf-avatar-pick" aria-label="' + esc(en ? L('Change photo') : '换头像照片') + '"><span id="pf-preview">' + avatarHTML(name || '?', me().id) + '</span><i>' + esc(en ? L('Change photo') : '换照片') + '</i></button>' +
       '<input id="pf-avatar-file" type="file" accept="image/*" hidden></div>' +
       '<input id="pf-dialog-name" class="input" maxlength="20" autocomplete="nickname" value="' + esc(name) + '" placeholder="' + esc(t('nicknamePh')) + '">' +
-      '<p class="f-hint">' + esc(en ? 'Tap the avatar to use a photo. Without one, it shows the first letter of your name.' : '点头像可以换成照片；没有照片时显示名字的第一个字。') + '</p>' +
+      '<p class="f-hint">' + esc(en ? L('Tap the avatar to use a photo. Without one, it shows the first letter of your name.') : '点头像可以换成照片；没有照片时显示名字的第一个字。') + '</p>' +
       '<div class="btn-row end"><button type="button" class="btn ghost" data-modal="no">' + esc(t('cancel')) + '</button>' +
       '<button type="submit" class="btn primary">' + esc(t('save')) + '</button></div></form>');
     setTimeout(function () { var i = $('#pf-dialog-name'); if (i) { i.focus(); i.select(); } }, 30);
@@ -72,7 +72,7 @@
       pendingAvatar = out;
       var pv = $('#pf-preview');
       if (pv) pv.innerHTML = '<span class="avatar has-photo" aria-hidden="true"><img src="' + URL.createObjectURL(out.thumb) + '" alt=""></span>';
-    }, function () { toast(state.lang === 'en' ? 'Could not read this photo' : '这张照片读不出来，换一张试试'); });
+    }, function () { toast(state.lang === 'en' ? L('Could not read this photo') : '这张照片读不出来，换一张试试'); });
   }
   function saveProfileDialog() {
     var i = $('#pf-dialog-name'), name = (i && i.value || '').trim().slice(0, 20), btn = $('#profile-form [type="submit"]');
@@ -138,11 +138,11 @@
     });
   }
   function savePlace(placeId) {
-    if (!placeId) { toast(state.lang === 'en' ? 'Place is still loading. Try again.' : '地点还没加载好，请稍后再试'); return Promise.resolve(false); }
+    if (!placeId) { toast(state.lang === 'en' ? L('Place is still loading. Try again.') : '地点还没加载好，请稍后再试'); return Promise.resolve(false); }
     if (savedWrites.has(placeId)) return savedWrites.get(placeId);
     var on = !store.isSaved(placeId), actor = me().id;
     savedButtons(placeId).forEach(function (b) { b.disabled = true; b.setAttribute('aria-busy','true'); b.classList.add('saving'); if (!b.classList.contains('pc-save')) b.innerHTML = (on ? ICON.star : ICON.starOn) + esc(state.lang === 'en' ? (on ? 'Saving…' : 'Removing…') : (on ? '收藏中…' : '取消中…')); });
-    var slow = setTimeout(function () { if (savedWrites.has(placeId)) toast(state.lang === 'en' ? 'Saving is taking longer. Please wait…' : '收藏保存较慢，请稍候…'); }, 4000);
+    var slow = setTimeout(function () { if (savedWrites.has(placeId)) toast(state.lang === 'en' ? L('Saving is taking longer. Please wait…') : '收藏保存较慢，请稍候…'); }, 4000);
     var work = Promise.resolve().then(function () { return store.setSaved(placeId,on); }).then(function () {
       if (actor !== me().id) return false;
       toast(t(on ? 'wishAdded' : 'wishRemoved')); refreshMap();
@@ -151,7 +151,7 @@
     }, function (e) {
       if (actor !== me().id) return false;
       var message = String(e && e.message || e || '');
-      toast(/XUETUAN_/.test(message) ? securitySaveError(e) : (state.lang === 'en' ? 'Could not save. Check your connection and retry.' : '收藏没有保存成功，请检查网络后重试'));
+      toast(/XUETUAN_/.test(message) ? securitySaveError(e) : (state.lang === 'en' ? L('Could not save. Check your connection and retry.') : '收藏没有保存成功，请检查网络后重试'));
       return false;
     }).finally(function () {
       clearTimeout(slow); savedWrites.delete(placeId);
@@ -277,8 +277,8 @@
     $('#lb-navigation').hidden = !multi;
     $('#lb-prev').hidden = !multi; $('#lb-next').hidden = !multi;
     $('#lb-hint-l').hidden = !multi; $('#lb-hint-r').hidden = !multi;
-    $('#lb-prev').setAttribute('aria-label', state.lang === 'en' ? 'Previous photo' : '上一张');
-    $('#lb-next').setAttribute('aria-label', state.lang === 'en' ? 'Next photo' : '下一张');
+    $('#lb-prev').setAttribute('aria-label', state.lang === 'en' ? L('Previous photo') : '上一张');
+    $('#lb-next').setAttribute('aria-label', state.lang === 'en' ? L('Next photo') : '下一张');
     $('#lb-count').textContent = multi ? (lb.i + 1) + ' / ' + lb.ids.length : '';
     var id = lb.ids[lb.i], clip = isClip(id), img = $('#lb-img'), vid = $('#lb-vid');
     var place = lb.place || (lb.placeIds && lb.placeIds[id]);
@@ -289,11 +289,11 @@
     if (clip) img.removeAttribute('src'); else { vid.pause(); vid.removeAttribute('src'); }
     var draft = lb.photos && lb.photos.find(function (ph) { return ph.id === id && !ph.existing; });
     var status = $('#lb-status'), retry = $('#lb-retry');
-    status.hidden = false; retry.hidden = true; retry.textContent = state.lang === 'en' ? 'Retry' : '重试';
-    $('#lb-status-text').textContent = state.lang === 'en' ? 'Loading…' : '加载中…';
+    status.hidden = false; retry.hidden = true; retry.textContent = state.lang === 'en' ? L('Retry') : '重试';
+    $('#lb-status-text').textContent = state.lang === 'en' ? L('Loading…') : '加载中…';
     function current() { return request === lbRequest && !$('#lightbox').hidden && lb.ids[lb.i] === id; }
     function loaded() { if (current()) status.hidden = true; }
-    function failed() { if (!current()) return; status.hidden = false; retry.hidden = false; $('#lb-status-text').textContent = state.lang === 'en' ? 'Could not load this photo.' : '这张图片暂时没加载出来'; }
+    function failed() { if (!current()) return; status.hidden = false; retry.hidden = false; $('#lb-status-text').textContent = state.lang === 'en' ? L('Could not load this photo.') : '这张图片暂时没加载出来'; }
     img.onload = loaded; vid.onloadeddata = loaded; vid.onerror = failed;
     if (!clip) img.removeAttribute('src');
     var pending = null;
@@ -410,7 +410,7 @@
       case 'my-share': openMyShare(); break;
       case 'moderation': openModeration(d.id); break;
       case 'moderation-confirm': moderateVisit(d.id,d.decision); break;
-      case 'moderation-clean': if (isModerator()) store.cleanModerationMedia().then(function (n) { toast(state.lang === 'en' ? 'Media cleanup complete: ' + n : '图片清理完成：' + n); }, function (e) { toast(securitySaveError(e)); }); break;
+      case 'moderation-clean': if (isModerator()) store.cleanModerationMedia().then(function (n) { toast(state.lang === 'en' ? L('Media cleanup complete: ') + n : '图片清理完成：' + n); }, function (e) { toast(securitySaveError(e)); }); break;
       case 'app-share': openAppShare(); break;
       case 'app-share-copy': copyAppShare(); break;
       case 'app-share-system': sendAppShare(); break;
@@ -439,7 +439,7 @@
         store.updateProfile({ page_public: !store.pagePublic(me().id) }).then(function () { if (state.view === 'feed' && state.tab === 'me') { var y = view.scrollTop; render(); view.scrollTop = y; } }, function () { toast(t('saveFail')); });
         break;
       case 'post-place': openPostPlace(d.id); break;
-      case 'save-place': { if (!store.signedIn()) toast(state.lang === 'en' ? 'Preparing to save…' : '正在准备收藏，请稍候…'); var spl = d.id; if (requireLogin(function () { savePlace(spl); })) savePlace(spl); break; }
+      case 'save-place': { if (!store.signedIn()) toast(state.lang === 'en' ? L('Preparing to save…') : '正在准备收藏，请稍候…'); var spl = d.id; if (requireLogin(function () { savePlace(spl); })) savePlace(spl); break; }
       case 'save-preview': { var spv = state.preview; if (spv && requireLogin(function () { savePreview(spv); })) savePreview(spv); break; }
       case 'cat': if(d.catMode && state.scope==='mine' && state.mineBoth){state.mineBoth=false;state.mode=d.catMode;} state.cat = d.cat; refilter(); break;
       case 'saved-want': state.savedWant = d.v === 'want'; state.savedStatus=d.v; refilter(); break;
@@ -473,9 +473,9 @@
       case 'clear-filters': state.halal = ''; state.cat = 'all'; state.priceAbout = 0; state.minScore = 0; state.dist = 'any'; renderFilters(); refreshMap(); render(); if (state.bsheet) renderBSheet(); break;
       case 'search': rememberFeedSnap(); state.view = 'search'; render(); setSnap('full'); break;
       case 'search-retry': osm.q = ''; osm.ck = ''; queueOsmSearch(); renderSearchResults(); break;
-      case 'set-lang': setLang(d.lang); break;
+      case 'set-lang': lsSet(LS_TRLANG, d.lang); if (d.lang === state.lang) { applyStaticI18n(); renderChrome(); render(); refreshMap(); patchLabels(); } else setLang(d.lang); break;
       case 'lang-menu': openBSheet('lang'); break;
-      case 'pick-lang': lsSet(LS_TRLANG, d.lang); closeBSheet(); if (state.lang !== (d.lang === 'zh' ? 'zh' : 'en')) setLang(d.lang === 'zh' ? 'zh' : 'en'); else { renderChrome(); render(); } break;
+      case 'pick-lang': lsSet(LS_TRLANG, d.lang); closeBSheet(); if (state.lang !== (d.lang === 'zh' ? 'zh' : 'en')) setLang(d.lang === 'zh' ? 'zh' : 'en'); else { applyStaticI18n(); renderChrome(); render(); refreshMap(); patchLabels(); } break;
       case 'translate': toggleTranslate(el, d.id); break;
       case 'set-style': setBasemap(d.style); break;
       case 'campus': closeBSheet(); if (state.view === 'search') { toMapTab(); goFeed(); } flyTo([XMUM.lng, XMUM.lat], state.mode === 'travel' ? TRAVEL_ZOOM : 14.6); break;
@@ -498,7 +498,7 @@
       case 'open-place': openPlace(d.id); break;
       case 'back': back(); break;
       case 'write-review': { var wpid = state.placeId; if (wpid && requireLogin(function () { startReview(wpid); })) startReview(wpid); break; }
-      case 'toggle-save': { if (!store.signedIn()) toast(state.lang === 'en' ? 'Preparing to save…' : '正在准备收藏，请稍候…'); var tpid = d.id || state.placeId; if (tpid && requireLogin(function () { toggleSave(tpid); })) toggleSave(tpid); break; }
+      case 'toggle-save': { if (!store.signedIn()) toast(state.lang === 'en' ? L('Preparing to save…') : '正在准备收藏，请稍候…'); var tpid = d.id || state.placeId; if (tpid && requireLogin(function () { toggleSave(tpid); })) toggleSave(tpid); break; }
       case 'copy-coords': copyCoords(d.c); break;
       case 'photo': openLightbox(d.id, d.group); break;
       /* 点照片任何地方都放大（右下角的放大图标只是提示，用户 2026-11-02） */

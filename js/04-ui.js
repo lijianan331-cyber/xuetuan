@@ -196,7 +196,7 @@
     $$('[data-i18n]').forEach(function (el) { el.textContent = t(el.dataset.i18n); });
     $$('[data-i18n-aria]').forEach(function (el) { el.setAttribute('aria-label', t(el.dataset.i18nAria)); });
     $$('[data-i18n-title]').forEach(function (el) { el.setAttribute('title', t(el.dataset.i18nTitle)); });
-    document.documentElement.lang = state.lang === 'zh' ? 'zh-CN' : 'en';
+    document.documentElement.lang = state.lang === 'zh' ? 'zh-CN' : uiLang();
   }
   function renderChrome() {
     document.documentElement.classList.toggle('mode-travel', state.mode === 'travel');
@@ -253,7 +253,7 @@
     $('#map-ctrls').innerHTML = h;
     /* 玩乐大地图左上角：红针是什么、有几位，点一下收起 / 显示；没人公开家乡就不出 */
     var publicHomes = hometownMode(), ownHome = false; /* 我的家开关挪进筛选了 */
-    var homeLabel = publicHomes ? (state.lang === 'en' ? 'Back to explore' : '返回探索') : (state.lang === 'en' ? 'Show my hometown' : '显示我的家乡');
+    var homeLabel = publicHomes ? (state.lang === 'en' ? L('Back to explore') : '返回探索') : (state.lang === 'en' ? L('Show my hometown') : '显示我的家乡');
     $('#map-chips').innerHTML = publicHomes || ownHome ? '<button type="button" class="map-chip' + (publicHomes ? '' : ' homes-switch') + '" data-action="' + (publicHomes ? 'homes-toggle' : 'mine-home-toggle') + '" aria-label="' + esc(homeLabel) + '" title="' + esc(homeLabel) + '" aria-pressed="' + (publicHomes ? state.homesOn : state.mineHomeOn) + '">' + (publicHomes ? ICON.back + esc(homeLabel) : ICON.home) + '</button>' : '';
   }
 
@@ -437,9 +437,9 @@
         var pi=Math.max(0,PRICE_STOPS.indexOf(state.priceAbout));
         h+='<div class="field price-field"><span class="f-label">'+esc(t('filterPrice'))+'<b id="flt-price-val"'+(pi?'':' class="muted"')+'>'+esc(priceLabel(state.priceAbout))+'</b></span><input type="range" id="flt-price" min="0" max="'+(PRICE_STOPS.length-1)+'" step="1" value="'+pi+'" style="--fill:'+(pi/(PRICE_STOPS.length-1)*100)+'%" aria-label="'+esc(t('filterPrice'))+'"><div class="price-ticks" aria-hidden="true"><span>'+esc(t('anyOpt'))+'</span><span>RM500</span></div></div>';
         /* Halal（用户 2026-11-03）：放在筛选里，开了只看 Halal 的店；按店名和分类自动判断，仅供参考 */
-        h+='<button type="button" class="switch-row" role="switch" data-action="halal-toggle" aria-checked="'+!!state.halal+'"><span class="sw-text"><b>Halal</b><small>'+esc(state.lang==='en'?'Guessed from names and categories. Please check yourself.':'按店名和分类自动判断，仅供参考，请自行确认')+'</small></span><span class="switch" aria-hidden="true"></span></button>';
+        h+='<button type="button" class="switch-row" role="switch" data-action="halal-toggle" aria-checked="'+!!state.halal+'"><span class="sw-text"><b>Halal</b><small>'+esc(state.lang==='en'?L('Guessed from names and categories. Please check yourself.'):'按店名和分类自动判断，仅供参考，请自行确认')+'</small></span><span class="switch" aria-hidden="true"></span></button>';
       }
-      if(mine&&store.myHome()) h+='<button type="button" class="switch-row" role="switch" data-action="mine-home-toggle" aria-checked="'+state.mineHomeOn+'"><span class="sw-text"><b>'+esc(state.lang==='en'?'Show my home':'显示我的家')+'</b><small>'+esc(state.lang==='en'?'A little house on your hometown':'在家乡的位置放一个小房子')+'</small></span><span class="switch" aria-hidden="true"></span></button>';
+      if(mine&&store.myHome()) h+='<button type="button" class="switch-row" role="switch" data-action="mine-home-toggle" aria-checked="'+state.mineHomeOn+'"><span class="sw-text"><b>'+esc(state.lang==='en'?L('Show my home'):'显示我的家')+'</b><small>'+esc(state.lang==='en'?L('A little house on your hometown'):'在家乡的位置放一个小房子')+'</small></span><span class="switch" aria-hidden="true"></span></button>';
       h+='<div class="bsheet-foot"><button type="button" class="btn ghost" data-action="clear-filters">'+esc(t('filterReset'))+'</button><button type="button" class="btn primary" data-action="sheet-close">'+esc(t('filterShow',{n:shown}))+'</button></div>';
     }
     card.innerHTML=h;
@@ -450,7 +450,7 @@
     var li = function (inner) { return '<li>' + inner + '</li>'; };
     var h = '<li class="sec-title">' + esc(t('areasTitle')) + '</li>';
     h += li('<button type="button" class="area-opt" data-action="locate">' + ICON.nav + esc(t('locate')) + '</button>');
-    PRESET_AREAS.forEach(function (a) { h += li('<button type="button" class="area-opt" data-action="goto-area" data-id="' + esc(a.id) + '">' + pin + esc(state.lang === 'en' ? a.en : a.zh) + '</button>'); });
+    PRESET_AREAS.forEach(function (a) { h += li('<button type="button" class="area-opt" data-action="goto-area" data-id="' + esc(a.id) + '">' + pin + esc(state.lang === 'en' ? L(a.en) : a.zh) + '</button>'); });
     store.areas().forEach(function (a) { h += li('<button type="button" class="area-opt" data-action="goto-area" data-id="' + esc(a.id) + '">' + pin + esc(a.name) + '</button>'); });
     h += li('<button type="button" class="area-opt muted" data-action="save-area">＋ ' + esc(t('saveHere')) + '</button>');
     return h;
@@ -575,35 +575,35 @@
   }
 
   function favoritesButtonHTML(extra) {
-    var on=state.scope==='saved', label=state.lang==='en'?'Saved places':'收藏';
+    var on=state.scope==='saved', label=state.lang==='en'?L('Saved places'):'收藏';
     return '<button type="button" class="icon-btn flat favorites-entry '+(extra||'')+'" data-action="open-favorites" aria-label="'+esc(label)+'" title="'+esc(label)+'">'+(on?ICON.starOn:ICON.star)+'</button>';
   }
   /* 首页右上角：中英切换（用户 2026-11-02 换掉了收藏星星；收藏在足迹页里进） */
-  /* 语言（用户 2026-11-03）：界面只有中文 / English；哈萨克语、阿拉伯语、印尼语只用来翻译点评和帖子（界面用英文）。
-     点了打开一个小菜单选语言；每条点评下面的「翻译」翻成这里选的语言 */
-  var TR_LANGS = [['zh', '中文', 'zh-CN'], ['en', 'English', 'en'], ['kk', 'Қазақша', 'kk'], ['ar', 'العربية', 'ar'], ['id', 'Bahasa Indonesia', 'id']];
+  /* 语言（用户 2026-11-03）：中文 / English / 哈萨克语 / 印尼语（阿拉伯语用户说先删掉）。
+     哈萨克语、印尼语的按钮文字查 data/i18n-ui.js；点评和帖子点「翻译」才翻成这里选的语言 */
+  var TR_LANGS = [['zh', '中文', 'zh-CN'], ['en', 'English', 'en'], ['kk', 'Қазақша', 'kk'], ['id', 'Bahasa Indonesia', 'id']];
   var LS_TRLANG = 'xuetuan:trlang';
   function trLang() {
     var v = lsGet(LS_TRLANG);
-    return TR_LANGS.some(function (l) { return l[0] === v; }) && (v === 'kk' || v === 'ar' || v === 'id' ? state.lang === 'en' : v === state.lang) ? v : state.lang;
+    return TR_LANGS.some(function (l) { return l[0] === v; }) && (v === 'kk' || v === 'id' ? state.lang === 'en' : v === state.lang) ? v : state.lang;
   }
-  function trLangShort() { return { zh: '中文', en: 'ENG', kk: 'KAZ', ar: 'عربي', id: 'IND' }[trLang()]; }
+  function trLangShort() { return { zh: '中文', en: 'ENG', kk: 'KAZ', id: 'IND' }[trLang()]; }
   function langButtonHTML() {
-    return '<button type="button" class="home-lang" data-action="lang-menu" aria-label="' + esc(state.lang === 'en' ? 'Language' : '语言') + '">' + esc(trLangShort()) + '</button>';
+    return '<button type="button" class="home-lang" data-action="lang-menu" aria-label="' + esc(state.lang === 'en' ? L('Language') : '语言') + '">' + esc(trLangShort()) + '</button>';
   }
   function langSheetHTML() {
     var cur = trLang();
-    return '<div class="bsheet-head"><h3>' + esc(state.lang === 'en' ? 'Language' : '语言') + '</h3></div>' +
-      '<p class="f-hint">' + esc(state.lang === 'en' ? 'Kazakh, Arabic and Indonesian translate reviews and posts; buttons stay in English.' : '哈萨克语、阿拉伯语、印尼语用来翻译点评和帖子，按钮文字用英文。') + '</p>' +
+    return '<div class="bsheet-head"><h3>' + esc(state.lang === 'en' ? L('Language') : '语言') + '</h3></div>' +
+      '<p class="f-hint">' + esc(state.lang === 'en' ? L('Kazakh and Indonesian also translate the buttons; reviews and posts translate when you tap “Translate”.') : '选哈萨克语或印尼语，按钮文字也会换；点评和帖子点「翻译」再翻。') + '</p>' +
       '<div class="lang-list">' + TR_LANGS.map(function (l) {
-        return '<button type="button" class="lang-opt" data-action="pick-lang" data-lang="' + l[0] + '" aria-pressed="' + (cur === l[0]) + '"' + (l[0] === 'ar' ? ' dir="rtl"' : '') + '>' + esc(l[1]) + '</button>';
+        return '<button type="button" class="lang-opt" data-action="pick-lang" data-lang="' + l[0] + '" aria-pressed="' + (cur === l[0]) + '">' + esc(l[1]) + '</button>';
       }).join('') + '</div>';
   }
   function footprintToolsHTML(saved) {
     var en=state.lang==='en', n=activeFilterCount();
     var modes=saved?['food','travel']:['both','food','travel'];
-    var h='<div class="foot-tools"><div class="foot-mode-group" role="group" aria-label="'+esc(en?'Place type':'地点类型')+'">'+modes.map(function(m){return '<button type="button" class="chip" data-action="mine-mode" data-v="'+m+'" aria-pressed="'+((saved?state.mode:mineView())===m)+'">'+esc(m==='both'?(en?'All':'全部'):t(m==='food'?'food':'scenery'))+'</button>';}).join('')+'</div>'+favoritesButtonHTML()+'<button type="button" class="icon-btn flat foot-filter" data-action="foot-filters" aria-label="'+esc(t('filterBtn'))+'" title="'+esc(t('filterBtn'))+'">'+CTRL_ICON.filter+(n?'<b>'+n+'</b>':'')+'</button></div>';
-    if(saved) h+='<div class="saved-status" role="group" aria-label="'+esc(en?'Visit status':'到访状态')+'">'+['all','want','been'].map(function(v){var selected=state.savedWant?'want':state.savedStatus;return '<button type="button" class="chip" data-action="saved-want" data-v="'+v+'" aria-pressed="'+(selected===v)+'">'+esc(en?({all:'All',want:'Want to go',been:'Been'})[v]:({all:'全部',want:'想去',been:'去过'})[v])+'</button>';}).join('')+'</div>';
+    var h='<div class="foot-tools"><div class="foot-mode-group" role="group" aria-label="'+esc(en?L('Place type'):'地点类型')+'">'+modes.map(function(m){return '<button type="button" class="chip" data-action="mine-mode" data-v="'+m+'" aria-pressed="'+((saved?state.mode:mineView())===m)+'">'+esc(m==='both'?(en?L('All'):'全部'):t(m==='food'?'food':'scenery'))+'</button>';}).join('')+'</div>'+favoritesButtonHTML()+'<button type="button" class="icon-btn flat foot-filter" data-action="foot-filters" aria-label="'+esc(t('filterBtn'))+'" title="'+esc(t('filterBtn'))+'">'+CTRL_ICON.filter+(n?'<b>'+n+'</b>':'')+'</button></div>';
+    if(saved) h+='<div class="saved-status" role="group" aria-label="'+esc(en?L('Visit status'):'到访状态')+'">'+['all','want','been'].map(function(v){var selected=state.savedWant?'want':state.savedStatus;return '<button type="button" class="chip" data-action="saved-want" data-v="'+v+'" aria-pressed="'+(selected===v)+'">'+esc(en?({all:'All',want:'Want to go',been:'Been'})[v]:({all:'全部',want:'想去',been:'去过'})[v])+'</button>';}).join('')+'</div>';
     return h;
   }
   /* 每一栏的首页都是 feed 这个视图：首页、我的各画各的；探索（地点）和足迹（我的记录 / 想去）用同一个列表 */
@@ -622,7 +622,7 @@
     }[state.mode][state.scope];
     if (places) key = state.mode === 'food' ? 'placesFoodAll' : 'placesTravelAll';
     if (state.scope === 'mine' && state.mineBoth) key = 'feedBothMine';
-    var h = '<div class="view-head"><div class="title-row">' + (saved ? '<button type="button" class="icon-btn flat" data-action="favorites-back" aria-label="'+esc(t('back'))+'">'+ICON.back+'</button>' : '') + '<h2 class="view-title" data-action="expand">' + esc(saved ? (state.lang==='en'?'Saved places':'我的收藏') : t(key)) + '</h2><span class="count">' + items.length + '</span></div></div>';
+    var h = '<div class="view-head"><div class="title-row">' + (saved ? '<button type="button" class="icon-btn flat" data-action="favorites-back" aria-label="'+esc(t('back'))+'">'+ICON.back+'</button>' : '') + '<h2 class="view-title" data-action="expand">' + esc(saved ? (state.lang==='en'?L('Saved places'):'我的收藏') : t(key)) + '</h2><span class="count">' + items.length + '</span></div></div>';
     if (state.tab === 'foot') h += footprintToolsHTML(saved);
     if (state.tab === 'foot' && state.scope === 'mine') h += visitBulkHTML(items);
     if (store.hasSamples() && state.scope === 'all') {
@@ -646,16 +646,16 @@
   var selectingVisits = false, selectedVisits = new Set(), visibilityBusy = false;
   function visitPrivacyHTML(r) {
     var en = state.lang === 'en';
-    return '<div class="visit-controls" role="group" aria-label="' + esc(en?'Visibility':'可见范围') + '">' + [['private',en?'Only me':'仅个人'],['public',en?'Public':'公开']].map(function (o) {
+    return '<div class="visit-controls" role="group" aria-label="' + esc(en?L('Visibility'):'可见范围') + '">' + [['private',en?L('Only me'):'仅个人'],['public',en?L('Public'):'公开']].map(function (o) {
       return '<button type="button" data-action="visit-privacy" data-id="' + esc(r.id) + '" data-v="' + o[0] + '" aria-pressed="' + (r.visibility === o[0]) + '"' + (visibilityBusy?' disabled':'') + '>' + esc(o[1]) + '</button>';
-    }).join('') + '<button type="button" class="visit-edit" data-action="edit-review" data-id="' + esc(r.id) + '">' + esc(en?'Edit':'编辑') + '</button></div>';
+    }).join('') + '<button type="button" class="visit-edit" data-action="edit-review" data-id="' + esc(r.id) + '">' + esc(en?L('Edit'):'编辑') + '</button></div>';
   }
   function visitBulkHTML(items) {
     var en = state.lang === 'en', disabled = visibilityBusy?' disabled':'', n = selectedVisits.size;
-    return '<div class="visit-bulk"><button type="button" class="btn ghost" data-action="visit-multi"' + disabled + '>' + esc(selectingVisits?(en?'Done':'完成'):(en?'Select':'多选')) + '</button>' +
+    return '<div class="visit-bulk"><button type="button" class="btn ghost" data-action="visit-multi"' + disabled + '>' + esc(selectingVisits?(en?L('Done'):'完成'):(en?L('Select'):'多选')) + '</button>' +
       (selectingVisits ? '' : '<button type="button" class="btn ghost foot-time" data-action="foot-time" aria-pressed="' + (state.footTime === 'taken') + '">' + ICON.camera + esc(t('footTaken')) + '</button>') + (selectingVisits ?
-      '<button type="button" class="btn ghost" data-action="visit-all"' + disabled + '>' + esc(en?'Select all':'全选') + '</button><small>' + esc(en?n+' selected':'已选 '+n) + '</small>' +
-      [['public',en?'Make public':'设为公开'],['private',en?'Only me':'仅个人']].map(function (o) { return '<button type="button" class="btn ghost" data-action="visit-bulk" data-v="' + o[0] + '"' + (visibilityBusy || !n?' disabled':'') + '>' + esc(o[1]) + '</button>'; }).join('') : '') + (visibilityBusy?'<small>'+esc(en?'Saving…':'保存中…')+'</small>':'') + '</div>';
+      '<button type="button" class="btn ghost" data-action="visit-all"' + disabled + '>' + esc(en?L('Select all'):'全选') + '</button><small>' + esc(en?n+' selected':'已选 '+n) + '</small>' +
+      [['public',en?L('Make public'):'设为公开'],['private',en?L('Only me'):'仅个人']].map(function (o) { return '<button type="button" class="btn ghost" data-action="visit-bulk" data-v="' + o[0] + '"' + (visibilityBusy || !n?' disabled':'') + '>' + esc(o[1]) + '</button>'; }).join('') : '') + (visibilityBusy?'<small>'+esc(en?L('Saving…'):'保存中…')+'</small>':'') + '</div>';
   }
   function changeVisitVisibility(ids, visibility) {
     if (visibilityBusy || ['private','public'].indexOf(visibility) === -1) return;
@@ -664,7 +664,7 @@
     visibilityBusy = true;
     var top = view.scrollTop, actor = me().id;
     render(); view.scrollTop = top;
-    store.setVisibility(ids,visibility).then(function () { if (actor !== me().id) return; toast(state.lang === 'en'?'Visibility updated':visibility==='public'?'已设为公开':'已设为仅个人'); },function () { toast(t('saveFail')); }).then(function () {
+    store.setVisibility(ids,visibility).then(function () { if (actor !== me().id) return; toast(state.lang === 'en'?L('Visibility updated'):visibility==='public'?'已设为公开':'已设为仅个人'); },function () { toast(t('saveFail')); }).then(function () {
       visibilityBusy=false; refreshMap(); if(state.view==='feed') { var y=view.scrollTop; render(); view.scrollTop=y; }
     });
   }
@@ -677,7 +677,7 @@
     var n = r.photos ? r.photos.length : 0;
     var lead = n ? '<span class="fi-pic"><img data-photo="' + esc(r.photos[0]) + '" data-small alt="">' +
       (n > 1 ? '<span class="fi-count">' + ICON.camera + n + '</span>' : '') + '</span>' : avatarHTML(name, r.authorId);
-    return '<li' + (ownControls ? ' class="visit-row"' : '') + '>' + (ownControls && selectingVisits ? '<button type="button" class="visit-select" data-action="visit-select" data-id="' + esc(r.id) + '" aria-label="' + esc(state.lang === 'en' ? 'Select record' : '选择这条记录') + '" aria-pressed="' + selectedVisits.has(r.id) + '">' + (selectedVisits.has(r.id) ? '✓' : '○') + '</button>' : '') + '<button type="button" class="feed-item' + (n ? ' with-pic' : '') + '" data-action="' + (ownControls && selectingVisits ? 'visit-select' : 'open-place') + '" data-id="' + esc(ownControls && selectingVisits ? r.id : p.id) + '">' +
+    return '<li' + (ownControls ? ' class="visit-row"' : '') + '>' + (ownControls && selectingVisits ? '<button type="button" class="visit-select" data-action="visit-select" data-id="' + esc(r.id) + '" aria-label="' + esc(state.lang === 'en' ? L('Select record') : '选择这条记录') + '" aria-pressed="' + selectedVisits.has(r.id) + '">' + (selectedVisits.has(r.id) ? '✓' : '○') + '</button>' : '') + '<button type="button" class="feed-item' + (n ? ' with-pic' : '') + '" data-action="' + (ownControls && selectingVisits ? 'visit-select' : 'open-place') + '" data-id="' + esc(ownControls && selectingVisits ? r.id : p.id) + '">' +
       lead +
       '<span class="fi-main">' +
       '<span class="fi-who"><b>' + esc(name) + '</b>' + (from ? '<span class="muted">' + esc(t('fromPrefix') + from) + '</span>' : '') + '<span class="fi-time">' + esc(ownControls && state.footTime === 'taken' ? t('footTakenAt', { t: timeAgo(r.createdAt) }) : timeAgo(listTime(r))) + '</span></span>' +

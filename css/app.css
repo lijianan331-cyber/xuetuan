@@ -1124,10 +1124,7 @@ button.pc-place { background: transparent; }
 /* “我的”整理（2026-11-03）：语言小切换在右上角，账号一行在头像下，家 / 主页各一行，意见反馈并进“意见反馈与隐私” */
 .me-headrow { display: flex; align-items: center; gap: 10px; }
 .me-headrow > .me-head { flex: 1; min-width: 0; }
-.seg.me-lang { flex: none; padding: 2px; border-radius: 10px; }
-.seg.me-lang button { height: 26px; padding: 0 9px; border-radius: 8px; font-size: 12px; }
-html[data-page="me"] .seg.me-lang { background: var(--surface); box-shadow: 0 0 0 1px var(--hairline); }
-html[data-page="me"] .seg.me-lang button[aria-pressed="true"] { background: var(--accent); color: #fff; box-shadow: none; }
+.me-lang { flex: none; display: inline-flex; align-items: center; gap: 5px; height: 30px; padding: 0 11px 0 9px; border: 0; border-radius: 15px; background: var(--surface); box-shadow: 0 0 0 1px var(--hairline); color: var(--accent); font: inherit; font-size: 12.5px; font-weight: 700; letter-spacing: .04em; }
 .me-account { display: flex; align-items: center; gap: 10px; margin: 0 0 12px; padding: 10px 12px 10px 14px; border-radius: 14px; background: var(--surface); box-shadow: 0 0 0 1px var(--hairline); font-size: 13px; color: var(--muted); }
 .me-account > span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .me-account .btn { flex: none; }
