@@ -242,7 +242,7 @@
     if (link) actions += '<a class="btn" href="' + esc(link) + '" target="_blank" rel="noopener nofollow">' + ICON.link + esc(t('openLink')) + '</a>';
     /* 多人同一家店的照片：越新的越前面 */
     var photos = placePhotos(p).slice(0, 30);
-    var reviews = s.rs.slice().sort(function (a, b) { return reviewActivityAt(b) - reviewActivityAt(a); });
+    var reviews = (state.scope==='all'?scopedReviews(p.id,'saved'):s.rs).slice().sort(function (a, b) { return reviewActivityAt(b) - reviewActivityAt(a); });
     var tags = '<span class="tag">' + catIconHTML(c) + esc(catName(c)) + '</span><span class="tag">' + esc(precLabel(p.precision)) + '</span>' +
       (p.mode === 'food' && !inCampus(p) ? '<span class="tag">' + esc(t('tier_' + distTier(p))) + '</span>' : '') +
       '<span class="tag">' + esc(distLabel(p)) + '</span>' + halalTagHTML(p);
@@ -331,7 +331,7 @@
       (r.visibility === 'public' && !r.sample ? '<button type="button" class="link-btn social-entry" data-action="social-open" data-id="' + esc(r.id) + '">' + esc(state.lang === 'en' ? L('Discussion') : '评论') + '</button>' : '') +
       (isMine(r) ? '<div class="rv-actions"><button type="button" class="link-btn" data-action="edit-review" data-id="' + esc(r.id) + '">' + esc(t('edit')) + '</button>' +
         '<button type="button" class="link-btn danger" data-action="del-review" data-id="' + esc(r.id) + '">' + esc(t('del')) + '</button></div>' : '') +
-      moderationControl(r) + '</div></li>';
+      (isMine(r) ? visitPrivacyHTML(r,true) : '') + moderationControl(r) + '</div></li>';
   }
 
   function fieldHTML(id, label, control) {
@@ -358,14 +358,14 @@
     if (!f) { goFeed(); return; }
     var p = f.placeId ? placeById(f.placeId) : null;
     var isFood = (p ? p.mode : state.mode) === 'food';
-    var placeFields = formHasPlaceFields(f, p);
+    var placeFields = formHasPlaceFields(f, p), combined = f.post || !!(f.draft && f.draft.title);
     var share = f.visibility === 'public';
     var curLoc = formCurLoc(f, p), cur = p ? curSym(p) : curSymAt(curLoc && ccNow(curLoc.lat, curLoc.lng));
     var title = f.editId ? t('formEdit') : f.post ? (state.lang === 'en' ? L('Create post') : '发布分享') : p ? t('formReview') : t(isFood ? 'formNewFood' : 'formNewTravel');
     /* 发布按钮放在顶部右边，不用滑到底才找得到 */
     var h = '<div class="view-top"><button type="button" class="icon-btn flat" data-action="form-cancel" aria-label="' + esc(t('back')) + '">' + ICON.back + '</button><h2 class="view-title">' + esc(title) + '</h2>' +
       '<button type="submit" form="place-form" class="btn primary small" id="f-submit">' + esc(t(f.editId ? 'saveEdit' : 'publish')) + '</button></div>' +
-      '<form id="place-form" class="form" novalidate>';
+      '<form id="place-form" class="form'+(combined?' post-composer':'')+'" novalidate>';
     if (f.restored && !f.editId) h += '<div class="draft-bar" id="draft-bar"><span>' + esc(state.lang === 'en' ? L('Your unfinished draft') : '上次没写完的草稿') + '</span><button type="button" class="link-btn" data-action="draft-discard">' + esc(state.lang === 'en' ? L('Start over') : '清空重来') + '</button></div>';
     if (f.relocate && !f.post) {
       /* 编辑记录：不再有名称框；地点可以像新加时一样重新搜、或在地图上选（用户 2026-11-01） */
@@ -389,20 +389,20 @@
         }).join('') + '</div><p class="f-hint cat-guess" id="cat-guess" hidden></p></div>';
     }
     if (f.post) h += '<div class="field"><span class="f-label">' + esc(state.lang === 'en' ? L('Photos') : '图片') + ' <small>· ' + esc(t('photoLimit', { n: MAX_PHOTOS })) + '</small></span><div class="photo-grid" id="f-photos"></div></div>';
-    if (f.post || (f.draft && f.draft.title)) h += fieldHTML('f-title', esc(state.lang === 'en' ? L('Title') : '标题'), '<input id="f-title" class="input" maxlength="80" placeholder="' + esc(state.lang === 'en' ? L('Give this memory a title') : '给这次体验起个标题') + '">');
-    /* 评分选填 */
-    h += '<div class="field"><span class="f-label" id="lbl-rating">' + esc(t('rating')) + ' <small>· ' + esc(t('optional')) + '</small></span>' + starsInputHTML('f-rating', f.rating, 'form', 'lbl-rating') +
-      '<div class="f-err" id="err-rating" hidden></div></div>';
-    h += fieldHTML('f-text', esc(f.post ? (state.lang === 'en' ? L('Story (optional)') : '正文（选填）') : t('review')), '<textarea id="f-text" class="input" rows="2" maxlength="1000" placeholder="' + esc(t(isFood ? 'reviewPhFood' : 'reviewPhTravel')) + '"></textarea>');
     if (f.post) {
-      h += '<div class="field"><span class="f-label">' + esc(state.lang === 'en' ? L('Add a place to your footprints') : '关联地点，保存到足迹') + '</span><div class="seg">' + ['food','travel'].map(function (m) { return '<button type="button" data-action="post-mode" data-v="' + m + '" aria-pressed="' + ((p ? p.mode : state.mode) === m) + '">' + esc(t(m === 'food' ? 'food' : 'scenery')) + '</button>'; }).join('') + '</div>';
+      h += '<div class="field post-location-field"><span class="f-label">' + esc(state.lang === 'en' ? L('Add a place to your footprints') : '关联地点，保存到足迹') + '</span><div class="seg">' + ['food','travel'].map(function (m) { return '<button type="button" data-action="post-mode" data-v="' + m + '" aria-pressed="' + ((p ? p.mode : state.mode) === m) + '">' + esc(t(m === 'food' ? 'food' : 'scenery')) + '</button>'; }).join('') + '</div>';
       if (/^g\//.test(f.osm)) h += '<div id="g-form-detail" class="g-search"></div>';
       else if (p) h += '<div class="form-place">' + catIconHTML(catOf(p)) + '<b>' + esc(placeTitle(p)) + '</b></div>';
       else if (f.loc) h += fieldHTML('f-name', esc(t('name')), '<input id="f-name" class="input" maxlength="60"' + (f.lockedName ? ' readonly' : '') + ' placeholder="' + esc(t(isFood ? 'namePhFood' : 'namePhTravel')) + '">');
       h += '<div class="btn-row"><button type="button" class="btn" id="post-location" data-action="post-location">' + ICON.pin + esc(state.lang === 'en' ? (p || f.loc ? 'Change place' : 'Find a place') : (p || f.loc ? '更换地点' : '搜索地点')) + '</button><button type="button" class="btn ghost" data-action="post-map">' + esc(t('addPin')) + '</button></div></div>';
-      /* 发帖选了美食也能填人均（用户 2026-11-02） */
-      if (isFood) h += formPriceFieldHTML();
     }
+    if (combined) h += fieldHTML('f-title', esc(state.lang === 'en' ? L('Share your experience') : '分享内容'), '<textarea id="f-title" class="input" data-combined rows="3" maxlength="1081" placeholder="'+esc(state.lang==='en'?'Write about this visit…':'写下这次体验…')+'"></textarea>');
+    /* 评分选填 */
+    h += '<div class="field"><span class="f-label" id="lbl-rating">' + esc(t('rating')) + ' <small>· ' + esc(t('optional')) + '</small></span>' + starsInputHTML('f-rating', f.rating, 'form', 'lbl-rating') +
+      '<div class="f-err" id="err-rating" hidden></div></div>';
+    if(!combined) h += fieldHTML('f-text', esc(f.post ? (state.lang === 'en' ? L('Story (optional)') : '正文（选填）') : t('review')), '<textarea id="f-text" class="input" rows="2" maxlength="1000" placeholder="' + esc(t(isFood ? 'reviewPhFood' : 'reviewPhTravel')) + '"></textarea>');
+    if(f.post && isFood)h+=formPriceFieldHTML();
+
     if (!f.post) h += '<div class="field"><span class="f-label">' + esc(t('photos')) + ' <small>· ' + esc(t('photoLimit', { n: MAX_PHOTOS })) + '</small></span><div class="photo-grid" id="f-photos"></div></div>';
     /* 人均只问吃的（筛选按人均）；玩乐不问花费（用户 2026-10-26） */
     if (isFood && !f.post) h += formPriceFieldHTML();
@@ -453,12 +453,15 @@
     if (!f || !$('#place-form')) return;
     var d = f.draft || {};
     DRAFT_FIELDS.forEach(function (pair) { var el = $('#' + pair[0]); if (el) d[pair[1]] = el.value; });
+    var content=$('#f-title[data-combined]');
+    if(content){var value=content.value.trim(),lines=value.split(/\r?\n/),first=lines.shift()||'';d.title=first.slice(0,80);d.text=[first.slice(80),lines.join('\n')].filter(Boolean).join('\n').slice(0,1000);}
     f.draft = d;
   }
   function restoreFormDraft() {
     var d = state.form && state.form.draft;
     if (!d) return;
     DRAFT_FIELDS.forEach(function (pair) { var el = $('#' + pair[0]); if (el && d[pair[1]]) el.value = d[pair[1]]; });
+    var content=$('#f-title[data-combined]');if(content)content.value=[d.title,d.text].filter(Boolean).join('\n');
   }
 
   /* 草稿（用户 2026-11-01）：新加记录、发帖时写的东西随时存在本机；意外退出、按了返回，下次点加号接着填。

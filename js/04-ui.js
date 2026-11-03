@@ -123,6 +123,7 @@
     panel.style.setProperty('--visible', (state.snap === 'hidden' && isMobile() ? -(parseFloat(getComputedStyle(panel).bottom) || 0) : v) + 'px');
     panel.style.setProperty('--hidden', (isMobile() ? Math.max(0, panel.offsetHeight - v) : 0) + 'px');
     stage.style.setProperty('--sheet-visible', (isMobile() ? Math.min(v, Math.round((appH || window.innerHeight) * 0.5)) : 0) + 'px');
+    if(typeof syncPersonMapLayout==='function')syncPersonMapLayout(false);
   }
 
   /* 拖面板：拖上面的小横条，或者像谷歌地图那样直接拖内容——
@@ -642,11 +643,11 @@
   }
 
   var selectingVisits = false, selectedVisits = new Set(), visibilityBusy = false;
-  function visitPrivacyHTML(r) {
+  function visitPrivacyHTML(r, withoutEdit) {
     var en = state.lang === 'en';
     return '<div class="visit-controls" role="group" aria-label="' + esc(en?L('Visibility'):'可见范围') + '">' + [['private',en?L('Only me'):'仅个人'],['public',en?L('Public'):'公开']].map(function (o) {
       return '<button type="button" data-action="visit-privacy" data-id="' + esc(r.id) + '" data-v="' + o[0] + '" aria-pressed="' + (r.visibility === o[0]) + '"' + (visibilityBusy?' disabled':'') + '>' + esc(o[1]) + '</button>';
-    }).join('') + '<button type="button" class="visit-edit" data-action="edit-review" data-id="' + esc(r.id) + '">' + esc(en?L('Edit'):'编辑') + '</button></div>';
+    }).join('') + (withoutEdit ? '' : '<button type="button" class="visit-edit" data-action="edit-review" data-id="' + esc(r.id) + '">' + esc(en?L('Edit'):'编辑') + '</button>') + '</div>';
   }
   function visitBulkHTML(items) {
     var en = state.lang === 'en', disabled = visibilityBusy?' disabled':'', n = selectedVisits.size;
@@ -663,7 +664,7 @@
     var top = view.scrollTop, actor = me().id;
     render(); view.scrollTop = top;
     store.setVisibility(ids,visibility).then(function () { if (actor !== me().id) return; toast(state.lang === 'en'?L('Visibility updated'):visibility==='public'?'已设为公开':'已设为仅个人'); },function () { toast(t('saveFail')); }).then(function () {
-      visibilityBusy=false; refreshMap(); if(state.view==='feed') { var y=view.scrollTop; render(); view.scrollTop=y; }
+      visibilityBusy=false; refreshMap(); if(state.view==='feed'||state.view==='place') { var y=view.scrollTop; render(); view.scrollTop=y; }
     });
   }
 

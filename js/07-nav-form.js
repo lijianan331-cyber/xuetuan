@@ -162,8 +162,22 @@
     /* 把他所有分享过的地点框进来 */
     var w = 180, s = 90, e = -180, n = -90;
     ps.forEach(function (p) { w = Math.min(w, p.lng); e = Math.max(e, p.lng); s = Math.min(s, p.lat); n = Math.max(n, p.lat); });
+    state.person.globe = e-w>100 || n-s>65;
+    if(state.person.globe){syncPersonMapLayout(true);return;}
     if (ps.length === 1) { flyTo([ps[0].lng, ps[0].lat], ps[0].precision === 'city' ? 9 : 14); return; }
     try { map.fitBounds([[w, s], [e, n]], { padding: mapPadding(), maxZoom: 15, duration: reduceMotion ? 0 : 600 }); } catch (err) { /* 太大框不住就不动 */ }
+  }
+  function syncPersonMapLayout(initial) {
+    if(!map||state.view!=='person'||!state.person||!state.person.globe)return;
+    var el=map.getContainer(),w=el.clientWidth,h=el.clientHeight;
+    if(!w||!h)return;
+    var top=isMobile()?76:32,bottom=isMobile()?Math.min(snapVisible(state.snap)+tabbarH()+12,h-top-100):36;
+    var pad={top:top,bottom:bottom,left:isMobile()?16:mapPadding().left,right:16};
+    var key=[w,h,top,bottom].join(':');if(!initial&&state.person.cameraLayout===key)return;
+    state.person.cameraLayout=key;
+    var diameter=Math.max(210,Math.min(w-32,h-top-bottom)*.94);
+    var zoom=clamp(Math.log2(diameter*Math.PI/512),.85,1.4);
+    var c=map.getCenter();map.easeTo({center:initial?[120,20]:[c.lng,c.lat],zoom:zoom,pitch:0,bearing:0,padding:pad,duration:reduceMotion?0:350});
   }
   function leavePerson() {
     var b = state.personBack || { tab: 'home', view: 'feed' };
@@ -743,7 +757,7 @@
     var p0 = f.placeId ? placeById(f.placeId) : null;
     var placeFields = formHasPlaceFields(f, p0);
     var bad = null;
-    if (f.post && !(d.title || '').trim()) { toast(state.lang === 'en' ? L('Add a title') : '请写一个标题'); bad = $('#f-title'); }
+    if (f.post && !(d.title || '').trim()) { toast(state.lang === 'en' ? L('Write about this visit') : '写一点分享内容'); bad = $('#f-title'); }
     if (f.post && !f.photos.length) { toast(state.lang === 'en' ? L('Add at least one photo') : '请至少添加一张图片'); if (!bad) { $('#f-photos').scrollIntoView({ block: 'center' }); return; } }
     /* 评分选填（用户 2026-10-28）：不打分也能保存，地图上是蓝点 */
     if (bad) { bad.focus({ preventScroll: true }); centerInPanel(bad, !reduceMotion); return; }
