@@ -384,6 +384,8 @@
     var el = e.target.closest('[data-action]');
     if (!el) return;
     var a = el.dataset.action, d = el.dataset;
+    if (a === 'person-card') { openPersonCard(d.uid); return; }
+    if (a === 'dm-open' && !$('#modal').hidden) closeModal(false);
     if (handleDMAction(a,el)) return;
     if (handleIdentityAction(a)) return;
     if (handleSocialAction(a,el)) return;
@@ -455,7 +457,7 @@
       case 'home-pick': if (requireLogin(function () { startPick({ home: true }); })) startPick({ home: true }); break;
       case 'home-result': var hr = homeQ.results[+d.i]; if (hr) saveHome(hr.name, hr); break;
       case 'home-del':
-        store.setHome(null).then(function () { toast(t('homeRemoved')); afterHomeChange(); render(); }, function () { toast(t('saveFail')); });
+        store.setHome(null).then(function () { toast(t('homeRemoved')); afterHomeChange(); if (state.view === 'home') leaveHomeSet(); else render(); }, function () { toast(t('saveFail')); });
         break;
       case 'home-public':
         var mh = store.myHome();

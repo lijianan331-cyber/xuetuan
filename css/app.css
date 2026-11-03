@@ -992,7 +992,7 @@ html[data-page="me"] #view > .home-set-btn { background: var(--surface); box-sha
   .panel, .locate-btn, .campus-btn, .add-fab, .attrib, .bsheet-card { transition: none; animation: none; }
 }
 
-/* ---------- 开屏（2026-11-02 改短）：像 Instagram / 抖音，全屏雪团蓝 + 中间雪团子和“雪团”，飘一点小雪，一秒多进首页 ---------- */
+/* ---------- 开屏（2026-11-02 改短；11-03 去掉 logo 弹出：第一帧已画好的 logo 被动画藏起再弹出，看着像卡了一下）：像 Instagram / 抖音，全屏雪团蓝 + 中间雪团子和“雪团”，飘一点小雪，一秒多进首页 ---------- */
 .splash { display: none; }
 html.splash-on .splash { position: fixed; top: 0; right: 0; bottom: 0; left: 0; z-index: 200; display: flex; flex-direction: column; align-items: center; justify-content: center; overflow: hidden; background: linear-gradient(170deg, #48BCFD 0%, #3AACF4 48%, #2F98E4 100%); cursor: pointer; -webkit-user-select: none; user-select: none; transition: opacity .3s ease; }
 html.splash-out .splash { opacity: 0; pointer-events: none; }
@@ -1000,18 +1000,14 @@ html.splash-out .splash { opacity: 0; pointer-events: none; }
 .sp-ball { display: block; width: 128px; height: 128px; filter: drop-shadow(0 12px 18px rgba(14, 70, 130, .28)); }
 .sp-mark b { margin-top: 6px; font-family: var(--font-display); font-size: 40px; font-weight: 400; line-height: 1.1; letter-spacing: .12em; color: #fff; text-shadow: 0 2px 10px rgba(14, 70, 130, .22); }
 .sp-tag { position: absolute; left: 0; right: 0; bottom: calc(44px + env(safe-area-inset-bottom, 0px)); text-align: center; color: rgba(255, 255, 255, .9); font-size: 13.5px; font-weight: 500; letter-spacing: .14em; }
-html.splash-go .sp-mark { animation: sp-pop .42s cubic-bezier(.2, .9, .3, 1.15) both; }
-html.splash-go .sp-tag { animation: sp-in .4s ease-out .18s both; }
 .sp-flakes { position: absolute; top: 0; right: 0; bottom: 0; left: 0; pointer-events: none; }
 .sp-flakes i { position: absolute; top: -14px; border-radius: 50%; background: #fff; opacity: .85; will-change: transform; animation: sp-fall linear infinite; }
 .sp-flakes i.sf { border-radius: 0; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23fff' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='M12 2v20M3.3 7l17.4 10M3.3 17L20.7 7M12 5l-2.2-2M12 5l2.2-2M12 19l-2.2 2M12 19l2.2 2'/%3E%3C/svg%3E") center / contain no-repeat; opacity: .75; }
 @keyframes sp-in { from { opacity: 0; } to { opacity: 1; } }
-@keyframes sp-pop { from { opacity: 0; transform: scale(.86); } to { opacity: 1; transform: none; } }
 @keyframes sp-fall { 0% { transform: translate3d(0, 0, 0) rotate(0); } 100% { transform: translate3d(var(--dx, 0), 106vh, 0) rotate(160deg); } }
 /* 系统开了“减少动态效果”：不飘雪不弹出，静止的 logo，很快进首页 */
 @media (prefers-reduced-motion: reduce) {
   .sp-flakes { display: none; }
-  html.splash-go .sp-mark, html.splash-go .sp-tag { animation: none; }
 }
 
 /* 个人主页（2026-11-01）：点作者名字 / 头像进去 */
@@ -1124,3 +1120,32 @@ button.pc-place { background: transparent; }
 .lang-list { display: grid; gap: 8px; margin: 10px 0 6px; }
 .lang-opt { height: 46px; padding: 0 16px; letter-spacing: 0; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); color: var(--ink); font: inherit; font-size: 15px; text-align: start; }
 .lang-opt[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); font-weight: 600; background: color-mix(in srgb, var(--accent) 8%, var(--surface)); }
+
+/* “我的”整理（2026-11-03）：语言小切换在右上角，账号一行在头像下，家 / 主页各一行，意见反馈并进“意见反馈与隐私” */
+.me-headrow { display: flex; align-items: center; gap: 10px; }
+.me-headrow > .me-head { flex: 1; min-width: 0; }
+.seg.me-lang { flex: none; padding: 2px; border-radius: 10px; }
+.seg.me-lang button { height: 26px; padding: 0 9px; border-radius: 8px; font-size: 12px; }
+html[data-page="me"] .seg.me-lang { background: var(--surface); box-shadow: 0 0 0 1px var(--hairline); }
+html[data-page="me"] .seg.me-lang button[aria-pressed="true"] { background: var(--accent); color: #fff; box-shadow: none; }
+.me-account { display: flex; align-items: center; gap: 10px; margin: 0 0 12px; padding: 10px 12px 10px 14px; border-radius: 14px; background: var(--surface); box-shadow: 0 0 0 1px var(--hairline); font-size: 13px; color: var(--muted); }
+.me-account > span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.me-account .btn { flex: none; }
+.me-lines { border-radius: 18px; background: var(--surface); box-shadow: 0 0 0 1px var(--hairline); overflow: hidden; }
+.me-line { display: flex; align-items: center; gap: 8px; padding-right: 14px; }
+.me-line + .me-line { border-top: 1px solid var(--hairline); }
+.me-line-main { flex: 1; min-width: 0; display: flex; align-items: center; gap: 12px; padding: 13px 0 13px 16px; border: 0; background: none; color: var(--ink); font: inherit; text-align: left; }
+.me-line-main > svg { width: 21px; height: 21px; flex: none; color: var(--accent); }
+.me-line-main > span { flex: 1; min-width: 0; }
+.me-line-main b { display: block; font-size: 14px; font-weight: 600; }
+.me-line-main small { display: block; margin-top: 2px; font-size: 12px; color: var(--muted); }
+.me-line-main i { font-size: 21px; font-style: normal; color: var(--muted); }
+.me-switch { flex: none; display: flex; align-items: center; gap: 8px; padding: 6px 0; border: 0; background: none; color: var(--muted); font: inherit; font-size: 12.5px; }
+.me-switch[aria-checked="true"] .switch { background: var(--accent); }
+.me-switch[aria-checked="true"] .switch::after { transform: translateX(18px); }
+.me-feedback { display: inline-flex; align-items: center; gap: 6px; margin-bottom: 10px; text-decoration: none; }
+.me-feedback svg { width: 16px; height: 16px; }
+.home-remove { margin: 4px 0 0; }
+.person-card { text-align: center; }
+.person-card .avatar { width: 56px; height: 56px; font-size: 22px; margin: 0 auto 8px; }
+.person-card .btn-row { justify-content: center; }

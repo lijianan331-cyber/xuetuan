@@ -63,8 +63,8 @@
     setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); root.classList.remove('splash-on', 'splash-out', 'splash-go'); }, 320);
   }
   el.addEventListener('click', finish);
-  /* 等第一帧画出来再计时，约 1.2 秒后进首页 */
-  var go = function () { if (done || root.classList.contains('splash-go')) return; root.classList.add('splash-go'); setTimeout(finish, reduce ? 800 : 1200); };
+  /* 等第一帧画出来再计时，约 0.9 秒后进首页（logo 一开始就在，不再弹出） */
+  var go = function () { if (done || root.classList.contains('splash-go')) return; root.classList.add('splash-go'); setTimeout(finish, reduce ? 700 : 900); };
   if (window.requestAnimationFrame) requestAnimationFrame(function () { requestAnimationFrame(go); }); else go();
   setTimeout(go, 500);
   setTimeout(function () { if (!root.classList.contains('splash-go')) finish(); }, 4000); /* 一直没画出来（比如在后台打开）就别挡着 */

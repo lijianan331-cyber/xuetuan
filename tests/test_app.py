@@ -1022,7 +1022,7 @@ with sync_playwright() as p:
     page.click('[data-action="home-public"]')
     page.wait_for_timeout(150)
     check('home: public setting does not automatically overlay travel', page.evaluate('window.__map.getSource("homes").data.features.length') == 0)
-    check('home: switch on explains city-only sharing', page.get_attribute('[data-action="home-public"]', 'aria-checked') == 'true' and 'Sepang' in page.inner_text('#home-field') and '仅展示城市，不含详细地址' in page.inner_text('#home-field'))
+    check('home: switch on explains city-only sharing', page.get_attribute('[data-action="home-public"]', 'aria-checked') == 'true' and 'Sepang' in page.inner_text('#home-field') and '只显示城市' in page.get_attribute('[data-action="home-public"]', 'aria-label'))
     tab(page, 'explore')
     toggle_homes(page)
     check('home: independent mode hides travel places', page.evaluate('window.__map.getSource("places").data.features.length') == 0)
@@ -1303,7 +1303,10 @@ with sync_playwright() as p:
     check('desktop: home lists posts in the side column, no map card there', page2.get_attribute('#tabbar [data-tab="home"]', 'aria-current') == 'page' and page2.locator('.home-map').count() == 0 and page2.evaluate('document.getElementById("map").parentNode.id') == 'stage')
     tab(page2, 'me')
     page2.set_input_files('#import-file', export_path)
-    page2.wait_for_timeout(800)
+    try:
+        page2.wait_for_function('(JSON.parse(localStorage.getItem("xmum-chiwan-map:data:v1") || "{}").profile || {}).name === "小测"', timeout=5000)
+    except Exception:
+        pass
     st3 = page2.evaluate('JSON.parse(localStorage.getItem("xmum-chiwan-map:data:v1"))')
     check('import merges places and adopts profile', any(p_['name'] == '测试椰浆饭' for p_ in st3['places']) and st3['profile']['name'] == '小测', (len(st3['places']), st3['profile']))
     via_home(page2, '测试椰浆饭')
@@ -2143,6 +2146,9 @@ with sync_playwright() as p:
     check('remote: home shows other people’s public posts with their name', page6.locator('.post-card:has(.pc-who[aria-label="小B"])').count() == 1 and page6.locator('.post-card', has_text='秘密').count() == 0)
     via_home(page6, '小B', to_place=False)
     check('remote: the post no longer shows where they are from', '小B' in page6.inner_text('.post-who') and '来自' not in page6.inner_text('.post-who') and page6.inner_text('.post-text') == '好吃', page6.inner_text('#view')[:200])
+    page6.click('.post-who[data-action="person-card"]'); page6.wait_for_timeout(150)
+    check('remote: a name without a public page opens a small card with 发私信', '小B' in page6.inner_text('#modal .person-card') and page6.locator('#modal [data-action="dm-open"]').count() == 1)
+    page6.click('#modal [data-modal="no"]'); page6.wait_for_timeout(100)
     page6.click('[data-action="back"]'); page6.wait_for_timeout(200)
     page6.evaluate('window.__sbNoAnon = true')
     add(page6)
@@ -2449,7 +2455,7 @@ with sync_playwright() as p:
     check('bulk public share preserves GIF and video originals', media_row['visibility']=='public' and len(media_row['photos'])==2 and any(x.endswith('.gif') for x in media_row['photos']) and any(x.endswith(('.mp4','.webm')) for x in media_row['photos']))
     tab(page6, 'me')
     page6.wait_for_timeout(200)
-    check('remote: profile shows account', 'a@example.com' in page6.inner_text('.account-row'))
+    check('remote: account sits under the avatar with a masked email and log out', 'a***@example.com' in page6.inner_text('.me-account.account-row') and page6.locator('.me-account [data-action="logout"]').count() == 1)
     # 我的家：搜城市（只要城市），写进 homes 表，默认不公开
     page6.click('#home-field [data-action="home-set"]')
     page6.fill('#home-q', '槟城')
@@ -2488,8 +2494,10 @@ with sync_playwright() as p:
     check('same-city hometown badge opens all public classmates, excluding private homes',page6.locator('.homes-list li').count()==2)
     page6.evaluate('window.__qrf=[];Object.assign(window.__sb.db.homes.find(h=>h.user_id===window.__oldBHome.user_id),window.__oldBHome)')
     tab(page6, 'me')
+    page6.click('#home-field [data-action="home-set"]'); page6.wait_for_selector('[data-action="home-del"]')
     page6.click('[data-action="home-del"]')
     page6.wait_for_timeout(200)
+    tab(page6, 'me')
     check('remote home: remove deletes my row', not any(h['user_id'] == A for h in page6.evaluate('window.__sb.db.homes')) and page6.locator('#home-field .home-set-btn').count() == 1)
     page6.click('[data-action="upload-local"]')
     page6.click('[data-modal="yes"]')
@@ -2862,6 +2870,7 @@ with sync_playwright() as p:
     check('splash: automated browsers skip it unless ?splash', pu.evaluate('!document.getElementById("splash") && !document.documentElement.classList.contains("splash-on")'))
     t0 = time.time(); pu.goto(APP + '?splash')
     sp0 = pu.evaluate('(() => { const s = document.getElementById("splash"); if (!s) return null; const m = s.querySelector(".sp-mark").getBoundingClientRect(), t = s.querySelector(".sp-tag"); return [getComputedStyle(s).display !== "none", document.querySelectorAll("#sp-flakes i").length >= 20, document.querySelectorAll("#sp-flakes i.sf").length > 0, !!s.querySelector(".sp-mark .sp-ball"), s.querySelector(".sp-mark b").textContent, t.textContent, Math.abs((m.left + m.right) / 2 - innerWidth / 2) < 2, t.getBoundingClientRect().bottom < innerHeight, !s.querySelector(".sp-scene, .sp-splat")]; })()')
+    check('splash: the logo is there from the first frame (no pop-in that looked like a stall)', pu.evaluate('(() => { const m = document.querySelector(".sp-mark"); return !!m && getComputedStyle(m).animationName === "none" && +getComputedStyle(m).opacity === 1; })()'))
     check('splash: full screen, snowball + 雪团 centred, light snow, tagline at the bottom, no old scene', sp0 == [True, True, True, True, '雪团', 'XMUMer 的图鉴', True, True, True], sp0)
     pu.wait_for_function('!document.getElementById("splash")', timeout=4000)
     sp1 = [round(time.time() - t0, 1), pu.evaluate('document.documentElement.className.includes("splash")')]

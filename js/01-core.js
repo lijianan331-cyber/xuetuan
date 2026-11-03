@@ -1853,7 +1853,18 @@
   }
   /* 个人主页：作者自己打开了才能点进（自己的总能点，看看别人眼里的样子） */
   function canOpenPerson(id) { return !!id && id !== 'sample' && (id === me().id || store.pagePublic(id)); }
-  function personAttr(id) { return canOpenPerson(id) ? ' data-action="person" data-uid="' + esc(id) + '"' : ''; }
+  /* 没公开主页的人（线上版）：点名字弹一张小卡片，能发私信（用户 2026-11-03：点头像没反应、找不到私信） */
+  function personAttr(id) {
+    if (canOpenPerson(id)) return ' data-action="person" data-uid="' + esc(id) + '"';
+    return store.mode === 'remote' && id && id !== 'sample' ? ' data-action="person-card" data-uid="' + esc(id) + '"' : '';
+  }
+  function openPersonCard(id) {
+    var r = store.reviews().filter(function (x) { return x.authorId === id; })[0], en = state.lang === 'en';
+    var name = (r && r.authorName) || t('anon');
+    openModal('<div class="modal-card person-card" role="dialog" aria-modal="true" aria-labelledby="pcard-name">' + avatarHTML(name, id) + '<h3 id="pcard-name">' + esc(name) + '</h3>' +
+      '<p class="f-hint">' + esc(en ? 'This classmate keeps their page private.' : 'TA 还没公开主页') + '</p>' +
+      '<div class="btn-row"><button type="button" class="btn primary" data-action="dm-open" data-peer="' + esc(id) + '" data-name="' + esc(name) + '">' + esc(en ? 'Message' : '发私信') + '</button><button type="button" class="btn ghost" data-modal="no">' + esc(en ? 'Close' : '关闭') + '</button></div></div>');
+  }
   function authorFrom(r) { var h = r.authorId && homeOf(r.authorId); return h && h.public ? h.city : ''; }
   function homeName(h) { return h.userId === me().id ? (me().name || t('you')) : (h.name || t('anon')); }
   function reviewText(r) { return state.lang === 'en' && r.textEn ? r.textEn : (r.text || ''); }

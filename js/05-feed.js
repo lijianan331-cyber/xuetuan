@@ -109,7 +109,7 @@
       return '<button type="button" class="ph" data-action="photo" data-id="' + esc(id) + '" data-group="post"><img data-photo="' + esc(id) + '" data-small alt=""></button>';
     }).join('') + '</div>';
     var pw = avatarHTML(name, r.authorId) + '<span class="pw-text"><b>' + esc(name) + '</b><small>' + (from ? esc(t('fromPrefix') + from) + ' · ' : '') + esc(reviewTimeLabel(r)) + '</small></span>';
-    h += canOpenPerson(r.authorId)
+    h += personAttr(r.authorId)
       ? '<button type="button" class="post-who who-link"' + personAttr(r.authorId) + ' aria-label="' + esc(personLabel(name)) + '">' + pw + '<i class="pw-go" aria-hidden="true">›</i></button>'
       : '<div class="post-who">' + pw + '</div>';
     var sc = [];
@@ -321,7 +321,7 @@
   }
   window.__translateText = translateText; /* 测试用 */
   function reviewHTML(r) {
-    var name = authorLabel(r), from = '', meta = metaHTML(r), text = reviewText(r), go = canOpenPerson(r.authorId);
+    var name = authorLabel(r), from = '', meta = metaHTML(r), text = reviewText(r), go = !!personAttr(r.authorId);
     return '<li class="review">' + (go ? '<button type="button" class="who-link rv-av"' + personAttr(r.authorId) + ' aria-label="' + esc(personLabel(name)) + '">' + avatarHTML(name, r.authorId) + '</button>' : avatarHTML(name, r.authorId)) + '<div class="rv-main">' +
       '<div class="rv-who">' + (go ? '<button type="button" class="who-link rv-name"' + personAttr(r.authorId) + ' tabindex="-1" aria-hidden="true"><b>' + esc(name) + '</b></button>' : '<b>' + esc(name) + '</b>') + (from ? '<span class="muted">' + esc(t('fromPrefix') + from) + '</span>' : '') + '<span class="fi-time">' + esc(reviewTimeLabel(r)) + '</span></div>' +
       (meta ? '<div class="rv-meta">' + meta + '</div>' : '') +

@@ -528,9 +528,28 @@
 
   /* 我的：上面是头像、昵称、来自哪、去过 / 想去 / 分享几个，下面是原来“我”里的资料和设置 */
   function onMeRoot() { return state.view === 'feed' && state.tab === 'me'; }
+  /* “我的”右上角的小语言切换（用户 2026-11-03 要回来，做小一点） */
+  function meLangHTML() {
+    return '<div class="seg me-lang" role="group" aria-label="Language">' +
+      '<button type="button" data-action="set-lang" data-lang="zh" aria-pressed="' + (state.lang === 'zh') + '">中</button>' +
+      '<button type="button" data-action="set-lang" data-lang="en" aria-pressed="' + (state.lang === 'en') + '">EN</button></div>';
+  }
+  /* 账号一行放在头像下面（用户 2026-11-03）：没登录 = 登录；游客 = 绑定谷歌；登录了 = 打码的邮箱 + 退出 */
+  function maskEmail(e) {
+    var m = /^([^@]{0,2})[^@]*(@.*)$/.exec(e || '');
+    return m ? m[1] + '***' + m[2] : (e || '');
+  }
+  function meAccountHTML() {
+    if (store.mode !== 'remote') return '';
+    var en = state.lang === 'en';
+    if (!store.signedIn()) return '<div class="me-account"><span>' + esc(en ? 'Log in to keep your records on any device' : '登录后换手机也能找回记录') + '</span><button type="button" class="btn small primary" data-action="login">' + esc(t('login')) + '</button></div>';
+    if (store.isAnon()) return '<div class="me-account"><span>' + esc(en ? 'Guest account · link Google to share and keep records' : '匿名账号 · 绑定谷歌后才能分享，换手机也能找回') + '</span><button type="button" class="btn small primary" data-action="link-google">' + esc(en ? 'Link Google' : '绑定谷歌') + '</button></div>';
+    var who = managedIdentity && managedIdentity.alt ? identityText('主号管理的小号', 'Managed second identity') : maskEmail(store.email());
+    return '<div class="me-account account-row"><span>' + esc((en ? 'Signed in · ' : '已登录 · ') + who) + '</span><button type="button" class="btn small ghost" data-action="logout">' + esc(t('logout')) + '</button></div>';
+  }
   function meHeadHTML() {
     var pf = me();
-    if (!store.signedIn()) return '<div class="me-head">' + avatarHTML('?') + '<span class="me-id"><b class="muted">' + esc(t('meGuest')) + '</b></span></div>';
+    if (!store.signedIn()) return '<div class="me-headrow"><div class="me-head">' + avatarHTML('?') + '<span class="me-id"><b class="muted">' + esc(t('meGuest')) + '</b></span></div>' + meLangHTML() + '</div>' + meAccountHTML();
     var home = store.myHome(), been = {}, shared = 0;
     store.reviews().forEach(function (r) {
       if (!isMine(r) || !placeById(r.placeId)) return;
@@ -543,21 +562,16 @@
       return sub ? '<button type="button" class="me-stat" data-action="foot-sub" data-v="' + sub + '">' + inner + '</button>' : '<div class="me-stat">' + inner + '</div>';
     }
     /* 点头像或名字：换头像、改名字（用户 2026-11-02） */
-    return '<button type="button" class="me-head me-edit" data-action="edit-profile" aria-label="' + esc(state.lang === 'en' ? 'Edit avatar and name' : '修改头像和名字') + '">' + avatarHTML(pf.name || '?', pf.id) + '<span class="me-id"><b' + (pf.name ? '' : ' class="muted"') + ' id="me-name">' + esc(pf.name || t('meNoName')) + '<span class="me-pencil" aria-hidden="true">' + ICON.pen + '</span></b>' +
-      '<small>' + esc(home ? t('fromPrefix') + home.city : t('meNoHome')) + '</small></span></button>' +
+    return '<div class="me-headrow"><button type="button" class="me-head me-edit" data-action="edit-profile" aria-label="' + esc(state.lang === 'en' ? 'Edit avatar and name' : '修改头像和名字') + '">' + avatarHTML(pf.name || '?', pf.id) + '<span class="me-id"><b' + (pf.name ? '' : ' class="muted"') + ' id="me-name">' + esc(pf.name || t('meNoName')) + '<span class="me-pencil" aria-hidden="true">' + ICON.pen + '</span></b>' +
+      '<small>' + esc(home ? t('fromPrefix') + home.city : t('meNoHome')) + '</small></span></button>' + meLangHTML() + '</div>' + meAccountHTML() +
       '<div class="me-stats">' + stat(Object.keys(been).length, 'meBeen', 'mine') + stat(want, 'meWant', 'saved') + stat(shared, 'meShared') + '</div>';
   }
   function renderMe() {
     var pf = me();
     var accountOpen = !!($('.account-details') && $('.account-details').open), dataOpen = !!($('.data-details') && $('.data-details').open), adminOpen = !!($('.admin-details') && $('.admin-details').open);
     var areas = store.areas(), remote = store.mode === 'remote', signedIn = store.signedIn();
-    var account = !remote ? '' : '<div class="field"><span class="f-label">' + esc(t('account')) + '</span>' + (signedIn && store.isAnon()
-      ? '<p class="f-hint">' + esc(t('anonWhy')) + '</p><button type="button" class="btn primary" data-action="link-google">' + esc(t('linkGoogle')) + '</button>'
-      : signedIn
-      ? '<div class="account-row"><span>' + esc(t('signedInAs', { e: managedIdentity && managedIdentity.alt ? identityText('主号管理的小号','Managed second identity') : store.email() })) + '</span><button type="button" class="btn small ghost" data-action="logout">' + esc(t('logout')) + '</button></div>'
-      : '<p class="f-hint">' + esc(t('loginWhy')) + '</p><button type="button" class="btn primary" data-action="login">' + esc(t('login')) + '</button>') + '</div>';
     /* 以前这里有“来自哪”四个输入框，没什么用，去掉了（以后改成在玩乐地图上设“我的家”） */
-    var personal = !signedIn ? '' : homeFieldHTML() + pageFieldHTML();
+    var personal = !signedIn ? '' : '<div class="me-lines">' + homeFieldHTML() + pageFieldHTML() + '</div>';
     var dataButtons = remote
       ? (signedIn ? '<button type="button" class="btn small" data-action="export">' + esc(t('exportData')) + '</button>' +
           '<button type="button" class="btn small" data-action="import">' + esc(t('importData')) + '</button>' +
@@ -571,12 +585,12 @@
       (remote ? menu(dmIcon,en?'Messages':'私信',en?'Requests and conversations':'私信申请与聊天','dm-open').replace('</b>','</b>'+dmBadgeHTML()) : '') +
       menu(CTRL_ICON.arrow,en?'Share my footprints':'分享我的足迹',en?'Maps and memories to take with you':'把去过的地方，做成一张地图','my-share') +
       menu(ICON.home,t('homesBtn'),publicHomeCount()?t('homesN',{n:publicHomeCount()}):'', 'homes-open').replace('me-menu-row','me-menu-row me-homes') +
-      menu(ICON.pen,en?'Feedback & support':'意见反馈','','','contact.html') + '</div><div class="form me-settings">' + personal +
+'</div><div class="form me-settings">' + personal +
       '<div class="field"><span class="f-label">'+esc(t('basemap'))+'</span><div class="seg">'+
       ['light','color'].map(function(k){return '<button type="button" data-action="set-style" data-style="'+k+'" aria-pressed="'+(state.styleKey===k)+'">'+esc(t(styleLabelKey(k)))+'</button>';}).join('')+'</div></div>' +
       (areas.length?'<details class="me-fold"><summary>'+esc(t('areas'))+'</summary><ul class="area-list">'+areas.map(function(a){return '<li><span>'+esc(a.name)+'</span><button type="button" class="link-btn danger" data-action="del-area" data-id="'+esc(a.id)+'">'+esc(t('del'))+'</button></li>';}).join('')+'</ul></details>':'') +
-      '<details class="me-fold account-details"' + (accountOpen?' open':'') + '><summary>'+esc(en?'Account & identities':'账号与身份')+'</summary>'+account+identityCardHTML()+testAccountsHTML()+'</details>' +
-      '<details class="me-fold data-details"' + (dataOpen?' open':'') + '><summary>'+esc(en?'Data & privacy':'数据与隐私')+'</summary><p class="note">'+esc(t(remote?'remoteNote':'localNote'))+'</p><div class="btn-row">'+dataButtons+'</div><p><a class="privacy-link" href="privacy.html" target="_blank" rel="noopener">'+esc(t('privacyLink'))+'</a> · <a class="privacy-link" href="contact.html">'+esc(en?'Contact us':'联系我们')+'</a></p></details>' +
+      ((identityCardHTML()+testAccountsHTML()) ? '<details class="me-fold account-details"' + (accountOpen?' open':'') + '><summary>'+esc(en?'Identities':'身份切换')+'</summary>'+identityCardHTML()+testAccountsHTML()+'</details>' : '') +
+      '<details class="me-fold data-details"' + (dataOpen?' open':'') + '><summary>'+esc(en?'Feedback & privacy':'意见反馈与隐私')+'</summary><a class="btn small me-feedback" href="contact.html">'+ICON.pen+esc(en?'Send feedback':'意见反馈')+'</a><p class="note">'+esc(t(remote?'remoteNote':'localNote'))+'</p><div class="btn-row">'+dataButtons+'</div><p><a class="privacy-link" href="privacy.html" target="_blank" rel="noopener">'+esc(t('privacyLink'))+'</a></p></details>' +
       (isModerator()?'<details class="me-fold admin-details"' + (adminOpen?' open':'') + '><summary>'+esc(en?'Moderation tools':'管理工具')+'</summary><p class="f-hint">'+esc(en?'Review reports or manage a public post.':'处理评论举报，或进入公开帖子管理内容。')+'</p><div class="btn-row"><button type="button" class="btn small" data-action="social-reports">'+esc(en?'Comment reports':'评论举报')+'</button><button type="button" class="btn small" data-action="dm-reports">' + esc(en?'Private-message reports':'私信举报') + '</button><button type="button" class="btn small" data-action="moderation-clean">'+esc(en?'Retry media cleanup':'重试图片清理')+'</button></div><div id="social-reports"></div></details>':'') +
       '<p class="about">'+esc(t('about'))+'</p></div>';
     view.innerHTML = h;
@@ -841,25 +855,22 @@
     store.addAccount(t('acctDefault', { c: String.fromCharCode(65 + n) })).then(function (pf) { switchAccount(pf.id); });
   }
   /* “我”里的“我的家”：一行城市 + 改 / 不设了，下面一个公开开关（默认关） */
+  /* 我的家、公开主页：各一行（用户 2026-11-03 嫌占地方）。点左边改，右边开关；“不设了”挪到设置家乡的页面里 */
   function homeFieldHTML() {
-    var h = store.myHome();
-    var body = !h
-      ? '<p class="f-hint">' + esc(state.lang === 'en' ? 'City only. Private by default.' : '只记录城市，默认仅自己可见。') + '</p><button type="button" class="btn small home-set-btn" data-action="home-set">' + ICON.home + esc(t('homeSet')) + '</button>'
-      : '<div class="home-row"><span class="home-ic" aria-hidden="true">' + ICON.home + '</span><b>' + esc(h.city) + '</b>' +
-        '<button type="button" class="btn small" data-action="home-set">' + esc(t('homeChange')) + '</button>' +
-        '<button type="button" class="link-btn danger" data-action="home-del">' + esc(t('homeRemove')) + '</button></div>' +
-        '<button type="button" class="switch-row" role="switch" data-action="home-public" aria-checked="' + h.public + '">' +
-        '<span class="sw-text"><b>' + esc(state.lang === 'en' ? 'Share my hometown' : '公开家乡') + '</b><small>' + esc(state.lang === 'en' ? 'City only; no detailed address.' : '仅展示城市，不含详细地址。') + '</small></span><span class="switch" aria-hidden="true"></span></button>';
-    return '<div class="field" id="home-field"><span class="f-label">' + esc(t('myHome')) + '</span>' + body + '</div>';
+    var h = store.myHome(), en = state.lang === 'en';
+    var main = '<button type="button" class="me-line-main' + (h ? ' home-row' : ' home-set-btn') + '" data-action="home-set">' + ICON.home +
+      '<span><b>' + esc(t('myHome')) + '</b><small>' + esc(h ? h.city : (en ? 'Not set · city only' : '未设置 · 只记城市')) + '</small></span>' + (h ? '' : '<i aria-hidden="true">›</i>') + '</button>';
+    var sw = !h ? '' : '<button type="button" class="me-switch" role="switch" data-action="home-public" aria-checked="' + h.public + '" aria-label="' + esc(en ? 'Share my hometown (city only)' : '公开家乡（只显示城市）') + '"><span class="me-sw-label">' + esc(en ? 'Public' : '公开') + '</span><span class="switch" aria-hidden="true"></span></button>';
+    return '<div class="me-line" id="home-field">' + main + sw + '</div>';
   }
   /* 个人主页开关（默认关）：开了以后，同学点你的名字 / 头像能进你的主页，只看到你分享到大地图的记录 */
   function pageFieldHTML() {
     var on = store.pagePublic(me().id), en = state.lang === 'en';
-    return '<div class="field" id="page-field"><span class="f-label">' + esc(en ? 'My page' : '我的主页') + '</span>' +
-      '<button type="button" class="switch-row" role="switch" data-action="page-public" aria-checked="' + on + '">' +
-      '<span class="sw-text"><b>' + esc(en ? 'Public profile' : '公开我的主页') + '</b><small>' + esc(en ? 'Only your public footprints appear here.' : '主页只展示已公开的足迹。') + '</small></span><span class="switch" aria-hidden="true"></span></button>' +
-      '<button type="button" class="link-btn" data-action="person" data-uid="' + esc(me().id) + '">' + esc(en ? 'See how it looks' : '看看我的主页') + '</button></div>';
+    return '<div class="me-line" id="page-field"><button type="button" class="me-line-main" data-action="person" data-uid="' + esc(me().id) + '">' + PERSON_ICON +
+      '<span><b>' + esc(en ? 'My page' : '我的主页') + '</b><small>' + esc(on ? (en ? 'Classmates can open it' : '同学点你的名字能进来') : (en ? 'Only you can open it' : '只有自己能看')) + '</small></span></button>' +
+      '<button type="button" class="me-switch" role="switch" data-action="page-public" aria-checked="' + on + '" aria-label="' + esc(en ? 'Public profile' : '公开我的主页') + '"><span class="me-sw-label">' + esc(en ? 'Public' : '公开') + '</span><span class="switch" aria-hidden="true"></span></button></div>';
   }
+  var PERSON_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>';
   /* 点了地图上的小房子：谁的家、在哪 */
   function renderPlaceCluster() {
     var places = (state.clusterPlaces || []).map(placeById).filter(function (p) { return p && inScope(p) && passesFilters(p); });
@@ -894,6 +905,7 @@
       '<div class="add-search"><div class="search-box"><img class="search-symbol" src="assets/search-pin.png" alt=""><input id="home-q" class="input" type="search" autocomplete="off" placeholder="' + esc(t('homeSearchPh')) + '" aria-label="' + esc(t('homeSearchPh')) + '" value="' + esc(homeQ.q) + '">' +
       '</div><button type="button" class="btn add-pin" data-action="home-pick">' + ICON.pin + esc(t('homePick')) + '</button></div>' +
       '<p class="f-hint add-hint">' + esc(t('homeNote')) + '</p>' +
+      (store.myHome() ? '<p class="home-remove"><button type="button" class="link-btn danger" data-action="home-del">' + esc(t('homeRemove')) + '</button></p>' : '') +
       '<ul class="search-results" id="home-results"></ul>';
     renderHomeResults();
     setTimeout(function () { var q = $('#home-q'); if (q) q.focus(); }, 60);
