@@ -162,8 +162,8 @@
   };
 
   function emit(event) { listeners.forEach(function (fn) { fn(event, session); }); }
-  window.__sbLogin = function (id, email) {
-    session = { user: { id: id, email: email } };
+  window.__sbLogin = function (id, email, extra) {
+    session = { user: Object.assign({ id: id, email: email },extra||{}) };
     if (!db.profiles.some(function (p) { return p.id === id; })) db.profiles.push({ id: id, name: '', country: '', region: '', city: '', district: '' });
     emit('SIGNED_IN');
   };
@@ -171,10 +171,19 @@
 
   window.supabase = {
     createClient: function (url, key, opts) {
+      if(opts && opts.auth && opts.auth.persistSession===false){
+        var probeSession=null;
+        return {auth:{
+          setSession:function(tokens){probeSession=(window.__identitySessions||{})[tokens.refresh_token];return Promise.resolve(probeSession?{data:{session:probeSession},error:null}:err('expired session'));},
+          getUser:function(){return Promise.resolve(probeSession?{data:{user:probeSession.user},error:null}:err('no session'));},
+          signOut:function(){probeSession=null;return Promise.resolve({error:null});}
+        }};
+      }
       if (opts) window.__sb.options = opts;
       window.__sb.url = url; window.__sb.key = key;
       return {
         from: function (table) { return new Query(table); },
+        functions:{invoke:function(name){calls.push(['function',name]);return window.__identityEdge ? window.__identityEdge(name) : Promise.resolve(err('function unavailable'));}},
         /* 地点库搜索：名字里包含关键词就算搜到 */
         rpc: function (name, args) {
           calls.push(['rpc', name, args]);
@@ -200,6 +209,12 @@
         },
         auth: {
           getSession: function () { return Promise.resolve({ data: { session: session }, error: null }); },
+          setSession:function(tokens){
+            var s=(window.__identitySessions||{})[tokens.refresh_token];
+            if(!s)return Promise.resolve(err('expired session'));
+            window.__sbLogin(s.user.id,s.user.email,s.user);session=s;
+            return Promise.resolve({data:{session:s,user:s.user},error:null});
+          },
           onAuthStateChange: function (fn) { listeners.push(fn); setTimeout(function () { fn('INITIAL_SESSION', session); }, 0); return { data: { subscription: { unsubscribe: function () {} } } }; },
           signInWithOtp: function (o) { calls.push(['otp', o.email, o.options && o.options.emailRedirectTo]); return Promise.resolve({ data: {}, error: null }); },
           signInWithOAuth: function (o) { calls.push(['oauth', o.provider]); return Promise.resolve({ data: {}, error: null }); },

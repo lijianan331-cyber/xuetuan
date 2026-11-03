@@ -384,6 +384,7 @@
     var el = e.target.closest('[data-action]');
     if (!el) return;
     var a = el.dataset.action, d = el.dataset;
+    if (handleIdentityAction(a)) return;
     if (handleSocialAction(a,el)) return;
     switch (a) {
       case 'price-toggle': e.preventDefault(); e.stopPropagation(); togglePrice(el); break;

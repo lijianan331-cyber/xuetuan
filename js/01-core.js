@@ -871,14 +871,19 @@
       return before !== uidNow();
     }
 
-    var profileTimer = null, profilePatch = {};
+    var profileTimer = null, profilePatch = {}, profileOwner = null, profileFlight = Promise.resolve();
     function flushProfile() {
-      var patch = profilePatch, uid = uidNow();
+      var patch = profilePatch, uid = profileOwner;
       profilePatch = {};
-      if (!uid || !Object.keys(patch).length) return Promise.resolve();
-      return client.from('profiles').update(patch).eq('id', uid).then(function (res) {
-        if (res.error) toast(t('saveFail'));
+      if (!uid || !Object.keys(patch).length) return profileFlight;
+      if (uid !== uidNow()) return Promise.resolve();
+      profileFlight = client.from('profiles').update(patch).eq('id', uid).then(function (res) {
+        if (res.error) {
+          if (uid === uidNow()) { profileOwner = uid; profilePatch = Object.assign({}, patch, profilePatch); }
+          throw res.error;
+        }
       });
+      return profileFlight;
     }
 
     var areas = {
@@ -1134,14 +1139,17 @@
       },
       updateProfile: function (patch) {
         if (!uidNow()) return Promise.reject(new Error('login required'));
+        if (profileOwner !== uidNow()) profilePatch = {};
+        profileOwner = uidNow();
         Object.keys(patch).forEach(function (k) { cache.profile[k] = patch[k]; profilePatch[k] = patch[k]; });
         cache.reviews.forEach(function (r) {
           if (r.authorId === uidNow()) { r.authorName = cache.profile.name || ''; r.authorPage = !!cache.profile.page_public; }
         });
         clearTimeout(profileTimer);
-        profileTimer = setTimeout(flushProfile, 400);
+        profileTimer = setTimeout(function () { flushProfile().catch(function () { toast(t('saveFail')); }); }, 400);
         return Promise.resolve(cache.profile);
       },
+      flushProfileChanges: function () { clearTimeout(profileTimer); return profileFlight.catch(function () {}).then(function () { return flushProfile(); }); },
       addArea: function (a) {
         var area = { id: uid('a'), name: a.name, lng: a.lng, lat: a.lat, zoom: a.zoom };
         areaCache.push(area);

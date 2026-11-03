@@ -553,7 +553,7 @@
     var account = !remote ? '' : '<div class="field"><span class="f-label">' + esc(t('account')) + '</span>' + (signedIn && store.isAnon()
       ? '<p class="f-hint">' + esc(t('anonWhy')) + '</p><button type="button" class="btn primary" data-action="link-google">' + esc(t('linkGoogle')) + '</button>'
       : signedIn
-      ? '<div class="account-row"><span>' + esc(t('signedInAs', { e: store.email() })) + '</span><button type="button" class="btn small ghost" data-action="logout">' + esc(t('logout')) + '</button></div>'
+      ? '<div class="account-row"><span>' + esc(t('signedInAs', { e: managedIdentity && managedIdentity.alt ? identityText('主号管理的小号','Managed second identity') : store.email() })) + '</span><button type="button" class="btn small ghost" data-action="logout">' + esc(t('logout')) + '</button></div>'
       : '<p class="f-hint">' + esc(t('loginWhy')) + '</p><button type="button" class="btn primary" data-action="login">' + esc(t('login')) + '</button>') + '</div>';
     /* 以前这里有“来自哪”四个输入框，没什么用，去掉了（以后改成在玩乐地图上设“我的家”） */
     var personal = !signedIn ? '' :
@@ -570,7 +570,7 @@
       /* 不是天天看，但偶尔会想看：放在“我的”最上面一块，点了去探索地图看红点 */
       '<button type="button" class="me-homes" data-action="homes-open">' + ICON.home + '<span><b>' + esc(t('homesBtn')) + '</b><small>' + esc(publicHomeCount() ? t('homesN', { n: publicHomeCount() }) : (state.lang === 'en' ? 'Classmates’ hometowns on the map' : '同学们的家乡标在地图上')) + '</small></span><i aria-hidden="true">›</i></button>' +
       '<a class="btn home-set-btn" href="contact.html">' + esc(state.lang === 'en' ? 'Feedback & support' : '意见反馈') + '</a>' +
-      '<div class="form">' + account + testAccountsHTML() + personal +
+      '<div class="form">' + account + identityCardHTML() + testAccountsHTML() + personal +
       '<div class="field"><span class="f-label">' + esc(t('language')) + '</span><div class="seg">' +
       '<button type="button" data-action="set-lang" data-lang="zh" aria-pressed="' + (state.lang === 'zh') + '">中文</button>' +
       '<button type="button" data-action="set-lang" data-lang="en" aria-pressed="' + (state.lang === 'en') + '">English</button></div></div>' +
