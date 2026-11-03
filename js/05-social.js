@@ -68,34 +68,52 @@ function mountPostSocial(id) {
   paintPostSocial();
   if ((!socialPanel.data || Date.now()-(socialPanel.loadedAt||0)>30000) && !socialPanel.loading) loadPostSocial(false);
 }
-function socialCommentHTML(c,p) {
+/* 一条评论：左边小头像，右边 名字 · 时间，正文，下面一行灰色小字操作（回复 / 删除 / 举报）。
+   回复排在它回复的那条下面，往右缩进（用户 2026-11-03 嫌原来的样子怪） */
+function socialCommentHTML(c,p,nested) {
   var post=store.review(p.id), own=c.user_id===me().id, mayDelete=own || isMine(post) || isModerator();
   var author=c.deleted ? socialText('已删除','Deleted') : c.name || t('anon');
   var person=!c.deleted && c.page_public ? ' data-action="person" data-uid="'+esc(c.user_id)+'"' : '';
   var authorHTML=person ? '<button type="button" class="social-author"'+person+'>'+esc(author)+'</button>' : '<b class="social-author">'+esc(author)+'</b>';
-  return '<li class="social-comment" data-comment="'+esc(c.id)+'"><div class="social-comment-head">'+authorHTML+'<time>'+esc(timeAgo(Date.parse(c.created_at)))+'</time></div>'+
-    (c.parent_id ? '<small class="social-reply-label">'+esc(socialText('回复 ','Reply to ')+(c.reply_name || socialText('已删除的评论','deleted comment')))+'</small>' : '')+
-    '<p>'+esc(c.deleted ? socialText('这条评论已删除','This comment was deleted.') : c.body)+'</p>'+
-    (c.deleted ? '' : '<div class="social-comment-actions">'+(!c.parent_id ? '<button type="button" class="link-btn" data-action="social-reply" data-id="'+esc(c.id)+'">'+esc(socialText('回复','Reply'))+'</button>' : '')+
+  return '<li class="social-comment'+(c.parent_id?' is-reply':'')+'" data-comment="'+esc(c.id)+'">'+(c.deleted ? '<span class="avatar social-avatar ghost" aria-hidden="true"></span>' : avatarHTML(author,c.user_id).replace('class="avatar','class="avatar social-avatar'))+
+    '<div class="social-main"><div class="social-comment-head">'+authorHTML+
+    (c.parent_id && !nested ? '<small class="social-reply-label">'+esc(socialText('回复 ','Reply to ')+(c.reply_name || socialText('已删除的评论','deleted comment')))+'</small>' : c.parent_id ? '<small class="social-reply-label sr-only">'+esc(socialText('回复 ','Reply to ')+(c.reply_name || socialText('已删除的评论','deleted comment')))+'</small>' : '')+'</div>'+
+    '<p'+(c.deleted?' class="social-gone"':'')+'>'+esc(c.deleted ? socialText('这条评论已删除','This comment was deleted.') : c.body)+'</p>'+
+    '<div class="social-comment-actions"><time>'+esc(timeAgo(Date.parse(c.created_at)))+'</time>'+(c.deleted ? '' : (!c.parent_id ? '<button type="button" class="link-btn" data-action="social-reply" data-id="'+esc(c.id)+'">'+esc(socialText('回复','Reply'))+'</button>' : '')+
       (mayDelete ? '<button type="button" class="link-btn" data-action="social-delete" data-id="'+esc(c.id)+'">'+esc(t('del'))+'</button>' : '')+
       (!own ? '<button type="button" class="link-btn" data-action="social-report" data-id="'+esc(c.id)+'">'+esc(socialText('举报','Report'))+'</button>' : '')+
-      (isModerator() ? '<button type="button" class="link-btn" data-action="social-mod-open" data-id="'+esc(c.id)+'">'+esc(socialText('管理','Moderate'))+'</button>' : '')+'</div>')+'</li>';
+      (isModerator() ? '<button type="button" class="link-btn" data-action="social-mod-open" data-id="'+esc(c.id)+'">'+esc(socialText('管理','Moderate'))+'</button>' : ''))+'</div></div></li>';
+}
+/* 顶层评论按服务器顺序（新的在上）；每条下面接它的回复（旧的在上）。父评论不在这一页的回复单独放，带「回复 X」 */
+function socialThreadHTML(p) {
+  var roots=[], kids={}, ids={};
+  p.rows.forEach(function(c){ids[c.id]=1;});
+  p.rows.forEach(function(c){ if(c.parent_id && ids[c.parent_id]) (kids[c.parent_id]=kids[c.parent_id]||[]).push(c); else roots.push(c); });
+  return roots.map(function(c){
+    return socialCommentHTML(c,p,false)+(kids[c.id]||[]).slice().sort(function(a,b){return a.created_at.localeCompare(b.created_at);}).map(function(k){return socialCommentHTML(k,p,true);}).join('');
+  }).join('');
 }
 function paintPostSocial() {
   var p=socialPanel;if(!p || !currentSocial(p))return;
   var el=$('#post-social'), draft=socialDrafts.get(p.key)||{text:''}, busy=socialWrites.has(p.key), data=p.data;
   var active=document.activeElement,focusBody=active && active.id==='social-body',start=focusBody?active.selectionStart:0,end=focusBody?active.selectionEnd:0;
   var mayWrite=!!data && !p.loading, disabled=busy||!mayWrite?' disabled':'';
-  el.innerHTML='<div class="social-toolbar"><button type="button" class="btn social-like" data-action="social-like" aria-pressed="'+!!(data&&data.liked)+'"'+disabled+'>'+socialHeart+esc(busy ? socialText('保存中…','Saving…') : data&&data.liked ? socialText('已赞','Liked') : socialText('点赞','Like'))+'</button>'+
-    (data&&data.like_count!=null ? '<small class="social-private-count">'+esc(socialText('收到 '+data.like_count+' 个赞 · 仅你可见',data.like_count+' likes · only you can see this'))+'</small>' : '')+'</div>'+
-    '<div class="social-heading"><h2>'+esc(socialText('评论','Discussion'))+'</h2><button type="button" class="link-btn" data-action="social-refresh"'+(p.loading||busy?' disabled':'')+'>'+esc(socialText('刷新','Refresh'))+'</button></div>'+
-    '<div class="social-compose">'+(p.reply ? '<div class="social-replying">'+esc(socialText('回复 ','Reply to ')+(p.reply.name||t('anon')))+'<button type="button" class="link-btn" data-action="social-cancel-reply">'+esc(t('cancel'))+'</button></div>' : '')+
-    '<label class="social-input-label" for="social-body">'+esc(socialText('写评论','Write a comment'))+'</label><textarea class="input" id="social-body" rows="2" maxlength="500" placeholder="'+esc(socialText('问问这家店，或分享补充信息…','Ask about this place or add a tip…'))+'"'+(busy?' disabled':'')+'>'+esc(draft.text)+'</textarea><div class="social-send-row"><small>'+esc(socialText('评论公开可见','Comments are public'))+'</small><button type="button" class="btn primary small" data-action="social-send"'+disabled+'>'+esc(busy ? socialText('发送中…','Sending…') : socialText('发送','Send'))+'</button></div></div>'+
+  /* 赞放在帖子正文下面那一排（#post-like-slot）；这里是评论区：标题、评论、最下面一条输入框 */
+  var slot=$('#post-like-slot'), likeHTML='<button type="button" class="post-act social-like" data-action="social-like" aria-pressed="'+!!(data&&data.liked)+'"'+disabled+'>'+socialHeart+'<span>'+esc(data&&data.liked ? socialText('已赞','Liked') : socialText('赞','Like'))+'</span></button>'+
+    (data&&data.like_count!=null ? '<small class="social-private-count" title="'+esc(socialText('只有你看得到','Only you can see this'))+'">'+esc(socialText(data.like_count+' 个赞 · 仅你可见',data.like_count+' likes · only you see this'))+'</small>' : '');
+  if(slot)slot.innerHTML=likeHTML;
+  var n=p.rows.filter(function(c){return !c.deleted;}).length, mine=me();
+  el.innerHTML=(slot?'':'<div class="social-toolbar">'+likeHTML+'</div>')+
+    '<div class="social-heading"><h2>'+esc(socialText('评论','Comments'))+(n?' <span>'+n+(p.more?'+':'')+'</span>':'')+'</h2><button type="button" class="icon-btn flat social-refresh" data-action="social-refresh" aria-label="'+esc(socialText('刷新评论','Refresh comments'))+'"'+(p.loading||busy?' disabled':'')+'><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M19 12a7 7 0 1 1-2.1-5"/><path d="M19 4.5V8h-3.5"/></svg></button></div>'+
     (p.error ? '<p class="social-status" role="status">'+esc(p.error)+' <button type="button" class="link-btn" data-action="social-refresh">'+esc(socialText('重试','Retry'))+'</button></p>' : '')+
-    (p.loading ? '<p class="f-hint" role="status">'+esc(socialText('正在加载评论…','Loading comments…'))+'</p>' : '')+
-    (!p.rows.length && data && !p.loading ? '<p class="f-hint">'+esc(socialText('还没有评论，可以问问或补充信息。','No comments yet. Ask a question or add a tip.'))+'</p>' : '')+
-    '<ul class="social-comments">'+p.rows.map(function(c){return socialCommentHTML(c,p);}).join('')+'</ul>'+
-    (p.more ? '<button type="button" class="btn small" data-action="social-more"'+(p.loading||busy?' disabled':'')+'>'+esc(socialText('更早的评论','Older comments'))+'</button>' : '');
+    (p.loading && !p.rows.length ? '<p class="social-empty" role="status">'+esc(socialText('正在加载评论…','Loading comments…'))+'</p>' : '')+
+    (!p.rows.length && data && !p.loading ? '<p class="social-empty">'+esc(socialText('还没有评论，来说第一句吧。','No comments yet. Say the first word.'))+'</p>' : '')+
+    '<ul class="social-comments">'+socialThreadHTML(p)+'</ul>'+
+    (p.more ? '<button type="button" class="link-btn social-more" data-action="social-more"'+(p.loading||busy?' disabled':'')+'>'+esc(socialText('查看更早的评论','Older comments'))+'</button>' : '')+
+    '<div class="social-compose">'+(p.reply ? '<div class="social-replying"><span>'+esc(socialText('回复 ','Reply to ')+(p.reply.name||t('anon')))+'</span><button type="button" class="link-btn" data-action="social-cancel-reply">'+esc(t('cancel'))+'</button></div>' : '')+
+    '<div class="social-input-row">'+avatarHTML(mine.name||t('you'),mine.id).replace('class="avatar','class="avatar social-avatar')+
+    '<label class="social-input-label" for="social-body">'+esc(socialText('写评论','Write a comment'))+'</label><textarea class="social-input" id="social-body" rows="1" maxlength="500" placeholder="'+esc(p.reply ? socialText('写下你的回复…','Write a reply…') : socialText('说点什么… 评论所有人可见','Say something… comments are public'))+'"'+(busy?' disabled':'')+'>'+esc(draft.text)+'</textarea>'+
+    '<button type="button" class="social-send" data-action="social-send"'+disabled+'>'+esc(busy ? socialText('发送中','Sending') : socialText('发送','Send'))+'</button></div></div>';
   if(focusBody && !busy){var body=$('#social-body');body.focus({preventScroll:true});body.setSelectionRange(start,end);}
 }
 function loadPostSocial(more) {
@@ -167,6 +185,8 @@ function handleSocialAction(action,el) {
     store.socialModerate(d.id,d.decision).then(function(){if(owner!==me().id)return;closeModal();toast(socialText('已处理','Done'));loadSocialReports();if(p && currentSocial(p))loadPostSocial(false);},function(e){toast(socialError(e));$$('#modal button').forEach(function(b){b.disabled=false;});}).then(function(){socialModerating=false;});return true;
   }
   if(!p || !currentSocial(p))return true;
+  /* 正文下面那排的「评论」：滚到输入框并点亮 */
+  if(action==='social-focus'){var b=$('#social-body');if(b){b.scrollIntoView({block:'center',behavior:'smooth'});b.focus({preventScroll:true});}return true;}
   if(action==='social-refresh' || action==='social-more'){loadPostSocial(action==='social-more');return true;}
   if(store.mode==='remote'&&!store.signedIn()){
     var post=p.id,text=(socialDrafts.get(p.key)||{}).text||'';
@@ -204,5 +224,5 @@ function handleSocialAction(action,el) {
   }
   return true;
 }
-document.addEventListener('input',function(e){if(e.target.id==='social-body' && socialPanel){var d=socialDrafts.get(socialPanel.key)||{};d.text=e.target.value;socialDrafts.set(socialPanel.key,d);}});
+document.addEventListener('input',function(e){if(e.target.id==='social-body'){e.target.style.height='auto';e.target.style.height=Math.min(e.target.scrollHeight,120)+'px';}if(e.target.id==='social-body' && socialPanel){var d=socialDrafts.get(socialPanel.key)||{};d.text=e.target.value;socialDrafts.set(socialPanel.key,d);}});
 store.onAuthChange(function(){socialEpoch++;socialPanel=null;socialDrafts.clear();socialWrites.clear();});

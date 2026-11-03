@@ -810,30 +810,53 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
 .post-text { margin: 10px 0 0; font-size: 15px; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
 .post-place { margin-top: 14px; border-top: 1px solid var(--line); }
 .post-place .near-item { border-bottom: 1px solid var(--line); }
-.post-actions { margin-top: 12px; }
-.post-social { margin-top: 22px; border-top: 1px solid var(--hairline); padding-top: 16px; padding-bottom: 20px; }
-.social-toolbar, .social-heading, .social-comment-head, .social-send-row, .social-replying { display: flex; align-items: center; gap: 10px; }
-.social-toolbar { flex-wrap: wrap; }
-.social-like { gap: 6px; min-height: 36px; }
-.social-like svg { width: 18px; height: 18px; }
-.social-like[aria-pressed="true"] { color: var(--accent); background: var(--accent-soft); }
-.social-like[aria-pressed="true"] svg { fill: currentColor; }
-.social-private-count, .social-send-row small, .social-comment-head time { color: var(--muted); font-size: 12px; }
-.social-heading { justify-content: space-between; margin-top: 18px; margin-bottom: 10px; }
-.social-heading h2 { font-size: 17px; margin: 0; }
-.social-compose { background: var(--surface-2); border: 1px solid var(--hairline); border-radius: 14px; padding: 10px; }
-.social-compose textarea { min-height: 62px; resize: vertical; font-size: 14px; line-height: 1.5; background: var(--surface); }
-.social-send-row { justify-content: space-between; margin-top: 8px; }
-.social-replying { justify-content: space-between; margin-bottom: 8px; font-size: 12px; color: var(--muted); }
-.social-comments { list-style: none; padding: 0; margin: 6px 0 0; }
-.social-comment { padding: 14px 0; border-bottom: 1px solid var(--hairline); overflow-wrap: anywhere; }
-.social-comment-head { justify-content: space-between; align-items: baseline; }
-.social-author { border: 0; padding: 0; background: none; color: var(--ink); font: inherit; font-size: 13px; font-weight: 700; text-align: left; }
-.social-author[data-action] { color: var(--accent); }
-.social-comment p { font-size: 14px; line-height: 1.6; white-space: pre-wrap; margin: 6px 0; }
-.social-comment-actions { display: flex; flex-wrap: wrap; gap: 16px; }
-.social-comment-actions .link-btn, .social-heading .link-btn { font-size: 12px; min-height: 32px; }
-.social-reply-label { display: block; color: var(--muted); margin-top: 5px; font-size: 12px; }
+/* 帖子互动（用户 2026-11-03 重做）：正文下一排小按钮（赞 · 评论 · 收藏），评论区像聊天列表，输入框在最下面 */
+.post-actions { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; margin: 4px -8px 0; }
+.post-like-slot { display: contents; }
+.post-act, .post-actions .save-btn { display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 10px; border: 0; border-radius: 18px; background: none; color: var(--ink-2, var(--ink)); font: inherit; font-size: 14px; font-weight: 500; box-shadow: none; }
+.post-act svg, .post-actions .save-btn svg { width: 20px; height: 20px; flex: none; }
+.post-act:active, .post-actions .save-btn:active { background: var(--surface-2); }
+.post-act.social-like[aria-pressed="true"] { color: #E5484D; }
+.post-act.social-like[aria-pressed="true"] svg { fill: currentColor; }
+.post-actions .save-btn[aria-pressed="true"] { background: none; color: var(--ink); }
+.post-own { margin-left: auto; display: inline-flex; gap: 2px; }
+.post-own .btn { height: 32px; padding: 0 10px; font-size: 13px; color: var(--muted); background: none; box-shadow: none; }
+.post-own .danger-text { color: #C92A2A; }
+.social-private-count { color: var(--muted); font-size: 12px; margin: 0 6px 0 -2px; }
+.post-social { margin-top: 14px; border-top: 1px solid var(--hairline); padding-top: 14px; padding-bottom: 12px; }
+.social-toolbar { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.social-heading { display: flex; align-items: center; justify-content: space-between; margin: 0 0 4px; }
+.social-heading h2 { font-size: 16px; font-weight: 700; margin: 0; }
+.social-heading h2 span { color: var(--muted); font-weight: 500; font-size: 14px; margin-left: 2px; }
+.social-refresh { width: 32px; height: 32px; color: var(--muted); }
+.social-empty { color: var(--muted); font-size: 13px; margin: 10px 0 14px; }
+.social-comments { list-style: none; padding: 0; margin: 0; }
+.social-comment { display: flex; gap: 10px; padding: 12px 0 4px; overflow-wrap: anywhere; }
+.social-comment.is-reply { padding-left: 40px; padding-top: 6px; }
+.social-avatar { width: 30px; height: 30px; font-size: 13px; flex: none; }
+.social-comment.is-reply .social-avatar { width: 24px; height: 24px; font-size: 11px; }
+.social-avatar.ghost { background: var(--surface-2); }
+.social-main { flex: 1; min-width: 0; }
+.social-comment-head { display: flex; align-items: baseline; gap: 6px; min-height: 18px; }
+.social-author { border: 0; padding: 0; background: none; color: var(--muted); font: inherit; font-size: 13px; font-weight: 600; text-align: left; }
+.social-author[data-action] { color: var(--muted); }
+.social-reply-label { color: var(--muted); font-size: 12px; }
+.social-reply-label.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.social-comment p { font-size: 14.5px; line-height: 1.55; white-space: pre-wrap; margin: 2px 0 2px; color: var(--ink); }
+.social-comment p.social-gone { color: var(--muted); font-style: italic; }
+.social-comment-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; }
+.social-comment-actions time { color: var(--muted); font-size: 12px; }
+.social-comment-actions .link-btn { font-size: 12px; min-height: 30px; color: var(--muted); font-weight: 500; padding: 0; }
+.social-more { display: block; margin: 6px 0 0 40px; font-size: 13px; min-height: 32px; }
+.social-compose { position: sticky; bottom: 0; margin: 12px -16px 0; padding: 10px 16px; background: var(--surface); border-top: 1px solid var(--hairline); z-index: 2; }
+.social-input-row { display: flex; align-items: flex-end; gap: 10px; }
+.social-input-row .social-avatar { margin-bottom: 4px; }
+.social-input { flex: 1; min-width: 0; min-height: 38px; max-height: 120px; padding: 9px 14px; border: 0; border-radius: 19px; background: var(--surface-2); color: var(--ink); font: inherit; font-size: 14.5px; line-height: 1.4; resize: none; outline: none; }
+.social-input:focus { box-shadow: 0 0 0 1.5px var(--accent) inset; background: var(--surface); }
+.social-send { height: 38px; padding: 0 4px 0 2px; border: 0; background: none; color: var(--accent); font: inherit; font-size: 15px; font-weight: 600; flex: none; }
+.social-send:disabled { color: var(--muted); }
+.social-replying { display: flex; align-items: center; justify-content: space-between; margin: 0 0 8px; padding: 6px 12px; border-radius: 10px; background: var(--surface-2); font-size: 12.5px; color: var(--muted); }
+.social-replying .link-btn { font-size: 12.5px; min-height: 24px; }
 .social-status { color: var(--muted); font-size: 13px; line-height: 1.6; }
 .social-report-reasons { display: grid; gap: 8px; margin: 14px 0; }
 .social-input-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
@@ -883,7 +906,6 @@ html[data-page="messages"] #view { display:flex; flex-direction:column; height:1
 .dm-reported p { white-space:pre-wrap; overflow-wrap:anywhere; font-size:14px; }
 .dm-reported small { display:block; color:var(--muted); margin:6px 0 10px; }
 .dm-refresh { align-self:flex-end; font-size:12px; }
-.post-actions .save-btn[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
 .place-empty { margin: 6px 0 0; color: var(--muted); font-size: 13px; }
 
 /* ---------- 我的：头像、昵称、来自哪、数量 ---------- */
@@ -1087,7 +1109,6 @@ html[data-page="me"] #view .me-fold .field { padding:0; margin:12px 0; border:0;
 .share-themes { gap:4px; padding:4px; }
 .share-themes button { flex:1 1 28%; font-size:12px; min-height:36px; }
 @media(max-width:600px) { .share-card { max-width:none; margin:14px -10px 18px; } }
-.post-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .btn.danger-text { color: var(--danger); }
 
 /* Per-price currency controls: compact, no card navigation or page rebuild on conversion. */
@@ -1182,3 +1203,20 @@ html[data-page="place"] .review .visit-controls button { font-size:13px; min-hei
 .post-composer .stars-input { padding:0; }
 .post-composer .post-location-field { gap:10px; }
 .post-location-field .btn-row .btn { flex:1; min-height:42px; font-size:14px; }
+
+/* 个人页：私信在头像和名字的右边（用户 2026-11-03） */
+.person-head .ph-text { flex: 1; }
+.person-dm { flex: none; display: inline-flex; align-items: center; gap: 5px; height: 34px; padding: 0 14px 0 12px; border: 1px solid var(--accent); border-radius: 17px; background: var(--surface); color: var(--accent); font: inherit; font-size: 14px; font-weight: 600; }
+.person-dm:active { background: var(--accent-soft); }
+
+/* 我的页小打磨（用户 2026-11-03）：登录那行不再是一张卡片，只是名字下面一行灰字；底图做成一行，右边是选择 */
+.me-account.account-row { margin: -4px 0 12px; padding: 0 2px; background: none; box-shadow: none; font-size: 12.5px; }
+.me-account.account-row .btn { height: 28px; padding: 0 10px; font-size: 12.5px; color: var(--muted); background: none; box-shadow: 0 0 0 1px var(--hairline); }
+html[data-page="me"] #view .field.me-basemap { display: flex; flex-direction: row; text-align: left; align-items: center; justify-content: space-between; gap: 12px; }
+.field.me-basemap .f-label { margin: 0; font-size: 14px; font-weight: 600; color: var(--ink); }
+.field.me-basemap .seg { flex: 0 0 auto; width: auto; }
+.field.me-basemap .seg button { padding: 0 16px; }
+.me-fold > summary { list-style: none; display: flex; align-items: center; justify-content: space-between; }
+.me-fold > summary::-webkit-details-marker { display: none; }
+.me-fold > summary::after { content: '›'; font-size: 21px; font-weight: 400; color: var(--muted); transition: transform .2s; }
+.me-fold[open] > summary::after { transform: rotate(90deg); }

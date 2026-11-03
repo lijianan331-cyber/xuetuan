@@ -529,6 +529,7 @@
   /* 我的：上面是头像、昵称、来自哪、去过 / 想去 / 分享几个，下面是原来“我”里的资料和设置 */
   function onMeRoot() { return state.view === 'feed' && state.tab === 'me'; }
   /* “我的”右上角的语言按钮（用户 2026-11-03：不只中英，和首页一样点开选 中文 / English / Қазақша / Bahasa Indonesia） */
+  var GLOBE_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9s-1.3 6.4-3.8 9c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg>';
   function meLangHTML() {
     return '<button type="button" class="me-lang" data-action="lang-menu" aria-label="Language / 语言">' +
       '<svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9s-1.3 6.4-3.8 9c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg>' +
@@ -584,9 +585,9 @@
     var h = meHeadHTML() + '<div class="me-shortcuts">' +
       (remote ? menu(dmIcon,en?L('Messages'):'消息',en?L('Likes, comments and chats'):'点赞、评论与私信','dm-open').replace('</b>','</b>'+dmBadgeHTML()) : '') +
       menu(CTRL_ICON.arrow,en?L('Share my footprints'):'分享我的足迹',en?L('Maps and memories to take with you'):'把去过的地方，做成一张地图','my-share') +
-      menu(ICON.home,t('homesBtn'),publicHomeCount()?t('homesN',{n:publicHomeCount()}):'', 'homes-open').replace('me-menu-row','me-menu-row me-homes') +
+      menu(GLOBE_ICON,t('homesBtn'),publicHomeCount()?t('homesN',{n:publicHomeCount()}):'', 'homes-open').replace('me-menu-row','me-menu-row me-homes') +
 '</div><div class="form me-settings">' + personal +
-      '<div class="field"><span class="f-label">'+esc(t('basemap'))+'</span><div class="seg">'+
+      '<div class="field me-basemap"><span class="f-label">'+esc(t('basemap'))+'</span><div class="seg">'+
       ['light','color'].map(function(k){return '<button type="button" data-action="set-style" data-style="'+k+'" aria-pressed="'+(state.styleKey===k)+'">'+esc(t(styleLabelKey(k)))+'</button>';}).join('')+'</div></div>' +
       (areas.length?'<details class="me-fold"><summary>'+esc(t('areas'))+'</summary><ul class="area-list">'+areas.map(function(a){return '<li><span>'+esc(a.name)+'</span><button type="button" class="link-btn danger" data-action="del-area" data-id="'+esc(a.id)+'">'+esc(t('del'))+'</button></li>';}).join('')+'</ul></details>':'') +
       ((identityCardHTML()+testAccountsHTML()) ? '<details class="me-fold account-details"' + (accountOpen?' open':'') + '><summary>'+esc(en?L('Identities'):'身份切换')+'</summary>'+identityCardHTML()+testAccountsHTML()+'</details>' : '') +

@@ -96,6 +96,7 @@
       saveBtnHTML(p.id, true) + '</li>';
   }
 
+  var COMMENT_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M20 11.5a8 8 0 0 1-11.6 7.1L4 20l1.4-4.2A8 8 0 1 1 20 11.5z"/></svg>';
   /* 帖子：一条记录的全文（照片、谁、分数、评论），下面是这个地点，点了去探索地图上看 */
   function renderPost() {
     var r = store.review(state.postId), p = r && placeById(r.placeId);
@@ -120,12 +121,17 @@
     if (r.title) h += '<h1 class="post-title">' + esc(r.title) + '</h1>';
     if (text) h += '<p class="post-text" data-tr="' + esc(r.id) + '">' + esc(text) + '</p>' + trButtonHTML(r.id);
     h += '<ul class="near-list post-place">' + placeRowHTML(p, 'post-place', esc(catName(c)) + ' · ' + esc(distLabel(p)), '<span class="near-cta">' + esc(t('postPlace')) + '</span>') + '</ul>';
-    h += '<div class="actions post-actions">' + saveBtnHTML(p.id, false) + own + moderationControl(r) + '</div>';
+    /* 用户 2026-11-03：点赞、评论、收藏放一排小按钮（像小红书），自己的编辑 / 删除放右边 */
+    var social = r.visibility === 'public' && !r.sample;
+    h += '<div class="post-actions">' + (social ? '<span id="post-like-slot" class="post-like-slot"></span><button type="button" class="post-act" data-action="social-focus">' + COMMENT_ICON + '<span>' + esc(state.lang === 'en' ? L('Comment') : '评论') + '</span></button>' : '') +
+      saveBtnHTML(p.id, false) + (own || moderationControl(r) ? '<span class="post-own">' + own + moderationControl(r) + '</span>' : '') + '</div>';
     if (r.visibility === 'public' && !r.sample) h += '<section id="post-social" class="post-social" aria-label="' + esc(state.lang === 'en' ? L('Post discussion') : '帖子互动') + '"></section>';
     view.innerHTML = h;
     if (r.visibility === 'public' && !r.sample) mountPostSocial(r.id);
   }
 
+  /* 私信图标（个人页右上角的小按钮） */
+  var DM_ICON = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M4 5.5h16v10.5H9.5L5 19.5V16H4z"/></svg>';
   function personLabel(name) { return state.lang === 'en' ? L('Open ') + name + '’s page' : '进入' + name + '的主页'; }
   /* 个人主页：头像、名字、来自哪、去过多少地方，下面是他分享到大地图的帖子；地图上只有他的点 */
   function renderPerson() {
@@ -141,11 +147,10 @@
     var head = avatarHTML(name, id) + '<div class="ph-text"><h1>' + esc(name) + '</h1>' + (from ? '<small>' + esc(t('fromPrefix') + from) + '</small>' : '') + '</div>';
     h += mine && store.signedIn()
       ? '<button type="button" class="person-head ph-edit-btn" data-action="edit-profile" aria-label="' + esc(en ? L('Edit avatar and name') : '修改头像和名字') + '">' + head + '<span class="ph-pen">' + esc(en ? L('Edit') : '修改') + '</span></button>'
-      : '<div class="person-head">' + head + '</div>';
+      : '<div class="person-head">' + head + (store.mode === 'remote' ? '<button type="button" class="person-dm" data-action="dm-open" data-peer="' + esc(id) + '" data-name="' + esc(name) + '">' + DM_ICON + esc(en ? L('Message') : '私信') + '</button>' : '') + '</div>';
     h += '<div class="person-stats"><span><b>' + food + '</b>' + esc(en ? L('food') : '美食') + '</span><span><b>' + scen + '</b>' + esc(en ? L('things to do') : '玩乐') + '</span><span><b>' + rs.length + '</b>' + esc(en ? L('posts') : '分享') + '</span></div>';
-    if (!mine && store.mode === 'remote') h += '<button type="button" class="btn small" data-action="dm-open" data-peer="' + esc(id) + '" data-name="' + esc(name) + '">' + esc(en ? L('Message') : '发私信') + '</button>';
     if (mine && !store.pagePublic(id)) h += '<p class="f-hint person-note">' + esc(en ? L('Only you can open this page now. Turn it on in Me so classmates can.') : '现在只有你自己点得进来；在“我的”里打开后，同学点你的名字也能进来。') + '</p>';
-    else h += '<p class="f-hint person-note">' + esc(en ? L('Only places shared to the big map are shown.') : '只显示分享到大地图的记录。') + '</p>';
+    else if (mine) h += '<p class="f-hint person-note">' + esc(en ? L('Only places shared to the big map are shown.') : '只显示分享到大地图的记录。') + '</p>';
     h += rs.length ? '<ul class="post-grid">' + rs.map(postCardHTML).join('') + '</ul>'
       : '<p class="f-hint">' + esc(en ? L('Nothing shared to the big map yet.') : '还没有分享到大地图的记录。') + '</p>';
     view.innerHTML = h;

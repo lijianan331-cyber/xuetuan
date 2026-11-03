@@ -8,7 +8,7 @@ seed={'profiles':[{'id':A,'name':'合成同学'}],'places':[{'id':str(i),'mode':
 with sync_playwright() as p:
  b=p.chromium.launch(channel='msedge',headless=True);c=b.new_context(viewport={'width':390,'height':820},has_touch=True,is_mobile=True);s['route_all'](c,True);c.add_init_script('window.__sbSeed='+json.dumps(seed))
  pg=c.new_page();errors=[];pg.on('pageerror',lambda e:errors.append(str(e)));pg.goto(s['APP']);pg.wait_for_function('!state.bootLoading');pg.evaluate("window.__sbLogin('"+A+"','synthetic@example.com')");pg.wait_for_function('me().id==="'+A+'"');pg.evaluate("setTab('me')")
- assert pg.locator('#pf-name,[data-style=dark]').count()==0 and pg.locator('.me-headrow .me-lang [data-action=set-lang]').count()==2
+ assert pg.locator('#pf-name,[data-style=dark]').count()==0 and pg.locator('.me-headrow .me-lang[data-action=lang-menu]').count()==1
  assert pg.locator('#me-name .me-pencil svg').count()==1
  assert 'synthetic@example.com' not in pg.inner_text('#view') and 'sy***@example.com' in pg.inner_text('.me-account') and pg.locator('.me-account [data-action=logout]').count()==1
  pg.locator('.me-edit').click();pg.fill('#pf-dialog-name','新昵称');pg.locator('#profile-form button[type=submit]').click();pg.wait_for_function('me().name==="新昵称"')
