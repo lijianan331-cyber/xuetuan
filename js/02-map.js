@@ -532,14 +532,18 @@
   }
 
   var pinThumbs = new Map();   // 照片 id → 'loading' | canvas | false（读不了）
-  var thumbQueue = [], thumbBusy = 0, THUMB_PIN_MAX = 300, pinRefreshTimer = null;
+  var thumbQueue = [], thumbBusy = 0, THUMB_PIN_MAX = 300, pinRefreshTimer = null, activePinPhotos=new Set(),managedPinImages=new Map(),currentPinImages=new Set();
   function photoPinImage(photo, score, saved, count) {
     var cv = pinThumbs.get(photo);
     if (!cv || cv === 'loading' || !map) return null;
+    if(!activePinPhotos.has(photo))return null;
+    if(activePinPhotos.has(photo)){pinThumbs.delete(photo);pinThumbs.set(photo,cv);}
     var bucket = score == null ? null : Math.round(score * 2) / 2;
     var id = 'ph-' + photo + '-' + (bucket == null ? 'none' : bucket * 10) + (saved ? '-s' : '') + '-n' + (count || 1);
     if (!map.hasImage(id)) {
+      if(!activePinPhotos.has(photo))return null;
       try { map.addImage(id, drawPhotoPin(cv, bucket == null ? DOT_NONE : scoreColor(bucket), saved, count), { pixelRatio: DPR }); } catch (e) { return null; }
+      managedPinImages.set(id,photo);
     }
     return id;
   }
@@ -598,7 +602,8 @@
     });
   }
   function queueThumb(photo) {
-    if (pinThumbs.has(photo) || pinThumbs.size >= THUMB_PIN_MAX) return;
+    if (pinThumbs.has(photo)) return;
+    if(pinThumbs.size>=THUMB_PIN_MAX){var evict=Array.from(pinThumbs.keys()).find(function(k){return pinThumbs.get(k)!=='loading'&&!activePinPhotos.has(k);});if(!evict)return;pinThumbs.delete(evict);}
     pinThumbs.set(photo, 'loading');
     thumbQueue.push(photo);
     pumpThumbs();
@@ -617,7 +622,7 @@
     clearTimeout(pinRefreshTimer);
     pinRefreshTimer = setTimeout(function () {
       var src = map && map.getSource && map.getSource('places');
-      if (src) src.setData(placesGeoJSON());
+      if (src) setMapSourceData(src,placesGeoJSON());
       updateSelPin();
     }, 120);
   }
@@ -627,10 +632,21 @@
   /* 地图挪动后，看得到但照片还没读的地点去读照片 */
   function ensurePinThumbs() {
     var b = viewBounds();
-    placesInView().forEach(function (p) {
+    var visible=placesInView().filter(function(p){return !b||b.contains([p.lng,p.lat]);});
+    activePinPhotos=new Set(visible.map(function(p){return coverPhoto(p);}).filter(Boolean));
+    visible.forEach(function (p) {
       var photo = coverPhoto(p);
       if (photo && !pinThumbs.has(photo) && photoWanted(p) && (!b || b.contains([p.lng, p.lat]))) queueThumb(photo);
     });
+    queuePinRefresh();
+  }
+  var sourceSnapshots=new WeakMap();
+  function setMapSourceData(src,data) { var signature=JSON.stringify(data);if(sourceSnapshots.get(src)===signature)return false;src.setData(data);sourceSnapshots.set(src,signature);return true; }
+  function trimPinImages() {
+    if(!map||!map.removeImage||managedPinImages.size<=600)return;
+    var keep=new Set(currentPinImages);
+    try{map.queryRenderedFeatures().forEach(function(f){var p=f.properties||{};if(p.pic)keep.add(p.pic);if(p.photoRef&&p.photoTotal)keep.add('cg:'+p.photoTotal+':'+p.photoRef);});}catch(e){}
+    managedPinImages.forEach(function(photo,id){if(managedPinImages.size>600&&!keep.has(id)){try{if(map.hasImage(id))map.removeImage(id);managedPinImages.delete(id);}catch(e){}}});
   }
 
   function placesInView() {
@@ -639,12 +655,15 @@
   }
   function placesGeoJSON() {
     if (hometownMode()) return { type: 'FeatureCollection', features: [] };
-    var b = viewBounds(), points = new Map();
-    placesInView().forEach(function (p) {
+    var b = viewBounds(), points = new Map(),places=placesInView();
+    activePinPhotos=new Set(places.filter(function(p){return !b||b.contains([p.lng,p.lat]);}).map(function(p){return coverPhoto(p);}).filter(Boolean));
+    currentPinImages=new Set();
+    places.forEach(function (p) {
         /* 收藏地图上每个都是收藏的，就不再加星 */
         var saved = state.scope !== 'saved' && store.isSaved(p.id);
         var s = stats(p), photo = coverPhoto(p), count = placePhotos(p).length, ph = photo ? photoPinImage(photo, s.score, saved, count) : null;
         if (photo && !ph && !pinThumbs.has(photo) && photoWanted(p) && (!b || b.contains([p.lng, p.lat]))) queueThumb(photo);
+        if(ph)currentPinImages.add(ph);
         var f = {
           type: 'Feature',
           geometry: { type: 'Point', coordinates: [p.lng, p.lat] },
@@ -664,5 +683,6 @@
           }
         }
     });
+    trimPinImages();
     return { type: 'FeatureCollection', features: Array.from(points.values()) };
   }

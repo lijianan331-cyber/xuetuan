@@ -748,6 +748,25 @@
     var photoURLs = new Map();
     var photoExpiries = new Map(), photoRequests = new Map();
     var listeners = [];
+    var signQueue=[],signBusy=0,signTimer=0;
+    function signPhotoPath(path) {
+      return new Promise(function(resolve){signQueue.push({path:path,actor:uidNow(),resolve:resolve});if(!signTimer)signTimer=setTimeout(pumpSigns,0);});
+    }
+    function pumpSigns() {
+      signTimer=0;
+      while(signBusy<2&&signQueue.length){
+        var jobs=signQueue.splice(0,40).filter(function(j){if(j.actor===uidNow())return true;j.resolve({error:{message:'Account changed'}});return false;});if(!jobs.length)continue;
+        signBusy++;(function(batch){
+          var bucket=client.storage.from('photos'),bulk=batch.length>1&&typeof bucket.createSignedUrls==='function';
+          var work=Promise.resolve().then(function(){return bulk?bucket.createSignedUrls(batch.map(function(j){return j.path;}),300):Promise.all(batch.map(function(j){return bucket.createSignedUrl(j.path,300);}));});
+          Promise.resolve(work).then(function(r){batch.forEach(function(j,i){
+            if(!bulk){j.resolve(r[i]);return;}
+            var row=!r.error&&Array.isArray(r.data)&&(r.data.find(function(x){return x.path===j.path;})||(r.data[i]&&!r.data[i].path&&r.data[i]));
+            j.resolve(row&&row.signedUrl&&!row.error?{data:{signedUrl:row.signedUrl}}:{error:r.error||row&&row.error||{message:'No authorized photo'}});
+          });},function(e){batch.forEach(function(j){j.resolve({error:e});});}).then(function(){signBusy--;pumpSigns();});
+        })(jobs);
+      }
+    }
 
     function uidNow() { return session ? session.user.id : null; }
     function ok(res) { if (res.error) throw res.error; return res.data; }
@@ -956,15 +975,16 @@
       homes: function () { return cache.homes; },
       hasSamples: function () { return false; },
       /* small：小图地址。以前传的照片没有小图，图片加载失败时由显示的地方退回原图 */
+      cachedPhotoURL: function (id,small) { var key=small?id+THUMB_KEY:id;return photoURLs.has(key)&&(!photoExpiries.has(key)||photoExpiries.get(key)>Date.now())?photoURLs.get(key):null; },
       photoURL: function (id, small) {
         var key = small ? id + THUMB_KEY : id;
         if (photoURLs.has(key) && (!photoExpiries.has(key) || photoExpiries.get(key) > Date.now())) return Promise.resolve(photoURLs.get(key));
         if (id.indexOf('/') === -1) return photoStore.get(id).then(function (b) { return b ? URL.createObjectURL(b) : null; });
         if (photoRequests.has(key)) return photoRequests.get(key);
         var actor = uidNow();
-        var request = client.storage.from('photos').createSignedUrl(small ? thumbPath(id) : id, 300).then(function (res) {
+        var request = signPhotoPath(small ? thumbPath(id) : id).then(function (res) {
           // Older uploads may have no thumbnail. Try the same authorized original, never a public URL.
-          return small && res.error ? client.storage.from('photos').createSignedUrl(id, 300) : res;
+          return small && res.error ? signPhotoPath(id) : res;
         }).then(function (res) {
           if (actor !== uidNow() || res.error || !res.data || !res.data.signedUrl) return null;
           photoURLs.set(key, res.data.signedUrl); photoExpiries.set(key, Date.now() + 240000);
@@ -1571,7 +1591,8 @@
   }
 
   function me() { return store.me(); }
-  function placeById(id) { return store.place(id); }
+  var placeLookup={list:null,n:-1,by:new Map()};
+  function placeById(id) { var list=store.places();if(list!==placeLookup.list||list.length!==placeLookup.n){placeLookup={list:list,n:list.length,by:new Map(list.map(function(p){return [p.id,p];}))};}return placeLookup.by.get(id)||null; }
   function reviewsOf(placeId) { return store.reviewsOf(placeId); }
   /* 按地点分好的记录：画图钉时每个地点都要找自己的记录，原来每次都扫一遍全部记录，
      地点和记录一多就是“地点数 × 记录数”，手机上会卡好几秒。记录数组换了或长度变了才重新分（2026-10-27 提速） */

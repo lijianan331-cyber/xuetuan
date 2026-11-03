@@ -91,7 +91,7 @@
     if (c && !map.hasImage(e.id)) {
       try {
         var ref = JSON.parse(c[2]), thumb = pinThumbs.get(ref[0]);
-        if (thumb && thumb !== 'loading') map.addImage(e.id, drawPhotoPin(thumb, ref[1] == null ? DOT_NONE : scoreColor(ref[1]), ref[2], Number(c[1])), { pixelRatio: DPR });
+        if (thumb && thumb !== 'loading') {map.addImage(e.id, drawPhotoPin(thumb, ref[1] == null ? DOT_NONE : scoreColor(ref[1]), ref[2], Number(c[1])), { pixelRatio: DPR });managedPinImages.set(e.id,ref[0]);trimPinImages();}
       } catch (err) { /* An unavailable cover falls back to the count circle. */ }
     }
   }
@@ -239,11 +239,11 @@
   function refreshMap() {
     var src = map && map.getSource && map.getSource('places');
     syncPlaceCluster();
-    if (src) src.setData(placesGeoJSON());
+    if (src) setMapSourceData(src,placesGeoJSON());
     refreshLib();
     queueLib();
     var hs = map && map.getSource && map.getSource('homes');
-    if (hs) hs.setData(homesFC());
+    if (hs) setMapSourceData(hs,homesFC());
     updateHomePlacement();
     syncCountries();
   }

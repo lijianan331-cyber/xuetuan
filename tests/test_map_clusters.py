@@ -66,7 +66,8 @@ with sync_playwright() as p:
     # Render production photo sprites, not rectangular placeholders. A real cluster
     # and a singleton share one mobile viewport; measure their actual colored border.
     html = (Path(__file__).parents[1] / 'index.html').read_text(encoding='utf-8')
-    draw = html[html.index('  function drawPhotoPin('):html.index('  function loadImage(')]
+    map_source=(Path(__file__).parents[1]/'js'/'02-map.js').read_text(encoding='utf8')
+    draw = map_source[map_source.index('  function drawPhotoPin('):map_source.index('  function loadImage(')]
     for dpr in [1, 2]:
         ctx = browser.new_context(viewport={'width':390,'height':700},device_scale_factor=dpr)
         pg = ctx.new_page()

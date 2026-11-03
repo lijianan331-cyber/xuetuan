@@ -530,20 +530,43 @@
     var avTimer = 0;
     new MutationObserver(function () { if (!avTimer) avTimer = setTimeout(function () { avTimer = 0; hydrateAvatars(); }, 0); }).observe(document.documentElement, { childList: true, subtree: true });
   }
+  var photoJobs=[],photoBusy=0,photoSeen=new WeakSet(),photoObserver=null,photoObserved=new Set(),photoActive=new Set();
+  function photoNearScreen(img) { var r=img.getBoundingClientRect();return r.bottom>=-240&&r.top<=innerHeight+240&&r.right>=-240&&r.left<=innerWidth+240; }
+  function queuePhoto(img) { if(photoSeen.has(img))return;photoSeen.add(img);photoJobs.push({img:img,owner:me().id});pumpPhotos(); }
+  function pumpPhotos() {
+    photoJobs=photoJobs.filter(function(j){return j.img.isConnected&&j.owner===me().id;});
+    while(photoBusy<4&&photoJobs.length){var job=photoJobs.shift();photoBusy++;photoActive.add(job);(function(j){loadViewPhoto(j).catch(function(){}).then(function(){photoActive.delete(j);photoBusy--;pumpPhotos();});})(job);}
+  }
+  function loadViewPhoto(job) {
+    var img=job.img,id=img.dataset.photo,small=img.hasAttribute('data-small')||isClip(id),preview=img.dataset.preview||'';
+    function current(){return !job.cancelled&&img.isConnected&&job.owner===me().id;}
+    function missing(){if(current()&&!preview&&img.parentElement)img.parentElement.classList.add('missing');}
+    function show(url){return new Promise(function(resolve){
+      if(!url||!current()){resolve(false);return;}
+      var probe=new Image(),finished=false,timer=setTimeout(function(){done(false);},15000);
+      function done(ok){if(finished)return;finished=true;clearTimeout(timer);probe.onload=probe.onerror=null;if(ok&&current()){img.src=url;img.parentElement.classList.remove('missing');}resolve(ok);}
+      job.cancelProbe=function(){done(false);probe.src='';};
+      probe.decoding='async';probe.onload=function(){done(true);};probe.onerror=function(){done(false);};probe.src=url;
+    });}
+    var cancelled=new Promise(function(resolve){job.cancel=function(){job.cancelled=true;if(job.cancelProbe)job.cancelProbe();resolve();};});
+    var work=store.photoURL(id,small).then(function(url){return show(url).then(function(ok){
+      if(ok||!small||!current())return ok;
+      return store.photoURL(id).then(function(full){return full&&full!==url?show(full):false;});
+    });}).then(function(ok){if(!ok)missing();},missing);
+    return Promise.race([work,cancelled]);
+  }
   function hydratePhotos(root) {
     hydrateGoogleTitles(root);
-    $$('img[data-photo]', root).forEach(function (img) {
-      var id = img.dataset.photo, small = img.hasAttribute('data-small') || isClip(id);
-      if ((isClip(id) || isGif(id)) && img.parentElement) img.parentElement.classList.add(isClip(id) ? 'is-clip' : 'is-gif');
-      function missing() { if (img.parentElement) img.parentElement.classList.add('missing'); }
-      store.photoURL(id, small).then(function (u) {
-        if (!u) { missing(); return; }
-        img.onerror = !small ? missing : function () {
-          img.onerror = missing;
-          store.photoURL(id).then(function (full) { if (full && full !== u) img.src = full; else missing(); });
-        };
-        img.src = u;
-      });
+    photoActive.forEach(function(j){if(!j.img.isConnected||j.owner!==me().id)j.cancel();});
+    if(photoObserver)photoObserved.forEach(function(img){if(!img.isConnected){photoObserver.unobserve(img);photoObserved.delete(img);}});
+    if(window.IntersectionObserver&&!photoObserver)photoObserver=new IntersectionObserver(function(entries){entries.forEach(function(e){if(e.isIntersecting){photoObserver.unobserve(e.target);photoObserved.delete(e.target);queuePhoto(e.target);}});},{rootMargin:'240px'});
+    $$('img[data-photo]',root).forEach(function(img){
+      var id=img.dataset.photo,small=img.hasAttribute('data-small')||isClip(id);
+      if((isClip(id)||isGif(id))&&img.parentElement)img.parentElement.classList.add(isClip(id)?'is-clip':'is-gif');
+      var cached=store.cachedPhotoURL&&(store.cachedPhotoURL(id,small)||(!small&&img.hasAttribute('data-progressive')&&store.cachedPhotoURL(id,true)));
+      if(cached){img.src=cached;img.dataset.preview=cached;}
+      if(photoSeen.has(img))return;
+      if(!photoObserver||photoNearScreen(img))queuePhoto(img);else{photoObserved.add(img);photoObserver.observe(img);}
     });
   }
 

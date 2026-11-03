@@ -33,7 +33,7 @@
   }
   var homeSyncPromise = null, homeApplyRequested = false;
   function homeVisible() { return !state.bootLoading && !document.hidden && state.tab === 'home' && state.view === 'feed' && !state.picking; }
-  function homeSignature() { return JSON.stringify(homeEligible().map(function (r) { return [r.id, homeTime(r), r.title, r.text, r.rating, r.photos]; })); }
+  function homeSignature() { return JSON.stringify(homeEligible().map(function (r) { var p=placeById(r.placeId);return [r.id, homeTime(r), r.title, r.text, r.rating, r.photos,p&&p.name,p&&p.mode,p&&p.cat]; })); }
   function refreshHome(force) {
     if (!homeVisible()) return Promise.resolve();
     homeApplyRequested = homeApplyRequested || !!force;
@@ -42,9 +42,10 @@
     if (refreshButton) { refreshButton.disabled = true; refreshButton.textContent = state.lang === 'en' ? L('Refreshing…') : '刷新中…'; }
     homeSyncPromise = (store.refresh ? store.refresh(homeVisible) : Promise.resolve()).then(function () {
       if (!homeVisible()) return;
-      if (homeApplyRequested || (before !== homeSignature() && view.scrollTop < 100)) { render(); view.scrollTop = 0; }
-      else if (before !== homeSignature()) { var btn = $('.home-updates'); if (btn) btn.hidden = false; }
-      refreshMap();
+      var changed=before!==homeSignature();
+      if (changed&&(homeApplyRequested||view.scrollTop<100)) { render(); view.scrollTop = 0; }
+      else if (changed) { var btn = $('.home-updates'); if (btn) btn.hidden = false; }
+      if(changed)refreshMap();
     }).catch(function () { if (homeApplyRequested) toast(t('loadFail')); }).then(function () { homeSyncPromise = null; homeApplyRequested = false; var button = $('[data-action="home-refresh"]'); if (button) { button.disabled = false; button.textContent = state.lang === 'en' ? L('Refresh') : '刷新'; } });
     return homeSyncPromise;
   }
@@ -105,7 +106,7 @@
       '<button type="button" class="btn small ghost danger-text" data-action="del-review" data-id="' + esc(r.id) + '">' + esc(t('del')) + '</button>' : '';
     var h = '<div class="view-top"><button type="button" class="icon-btn flat" data-action="back" aria-label="' + esc(t('back')) + '">' + ICON.back + '</button></div>';
     if (r.photos && r.photos.length) h += '<div class="photo-strip post-gallery">' + r.photos.map(function (id) {
-      return '<button type="button" class="ph" data-action="photo" data-id="' + esc(id) + '" data-group="post"><img data-photo="' + esc(id) + '" alt=""></button>';
+      return '<button type="button" class="ph" data-action="photo" data-id="' + esc(id) + '" data-group="post"><img data-photo="' + esc(id) + '" data-progressive decoding="async" alt=""></button>';
     }).join('') + '</div>';
     h+='<div class="post-body">';
     var pw = avatarHTML(name, r.authorId) + '<span class="pw-text"><b>' + esc(name) + '</b></span>';
