@@ -239,6 +239,7 @@
   /* 地图右上角的按钮：吃/玩切换、筛选；我的地图缩小到国家级别再多一个“点亮国家”。左上角是家乡红针的说明小签 */
   function renderFilters() {
     var food = state.mode === 'food', n = activeFilterCount();
+    lastGlobeChip = globeChipShown();
     var toKey = food ? 'modeToTravel' : 'modeToFood';
     /* 搜索条右边原来是个斜箭头（像外链），换成放大镜；美食 / 玩乐两段都写出来，亮的那段是现在这张图（2026-11-01 精修） */
     var h = '<button type="button" class="map-search" data-action="search" aria-label="' + esc(t('searchBtn')) + '"><img src="assets/search-pin.png" alt=""><span>' + esc(t('mapSearchPh')) + '</span>' + CTRL_ICON.search + '</button>';

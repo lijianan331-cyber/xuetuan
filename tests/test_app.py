@@ -707,7 +707,7 @@ with sync_playwright() as p:
     check('changing place by search moves it back to the old place (its name and position untouched); the empty spot is removed', back_rv['placeId'] == moved_before['placeId'] and not any(p_['id'] == newpl['id'] for p_ in stored_b['places']) and [ (p_['name'], round(p_['lat'], 4)) for p_ in stored_b['places'] if p_['id'] == moved_before['placeId']] == [('测试椰浆饭', 2.8331)], back_rv)
     open_place(page, '测试椰浆')
     open_place(page, '测试椰浆')
-    check('everyone scope shows 1 review', page.locator('.review').count() == 1, page.locator('.review').count())
+    check('place shows public reviews plus my private review for its privacy shortcut', page.locator('.review').count() == 2, page.locator('.review').count())
     check('explore map uses public score only', page.inner_text('.score-big') == '5', page.inner_text('.stats'))
 
     # nearby duplicate check
@@ -1732,6 +1732,7 @@ with sync_playwright() as p:
     geo5 = page5.evaluate('(() => { const p = document.querySelector("#panel").getBoundingClientRect(), t = document.querySelector("#tabbar").getBoundingClientRect(); return Math.round(p.bottom) >= Math.round(t.top); })()')
     check('inline all choice stays selected', page5.get_attribute('#view [data-action="mine-mode"][data-v="both"]', 'aria-pressed') == 'true')
     page5.wait_for_timeout(100)
+    page5.evaluate('window.__map.jumpTo({zoom:12})'); page5.wait_for_timeout(100)
     check('no country switch when zoomed in', page5.locator('[data-action="countries"]').count() == 0)
     check('country data not downloaded yet', world_calls == [])
     page5.evaluate('window.__map.jumpTo({zoom: 3})')
@@ -1872,7 +1873,7 @@ with sync_playwright() as p:
     check('home: newest first (C’s 0, then B, then A), A’s private record not there', who7 == ['测试号 C', '测试号 B', '甲'], who7)
     fi7.locator('.pc-open').click(); page7.wait_for_timeout(250)
     page7.click('[data-action="post-place"]'); page7.wait_for_timeout(250)
-    check('place page: average says the 0 was left out', '3.8' in page7.inner_text('#view') and '2 人打分的平均（不算 1 个 0 分）' in page7.inner_text('#view'), page7.inner_text('#view')[:300])
+    check('place page: average says the 0 was left out', '3.8' in page7.inner_text('#view') and '2 次评分的平均（不算 1 个 0 分）' in page7.inner_text('#view'), page7.inner_text('#view')[:300])
     # 个人主页（用户 2026-11-01）：作者自己打开了才能点进，默认关；主页地图只放他公开的记录
     who_links = page7.locator('#view .review [data-action="person"]').evaluate_all('es => [...new Set(es.map(e => e.dataset.uid))]')
     check('person page: off by default, only my own name is tappable on a place', len(who_links) == 1 and page7.evaluate('(id) => id === me().id', who_links[0]), who_links)

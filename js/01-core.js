@@ -221,7 +221,7 @@
       homesBtn: '看看大家来自哪', homesOpened: '红点是同学们的家乡', homesClosed: '已回到探索', saveWorking: '正在保存…', saveUploading: '正在上传照片 {n}/{m}', saveWriting: '正在保存记录…', mediaPreparing: '正在处理照片…', photoPreview: '放大查看照片', homeOf: '{n}的家乡', homesN: '{n} 位同学的家乡', homeOnlyYou: '只有你自己看得到', homeEdit: '改我的家', homeSetCta: '你也标上家乡',
       publish: '发布',
       location: '位置', repick: '重新选',
-      noRating: '暂无评分', myScore: '我的评分', avgOf: '{n} 人打分的平均', avgNoZero: '（不算 {n} 个 0 分）', perPerson: '人均', costLabel: '花费', reviewsLabel: '条点评', reviewsTitle: '点评',
+      noRating: '暂无评分', myScore: '我的评分', avgOf: '{n} 次评分的平均', avgNoZero: '（不算 {n} 个 0 分）', perPerson: '人均', costLabel: '花费', reviewsLabel: '条点评', reviewsTitle: '点评',
       navGoogle: 'Google 地图', navApple: '苹果地图', viewApple: '在苹果地图看', navWaze: 'Waze', viewGoogle: '在 Google 地图看', copyCoords: '复制坐标',
       copied: '坐标已复制', copyFail: '复制不了，坐标是 {c}', openLink: '相关链接',
       distFrom: '距 XMUM {d}',
