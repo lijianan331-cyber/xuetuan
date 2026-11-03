@@ -705,6 +705,12 @@ with sync_playwright() as p:
     stored_b = page.evaluate('JSON.parse(localStorage.getItem("xmum-chiwan-map:data:v1"))')
     back_rv = [r for r in stored_b['reviews'] if r['id'] == moved_before['id']][0]
     check('changing place by search moves it back to the old place (its name and position untouched); the empty spot is removed', back_rv['placeId'] == moved_before['placeId'] and not any(p_['id'] == newpl['id'] for p_ in stored_b['places']) and [ (p_['name'], round(p_['lat'], 4)) for p_ in stored_b['places'] if p_['id'] == moved_before['placeId']] == [('测试椰浆饭', 2.8331)], back_rv)
+    # 编辑时改日期（以前传的照片读不到拍摄时间）
+    page.locator('[data-action="edit-review"][data-id="' + moved_before['id'] + '"]').first.click(); page.wait_for_timeout(200)
+    check('edit form has a date box with the record date', page.locator('#f-visit[type=date]').count() == 1 and page.input_value('#f-visit') == page.evaluate('visitDay(%d)' % back_rv['createdAt']), page.locator('#f-visit').count())
+    page.fill('#f-visit', '2025-03-23'); page.click('#f-submit'); page.wait_for_timeout(500)
+    dated = [r for r in page.evaluate('JSON.parse(localStorage.getItem("xmum-chiwan-map:data:v1"))')['reviews'] if r['id'] == moved_before['id']][0]
+    check('changing the date while editing saves the new visit date', page.evaluate('visitDay(%d)' % dated['createdAt']) == '2025-03-23', dated.get('createdAt'))
     open_place(page, '测试椰浆')
     open_place(page, '测试椰浆')
     check('place shows public reviews plus my private review for its privacy shortcut', page.locator('.review').count() == 2, page.locator('.review').count())
@@ -1373,6 +1379,15 @@ with sync_playwright() as p:
     check('picking 中文 switches everything back', page5.evaluate('state.lang') == 'zh' and page5.inner_text('.home-lang') == 'ENG')
     pd = page5.evaluate("(() => { const v = Date.parse('2026-10-29T12:00:00'); return [photoDateInfo('ph-' + Date.now().toString(36) + 'ab', {createdAt: v}).at === v, visitDay(photoDateInfo('ph-' + Date.now().toString(36) + 'ab', {createdAt: v}).at)]; })()")
     check('photo date under a photo is the visit date, not the (re)upload day', pd == [True, '2026-10-29'], pd)
+    pt = page5.evaluate("""(() => {
+      const shot = Date.parse('2025-07-13T18:30:00'), visit = Date.parse('2026-10-29T12:00:00');
+      const id = 'uid/ph-' + Date.now().toString(36) + 'ab' + takenSuffix(shot) + '.jpg';
+      return [photoTakenAt(id) === shot, photoTakenAt(id.replace('.jpg', '_t.jpg')) === shot, visitDay(photoDateInfo(id, {createdAt: visit}).at),
+        photoDateLabel(id, {createdAt: visit}), takenSuffix(Date.now() + 864e5), photoTakenAt('uid/ph-mvtolj1mdj2cz.jpg')];
+    })()""")
+    check('a photo shows its own taken time (stored in the file name), even when the record date differs', pt == [True, True, '2025-07-13', '拍摄 2025-07-13', '', 0], pt)
+    mp = page5.evaluate("(() => { const id = mediaPhoto({ blob: new Blob(['x']), ext: 'jpg' }, Date.parse('2024-02-23T10:00:00')).id; return [visitDay(photoTakenAt(id)), /^ph-[0-9a-z]+-t[0-9a-z]+$/.test(id)]; })()")
+    check('new photos get the taken time in their name; name stays storage-safe', mp == ['2024-02-23', True], mp)
     check('review photos show no repeated "Uploaded / 上传" date text', page5.evaluate('document.querySelectorAll(".photo-date").length') == 0)
     check('home: only old shares -> says nothing new this month and offers older ones', '最近一个月' in page5.inner_text('.home-empty') and page5.locator('[data-action="home-all-time"]').count() == 1)
     page5.click('[data-action="home-all-time"]')

@@ -432,6 +432,8 @@
     if (!f.post) h += '<div class="field"><span class="f-label">' + esc(t('photos')) + ' <small>· ' + esc(t('photoLimit', { n: MAX_PHOTOS })) + '</small></span><div class="photo-grid" id="f-photos"></div></div>';
     /* 人均只问吃的（筛选按人均）；玩乐不问花费（用户 2026-10-26） */
     if (isFood && !f.post) h += formPriceFieldHTML();
+    /* 编辑时能改日期（用户 2026-11-04：以前传的照片读不到拍摄时间，日期不对）。加了更早拍的照片会自动往前改 */
+    if (f.editId) h += fieldHTML('f-visit', esc(state.lang === 'en' ? L('Date') : '日期'), '<input id="f-visit" class="input" type="date" max="' + visitDay(Date.now()) + '" value="' + esc(visitDay(f.visitAt)) + '">') ;
     /* 记录默认进“我的地图”，只问要不要分享到大地图 */
     if (f.post && !f.editId) h += '<p class="f-hint">' + esc(state.lang === 'en' ? L('Public post · also saved to your footprints') : '公开分享 · 同时保存到个人足迹') + '</p>';
     else h += '<button type="button" class="switch-row" role="switch" data-action="f-share" aria-checked="' + share + '">' +
@@ -542,7 +544,7 @@
       if (!r[0]) return null;
       /* 没确认传完的换个新名字重传（同名再传会被拒） */
       var ext = (m.id.match(/\.\w+$/) || [''])[0];
-      var ph = { id: m.up ? m.id : uid('ph') + ext, blob: r[0], thumb: r[1] || null, url: URL.createObjectURL(r[0]) };
+      var ph = { id: m.up ? m.id : uid('ph') + takenSuffix(photoTakenAt(m.id)) + ext, blob: r[0], thumb: r[1] || null, url: URL.createObjectURL(r[0]) };
       ph.preview = ph.thumb ? URL.createObjectURL(ph.thumb) : ph.url;
       if (m.up) { ph.uploadedPath = m.up; ph._dk = true; }
       return ph;

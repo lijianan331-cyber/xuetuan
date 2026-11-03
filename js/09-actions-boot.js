@@ -369,7 +369,7 @@
     var btn = $('#bsheet-card .bsheet-foot .btn.primary');
     if (btn) btn.textContent = t('filterShow', { n: store.places().filter(function (p) { return inScope(p) && passesFilters(p); }).length });
   }
-  document.addEventListener('change', function (e) { if (e.target.id === 'flt-price') setPriceAbout(e.target, true); if (e.target.id === 'pf-avatar-file') { pickAvatarFile(e.target.files && e.target.files[0]); e.target.value = ''; } });
+  document.addEventListener('change', function (e) { if (e.target.id === 'flt-price') setPriceAbout(e.target, true); if (e.target.id === 'f-visit' && state.form) state.form.visitAt = formVisitAt(state.form); if (e.target.id === 'pf-avatar-file') { pickAvatarFile(e.target.files && e.target.files[0]); e.target.value = ''; } });
   function refilter() {
     renderFilters(); refreshMap();
     if (state.view === 'feed') render();

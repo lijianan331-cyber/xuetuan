@@ -589,7 +589,7 @@
         if (!r || r.authorId !== data.profile.id) return Promise.reject(new Error('not yours'));
         return putPhotos(newPhotos).then(function (photosOk) {
           (r.photos || []).forEach(function (pid) { if (keepPhotos.indexOf(pid) === -1) forgetPhoto(pid); });
-          ['rating', 'price', 'priceCurrency', 'halal', 'title', 'text', 'visibility'].forEach(function (k) { if (patch[k] !== undefined) r[k] = patch[k]; });
+          ['rating', 'price', 'priceCurrency', 'halal', 'title', 'text', 'visibility', 'createdAt'].forEach(function (k) { if (patch[k] !== undefined) r[k] = patch[k]; });
           r.photos = orderPhotos(keepPhotos, newPhotos.map(function (ph) { return ph.id; }), patch.photoOrder);
           r.authorName = data.profile.name || '';
           r.updatedAt = Date.now();
@@ -1038,6 +1038,7 @@
           var dropped = (r.photos || []).filter(function (p) { return keepPhotos.indexOf(p) === -1; });
           var row = { rating: patch.rating, price: patch.price, price_currency: validPriceCurrency(patch.priceCurrency), text: patch.text, title: patch.title || null, visibility: patch.visibility, photos: orderPhotos(keepPhotos, up.paths, patch.photoOrder) };
           if (cache.halalCol && patch.halal !== undefined) row.halal = validHalal(patch.halal);
+          if (patch.createdAt) row.created_at = new Date(patch.createdAt).toISOString();
           return client.from('visits').update(row).eq('id', id).select().single().then(ok).then(function (v) {
             removePhotos(dropped);
             Object.assign(r, reviewFromRow(v, cache.profile));
@@ -1056,7 +1057,7 @@
           var dropped = (r.photos || []).filter(function (p) { return keepPhotos.indexOf(p) === -1; });
           var made = r._movedTo && r._movedTo.placeId === placeId ? Promise.resolve(r._movedTo) : client.from('visits').insert({
             place_id: placeId, rating: patch.rating, price: patch.price, price_currency: validPriceCurrency(patch.priceCurrency), text: patch.text, title: patch.title || null, visibility: patch.visibility,
-            photos: orderPhotos(keepPhotos, up.paths, patch.photoOrder), created_at: new Date(r.createdAt).toISOString(), updated_at: new Date().toISOString(),
+            photos: orderPhotos(keepPhotos, up.paths, patch.photoOrder), created_at: new Date(patch.createdAt || r.createdAt).toISOString(), updated_at: new Date().toISOString(),
             halal: cache.halalCol ? validHalal(patch.halal) : undefined
           }).select().single().then(ok).then(function (v) { r._movedTo = reviewFromRow(v, cache.profile); return r._movedTo; });
           return made.then(function (nr) {
@@ -1572,11 +1573,19 @@
     return (state.lang === 'en' ? L('Visited ') : '到访 ') + visitDay(r.createdAt) +
       (changed ? ' · ' + (state.lang === 'en' ? L('Updated ') : '更新于 ') + timeAgo(at) : ' · ' + timeAgo(at));
   }
-  /* 照片下面的日期 = 这条记录的到访 / 拍照日期（用户 2026-11-04：编辑时重新上传的照片显示成了今天，不对）。
-     上传时间只在记录本身没有日期时才用 */
+  /* 照片自己的拍摄时间：新传的照片把手机里读到的拍摄时间写进文件名（ph-xxx-t<36进制毫秒>），不用改数据库。
+     以前传的照片压缩时拍摄信息已经去掉，读不到 */
+  var PHOTO_T_MIN = Date.UTC(2000, 0, 1);
+  function takenSuffix(ts) { ts = Math.round(Number(ts) || 0); return ts >= PHOTO_T_MIN && ts <= Date.now() ? '-t' + ts.toString(36) : ''; }
+  function photoTakenAt(id) {
+    var m = /-t([0-9a-z]{7,9})(?:_t)?(?:\.\w+)?$/.exec(String(id || '')), n = m ? parseInt(m[1], 36) : 0;
+    return n >= PHOTO_T_MIN && n <= Date.now() + 864e5 ? n : 0;
+  }
+  /* 照片下面的日期（用户 2026-11-04：上传那天不对，要真实时间）：
+     照片自己的拍摄时间 > 这条记录的到访日期（可以在编辑里改）> 上传时间 */
   function photoDateInfo(id,r) {
-    var visit=Number(r&&r.createdAt)||0, at=visit||photoUploadedAt(id);
-    return {at:at,label:visit?(state.lang==='en'?L('Visited '):'到访 '):(state.lang==='en'?'Added ':'添加 ')};
+    var taken=photoTakenAt(id), visit=Number(r&&r.createdAt)||0, at=taken||visit||photoUploadedAt(id), en=state.lang==='en';
+    return {at:at,label:taken?(en?L('Taken '):'拍摄 '):visit?(en?L('Visited '):'到访 '):(en?L('Added '):'添加 ')};
   }
   function photoDateLabel(id,r) { var d=photoDateInfo(id,r);return d.at?d.label+visitDay(d.at):''; }
   function photoDateHTML(id,r) {

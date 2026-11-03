@@ -57,7 +57,7 @@
       (b.groups || []).some(function (g) { return g.photos.some(function (x) { if (x.on && !x.media && !x.warmFail) { ph = x; return true; } return false; }); });
       if (!ph) { b.warming = false; return; }
       ph.warmP = (ph.prepared ? Promise.resolve(ph.prepared) : prepareMedia(ph.file)).then(function (out) {
-        if (out && out.blob) { ph.media = mediaPhoto(out); if (store.preupload) store.preupload([ph.media]); } else ph.warmFail = true;
+        if (out && out.blob) { ph.media = mediaPhoto(out, ph.time); if (store.preupload) store.preupload([ph.media]); } else ph.warmFail = true;
       }, function () { ph.warmFail = true; });
       ph.warmP.then(function () { setTimeout(next, 0); });
     }
@@ -659,9 +659,9 @@
         return chain.then(function () {
           if (ph.media) { photos.push(ph.media); return; }
           /* 后台正在压这张：等它压完直接用，不重复压 */
-          if (ph.warmP && !ph.warmFail) return ph.warmP.then(function () { if (ph.media) photos.push(ph.media); else return prepareMedia(ph.file).then(function (out) { if (out.blob) photos.push(mediaPhoto(out)); }); });
+          if (ph.warmP && !ph.warmFail) return ph.warmP.then(function () { if (ph.media) photos.push(ph.media); else return prepareMedia(ph.file).then(function (out) { if (out.blob) photos.push(mediaPhoto(out, ph.time)); }); });
           return (ph.prepared ? Promise.resolve(ph.prepared) : prepareMedia(ph.file)).then(function (out) {
-            if (out.blob) photos.push(mediaPhoto(out));
+            if (out.blob) photos.push(mediaPhoto(out, ph.time));
           }, function (e) { toast(t(e && e.message === 'gifTooBig' ? 'gifTooBig' : 'photoReadFail')); });
         });
       }, Promise.resolve()).then(function () {
