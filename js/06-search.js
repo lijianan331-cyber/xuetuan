@@ -569,6 +569,7 @@
     var h = meHeadHTML() + (isModerator() ? '<div class="field"><b>' + esc(state.lang === 'en' ? 'Administrator' : '管理员') + '</b><p class="f-hint">' + esc(state.lang === 'en' ? 'Open a public post to moderate it.' : '进入公开帖子或点评，可删除内容、图片并封禁作者。') + '</p><div class="btn-row"><button type="button" class="btn small" data-action="moderation-clean">' + esc(state.lang === 'en' ? 'Retry media cleanup' : '重试待删除图片清理') + '</button><button type="button" class="btn small" data-action="social-reports">' + esc(state.lang === 'en' ? 'Comment reports' : '留言举报') + '</button></div><div id="social-reports"></div></div>' : '') + '<button type="button" class="btn home-set-btn" data-action="my-share">' + CTRL_ICON.arrow + esc(state.lang === 'en' ? 'Share my footprints' : '分享我的足迹') + '</button>' +
       /* 不是天天看，但偶尔会想看：放在“我的”最上面一块，点了去探索地图看红点 */
       '<button type="button" class="me-homes" data-action="homes-open">' + ICON.home + '<span><b>' + esc(t('homesBtn')) + '</b><small>' + esc(publicHomeCount() ? t('homesN', { n: publicHomeCount() }) : (state.lang === 'en' ? 'Classmates’ hometowns on the map' : '同学们的家乡标在地图上')) + '</small></span><i aria-hidden="true">›</i></button>' +
+      '<a class="btn home-set-btn" href="contact.html">' + esc(state.lang === 'en' ? 'Feedback & support' : '意见反馈') + '</a>' +
       '<div class="form">' + account + testAccountsHTML() + personal +
       '<div class="field"><span class="f-label">' + esc(t('language')) + '</span><div class="seg">' +
       '<button type="button" data-action="set-lang" data-lang="zh" aria-pressed="' + (state.lang === 'zh') + '">中文</button>' +
@@ -579,7 +580,7 @@
       (areas.length ? '<ul class="area-list">' + areas.map(function (a) {
         return '<li><span>' + esc(a.name) + '</span><button type="button" class="link-btn danger" data-action="del-area" data-id="' + esc(a.id) + '">' + esc(t('del')) + '</button></li>';
       }).join('') + '</ul>' : '<p class="f-hint">' + esc(t('noCustomAreas')) + '</p>') + '</div>' +
-      '<div class="field"><span class="f-label">' + esc(t('dataTitle')) + '</span><p class="note">' + esc(t(remote ? 'remoteNote' : 'localNote')) + ' <a class="privacy-link" href="privacy.html" target="_blank" rel="noopener">' + esc(t('privacyLink')) + '</a></p>' +
+      '<div class="field"><span class="f-label">' + esc(t('dataTitle')) + '</span><p class="note">' + esc(t(remote ? 'remoteNote' : 'localNote')) + ' <a class="privacy-link" href="privacy.html" target="_blank" rel="noopener">' + esc(t('privacyLink')) + '</a> · <a class="privacy-link" href="contact.html">' + esc(state.lang === 'en' ? 'Contact us' : '联系我们') + '</a></p>' +
       (dataButtons ? '<div class="btn-row">' + dataButtons + '</div>' : '') + '</div>' +
       '<p class="about">' + esc(t('about')) + '</p></div>';
     view.innerHTML = h;
