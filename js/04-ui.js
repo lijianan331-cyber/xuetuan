@@ -222,7 +222,7 @@
   var DIST_STEPS = ['any'].concat(DIST_TIERS.map(function (x) { return x.id; }));
   function activeFilterCount() {
     if (state.scope === 'person') return 0;
-    return (state.cat !== 'all' ? 1 : 0) + (state.minScore ? 1 : 0) + (state.dist !== 'any' ? 1 : 0) + (state.priceAbout ? 1 : 0);
+    return (state.cat !== 'all' ? 1 : 0) + (state.minScore ? 1 : 0) + (state.dist !== 'any' ? 1 : 0) + (state.priceAbout ? 1 : 0) + (state.halal ? 1 : 0);
   }
   var CTRL_ICON = {
     search: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg>',
@@ -242,13 +242,9 @@
     /* 搜索条右边原来是个斜箭头（像外链），换成放大镜；美食 / 玩乐两段都写出来，亮的那段是现在这张图（2026-11-01 精修） */
     var h = '<button type="button" class="map-search" data-action="search" aria-label="' + esc(t('searchBtn')) + '"><img src="assets/search-pin.png" alt=""><span>' + esc(t('mapSearchPh')) + '</span>' + CTRL_ICON.search + '</button>';
     /* 个人主页的地图美食玩乐一起看，不用切换和筛选 */
-    if (state.scope !== 'person') h += '<div class="mode-row">';
     if (state.scope !== 'person') h += '<button type="button" class="icon-btn mode-btn" data-action="toggle-mode" aria-label="' + esc(t(toKey)) + '" title="' + esc(t(toKey)) + '">' +
       '<span class="mode-opt' + (food ? ' on' : '') + '">' + CTRL_ICON.food + '<span>' + esc(t('food')) + '</span></span>' +
       '<span class="mode-opt' + (food ? '' : ' on') + '">' + CTRL_ICON.landscape + '<span>' + esc(t('scenery')) + '</span></span></button>';
-    /* 美食图上一个小 Halal 按钮：开了只看 Halal 的店（用户 2026-11-03） */
-    if (state.scope !== 'person' && food) h += '<button type="button" class="halal-btn" data-action="halal-toggle" aria-pressed="' + !!state.halal + '" title="' + esc(state.lang === 'en' ? 'Halal only' : '只看 Halal') + '">Halal</button>';
-    if (state.scope !== 'person') h += '</div>';
     if (state.scope !== 'person') h += '<button type="button" class="icon-btn filter-btn" data-action="filters" aria-pressed="' + (n > 0) + '" aria-label="' + esc(t('filterBtn')) + '" title="' + esc(t('filterBtn')) + '">' + CTRL_ICON.filter + (n ? '<b>' + n + '</b>' : '') + '</button>';
     if (globeChipShown()) {
       var lit = state.countries && world.fc;
@@ -439,6 +435,8 @@
       if(food) {
         var pi=Math.max(0,PRICE_STOPS.indexOf(state.priceAbout));
         h+='<div class="field price-field"><span class="f-label">'+esc(t('filterPrice'))+'<b id="flt-price-val"'+(pi?'':' class="muted"')+'>'+esc(priceLabel(state.priceAbout))+'</b></span><input type="range" id="flt-price" min="0" max="'+(PRICE_STOPS.length-1)+'" step="1" value="'+pi+'" style="--fill:'+(pi/(PRICE_STOPS.length-1)*100)+'%" aria-label="'+esc(t('filterPrice'))+'"><div class="price-ticks" aria-hidden="true"><span>'+esc(t('anyOpt'))+'</span><span>RM500</span></div></div>';
+        /* Halal（用户 2026-11-03）：放在筛选里，开了只看 Halal 的店；按店名和分类自动判断，仅供参考 */
+        h+='<button type="button" class="switch-row" role="switch" data-action="halal-toggle" aria-checked="'+!!state.halal+'"><span class="sw-text"><b>Halal</b><small>'+esc(state.lang==='en'?'Guessed from names and categories. Please check yourself.':'按店名和分类自动判断，仅供参考，请自行确认')+'</small></span><span class="switch" aria-hidden="true"></span></button>';
       }
       if(mine&&store.myHome()) h+='<button type="button" class="switch-row" role="switch" data-action="mine-home-toggle" aria-checked="'+state.mineHomeOn+'"><span class="sw-text"><b>'+esc(state.lang==='en'?'Show my home':'显示我的家')+'</b><small>'+esc(state.lang==='en'?'A little house on your hometown':'在家乡的位置放一个小房子')+'</small></span><span class="switch" aria-hidden="true"></span></button>';
       h+='<div class="bsheet-foot"><button type="button" class="btn ghost" data-action="clear-filters">'+esc(t('filterReset'))+'</button><button type="button" class="btn primary" data-action="sheet-close">'+esc(t('filterShow',{n:shown}))+'</button></div>';

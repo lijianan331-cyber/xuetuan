@@ -314,7 +314,7 @@ with sync_playwright() as p:
     check('opens on the home tab', page.get_attribute('#tabbar [data-tab="home"]', 'aria-current') == 'page')
     check('no right-side tool column, locate button kept', page.locator('.tools, [data-action="zoom-in"], [data-action="to-globe"], [data-action="basemap"]').count() == 0 and page.locator('.locate-btn').is_visible())
     acts = page.eval_on_selector_all('#map-ctrls button', 'els => els.map(e => e.dataset.action)')
-    check('map controls keep search, destination mode, Halal and filter actions', acts == ['search', 'toggle-mode', 'halal-toggle', 'filters'] and page.locator('.topbar, .search-bar, #loc-name, .mode-switch, #filters').count() == 0, acts)
+    check('map controls keep search, destination mode and filter actions', acts == ['search', 'toggle-mode', 'filters'] and page.locator('.topbar, .search-bar, #loc-name, .mode-switch, #filters').count() == 0, acts)
     check('map: small landscape pill switches to travel and filter is available', page.locator('#map-ctrls [data-action="toggle-mode"]').is_visible() and page.get_attribute('[data-action="toggle-mode"]', 'aria-label') == '切换到玩乐地图' and page.locator('#map-ctrls [data-action="filters"]').is_visible())
     ctl = page.evaluate('(() => { const c = document.querySelector("#map-ctrls").getBoundingClientRect(); return [c.top < 40, c.right <= innerWidth]; })()')
     check('map search bar fits the top edge', ctl == [True, True], ctl)
@@ -535,8 +535,8 @@ with sync_playwright() as p:
         F('MCD no test', {lat: 2.8288, lng: 101.7053}), F('海底捞', {cat: 'hotpot'}), F('Sapid', {mode: 'travel'})].map(halalFits);
       const out = [yes, no, halalTagHTML(F('Pak Punjab')).includes('>Halal<'), halalTagHTML(F('海底捞')), filtersActive(), activeFilterCount()];
       state.halal = keep; H.places.pop(); H.places.pop(); return out; }''')
-    check('halal: confirmed list wins (incl. not-halal entries), then chain / Muslim-cuisine names, then mamak and Malay (not Nyonya); pork names never; button is not a filter count',
-          hl == [[True] * 10, [False] * 8, True, '', True, 0], hl)
+    check('halal: confirmed list wins (incl. not-halal entries), then chain / Muslim-cuisine names, then mamak and Malay (not Nyonya); pork names never',
+          hl == [[True] * 10, [False] * 8, True, '', True, 1], hl)
     page.click('#f-submit')
     page.wait_for_timeout(600)
     check('after publish: place view', page.locator('.place-head h2').count() == 1 and page.inner_text('.place-head h2') == '测试椰浆饭', errors[-4:])
@@ -781,20 +781,16 @@ with sync_playwright() as p:
     check('footprints tab returns to visits rather than a saved side', foot_sub(page) == 'mine')
     foot_sub(page, 'mine')
     tab(page, 'explore')
-    # 美食图上一个小 Halal 按钮，紧挨着美食/玩乐胶囊；开了弹一句“仅供参考”
-    hb = page.evaluate('''(() => { const m = document.querySelector(".map-ctrls .mode-btn").getBoundingClientRect(), h = document.querySelector(".map-ctrls .halal-btn").getBoundingClientRect();
-      return [Math.abs(m.top + m.height / 2 - (h.top + h.height / 2)) < 2, h.left > m.right && h.left - m.right < 12, h.right < innerWidth - 50]; })()''')
-    check('halal: small button sits right next to the food/fun capsule, same row', hb == [True, True, True], hb)
-    page.click('.map-ctrls .halal-btn'); page.wait_for_timeout(150)
-    check('halal: tapping it turns it on and says to check yourself', page.get_attribute('.map-ctrls .halal-btn', 'aria-pressed') == 'true' and '请自行确认' in page.inner_text('#toast') and page.evaluate('state.halal') == 'halal')
-    page.click('.map-ctrls .halal-btn'); page.wait_for_timeout(150)
-    check('halal: tapping again turns it off', page.get_attribute('.map-ctrls .halal-btn', 'aria-pressed') == 'false' and not page.evaluate('state.halal'))
-
     # score + distance filters live in one filter sheet
     page.click('[data-action="filters"]')
     page.wait_for_timeout(100)
     cats_food = len(set(x['cat'] for x in FOOD_S))
     check('filter sheet: category, score (with legend), distance, price', page.locator('#bsheet').is_visible() and page.locator('#bsheet [data-action="cat"]').count() >= cats_food + 1 and page.locator('#bsheet .legend').count() == 1 and page.locator('[data-action="set-score"]').count() == 3 and page.locator('[data-action="set-dist"]').count() == 6 and page.locator('#bsheet input#flt-price[type="range"]').count() == 1 and page.inner_text('#flt-price-val') == '不限')
+    check('halal: the switch lives in the filter sheet', page.locator('#bsheet [data-action="halal-toggle"]').count() == 1 and page.locator('.map-ctrls .halal-btn').count() == 0)
+    page.click('#bsheet [data-action="halal-toggle"]'); page.wait_for_timeout(100)
+    check('halal: switch on counts as one active filter and Reset clears it', page.evaluate('state.halal') == 'halal' and page.evaluate('activeFilterCount()') == 1)
+    page.click('#bsheet [data-action="clear-filters"]'); page.wait_for_timeout(100)
+    check('halal: Reset turns it off', not page.evaluate('state.halal'))
     page.click('#bsheet [data-action="cat"][data-cat="cn"]')
     page.wait_for_timeout(150)
     fc = page.evaluate('window.__map.getSource("places").data.features.map(f => f.properties.name)')
