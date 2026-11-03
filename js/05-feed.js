@@ -96,7 +96,6 @@
       saveBtnHTML(p.id, true) + '</li>';
   }
 
-  var COMMENT_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M20 11.5a8 8 0 0 1-11.6 7.1L4 20l1.4-4.2A8 8 0 1 1 20 11.5z"/></svg>';
   /* 帖子：一条记录的全文（照片、谁、分数、评论），下面是这个地点，点了去探索地图上看 */
   function renderPost() {
     var r = store.review(state.postId), p = r && placeById(r.placeId);
@@ -106,24 +105,27 @@
     var own = isMine(r) ? '<button type="button" class="btn small ghost" data-action="edit-review" data-id="' + esc(r.id) + '">' + esc(t('edit')) + '</button>' +
       '<button type="button" class="btn small ghost danger-text" data-action="del-review" data-id="' + esc(r.id) + '">' + esc(t('del')) + '</button>' : '';
     var h = '<div class="view-top"><button type="button" class="icon-btn flat" data-action="back" aria-label="' + esc(t('back')) + '">' + ICON.back + '</button></div>';
-    if (r.photos && r.photos.length) h += '<div class="photo-strip">' + r.photos.map(function (id) {
-      return '<button type="button" class="ph dated" data-action="photo" data-id="' + esc(id) + '" data-group="post"><img data-photo="' + esc(id) + '" data-small alt="">'+photoDateHTML(id,r)+'</button>';
+    if (r.photos && r.photos.length) h += '<div class="photo-strip post-gallery">' + r.photos.map(function (id) {
+      return '<button type="button" class="ph" data-action="photo" data-id="' + esc(id) + '" data-group="post"><img data-photo="' + esc(id) + '" alt=""></button>';
     }).join('') + '</div>';
-    var pw = avatarHTML(name, r.authorId) + '<span class="pw-text"><b>' + esc(name) + '</b><small>' + (from ? esc(t('fromPrefix') + from) + ' · ' : '') + esc(reviewTimeLabel(r)) + '</small></span>';
+    h+='<div class="post-body">';
+    var pw = avatarHTML(name, r.authorId) + '<span class="pw-text"><b>' + esc(name) + '</b></span>';
     h += personAttr(r.authorId)
       ? '<button type="button" class="post-who who-link"' + personAttr(r.authorId) + ' aria-label="' + esc(personLabel(name)) + '">' + pw + '<i class="pw-go" aria-hidden="true">›</i></button>'
       : '<div class="post-who">' + pw + '</div>';
     var sc = [];
-    if (r.rating != null) sc.push(starsMiniHTML(r.rating) + '<b style="color:' + scoreColor(r.rating) + '">' + fmtScore(r.rating) + '</b>');
-    if (r.price) sc.push('<span>' + priceToggleHTML(p,r.price,reviewPriceCurrency(p,r),'r:'+r.id) + ' ' + esc(t(p.mode === 'food' ? 'perPerson' : 'costLabel')) + '</span>');
+    if (r.rating != null) sc.push('<span class="post-rating">'+starsMiniHTML(r.rating) + '<b style="color:' + scoreColor(r.rating) + '">' + fmtScore(r.rating) + '</b></span>');
+    if (r.createdAt) sc.push('<time class="post-date" datetime="'+esc(new Date(r.createdAt).toISOString())+'">'+esc(visitDay(r.createdAt))+'</time>');
+    if (r.price) sc.push('<span class="post-price">' + priceToggleHTML(p,r.price,reviewPriceCurrency(p,r),'r:'+r.id) + '</span>');
     if (r.visibility === 'private') sc.push('<span class="pill">' + esc(t('visPrivateShort')) + '</span>');
-    if (sc.length) h += '<div class="post-score">' + sc.join('<span class="sep">·</span>') + '</div>';
+    if (sc.length) h += '<div class="post-score">' + sc.join('') + '</div>';
     if (r.title) h += '<h1 class="post-title">' + esc(r.title) + '</h1>';
     if (text) h += '<p class="post-text" data-tr="' + esc(r.id) + '">' + esc(text) + '</p>' + trButtonHTML(r.id);
+    h+='</div>';
     h += '<ul class="near-list post-place">' + placeRowHTML(p, 'post-place', esc(catName(c)) + ' · ' + esc(distLabel(p)), '<span class="near-cta">' + esc(t('postPlace')) + '</span>') + '</ul>';
-    /* 用户 2026-11-03：点赞、评论、收藏放一排小按钮（像小红书），自己的编辑 / 删除放右边 */
+    /* 赞、收藏一排，正文下面已有评论区，不再重复放评论入口。 */
     var social = r.visibility === 'public' && !r.sample;
-    h += '<div class="post-actions">' + (social ? '<span id="post-like-slot" class="post-like-slot"></span><button type="button" class="post-act" data-action="social-focus">' + COMMENT_ICON + '<span>' + esc(state.lang === 'en' ? L('Comment') : '评论') + '</span></button>' : '') +
+    h += '<div class="post-actions">' + (social ? '<span id="post-like-slot" class="post-like-slot"></span>' : '') +
       saveBtnHTML(p.id, false) + (own || moderationControl(r) ? '<span class="post-own">' + own + moderationControl(r) + '</span>' : '') + '</div>';
     if (r.visibility === 'public' && !r.sample) h += '<section id="post-social" class="post-social" aria-label="' + esc(state.lang === 'en' ? L('Post discussion') : '帖子互动') + '"></section>';
     view.innerHTML = h;

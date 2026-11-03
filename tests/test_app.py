@@ -522,11 +522,11 @@ with sync_playwright() as p:
       setTimeout(() => { const a = f.takenAt; f.takenAt = null; window.__formTakenAt(f, new File([new Uint8Array(8)], 'noexif2.jpg', {lastModified: fresh}));
         setTimeout(() => { const b = f.takenAt; f.takenAt = keep; res([a === old, b === null]); }, 150); }, 150); })''')
     check('single add: a photo without EXIF time falls back to the file time (if older than an hour)', lm == [True, True], lm)
-    check('price label uses MYR for a place in Malaysia', 'MYR' in page.inner_text('label[for="f-price"]'))
+    check('price label uses RM for a place in Malaysia', 'RM' in page.inner_text('label[for="f-price"]'))
     cur = page.evaluate('''() => [["CN","SG","FR","DE","GB","US","CA","AU","TW","HK","MO","JP","KR","TH","ID","MY",""].map(c => window.__curSym(c)).join(" "),
       money({cc: "CN"}, 35), money({lat: 3.15, lng: 101.7}, 12), priceRM({cc: "SG"}, 10), priceRM({cc: "TW"}, 10), ccNow(2.83, 101.70), ccNow(1.30, 103.85)]''')
     check('currency by place country: CN/HK/MO/SG/euro/GB/US/CA/AU use local units; TW/JP stay RM; filter compares in RM',
-          cur == ['RMB SGD EUR EUR GBP USD CAD AUD MYR HKD MOP MYR MYR MYR MYR MYR MYR', 'RMB 35', 'MYR 12', 33, 10, 'MY', ''], cur)
+          cur == ['RMB SGD EUR EUR GBP USD CAD AUD RM HKD MOP RM RM RM RM RM RM', 'RMB 35', 'RM 12', 33, 10, 'MY', ''], cur)
     dk = page.evaluate('[distTier({lat: 2.8605, lng: 101.6790}), distTier({lat: 2.8545, lng: 101.6830}), distTier({lat: 2.8330, lng: 101.6850})]')
     check('Dengkil (龙溪) town counts as mid ride even though it is only ~4 km away; the McD on road 29 stays short', dk == ['mid', 'mid', 'short'], dk)
     hl = page.evaluate('''() => { const F = (name, extra) => Object.assign({mode: 'food', cat: 'other', name: name, lat: 3.1, lng: 101.6}, extra || {});
@@ -547,7 +547,7 @@ with sync_playwright() as p:
     taken_rec = page.evaluate('JSON.parse(localStorage.getItem("xmum-chiwan-map:data:v1")).reviews.find(r => r.text && r.text.startsWith("参巴辣"))')
     check('post uses the photo\'s real taken time, not the moment it was added', taken_rec and taken_rec['createdAt'] == taken_ms, taken_rec and taken_rec['createdAt'])
     page.evaluate('delete window.__exif["test-photo.jpg"]')
-    check('stats show score and price', page.inner_text('.score-big') == '4' and 'MYR 9.5' in page.inner_text('.stats'), page.inner_text('.stats'))
+    check('stats show score and price', page.inner_text('.score-big') == '4' and 'RM 9.5' in page.inner_text('.stats'), page.inner_text('.stats'))
     mine_pin = page.evaluate('window.__map.getSource("places").data.features.find(f => f.properties.name === "测试椰浆饭").properties')
     check('pin colour follows score (4 -> orange-red)', mine_pin['color'] == '#e14f12', mine_pin)
     PIN = 'window.__map.getSource("places").data.features.find(f => f.properties.name === "测试椰浆饭").properties'

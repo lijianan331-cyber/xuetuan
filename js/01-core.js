@@ -1432,7 +1432,7 @@
     var stored = String(p.cc || '').toUpperCase(), cached = ccNow(p.lat, p.lng);
     return (!stored || stored === 'CN' ? cached || stored : stored) || '';
   }
-  function curSymAt(cc) { return CUR_SYM[curKey(cc)] || 'MYR'; }
+  function curSymAt(cc) { return CUR_SYM[curKey(cc)] || 'RM'; }
   function curSym(p) { return curSymAt(placeCC(p)); }
   function money(p, n) { return curSym(p) + ' ' + fmtPrice(n); }
   function priceRM(p, n) { return n ? n * (CUR_RM[curKey(placeCC(p))] || 1) : n; }
@@ -1440,7 +1440,7 @@
   /* Original amounts are stored with their currency. Conversion is display-only and approximate.
      JP/KR/TH/ID/TW keep the previous MYR default; their local currency is opt-in. */
   var LOCAL_PRICE_CUR = { CN:'CNY', HK:'HKD', MO:'MOP', SG:'SGD', AU:'AUD', US:'USD', CA:'CAD', GB:'GBP', EUR:'EUR', JP:'JPY', KR:'KRW', TH:'THB', ID:'IDR', TW:'TWD' };
-  var PRICE_SYM = { MYR:'MYR', CNY:'RMB', HKD:'HKD', MOP:'MOP', SGD:'SGD', AUD:'AUD', USD:'USD', CAD:'CAD', GBP:'GBP', EUR:'EUR', JPY:'JPY', KRW:'KRW', THB:'THB', IDR:'IDR', TWD:'TWD' };
+  var PRICE_SYM = { MYR:'RM', CNY:'RMB', HKD:'HKD', MOP:'MOP', SGD:'SGD', AUD:'AUD', USD:'USD', CAD:'CAD', GBP:'GBP', EUR:'EUR', JPY:'JPY', KRW:'KRW', THB:'THB', IDR:'IDR', TWD:'TWD' };
   /* Budget estimates, not a live or transaction exchange rate. */
   var PRICE_RATE = { MYR:1, CNY:CUR_RM.CN, HKD:CUR_RM.HK, MOP:CUR_RM.MO, SGD:CUR_RM.SG, AUD:CUR_RM.AU, USD:CUR_RM.US, CAD:CUR_RM.CA, GBP:CUR_RM.GB, EUR:CUR_RM.EUR, JPY:.026, KRW:.0031, THB:.12, IDR:.00025, TWD:.13 };
   var priceViews = new Map();
