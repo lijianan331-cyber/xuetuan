@@ -7,7 +7,7 @@ exec(f.read_text(encoding='utf-8').split('with sync_playwright() as p:')[0],s)
 A='aaaaaaaa-0000-4000-8000-000000000001';B='bbbbbbbb-0000-4000-8000-000000000002';C='cccccccc-0000-4000-8000-000000000003'
 seed={'profiles':[{'id':A,'name':'合成管理员','page_public':True},{'id':B,'name':'合成作者','page_public':True},{'id':C,'name':'合成读者','page_public':True}],
 'places':[{'id':'pub','mode':'food','cat':'other','precision':'exact','lat':2.83,'lng':101.70,'name':'合成咖啡店','created_by':B}],
-'visits':[{'id':'post','user_id':B,'place_id':'pub','rating':4,'text':'合成帖子，测试留言和回复。','title':'校园附近的一顿饭','visibility':'public','created_at':'2026-11-02T08:00:00Z','photos':[]}],
+'visits':[{'id':'post','user_id':B,'place_id':'pub','rating':4,'text':'合成帖子，测试评论和回复。','title':'校园附近的一顿饭','visibility':'public','created_at':'2026-11-02T08:00:00Z','photos':[]}],
 'social_comments':[{'id':'root','visit_id':'post','user_id':B,'body':'这家店周末也营业吗？','deleted':False,'parent_id':None,'created_at':'2026-11-02T09:00:00Z'}]}
 n=0
 def check(name,ok):
@@ -67,7 +67,7 @@ with sync_playwright() as p:
  mine=pg.evaluate('socialPanel.rows.find(c=>c.user_id===me().id&&!c.parent_id).id')
  pg.locator('[data-comment="'+mine+'"] [data-action=social-delete]').tap();pg.locator('[data-action=social-delete-confirm]').tap()
  pg.wait_for_function('(id)=>socialPanel.rows.find(c=>c.id===id).deleted',arg=mine)
- check('own deletion leaves a tombstone','这条留言已删除' in pg.locator('[data-comment="'+mine+'"]').inner_text())
+ check('own deletion leaves a tombstone','这条评论已删除' in pg.locator('[data-comment="'+mine+'"]').inner_text())
  pg.evaluate("window.__sbLogin('"+B+"','author@example.com')");pg.wait_for_function('me().id==="'+B+'"');pg.wait_for_selector('.social-private-count')
  check('only post author sees like total','仅你可见' in pg.inner_text('.social-private-count'))
  check('post author can delete reader replies',pg.locator('[data-action=social-delete]').count()>=2)

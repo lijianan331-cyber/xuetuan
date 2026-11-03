@@ -55,12 +55,12 @@ function socialError(e,reading) {
   if (/XUETUAN_BIND_REQUIRED/.test(s)) return socialText('请先登录或绑定谷歌账号再互动。','Sign in or link Google to interact.');
   if (/PGRST202|schema cache|Could not find.*function|no such function/.test(s)) return socialText('互动功能尚未启用，请稍后重试。','Discussion is not available yet.');
   if (/XUETUAN_/.test(s)) return securitySaveError(e);
-  if (reading) return socialText('留言暂时加载不了，请重试。','Comments could not load. Please retry.');
-  return socialText('没有保存成功，请重试；留言仍保留。','Could not save. Retry; your text is kept.');
+  if (reading) return socialText('评论暂时加载不了，请重试。','Comments could not load. Please retry.');
+  return socialText('没有保存成功，请重试；评论仍保留。','Could not save. Retry; your text is kept.');
 }
 function socialAuth() {
   if (store.mode !== 'remote' || (store.signedIn() && !isGuest())) return true;
-  openModal('<div class="modal-card" role="dialog" aria-modal="true"><h3>'+esc(socialText('登录后参与互动','Sign in to join in'))+'</h3><p class="f-hint">'+esc(socialText('点赞、留言和举报需要登录或绑定谷歌，减少游客刷屏。收藏和个人记录仍可匿名保存。','Sign in or link Google to like, comment or report. Private records and saves still work for guests.'))+'</p><div class="btn-row"><button type="button" class="btn primary" data-action="'+(isGuest()?'link-google':'login-google')+'">'+esc(socialText(isGuest()?'绑定谷歌':'谷歌登录',isGuest()?'Link Google':'Sign in with Google'))+'</button><button type="button" class="btn ghost" data-modal="no">'+esc(t('cancel'))+'</button></div></div>');
+  openModal('<div class="modal-card" role="dialog" aria-modal="true"><h3>'+esc(socialText('登录后参与互动','Sign in to join in'))+'</h3><p class="f-hint">'+esc(socialText('点赞、评论和举报需要登录或绑定谷歌，减少游客刷屏。收藏和个人记录仍可匿名保存。','Sign in or link Google to like, comment or report. Private records and saves still work for guests.'))+'</p><div class="btn-row"><button type="button" class="btn primary" data-action="'+(isGuest()?'link-google':'login-google')+'">'+esc(socialText(isGuest()?'绑定谷歌':'谷歌登录',isGuest()?'Link Google':'Sign in with Google'))+'</button><button type="button" class="btn ghost" data-modal="no">'+esc(t('cancel'))+'</button></div></div>');
   return false;
 }
 function currentSocial(p) { return socialPanel===p && socialKey(p.id)===p.key && state.view==='post' && state.postId===p.id && !!$('#post-social'); }
@@ -76,8 +76,8 @@ function socialCommentHTML(c,p) {
   var person=!c.deleted && c.page_public ? ' data-action="person" data-uid="'+esc(c.user_id)+'"' : '';
   var authorHTML=person ? '<button type="button" class="social-author"'+person+'>'+esc(author)+'</button>' : '<b class="social-author">'+esc(author)+'</b>';
   return '<li class="social-comment" data-comment="'+esc(c.id)+'"><div class="social-comment-head">'+authorHTML+'<time>'+esc(timeAgo(Date.parse(c.created_at)))+'</time></div>'+
-    (c.parent_id ? '<small class="social-reply-label">'+esc(socialText('回复 ','Reply to ')+(c.reply_name || socialText('已删除的留言','deleted comment')))+'</small>' : '')+
-    '<p>'+esc(c.deleted ? socialText('这条留言已删除','This comment was deleted.') : c.body)+'</p>'+
+    (c.parent_id ? '<small class="social-reply-label">'+esc(socialText('回复 ','Reply to ')+(c.reply_name || socialText('已删除的评论','deleted comment')))+'</small>' : '')+
+    '<p>'+esc(c.deleted ? socialText('这条评论已删除','This comment was deleted.') : c.body)+'</p>'+
     (c.deleted ? '' : '<div class="social-comment-actions">'+(!c.parent_id ? '<button type="button" class="link-btn" data-action="social-reply" data-id="'+esc(c.id)+'">'+esc(socialText('回复','Reply'))+'</button>' : '')+
       (mayDelete ? '<button type="button" class="link-btn" data-action="social-delete" data-id="'+esc(c.id)+'">'+esc(t('del'))+'</button>' : '')+
       (!own ? '<button type="button" class="link-btn" data-action="social-report" data-id="'+esc(c.id)+'">'+esc(socialText('举报','Report'))+'</button>' : '')+
@@ -90,14 +90,14 @@ function paintPostSocial() {
   var mayWrite=!!data && !p.loading, disabled=busy||!mayWrite?' disabled':'';
   el.innerHTML='<div class="social-toolbar"><button type="button" class="btn social-like" data-action="social-like" aria-pressed="'+!!(data&&data.liked)+'"'+disabled+'>'+socialHeart+esc(busy ? socialText('保存中…','Saving…') : data&&data.liked ? socialText('已赞','Liked') : socialText('点赞','Like'))+'</button>'+
     (data&&data.like_count!=null ? '<small class="social-private-count">'+esc(socialText('收到 '+data.like_count+' 个赞 · 仅你可见',data.like_count+' likes · only you can see this'))+'</small>' : '')+'</div>'+
-    '<div class="social-heading"><h2>'+esc(socialText('留言','Discussion'))+'</h2><button type="button" class="link-btn" data-action="social-refresh"'+(p.loading||busy?' disabled':'')+'>'+esc(socialText('刷新','Refresh'))+'</button></div>'+
+    '<div class="social-heading"><h2>'+esc(socialText('评论','Discussion'))+'</h2><button type="button" class="link-btn" data-action="social-refresh"'+(p.loading||busy?' disabled':'')+'>'+esc(socialText('刷新','Refresh'))+'</button></div>'+
     '<div class="social-compose">'+(p.reply ? '<div class="social-replying">'+esc(socialText('回复 ','Reply to ')+(p.reply.name||t('anon')))+'<button type="button" class="link-btn" data-action="social-cancel-reply">'+esc(t('cancel'))+'</button></div>' : '')+
-    '<label class="social-input-label" for="social-body">'+esc(socialText('写留言','Write a comment'))+'</label><textarea class="input" id="social-body" rows="2" maxlength="500" placeholder="'+esc(socialText('问问这家店，或分享补充信息…','Ask about this place or add a tip…'))+'"'+(busy?' disabled':'')+'>'+esc(draft.text)+'</textarea><div class="social-send-row"><small>'+esc(socialText('留言公开可见','Comments are public'))+'</small><button type="button" class="btn primary small" data-action="social-send"'+disabled+'>'+esc(busy ? socialText('发送中…','Sending…') : socialText('发送','Send'))+'</button></div></div>'+
+    '<label class="social-input-label" for="social-body">'+esc(socialText('写评论','Write a comment'))+'</label><textarea class="input" id="social-body" rows="2" maxlength="500" placeholder="'+esc(socialText('问问这家店，或分享补充信息…','Ask about this place or add a tip…'))+'"'+(busy?' disabled':'')+'>'+esc(draft.text)+'</textarea><div class="social-send-row"><small>'+esc(socialText('评论公开可见','Comments are public'))+'</small><button type="button" class="btn primary small" data-action="social-send"'+disabled+'>'+esc(busy ? socialText('发送中…','Sending…') : socialText('发送','Send'))+'</button></div></div>'+
     (p.error ? '<p class="social-status" role="status">'+esc(p.error)+' <button type="button" class="link-btn" data-action="social-refresh">'+esc(socialText('重试','Retry'))+'</button></p>' : '')+
-    (p.loading ? '<p class="f-hint" role="status">'+esc(socialText('正在加载留言…','Loading comments…'))+'</p>' : '')+
-    (!p.rows.length && data && !p.loading ? '<p class="f-hint">'+esc(socialText('还没有留言，可以问问或补充信息。','No comments yet. Ask a question or add a tip.'))+'</p>' : '')+
+    (p.loading ? '<p class="f-hint" role="status">'+esc(socialText('正在加载评论…','Loading comments…'))+'</p>' : '')+
+    (!p.rows.length && data && !p.loading ? '<p class="f-hint">'+esc(socialText('还没有评论，可以问问或补充信息。','No comments yet. Ask a question or add a tip.'))+'</p>' : '')+
     '<ul class="social-comments">'+p.rows.map(function(c){return socialCommentHTML(c,p);}).join('')+'</ul>'+
-    (p.more ? '<button type="button" class="btn small" data-action="social-more"'+(p.loading||busy?' disabled':'')+'>'+esc(socialText('更早的留言','Older comments'))+'</button>' : '');
+    (p.more ? '<button type="button" class="btn small" data-action="social-more"'+(p.loading||busy?' disabled':'')+'>'+esc(socialText('更早的评论','Older comments'))+'</button>' : '');
   if(focusBody && !busy){var body=$('#social-body');body.focus({preventScroll:true});body.setSelectionRange(start,end);}
 }
 function loadPostSocial(more) {
@@ -130,17 +130,17 @@ function sendSocialComment() {
   if(d.signature!==signature){d.signature=signature;d.request=socialRequestId();socialDrafts.set(p.key,d);}
   runSocialWrite(p,'comment',{body:text,target_id:parent,request_id:d.request},function(){
     socialDrafts.delete(p.key);p.reply=null;
-    if(currentSocial(p)){p.error='';toast(socialText('留言已发送','Comment sent'));}
+    if(currentSocial(p)){p.error='';toast(socialText('评论已发送','Comment sent'));}
   }).then(function(){if(currentSocial(p) && !socialDrafts.has(p.key))loadPostSocial(false);});
 }
 function socialReportDialog(id) {
   if(!socialAuth())return;
   var p=socialPanel;if(!p || !currentSocial(p))return;
-  openModal('<div class="modal-card" role="dialog" aria-modal="true"><h3>'+esc(socialText('举报留言','Report comment'))+'</h3><p class="f-hint">'+esc(socialText('举报仅管理员可见，不会公开你的身份。','Only administrators can see your report. Your identity is not shown publicly.'))+'</p><div class="social-report-reasons">'+[['spam','广告刷屏','Spam'],['abuse','辱骂或骚扰','Abuse'],['privacy','泄露隐私','Privacy'],['other','其他不当内容','Other']].map(function(x){return '<button type="button" class="btn" data-action="social-report-send" data-id="'+esc(id)+'" data-post="'+esc(p.id)+'" data-reason="'+x[0]+'">'+esc(socialText(x[1],x[2]))+'</button>';}).join('')+'</div><button type="button" class="btn ghost" data-modal="no">'+esc(t('cancel'))+'</button></div>');
+  openModal('<div class="modal-card" role="dialog" aria-modal="true"><h3>'+esc(socialText('举报评论','Report comment'))+'</h3><p class="f-hint">'+esc(socialText('举报仅管理员可见，不会公开你的身份。','Only administrators can see your report. Your identity is not shown publicly.'))+'</p><div class="social-report-reasons">'+[['spam','广告刷屏','Spam'],['abuse','辱骂或骚扰','Abuse'],['privacy','泄露隐私','Privacy'],['other','其他不当内容','Other']].map(function(x){return '<button type="button" class="btn" data-action="social-report-send" data-id="'+esc(id)+'" data-post="'+esc(p.id)+'" data-reason="'+x[0]+'">'+esc(socialText(x[1],x[2]))+'</button>';}).join('')+'</div><button type="button" class="btn ghost" data-modal="no">'+esc(t('cancel'))+'</button></div>');
 }
 function socialDeleteDialog(id) {
   var p=socialPanel;if(!p || !currentSocial(p) || !socialAuth())return;
-  openModal('<div class="modal-card" role="dialog" aria-modal="true"><h3>'+esc(socialText('删除这条留言？','Delete this comment?'))+'</h3><p class="f-hint">'+esc(socialText('留言正文会删除，已有回复保留。','The text will be removed. Existing replies stay.'))+'</p><div class="btn-row"><button type="button" class="btn danger" data-action="social-delete-confirm" data-id="'+esc(id)+'" data-post="'+esc(p.id)+'">'+esc(t('del'))+'</button><button type="button" class="btn ghost" data-modal="no">'+esc(t('cancel'))+'</button></div></div>');
+  openModal('<div class="modal-card" role="dialog" aria-modal="true"><h3>'+esc(socialText('删除这条评论？','Delete this comment?'))+'</h3><p class="f-hint">'+esc(socialText('评论正文会删除，已有回复保留。','The text will be removed. Existing replies stay.'))+'</p><div class="btn-row"><button type="button" class="btn danger" data-action="social-delete-confirm" data-id="'+esc(id)+'" data-post="'+esc(p.id)+'">'+esc(t('del'))+'</button><button type="button" class="btn ghost" data-modal="no">'+esc(t('cancel'))+'</button></div></div>');
 }
 var socialReportsBusy=false;
 function loadSocialReports() {
@@ -154,7 +154,7 @@ function loadSocialReports() {
 }
 function socialModerationDialog(id) {
   if(!isModerator())return;
-  openModal('<div class="modal-card" role="dialog" aria-modal="true"><h3>'+esc(socialText('处理公开留言','Moderate public comment'))+'</h3><p class="f-hint">'+esc(socialText('封禁沿用账号及已记录浏览器限制。清除浏览器数据可能绕过浏览器限制。','Bans apply to the account and recorded browsers. Clearing browser data can bypass browser restrictions.'))+'</p><div class="social-report-reasons">'+[['dismiss','忽略举报','Dismiss report'],['delete','删除留言','Delete comment'],['delete_and_ban','删除并封禁作者','Delete and ban author']].map(function(x){return '<button type="button" class="btn" data-action="social-mod-confirm" data-id="'+esc(id)+'" data-decision="'+x[0]+'">'+esc(socialText(x[1],x[2]))+'</button>';}).join('')+'</div><button type="button" class="btn ghost" data-modal="no">'+esc(t('cancel'))+'</button></div>');
+  openModal('<div class="modal-card" role="dialog" aria-modal="true"><h3>'+esc(socialText('处理公开评论','Moderate public comment'))+'</h3><p class="f-hint">'+esc(socialText('封禁沿用账号及已记录浏览器限制。清除浏览器数据可能绕过浏览器限制。','Bans apply to the account and recorded browsers. Clearing browser data can bypass browser restrictions.'))+'</p><div class="social-report-reasons">'+[['dismiss','忽略举报','Dismiss report'],['delete','删除评论','Delete comment'],['delete_and_ban','删除并封禁作者','Delete and ban author']].map(function(x){return '<button type="button" class="btn" data-action="social-mod-confirm" data-id="'+esc(id)+'" data-decision="'+x[0]+'">'+esc(socialText(x[1],x[2]))+'</button>';}).join('')+'</div><button type="button" class="btn ghost" data-modal="no">'+esc(t('cancel'))+'</button></div>');
 }
 var socialModerating=false;
 function handleSocialAction(action,el) {
@@ -191,7 +191,7 @@ function handleSocialAction(action,el) {
     runSocialWrite(p,deleting?'delete':'report',{target_id:d.id,body:deleting?'':d.reason},function(){
       if(!currentSocial(p))return;if(modalCard && modalCard.isConnected)closeModal();p.error='';
       if(deleting){var c=p.rows.find(function(x){return x.id===d.id;});if(c){c.deleted=true;c.body='';c.name='';c.user_id=null;}if(p.reply && p.reply.id===d.id)p.reply=null;}
-      toast(socialText(deleting?'留言已删除':'举报已提交',deleting?'Comment deleted':'Report submitted'));
+      toast(socialText(deleting?'评论已删除':'举报已提交',deleting?'Comment deleted':'Report submitted'));
     }).then(function(){if(modalCard && modalCard.isConnected)modalCard.querySelectorAll('button').forEach(function(b){b.disabled=false;});});
   }
   return true;

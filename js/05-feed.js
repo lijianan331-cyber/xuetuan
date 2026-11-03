@@ -291,7 +291,7 @@
       (r.photos && r.photos.length ? '<div class="rv-photos">' + r.photos.map(function (id) {
         return '<button type="button" class="ph sm" data-action="photo" data-id="' + esc(id) + '" data-group="rv-' + esc(r.id) + '"><img data-photo="' + esc(id) + '" data-small alt="">' + photoDateHTML(id, r) + '</button>';
       }).join('') + '</div>' : '') +
-      (r.visibility === 'public' && !r.sample ? '<button type="button" class="link-btn social-entry" data-action="social-open" data-id="' + esc(r.id) + '">' + esc(state.lang === 'en' ? 'Discussion' : '留言') + '</button>' : '') +
+      (r.visibility === 'public' && !r.sample ? '<button type="button" class="link-btn social-entry" data-action="social-open" data-id="' + esc(r.id) + '">' + esc(state.lang === 'en' ? 'Discussion' : '评论') + '</button>' : '') +
       (isMine(r) ? '<div class="rv-actions"><button type="button" class="link-btn" data-action="edit-review" data-id="' + esc(r.id) + '">' + esc(t('edit')) + '</button>' +
         '<button type="button" class="link-btn danger" data-action="del-review" data-id="' + esc(r.id) + '">' + esc(t('del')) + '</button></div>' : '') +
       moderationControl(r) + '</div></li>';
