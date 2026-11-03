@@ -222,7 +222,7 @@
   var DIST_STEPS = ['any'].concat(DIST_TIERS.map(function (x) { return x.id; }));
   function activeFilterCount() {
     if (state.scope === 'person') return 0;
-    return (state.cat !== 'all' ? 1 : 0) + (state.minScore ? 1 : 0) + (state.dist !== 'any' ? 1 : 0) + (state.priceAbout ? 1 : 0);
+    return (state.cat !== 'all' ? 1 : 0) + (state.minScore ? 1 : 0) + (state.dist !== 'any' ? 1 : 0) + (state.priceAbout ? 1 : 0) + (state.halal ? 1 : 0);
   }
   var CTRL_ICON = {
     search: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg>',
@@ -435,6 +435,8 @@
       if(food) {
         var pi=Math.max(0,PRICE_STOPS.indexOf(state.priceAbout));
         h+='<div class="field price-field"><span class="f-label">'+esc(t('filterPrice'))+'<b id="flt-price-val"'+(pi?'':' class="muted"')+'>'+esc(priceLabel(state.priceAbout))+'</b></span><input type="range" id="flt-price" min="0" max="'+(PRICE_STOPS.length-1)+'" step="1" value="'+pi+'" style="--fill:'+(pi/(PRICE_STOPS.length-1)*100)+'%" aria-label="'+esc(t('filterPrice'))+'"><div class="price-ticks" aria-hidden="true"><span>'+esc(t('anyOpt'))+'</span><span>RM500</span></div></div>';
+        /* 清真（用户 2026-11-03）：一个开关，开了只看清真的店 */
+        h+='<button type="button" class="switch-row" role="switch" data-action="halal-toggle" aria-checked="'+!!state.halal+'"><span class="sw-text"><b>'+esc(state.lang==='en'?'Halal only':'只看清真')+'</b><small>'+esc(state.lang==='en'?'List still growing, mostly campus shops for now':'名单还在补，目前主要是学校里的店')+'</small></span><span class="switch" aria-hidden="true"></span></button>';
       }
       if(mine&&store.myHome()) h+='<button type="button" class="switch-row" role="switch" data-action="mine-home-toggle" aria-checked="'+state.mineHomeOn+'"><span class="sw-text"><b>'+esc(state.lang==='en'?'Show my home':'显示我的家')+'</b><small>'+esc(state.lang==='en'?'A little house on your hometown':'在家乡的位置放一个小房子')+'</small></span><span class="switch" aria-hidden="true"></span></button>';
       h+='<div class="bsheet-foot"><button type="button" class="btn ghost" data-action="clear-filters">'+esc(t('filterReset'))+'</button><button type="button" class="btn primary" data-action="sheet-close">'+esc(t('filterShow',{n:shown}))+'</button></div>';

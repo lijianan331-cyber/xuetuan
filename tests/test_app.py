@@ -525,6 +525,14 @@ with sync_playwright() as p:
           cur == ['RMB SGD EUR EUR GBP USD CAD AUD MYR HKD MOP MYR MYR MYR MYR MYR MYR', 'RMB 35', 'MYR 12', 33, 10, 'MY', ''], cur)
     dk = page.evaluate('[distTier({lat: 2.8605, lng: 101.6790}), distTier({lat: 2.8545, lng: 101.6830}), distTier({lat: 2.8330, lng: 101.6850})]')
     check('Dengkil (龙溪) town counts as mid ride even though it is only ~4 km away; the McD on road 29 stays short', dk == ['mid', 'mid', 'short'], dk)
+    hl = page.evaluate('''() => { const sapid = {mode: 'food', osm: 'ovt/xmum-b1-g04', name: 'Sapid'}, mix = {mode: 'food', osm: 'ovt/xmum-d6-102', name: 'Da Cheng Xiao Shi'};
+      const H = window.XUETUAN_HALAL; H.places.push({key: 'zz-halal-test', lat: 2.8288, lng: 101.7053, v: 'halal'});
+      const near = {mode: 'food', name: 'ZZ-Halal-Test Bell', lat: 2.8290, lng: 101.7054}, far = {mode: 'food', name: 'zz-halal-test', lat: 2.86, lng: 101.70};
+      const keep = state.halal; state.halal = 'halal';
+      const out = [JSON.stringify(placeHalal(sapid)), placeHalal(mix), halalTagHTML(sapid).includes('可能清真'), halalFits(sapid), halalFits(mix), halalFits(near), halalFits(far), filtersActive()];
+      state.halal = keep; H.places.pop(); return out; }''')
+    check('halal: listed campus shops show 可能清真, the switch keeps only halal shops; off-campus names match only near the listed spot',
+          hl == ['{"v":"halal","n":0,"guess":true}', None, True, True, False, True, False, True], hl)
     page.click('#f-submit')
     page.wait_for_timeout(600)
     check('after publish: place view', page.locator('.place-head h2').count() == 1 and page.inner_text('.place-head h2') == '测试椰浆饭', errors[-4:])

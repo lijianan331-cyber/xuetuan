@@ -244,7 +244,7 @@
     var reviews = s.rs.slice().sort(function (a, b) { return reviewActivityAt(b) - reviewActivityAt(a); });
     var tags = '<span class="tag">' + catIconHTML(c) + esc(catName(c)) + '</span><span class="tag">' + esc(precLabel(p.precision)) + '</span>' +
       (p.mode === 'food' && !inCampus(p) ? '<span class="tag">' + esc(t('tier_' + distTier(p))) + '</span>' : '') +
-      '<span class="tag">' + esc(distLabel(p)) + '</span>';
+      '<span class="tag">' + esc(distLabel(p)) + '</span>' + halalTagHTML(p);
 
     var h = '<div class="view-top"><button type="button" class="icon-btn flat" data-action="back" aria-label="' + esc(t('back')) + '">' + ICON.back + '</button>' +
       (p.sample ? '<span class="badge">' + esc(t('sample')) + '</span>' : '') + '</div>' +

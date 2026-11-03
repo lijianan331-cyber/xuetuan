@@ -190,7 +190,7 @@
     state.homesOn = false;
     if (mode === state.mode) return;
     state.mode = mode; state.cat = 'all';
-    if (mode === 'travel') { state.priceAbout = 0; state.dist = 'any'; }
+    if (mode === 'travel') { state.priceAbout = 0; state.dist = 'any'; state.halal = ''; }
     renderChrome();
     refreshMap();
     repaintAccent();
@@ -405,7 +405,7 @@
     state.form = newForm({
       placeId: p.id, editId: r.id, loc: { lng: p.lng, lat: p.lat }, cat: p.cat, precision: p.precision, osm: p.osm || '',
       relocate: true, origPlaceId: p.id, origName: p.name || '',
-      rating: r.rating, visibility: r.visibility, priceCurrency: reviewPriceCurrency(p,r),
+      rating: r.rating, visibility: r.visibility, priceCurrency: reviewPriceCurrency(p,r), halal: r.halal || null,
       photos: (r.photos || []).map(function (id) { return { id: id, existing: true }; }),
       draft: { name: p.name, alt: p.altName, link: p.link, price: r.price ? String(r.price) : '', title: r.title || '', text: r.text }
     });
@@ -777,7 +777,8 @@
     var price = ((p0 ? p0.mode : state.mode) === 'food') ? parseFloat(d.price) : NaN;
     var rv = {
       rating: f.rating, priceCurrency: formPriceCurrency(), price: isFinite(price) && price > 0 ? Math.round(price * 100) / 100 : null,
-      title: (d.title || '').trim().slice(0, 80) || null, text: (d.text || '').trim().slice(0, 1000), visibility: f.visibility
+      title: (d.title || '').trim().slice(0, 80) || null, text: (d.text || '').trim().slice(0, 1000), visibility: f.visibility,
+      halal: (p0 ? p0.mode : state.mode) === 'food' ? validHalal(f.halal) : null
     };
     /* 照片是一小时以前拍的才改日期，刚拍刚发的照常用现在 */
     if (!f.editId && f.takenAt && f.takenAt < Date.now() - 3600000) rv.createdAt = f.takenAt;

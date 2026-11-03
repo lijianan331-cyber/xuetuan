@@ -398,7 +398,7 @@
   var HOME_DAYS = 30;
   var state = {
     footTime: 'added',
-    lang: 'zh', mode: 'food', tab: 'home', scope: 'all', cat: 'all', priceAbout: 0, minScore: 0, dist: 'any',
+    lang: 'zh', mode: 'food', tab: 'home', scope: 'all', cat: 'all', priceAbout: 0, minScore: 0, dist: 'any', halal: '',
     view: 'feed', placeId: null, postId: null, placeBack: null, form: null, nearby: null, query: '',
     homeMode: 'all', homeDays: HOME_DAYS, homeMin: 0, homeSort: 'newest', homeFiltersOpen: false, bootLoading: true, posting: false, snap: 'peek', feedSnap: 'peek', picking: null, preview: null, bsheet: null, me: null, styleKey: 'light',
     person: null, personBack: null, mineBoth: false, countries: false, savedWant: false, savedStatus: 'all', favoritesBack: null, mineSub: 'mine', homesOn: false, mineHomeOn: false, homes: null, homeBack: null, clusterPlaces: null, bulk: null
@@ -574,7 +574,7 @@
         var me = data.profile;
         var r = {
           id: uid('r'), placeId: f.placeId, authorId: me.id, authorName: me.name || '',
-          rating: f.rating, price: f.price, priceCurrency: validPriceCurrency(f.priceCurrency), title: f.title || null, text: f.text, photos: newPhotos.map(function (ph) { return ph.id; }),
+          rating: f.rating, price: f.price, priceCurrency: validPriceCurrency(f.priceCurrency), halal: validHalal(f.halal), title: f.title || null, text: f.text, photos: newPhotos.map(function (ph) { return ph.id; }),
           visibility: f.visibility, createdAt: f.createdAt || Date.now(), updatedAt: Date.now(), sample: false
         };
         return putPhotos(newPhotos).then(function (photosOk) {
@@ -589,7 +589,7 @@
         if (!r || r.authorId !== data.profile.id) return Promise.reject(new Error('not yours'));
         return putPhotos(newPhotos).then(function (photosOk) {
           (r.photos || []).forEach(function (pid) { if (keepPhotos.indexOf(pid) === -1) forgetPhoto(pid); });
-          ['rating', 'price', 'priceCurrency', 'title', 'text', 'visibility'].forEach(function (k) { if (patch[k] !== undefined) r[k] = patch[k]; });
+          ['rating', 'price', 'priceCurrency', 'halal', 'title', 'text', 'visibility'].forEach(function (k) { if (patch[k] !== undefined) r[k] = patch[k]; });
           r.photos = orderPhotos(keepPhotos, newPhotos.map(function (ph) { return ph.id; }), patch.photoOrder);
           r.authorName = data.profile.name || '';
           r.updatedAt = Date.now();
@@ -773,7 +773,7 @@
       author = author || r.author || {};
       return {
         id: r.id, placeId: r.place_id, authorId: r.user_id, authorName: author.name || '', authorPage: !!author.page_public, authorAvatar: author.avatar || '',
-        rating: r.rating == null ? null : +r.rating, price: r.price == null ? null : +r.price, priceCurrency: validPriceCurrency(r.price_currency), title: r.title || null, text: r.text, photos: r.photos || [],
+        rating: r.rating == null ? null : +r.rating, price: r.price == null ? null : +r.price, priceCurrency: validPriceCurrency(r.price_currency), halal: validHalal(r.halal), title: r.title || null, text: r.text, photos: r.photos || [],
         visibility: r.visibility, createdAt: Date.parse(r.created_at), updatedAt: r.updated_at ? Date.parse(r.updated_at) : null, sample: false
       };
     }
@@ -858,6 +858,8 @@
         cache.admin = res[5] === true;
         cache.places = places.map(placeFromRow);
         cache.ccCol = !!(places[0] && 'cc' in places[0]);
+        /* 清真这一列是 2026-11-03 加的：库里还没有就先不写，免得整条记录存不上 */
+        cache.halalCol = !!(visits[0] && 'halal' in visits[0]);
         cache.reviews = visits.map(function (v) { return reviewFromRow(v); });
         cache.profile = uid ? Object.assign({}, ANON, profile || {}, { id: uid }) : ANON;
         cache.wishlist = (wish || []).map(function (w) { return { placeId: w.place_id, createdAt: Date.parse(w.created_at) }; });
@@ -999,6 +1001,7 @@
           if (progress) progress('write');
           var row = { place_id: f.placeId, rating: f.rating, price: f.price, price_currency: validPriceCurrency(f.priceCurrency), text: f.text, title: f.title || null, visibility: f.visibility, photos: up.paths, updated_at: new Date().toISOString() };
           if (f.createdAt) row.created_at = new Date(f.createdAt).toISOString();
+          if (cache.halalCol) row.halal = validHalal(f.halal);
           return client.from('visits').insert(row).select().single().then(ok).then(function (v) {
             var r = reviewFromRow(v, cache.profile);
             cache.reviews.unshift(r);
@@ -1014,6 +1017,7 @@
           if (progress) progress('write');
           var dropped = (r.photos || []).filter(function (p) { return keepPhotos.indexOf(p) === -1; });
           var row = { rating: patch.rating, price: patch.price, price_currency: validPriceCurrency(patch.priceCurrency), text: patch.text, title: patch.title || null, visibility: patch.visibility, photos: orderPhotos(keepPhotos, up.paths, patch.photoOrder) };
+          if (cache.halalCol && patch.halal !== undefined) row.halal = validHalal(patch.halal);
           return client.from('visits').update(row).eq('id', id).select().single().then(ok).then(function (v) {
             removePhotos(dropped);
             Object.assign(r, reviewFromRow(v, cache.profile));
@@ -1032,7 +1036,8 @@
           var dropped = (r.photos || []).filter(function (p) { return keepPhotos.indexOf(p) === -1; });
           var made = r._movedTo && r._movedTo.placeId === placeId ? Promise.resolve(r._movedTo) : client.from('visits').insert({
             place_id: placeId, rating: patch.rating, price: patch.price, price_currency: validPriceCurrency(patch.priceCurrency), text: patch.text, title: patch.title || null, visibility: patch.visibility,
-            photos: orderPhotos(keepPhotos, up.paths, patch.photoOrder), created_at: new Date(r.createdAt).toISOString(), updated_at: new Date().toISOString()
+            photos: orderPhotos(keepPhotos, up.paths, patch.photoOrder), created_at: new Date(r.createdAt).toISOString(), updated_at: new Date().toISOString(),
+            halal: cache.halalCol ? validHalal(patch.halal) : undefined
           }).select().single().then(ok).then(function (v) { r._movedTo = reviewFromRow(v, cache.profile); return r._movedTo; });
           return made.then(function (nr) {
             return client.from('visits').delete().eq('id', id).then(ok).then(function () {
@@ -1420,6 +1425,53 @@
   function localPriceCurrency(p) { var cc = placeCC(p); return LOCAL_PRICE_CUR[EURO_CC.indexOf(cc) !== -1 ? 'EUR' : cc] || 'MYR'; }
   function defaultPriceCurrency(p) { return LOCAL_PRICE_CUR[curKey(placeCC(p))] || 'MYR'; }
   function priceRate(c) { return PRICE_RATE[validPriceCurrency(c) || 'MYR']; }
+  /* 清真（用户 2026-11-03）：每条记录可选 清真 / 无猪肉 / 非清真。地点上取大家选得最多的；
+     没人选过的校内餐厅，用学校餐厅表的菜系猜一个“可能清真”（穆斯林菜系、本身有认证的连锁），只当提示 */
+  var HALAL = ['halal', 'porkfree', 'nonhalal'];
+  function validHalal(v) { return HALAL.indexOf(v) !== -1 ? v : null; }
+  function halalName(v, guess) {
+    var en = state.lang === 'en';
+    if (guess) return en ? 'Maybe halal' : '可能清真';
+    return { halal: en ? 'Halal' : '清真', porkfree: en ? 'Pork-free' : '无猪肉', nonhalal: en ? 'Non-halal' : '非清真' }[v] || '';
+  }
+  function placeHalal(p) {
+    if (!p || p.mode !== 'food') return null;
+    var n = {}, best = null;
+    store.reviews().forEach(function (r) {
+      if (r.placeId !== p.id || !r.halal) return;
+      n[r.halal] = (n[r.halal] || 0) + 1;
+      /* 票数一样时偏保守：非清真 > 无猪肉 > 清真 */
+      if (!best || n[r.halal] > n[best] || (n[r.halal] === n[best] && HALAL.indexOf(r.halal) > HALAL.indexOf(best))) best = r.halal;
+    });
+    if (best) return { v: best, n: n[best], guess: false };
+    var L = halalListed(p);
+    return L ? { v: L.v, n: 0, guess: !!L.guess } : null;
+  }
+  /* 清真名单 data/halal.js（用户逐家确认）：校内按 楼-铺位 对上，校外按名字 + 200 米内对上 */
+  function halalListed(p) {
+    var H = window.XUETUAN_HALAL;
+    if (!H) return null;
+    var s = typeof campusShop === 'function' && campusShop(p);
+    if (s && H.campus[s.block + ' · ' + s.lot]) return H.campus[s.block + ' · ' + s.lot];
+    var name = String(p.name || '').toLowerCase();
+    for (var i = 0; i < H.places.length; i++) {
+      var x = H.places[i];
+      if (name && name.indexOf(x.key) !== -1 && haversine(x, p) <= 200) return x;
+    }
+    return null;
+  }
+  function halalFits(p) {
+    if (!state.halal) return true;
+    var h = placeHalal(p);
+    return !!h && h.v === 'halal';
+  }
+  function halalTagHTML(p) {
+    var h = placeHalal(p);
+    if (!h) return '';
+    var en = state.lang === 'en';
+    var tip = h.guess ? (en ? 'Guessed from the campus cafeteria list, not confirmed' : '按学校餐厅表的菜系猜的，还没人确认') : (en ? h.n + ' people said so' : h.n + ' 人选了');
+    return '<span class="tag halal-tag ' + h.v + (h.guess ? ' guess' : '') + '" title="' + esc(tip) + '">' + esc(halalName(h.v, h.guess)) + (h.guess ? '' : '<small>' + h.n + '</small>') + '</span>';
+  }
   function reviewPriceCurrency(p, r) { return validPriceCurrency(r && r.priceCurrency) || defaultPriceCurrency(p); }
   function reviewPriceRM(p, r) { return r.price * priceRate(reviewPriceCurrency(p, r)); }
   function priceChoices(p, keep) { var local = localPriceCurrency(p), a = ['MYR']; if (local !== 'MYR') a.push(local); if (validPriceCurrency(keep) && a.indexOf(keep) < 0) a.push(keep); return a; }
@@ -1744,19 +1796,20 @@
     if (state.priceAbout && !priceFits(priceRM(p, s.avgPrice), state.priceAbout)) return false;
     if (state.minScore && !(s.score != null && s.score >= state.minScore)) return false;
     if (state.dist !== 'any' && distTier(p) !== state.dist) return false;
+    if (state.halal && !halalFits(p)) return false;
     return true;
   }
   function ownVisitMatches(p,r) {
     return (!state.minScore || (r.rating != null && r.rating >= state.minScore)) && (!state.priceAbout || priceFits(reviewPriceRM(p,r),state.priceAbout));
   }
-  function filtersActive() { return state.scope !== 'person' && (state.cat !== 'all' || !!state.priceAbout || !!state.minScore || state.dist !== 'any'); }
+  function filtersActive() { return state.scope !== 'person' && (state.cat !== 'all' || !!state.priceAbout || !!state.minScore || state.dist !== 'any' || !!state.halal); }
   var scopeFilterMemory = {};
   function changeMapScope(next) {
     if (state.scope === next) return;
-    var keys = ['cat','minScore','dist','priceAbout'], old = {};
+    var keys = ['cat','minScore','dist','priceAbout','halal'], old = {};
     keys.forEach(function(k){ old[k]=state[k]; }); scopeFilterMemory[state.scope] = old;
     state.scope = next;
-    var saved = scopeFilterMemory[next] || {cat:'all',minScore:0,dist:'any',priceAbout:0};
+    var saved = scopeFilterMemory[next] || {cat:'all',minScore:0,dist:'any',priceAbout:0,halal:''};
     keys.forEach(function(k){ state[k]=saved[k]; });
   }
   function catOf(p) {
