@@ -623,6 +623,20 @@
     if (world.fc) ps.forEach(function (p) { var i = countryAt(p.lng, p.lat); if (i >= 0) countries[i] = true; });
     return { v: 1, name: (me().name || (state.lang === 'en' ? 'A XueTuan explorer' : '雪团同学')).slice(0, 20), food: ps.filter(function (p) { return p.mode === 'food'; }).length, scenery: ps.filter(function (p) { return p.mode === 'travel'; }).length, places: ps.length, countries: world.fc ? Object.keys(countries).length : null, countryIds: world.fc ? Object.keys(countries).map(function (i) { return String(world.fc.features[i].id).padStart(3, '0'); }).sort() : [], date: new Date().toISOString().slice(0, 10), privateCounts: !!includePrivate };
   }
+  var FOOD_SHARE_AREAS = {'food-kl':[101.50,2.80,101.85,3.35],'food-xmum':[101.67,2.80,101.75,2.88]};
+  function foodShareSnapshot(includePrivate, area) {
+    var region=FOOD_SHARE_AREAS[area===true?'food-kl':area];
+    var reviews = store.reviews().filter(function(r){return isMine(r) && !r.sample && (includePrivate || r.visibility === 'public');});
+    var byPlace = {};
+    reviews.forEach(function(r){var p=placeById(r.placeId);if(!p || p.sample || p.mode!=='food' || !isFinite(p.lng) || !isFinite(p.lat))return;
+      if(region && !(p.lng>=region[0] && p.lng<=region[2] && p.lat>=region[1] && p.lat<=region[3]))return;
+      (byPlace[p.id] || (byPlace[p.id]={p:p,reviews:[]})).reviews.push(r);
+    });
+    var points=Object.keys(byPlace).map(function(id){var x=byPlace[id],scored=x.reviews.filter(function(r){return r.rating!=null;});
+      return {lng:+x.p.lng,lat:+x.p.lat,rating:scored.length?scored.reduce(function(a,r){return a+r.rating;},0)/scored.length:null,visits:x.reviews.length};});
+    return {points:points,total:points.length,visits:points.reduce(function(n,p){return n+p.visits;},0),high:points.filter(function(p){return p.rating>=4;}).length};
+  }
+  function foodShareTheme(theme) {return theme==='food-kl' || theme==='food-world' || theme==='food-xmum';}
   function sharedCardURL(data) {
     var url = new URL(location.href), token = url.searchParams.get('_vercel_share');
     url.search = ''; url.hash = '';
@@ -651,20 +665,24 @@
     if (shareCard.own) shareCard.data = shareSnapshot(shareCard.includePrivate);
     var card = shareCard, d = card.data, en = state.lang === 'en';
     d.theme = card.theme || d.theme || 'atlas';
-    card.url = sharedCardURL(d); card.blob = null;
+    if (foodShareTheme(d.theme)) d.foodMap=foodShareSnapshot(card.includePrivate,d.theme);
+    card.url = foodShareTheme(d.theme) ? appShareURL() : sharedCardURL(d); card.blob = null;
     view.innerHTML = '<div class="view-top"><button type="button" class="icon-btn flat" data-action="back" aria-label="' + esc(t('back')) + '">' + ICON.back + '</button><h2 class="view-title">' + esc(en ? 'My footprint card' : '足迹分享卡') + '</h2></div>' +
-      (card.own ? '<div class="seg" style="margin-bottom:14px">' + [['atlas',en?'World map':'点亮世界'],['stats',en?'Minimal':'简洁数据']].map(function (x) { return '<button type="button" data-action="share-theme" data-v="' + x[0] + '" aria-pressed="' + (d.theme === x[0]) + '">' + esc(x[1]) + '</button>'; }).join('') + '</div><label class="f-hint"><input type="checkbox" id="share-private"' + (card.includePrivate ? ' checked' : '') + '> ' + esc(en ? 'Include private footprints: totals and countries only' : '包含仅个人足迹：只展示汇总和国家') + '</label>' : '') +
+      (card.own ? '<div class="seg share-themes" style="margin-bottom:14px;display:flex;flex-wrap:wrap">' + [['atlas',en?'World map':'点亮世界'],['stats',en?'Minimal':'简洁数据'],['food-kl',en?'KL food':'KL 美食'],['food-xmum',en?'Near XMUM':'XMUM 附近'],['food-world',en?'World food':'世界美食']].map(function (x) { return '<button type="button" data-action="share-theme" data-v="' + x[0] + '" aria-pressed="' + (d.theme === x[0]) + '">' + esc(x[1]) + '</button>'; }).join('') + '</div><label class="f-hint"><input type="checkbox" id="share-private"' + (card.includePrivate ? ' checked' : '') + '> ' + esc(foodShareTheme(d.theme) ? (en ? 'Include private restaurants: locations and ratings will appear on the image' : '包含仅个人餐厅：图片将展示餐厅位置和评分') : (en ? 'Include private footprints: totals and countries only' : '包含仅个人足迹：只展示汇总和国家')) + '</label>' : '') +
       '<div class="share-card"><canvas id="share-canvas" width="900" height="1120" role="img" aria-label="' + esc(d.name + ' · ' + d.food + (en ? ' restaurants, ' : ' 家餐厅，') + d.scenery + (en ? ' places to enjoy, ' : ' 处玩乐，') + d.places + (en ? ' places' : ' 个地点')) + '"></canvas></div>' +
-      '<p class="f-hint">' + esc(en ? 'A snapshot of recorded footprints. Country counts are estimated from coordinates. No photos, reviews or hometown location are included.' : '统计来自已记录的足迹，国家/地区按坐标估算。不含照片、点评或家乡位置。') + '</p><div class="share-actions"><button type="button" class="btn primary" data-action="share-card">' + esc(en ? 'Share' : '分享') + '</button><button type="button" class="btn" data-action="save-share-card">' + esc(en ? 'Save image' : '保存图片') + '</button><button type="button" class="btn ghost" data-action="copy-share-card">' + esc(en ? 'Copy link' : '复制链接') + '</button></div>' +
+      '<p class="f-hint">' + esc(foodShareTheme(d.theme) ? (en ? 'Unique restaurants, coloured by your average rating. KL includes the Klang Valley and Sepang. Share the image for the full map; the link opens XueTuan.' : '餐厅去重，按自己的平均评分配色。KL 范围含巴生谷和雪邦；分享图片保留完整地图，链接用于打开雪团。') : en ? 'A snapshot of recorded footprints. Country counts are estimated from coordinates. No photos, reviews or hometown location are included.' : '统计来自已记录的足迹，国家/地区按坐标估算。不含照片、点评或家乡位置。') + '</p><div class="share-actions"><button type="button" class="btn primary" data-action="share-card">' + esc(en ? 'Share' : '分享') + '</button><button type="button" class="btn" data-action="save-share-card">' + esc(en ? 'Save image' : '保存图片') + '</button><button type="button" class="btn ghost" data-action="copy-share-card">' + esc(en ? 'Copy link' : '复制链接') + '</button></div>' +
       '<input class="input share-link" id="share-link" readonly aria-label="' + esc(en ? 'Share link' : '分享链接') + '" value="' + esc(card.url) + '">' + (!card.own ? '<button type="button" class="btn primary" data-action="tab" data-tab="home">' + esc(en ? 'Explore XueTuan' : '打开雪团，一起发现') + '</button>' : '');
     var canvas = $('#share-canvas');
     drawShareCard(canvas, d, en);
     var saveButton = $('[data-action="save-share-card"]');
     if (saveButton) saveButton.disabled = true;
-    canvas.toBlob(function (blob) { if (shareCard === card && canvas.isConnected) { card.blob = blob; if (saveButton) saveButton.disabled = !blob; } }, 'image/png');
+    var sendButton=$('[data-action="share-card"]');if(sendButton)sendButton.disabled=true;
+    function ready(){canvas.toBlob(function (blob) { if (shareCard === card && canvas.isConnected) { card.blob = blob; if (saveButton) saveButton.disabled = !blob;if(sendButton)sendButton.disabled=!blob; } }, 'image/png');}
+    if(FOOD_SHARE_AREAS[d.theme]) paintKLFoodMap(canvas,d,en).then(ready); else ready();
   }
   function drawShareCard(canvas, d, en) {
     var g = canvas.getContext('2d');
+    if (foodShareTheme(d.theme)) { drawFoodShareCard(g,d,en); return; }
     if (d.theme !== 'stats') { drawAtlasCard(g, d, en); return; }
     var grad = g.createLinearGradient(0, 0, 900, 1120);
     grad.addColorStop(0, '#e7f4ff'); grad.addColorStop(1, '#fbfdff'); g.fillStyle = grad; g.fillRect(0, 0, 900, 1120);
@@ -736,6 +754,48 @@
       g.beginPath(); g.arc(c[0],c[1],2.5,0,Math.PI*2); g.fillStyle='#b4eeea'; g.fill();
     });
     g.restore();
+  }
+  var foodMapImages = {}, foodMapLoading = {}, foodMapBounds = {};
+  function foodRatingColor(r){return r==null?'#91a1af':r>=4?'#269c91':r>=3?'#599bd2':r>=2?'#dca454':'#d77f78';}
+  function drawFoodShareCard(g,d,en){
+    var f=d.foodMap,regional=!!FOOD_SHARE_AREAS[d.theme],foodKLImage=foodMapImages[d.theme],foodKLBounds=foodMapBounds[d.theme];
+    g.fillStyle='#eef4fa';g.fillRect(0,0,900,1120);g.fillStyle='#2e7dcb';g.font='600 25px sans-serif';g.fillText('雪团 XueTuan / FOOD ATLAS',52,66);
+    g.fillStyle='#1b2a3a';g.font='600 46px sans-serif';g.fillText(d.theme==='food-xmum'?(en?'Food around XMUM':'我的 XMUM 周边美食'):d.theme==='food-kl'?(en?'My KL food map':'我的 KL 美食地图'):(en?'My world of food':'我吃过的世界'),52,140);
+    g.fillStyle='#687a8c';g.font='25px sans-serif';g.fillText(d.name.slice(0,20)+' · '+d.date,52,188);
+    var y=225,h=535;g.fillStyle='#e0eaf1';g.fillRect(40,y,820,h);
+    if(regional && foodKLImage) g.drawImage(foodKLImage,40,y,820,h);
+    else if(d.theme==='food-world') {
+      if(world.fc) world.fc.features.forEach(function(feature){g.fillStyle='#f9fbfd';g.strokeStyle='#c1d0dc';g.lineWidth=.7;
+        (feature.polys||polysOf(feature.geometry)).forEach(function(poly){g.beginPath();poly.forEach(function(ring){ring.forEach(function(c,i){var px=40+(c[0]+180)/360*820,py=y+(85-c[1])/145*h;if(i)g.lineTo(px,py);else g.moveTo(px,py);});g.closePath();});g.fill('evenodd');g.stroke();});});
+    }
+    g.save();g.beginPath();g.rect(40,y,820,h);g.clip();
+    f.points.forEach(function(p){var x,py;
+      if(regional){var bounds=foodKLBounds||FOOD_SHARE_AREAS[d.theme];x=40+(p.lng-bounds[0])/(bounds[2]-bounds[0])*820;var merc=function(lat){return Math.log(Math.tan(Math.PI/4+lat*Math.PI/360));};py=y+(merc(bounds[3])-merc(p.lat))/(merc(bounds[3])-merc(bounds[1]))*h;}
+      else{x=40+(p.lng+180)/360*820;py=y+(85-p.lat)/145*h;}
+      g.beginPath();g.arc(x,py,regional?4.5:3.5,0,Math.PI*2);g.fillStyle=foodRatingColor(p.rating);g.fill();g.strokeStyle='#fff';g.lineWidth=1;g.stroke();
+    });g.restore();
+    g.fillStyle='#687a8c';g.font='16px sans-serif';g.fillText(regional?(foodKLImage?'© OpenFreeMap · © OpenMapTiles · © OpenStreetMap':'Coordinate map · '+(d.theme==='food-xmum'?'XMUM / Kota Warisan / Dengkil':'Klang Valley / Sepang')):'World map · Natural Earth',52,789);
+    var legend=[[4,'4–5'],[3,'3–<4'],[2,'2–<3'],[1,'0–<2'],[null,en?'Unrated':'未评分']];
+    legend.forEach(function(a,i){var x=58+i*161;g.fillStyle=foodRatingColor(a[0]);g.beginPath();g.arc(x,827,6,0,Math.PI*2);g.fill();g.fillStyle='#687a8c';g.font='20px sans-serif';g.fillText(a[1],x+15,834);});
+    [f.total,f.visits,f.high].forEach(function(n,i){var x=52+i*272;g.fillStyle='#1b2a3a';g.font='600 58px sans-serif';g.fillText(String(n),x,929);g.fillStyle='#687a8c';g.font='24px sans-serif';g.fillText((en?['Restaurants','Visits','Rated 4+']:['家餐厅','次到访','家评分 ≥4'])[i],x,974);});
+    g.fillStyle='#687a8c';g.font='21px sans-serif';g.fillText(!f.total?(en?'Your next discovery starts here.':'下一家好吃的，等你发现。'):(en?'One little dot, one delicious memory.':'每一个小点，都是吃过的好时光。'),52,1037);
+    g.font='17px sans-serif';g.fillText((d.privateCounts?(en?'Includes private restaurants':'包含仅个人餐厅'):(en?'Public restaurants only':'仅公开餐厅'))+' · XUETUAN',52,1080);
+  }
+  function paintKLFoodMap(canvas,d,en){
+    var key=d.theme,region=FOOD_SHARE_AREAS[key];
+    if(foodMapImages[key]){drawFoodShareCard(canvas.getContext('2d'),d,en);return Promise.resolve();}
+    if(!foodMapLoading[key]) foodMapLoading[key]=new Promise(function(resolve){
+      var holder=document.createElement('div');holder.style.cssText='position:fixed;left:-10000px;top:0;width:820px;height:535px;pointer-events:none';document.body.appendChild(holder);
+      var mini=null,done=false,timer=setTimeout(finish,12000);
+      function finish(){if(done)return;done=true;clearTimeout(timer);if(mini)mini.remove();holder.remove();resolve();}
+      loadStyle('light').then(function(style){if(done)return;
+        try{mini=new maplibregl.Map({container:holder,style:style,interactive:false,attributionControl:false,preserveDrawingBuffer:true,fadeDuration:0});
+          mini.fitBounds([[region[0],region[1]],[region[2],region[3]]],{padding:0,duration:0});
+          mini.once('idle',function(){try{var bounds=mini.getBounds();foodMapBounds[key]=[bounds.getWest(),bounds.getSouth(),bounds.getEast(),bounds.getNorth()];var img=new Image();img.onload=function(){foodMapImages[key]=img;finish();};img.onerror=finish;img.src=mini.getCanvas().toDataURL('image/png');}catch(e){finish();}});
+        }catch(e){finish();}
+      }).catch(finish);
+    }).then(function(){delete foodMapLoading[key];});
+    return foodMapLoading[key].then(function(){if(canvas.isConnected)drawFoodShareCard(canvas.getContext('2d'),d,en);});
   }
   function saveShareCard() {
     if (!shareCard || !shareCard.blob) return;

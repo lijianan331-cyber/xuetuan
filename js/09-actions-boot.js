@@ -411,7 +411,7 @@
       case 'app-share': openAppShare(); break;
       case 'app-share-copy': copyAppShare(); break;
       case 'app-share-system': sendAppShare(); break;
-      case 'share-theme': if (shareCard && shareCard.own) { shareCard.theme = d.v === 'stats' ? 'stats' : 'atlas'; render(); } break;
+      case 'share-theme': if (shareCard && shareCard.own) { shareCard.theme = ['atlas','stats','food-kl','food-xmum','food-world'].indexOf(d.v)>=0?d.v:'atlas'; shareCard.includePrivate=false; render(); } break;
       case 'share-card': sendShareCard(); break;
       case 'save-share-card': saveShareCard(); break;
       case 'copy-share-card': copyShareCard(); break;
