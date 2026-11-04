@@ -95,6 +95,7 @@
     syncPlaceCluster();
     queueLib();
     ensurePinThumbs();
+    if (store.pagedReads && store.pagedReads()) store.reader().readMap(false).catch(function () {});
     updateSelPin();
     var g = globeChipShown();
     if (g !== lastGlobeChip) { lastGlobeChip = g; renderFilters(); }
@@ -174,6 +175,7 @@
         if (PERF.jank.length) lines.push('卡在缩放 ' + PERF.jank.join(' '));
       } else lines.push('滑动 拖一下地图再看');
       if (map) lines.push('现在缩放 ' + map.getZoom().toFixed(1) + ' · ' + (GMAP ? '谷歌平面' : map.getZoom() < 7 ? '地球' : '平面'));
+      if(store.pagedReads&&store.pagedReads()){var rm=store.reader().metrics();lines.push('数据 '+rm.calls+' 次 · 最近 '+rm.lastMs+'ms · P95 '+rm.p95+'ms · JSON '+Math.round(rm.bytes/1024)+'KB · 错误 '+rm.failures);lines.push('已加载 首页 '+rm.feedRows+' 条 · 地图 '+rm.mapRows+' 项');}
       lines.push('新着色器 ' + PERF.sh + ' 个 ' + Math.round(PERF.shMs) + 'ms · 画字 ' + PERF.gl + ' 个 ' + Math.round(PERF.glMs) + 'ms');
       if (PERF.warm) lines.push('提前画字 ' + (PERF.warm - warmTodo.length) + '/' + PERF.warm);
       box.textContent = lines.join('\n');
@@ -664,7 +666,7 @@
     places.forEach(function (p) {
         /* 收藏地图上每个都是收藏的，就不再加星 */
         var saved = state.scope !== 'saved' && store.isSaved(p.id);
-        var s = stats(p), photo = coverPhoto(p), count = placePhotos(p).length, ph = photo ? photoPinImage(photo, s.score, saved, count) : null;
+        var s = stats(p), photo = coverPhoto(p), count = placePhotoCount(p), ph = photo ? photoPinImage(photo, s.score, saved, count) : null;
         if (photo && !ph && !pinThumbs.has(photo) && photoWanted(p) && (!b || b.contains([p.lng, p.lat]))) queueThumb(photo);
         if(ph)currentPinImages.add(ph);
         var f = {

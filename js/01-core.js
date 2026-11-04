@@ -744,14 +744,14 @@
   function remoteStore(client) {
     var ANON = { id: null, name: '', country: '', region: '', city: '', district: '' };
     var cache = { places: [], reviews: [], wishlist: [], homes: [], profile: ANON, admin: false };
-    var session = null, email = '';
+    var session = null, email = '', reader = null;
     var offline = window.XueOffline && window.XueOffline.enabled ? window.XueOffline : null;
     function saveOffline() { if (offline) offline.snapshot(cache); }
     function restoreOffline(guard) {
       var actor = uidNow();
       return (offline ? offline.snapshot() : Promise.resolve(null)).then(function (saved) {
         if (!saved || actor !== uidNow() || (guard && !guard())) throw new Error('No offline content');
-        ['places','reviews','wishlist','homes','profile'].forEach(function (k) { cache[k] = saved[k]; }); cache.admin = false;
+        ['places','reviews','wishlist','homes','profile'].forEach(function (k) { cache[k] = saved[k]; }); cache.mapGroups = saved.mapGroups || []; cache.admin = false;
       });
     }
     function readAll(guard) {
@@ -877,6 +877,10 @@
       return page(0);
     }
     function loadAll(guard) {
+      if (reader) return reader.refresh(guard).then(function (supported) { return supported ? undefined : loadLegacy(guard); });
+      return loadLegacy(guard);
+    }
+    function loadLegacy(guard) {
       var uid = uidNow();
       return Promise.all([
         fetchAll(function () { return client.from('places').select('*').order('id'); }),
@@ -909,7 +913,7 @@
       session = s;
       email = s && s.user ? s.user.email || '' : '';
       if (offline) offline.setOwner(uidNow());
-      if (before !== uidNow()) { cache.places = []; cache.reviews = []; cache.wishlist = []; cache.homes = []; cache.profile = uidNow() ? Object.assign({}, ANON, {id:uidNow()}) : ANON; cache.admin = false; photoURLs.forEach(function (u) { if (/^blob:/.test(u)) URL.revokeObjectURL(u); }); photoURLs.clear(); photoExpiries.clear(); photoRequests.clear(); }
+      if (before !== uidNow()) { if (reader) reader.reset(); cache.mapGroups = []; cache.places = []; cache.reviews = []; cache.wishlist = []; cache.homes = []; cache.profile = uidNow() ? Object.assign({}, ANON, {id:uidNow()}) : ANON; cache.admin = false; photoURLs.forEach(function (u) { if (/^blob:/.test(u)) URL.revokeObjectURL(u); }); photoURLs.clear(); photoExpiries.clear(); photoRequests.clear(); }
       return before !== uidNow() || wasAnon !== !!(s && s.user && s.user.is_anonymous) || oldEmail !== email;
     }
 
@@ -1272,9 +1276,13 @@
       api[name] = function () {
         if (offline && navigator.onLine === false) return Promise.reject(new Error('当前离线，请联网后保存。Offline: reconnect to save.'));
         var actor = uidNow();
-        return original.apply(api, arguments).then(function (value) { if (actor === uidNow()) saveOffline(); return value; });
+        return original.apply(api, arguments).then(function (value) { if (actor === uidNow()) { saveOffline(); if (reader) reader.afterWrite(); } return value; });
       };
     });
+    if (window.XueReads) reader = window.XueReads.create(client, { uid: uidNow, cache: function () { return cache; }, place: placeFromRow, review: reviewFromRow, home: homeFromRow, anon: ANON, save: saveOffline });
+    api.pagedReads = function () { return !!(reader && reader.enabled()); };
+    api.reader = function () { return reader; };
+    api.mapGroups = function () { return reader && reader.enabled() ? reader.groups() : (cache.mapGroups || []).filter(function(g){return g.mode===state.mode;}); };
     return api;
   }
 
@@ -1697,13 +1705,14 @@
   }
   /* 看得到的地点：有公开记录或我自己的记录，或者我想去（收藏了还没人记录的地方也算） */
   function visibleToMe(p) {
-    return store.isSaved(p.id) || reviewsOf(p.id).some(function (r) { return r.visibility === 'public' || isMine(r); });
+    return store.isSaved(p.id) || !!(p._overview && p._overview.all && (p._overview.all.count || p._overview.all.own)) || reviewsOf(p.id).some(function (r) { return r.visibility === 'public' || isMine(r); });
   }
   /* 再加上我自己建的空地点（线上版收藏又取消后，地点还留着），找同一个地方时复用它，不重复建 */
   function knownToMe(p) { var id = me().id; return visibleToMe(p) || (!!id && p.createdBy === id); }
-  function beenThere(p) { return reviewsOf(p.id).some(isMine); }
+  function beenThere(p) { return !!(p._overview && p._overview.all && p._overview.all.own) || reviewsOf(p.id).some(isMine); }
   /* 地点的封面：这张地图里看得到的记录中，最新一条带照片的第一张 */
   function coverPhoto(p, scope) {
+    var summary = placeOverview(p, scope); if (summary) return summary.cover;
     var best = null;
     scopedReviews(p.id, scope).forEach(function (r) {
       if (r.photos && r.photos.length && (!best || reviewActivityAt(r) > reviewActivityAt(best))) best = r;
@@ -1715,15 +1724,19 @@
     scopedReviews(p.id).slice().sort(function (a, b) { return reviewActivityAt(b) - reviewActivityAt(a); }).forEach(function (r) {
       (r.photos || []).forEach(function (id) { if (!seen[id]) { seen[id] = true; photos.push(id); } });
     });
+    if (!photos.length) { var summary=placeOverview(p); if (summary && summary.cover) photos.push(summary.cover); }
     return photos;
   }
+  function placeOverview(p, scope) { scope = scope || state.scope; return (scope === 'all' || scope === 'saved') && p._overview && p._overview[scope] || null; }
+  function placePhotoCount(p) { var summary=placeOverview(p); return summary ? summary.photoCount : placePhotos(p).length; }
   function savedStatusMatches(p) {
     var status = state.savedWant ? 'want' : state.savedStatus;
     return status === 'want' ? !beenThere(p) : status === 'been' ? beenThere(p) : true;
   }
   function inScope(p) {
     if (state.scope === 'saved') return store.isSaved(p.id) && visibleToMe(p) && savedStatusMatches(p);
-    return scopedReviews(p.id).length > 0;
+    var summary=placeOverview(p);
+    return summary ? summary.count > 0 : scopedReviews(p.id).length > 0;
   }
   function avgOf(list, key) {
     return list.length ? list.reduce(function (s, r) { return s + r[key]; }, 0) / list.length : null;
@@ -1731,6 +1744,11 @@
   /* score：我的地图用我自己的分，探索和收藏用公开记录的平均分；没人打分是 null。
      平均分不算 0 分（防恶意差评，用户 2026-10-27）；只有 0 分时才显示 0 */
   function stats(p) {
+    var overview = placeOverview(p);
+    if (overview) {
+      var total=0,n=0; (overview.prices || []).forEach(function(x){total+=x.total*priceRate(x.currency || defaultPriceCurrency(p));n+=x.count;});
+      return {rs:scopedReviews(p.id),count:overview.count,score:overview.score,raters:overview.raters,zeros:overview.zeros,avgPrice:n?total/n/priceRate(defaultPriceCurrency(p)):0};
+    }
     var rs = scopedReviews(p.id);
     if (state.scope === 'mine') rs = rs.filter(function (r) { return ownVisitMatches(p,r); });
     var scored = (state.scope === 'mine' ? rs : rs.filter(function (r) { return r.visibility === 'public'; }))

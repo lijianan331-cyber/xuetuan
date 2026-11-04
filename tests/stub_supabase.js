@@ -187,6 +187,7 @@
         /* 地点库搜索：名字里包含关键词就算搜到 */
         rpc: function (name, args) {
           calls.push(['rpc', name, args]);
+          if(name==='xuetuan_read_page'&&window.__boundedRpc)return window.__boundedRpc(args);
           if (['xuetuan_post_social','xuetuan_social_write','xuetuan_comment_reports','xuetuan_moderate_comment'].indexOf(name)!==-1) {
             if(window.__socialHold && (window.__socialHold===name || window.__socialHold===(args||{}).action))return new Promise(function(resolve){window.__releaseSocial=function(){resolve(socialRun(name,args||{}));};});
             return Promise.resolve(socialRun(name,args||{}));

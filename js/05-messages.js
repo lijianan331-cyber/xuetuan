@@ -25,7 +25,7 @@ function activityMark(all,row){
   dmRefreshBadge(true);
   if(!all){
    if(!result.available){toast(dmText('这条分享已不可用，请刷新列表。','This share is unavailable. Refresh the list.'));return;}
-   return (!store.review(row.visit_id)&&store.refresh?store.refresh(function(){return dmCurrent(p);}):Promise.resolve()).then(function(){if(!dmCurrent(p))return;if(store.review(row.visit_id))openPost(row.visit_id);else toast(dmText('这条分享已不可用，请刷新列表。','This share is unavailable. Refresh the list.'));});
+   return (!store.review(row.visit_id)&&store.refresh?(store.pagedReads&&store.pagedReads()?store.reader().ensurePost(row.visit_id):store.refresh(function(){return dmCurrent(p);})):Promise.resolve()).then(function(){if(!dmCurrent(p))return;if(store.review(row.visit_id))openPost(row.visit_id);else toast(dmText('这条分享已不可用，请刷新列表。','This share is unavailable. Refresh the list.'));});
   }
  }).catch(function(e){if(dmCurrent(p))p.error=dmError(e);}).then(function(){p.marking=false;dmPaint();});
 }

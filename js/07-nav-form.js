@@ -93,7 +93,7 @@
     if (p.mode !== state.mode) setMode(p.mode, { noFly: true });
     toMapTab();
     /* 只有我自己的私密记录：在足迹里看 */
-    if (!scopedReviews(p.id).length && reviewsOf(p.id).some(isMine)) {
+    if (!inScope(p) && reviewsOf(p.id).some(isMine)) {
       state.tab = 'foot'; state.scope = state.mineSub = 'mine'; renderFilters(); refreshMap();
     }
     rememberFeedSnap();

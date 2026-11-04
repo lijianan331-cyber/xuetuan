@@ -880,7 +880,7 @@
     view.innerHTML = '<div class="view-top"><button type="button" class="icon-btn flat" data-action="back" aria-label="' + esc(t('back')) + '">' + ICON.back + '</button><h2 class="view-title">' + esc(state.lang === 'en' ? places.length + ' nearby places' : '这里有 ' + places.length + ' 个地点') + '</h2></div>' +
       '<p class="f-hint">' + esc(state.lang === 'en' ? L('Choose a place to see its photos and reviews.') : '位置相近，选择地点查看照片和点评。') + '</p>' +
       (places.some(function (p) { return placePhotos(p).length; }) ? '<button type="button" class="btn small" data-action="cluster-photos">' + esc(state.lang === 'en' ? L('View all photos') : '查看全部照片') + '</button>' : '') + '<ul class="near-list cluster-list">' + places.map(function (p) {
-        return placeRowHTML(p, 'open-place', esc(catName(catOf(p))) + ' · ' + esc(state.lang === 'en' ? placePhotos(p).length + ' photos' : placePhotos(p).length + ' 张照片'), stats(p).score != null ? scoreHTML(stats(p).score) : '');
+        return placeRowHTML(p, 'open-place', esc(catName(catOf(p))) + ' · ' + esc(state.lang === 'en' ? placePhotoCount(p) + ' photos' : placePhotoCount(p) + ' 张照片'), stats(p).score != null ? scoreHTML(stats(p).score) : '');
       }).join('') + '</ul>';
   }
   function renderHomes() {

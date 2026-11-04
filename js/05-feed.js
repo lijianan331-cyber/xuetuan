@@ -40,7 +40,7 @@
     if (homeSyncPromise) return homeSyncPromise;
     var before = homeSignature(), refreshButton = $('[data-action="home-refresh"]');
     if (refreshButton) { refreshButton.disabled = true; refreshButton.textContent = state.lang === 'en' ? L('Refreshing…') : '刷新中…'; }
-    homeSyncPromise = (store.refresh ? store.refresh(homeVisible) : Promise.resolve()).then(function () {
+    homeSyncPromise = (store.pagedReads && store.pagedReads() ? store.reader().readFeed(false,homeVisible,!!force) : store.refresh ? store.refresh(homeVisible) : Promise.resolve()).then(function () {
       if (!homeVisible()) return;
       var changed=before!==homeSignature();
       if (changed&&(homeApplyRequested||view.scrollTop<100)) { render(); view.scrollTop = 0; }

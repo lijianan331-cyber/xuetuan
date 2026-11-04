@@ -576,7 +576,7 @@
       if (!p || !modeOk(p)) return false;
       if (state.scope === 'mine' ? (!isMine(r) || !ownVisitMatches(p,r)) : r.visibility !== 'public') return false;
       return passesFilters(p);
-    }).sort(function (a, b) { return listTime(b) - listTime(a); }).slice(0, 80);
+    }).sort(function (a, b) { return listTime(b) - listTime(a); }).slice(0, store.pagedReads && store.pagedReads() ? Number.MAX_SAFE_INTEGER : 80);
   }
   /* 足迹里默认按加进来的时间排（用户 2026-10-31），点「拍摄时间」按照片拍的时间。
      从照片批量加的记录 createdAt 存的是拍摄时间；加进来的时间不另存，照片文件名 ph-<时间>… 里有上传那一刻，
@@ -653,7 +653,7 @@
     if (!items.length) h += emptyHTML();
     else if (saved) h += '<ul class="near-list">' + items.map(savedItemHTML).join('') + '</ul>';
     else if (places) h += '<p class="explore-hint">' + esc(t('exploreHint')) + '</p>';
-    else h += '<ul class="feed">' + items.map(feedItemHTML).join('') + '</ul>';
+    else h += '<ul class="feed">' + items.slice(0,state.footLimit || 80).map(feedItemHTML).join('') + '</ul>' + (items.length>(state.footLimit || 80)?'<div class="read-more"><button type="button" class="btn ghost" data-action="read-own-more">'+esc(state.lang==='en'?'Load more':'加载更多')+'</button></div>':'');
     view.innerHTML = h;
   }
 

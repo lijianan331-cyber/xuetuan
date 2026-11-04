@@ -1,13 +1,13 @@
 /* Atomic app-shell releases. This worker never caches API/auth/signed-photo requests. */
 'use strict';
-const VERSION = 'xuetuan-shell-f8cde6e8b32f2704';
+const VERSION = 'xuetuan-shell-2c9f9616f8532dc5';
 const MAP_CACHE = 'xuetuan-map-v1';
 const ROOT = new URL('./', self.location.href);
 const SHELL = [
   './', 'index.html', 'css/app.css', 'manifest.webmanifest',
   'assets/app-icon-sheet.png', 'assets/icon-180.png', 'assets/icon-192.png', 'assets/icon-512.png', 'assets/search-pin.png', 'assets/xmum-campus.png',
   'data/xmum-cafeterias.js', 'data/halal.js', 'data/i18n-ui.js',
-  'js/00-offline.js', 'js/01-core.js', 'js/02-map.js', 'js/03-home-layer.js', 'js/04-ui.js', 'js/05-auth.js', 'js/05-feed.js', 'js/05-identity.js', 'js/05-messages.js', 'js/05-social.js', 'js/06-search.js', 'js/07-nav-form.js', 'js/08-bulk.js', 'js/09-actions-boot.js',
+  'js/00-offline.js', 'js/00-reads.js', 'js/01-core.js', 'js/02-map.js', 'js/03-home-layer.js', 'js/04-ui.js', 'js/05-auth.js', 'js/05-feed.js', 'js/05-identity.js', 'js/05-messages.js', 'js/05-social.js', 'js/06-search.js', 'js/07-nav-form.js', 'js/08-bulk.js', 'js/09-actions-boot.js', 'js/09-reads-ui.js',
   'https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.js',
   'https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.css',
   'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.3/dist/umd/supabase.js'

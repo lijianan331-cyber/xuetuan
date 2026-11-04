@@ -55,10 +55,11 @@
     if (value) {
       usingCache = false; announce();
       // Explicit allowlist: never serialize an SDK session or admin privileges.
-      var clean = { places: value.places, reviews: value.reviews, wishlist: value.wishlist, homes: value.homes, profile: value.profile };
+      var clean = { places: value.places, reviews: value.reviews, wishlist: value.wishlist, homes: value.homes, profile: value.profile, mapGroups: value.mapGroups || [] };
       if (JSON.stringify(clean).length > 8 * 1024 * 1024) return Promise.resolve(null);
       var at = Date.now(), paths = new Set();
       clean.reviews.forEach(function (r) { (r.photos || []).forEach(function (p) { paths.add(p); }); });
+      clean.places.forEach(function (p) { Object.keys(p._overview || {}).forEach(function (scope) { if (p._overview[scope].cover) paths.add(p._overview[scope].cover); }); });
       return serial(function () { if (ticket !== epoch) return null; return transaction('readwrite', function (s) {
         s.put({ key: actor + ':snapshot', owner: actor, at: at, value: clean });
         // A refreshed RLS snapshot may revoke access: discard removed media too.

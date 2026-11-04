@@ -179,7 +179,7 @@
     /* 城市、片区的地点不再画范围圈，和具体地点一样只有图钉（用户 2026-10-27） */
     map.addLayer({
       id: 'cl-halo', type: 'circle', source: 'places', filter: ['has', 'point_count'],
-      paint: { 'circle-radius': ['step', ['get', 'point_count'], 22, 10, 26, 50, 31, 200, 37], 'circle-color': accent, 'circle-opacity': whenClusterPhoto(0, 0.2) }
+      paint: { 'circle-radius': ['step', ['get', 'locationCount'], 22, 10, 26, 50, 31, 200, 37], 'circle-color': accent, 'circle-opacity': whenClusterPhoto(0, 0.2) }
     });
     /* 大地图上的家乡红针垫在地点数字圈下面：缩小看全国时两者常叠在一起，针头露在圈上面，不挡住圈里的数字。
        合在一起的只会是红针（我的地图只有自己一个家） */
@@ -192,7 +192,7 @@
     });
     map.addLayer({
       id: 'cl-circle', type: 'circle', source: 'places', filter: ['has', 'point_count'],
-      paint: { 'circle-radius': ['step', ['get', 'point_count'], 15, 10, 19, 50, 23, 200, 27], 'circle-color': accent, 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 2, 'circle-opacity': whenClusterPhoto(0, 1), 'circle-stroke-opacity': whenClusterPhoto(0, 1) }
+      paint: { 'circle-radius': ['step', ['get', 'locationCount'], 15, 10, 19, 50, 23, 200, 27], 'circle-color': accent, 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 2, 'circle-opacity': whenClusterPhoto(0, 1), 'circle-stroke-opacity': whenClusterPhoto(0, 1) }
     });
     map.addLayer({
       id: 'cl-count', type: 'symbol', source: 'places', filter: ['has', 'point_count'],
@@ -343,6 +343,9 @@
     var hits = layers.length ? map.queryRenderedFeatures(box, { layers: layers }) : [];
     if (hits.length) {
       var f = hits.find(function (x) { return map.getZoom() >= PHOTO_ZOOM && x.layer && (x.layer.id === 'pt-photo' || x.layer.id === 'cl-photo'); }) || hits[0];
+      if (f.properties && f.properties.serverGroup) {
+        map.easeTo({center:f.geometry.coordinates,zoom:Math.max(map.getZoom()+1,+f.properties.zoom),padding:mapPadding(),duration:reduceMotion?0:500});return;
+      }
       if (f.properties && f.properties.cluster) {
         var src = map.getSource('places');
         if (map.getZoom() >= CLUSTER_PHOTO_ZOOM) { openPlaceCluster(src, f.properties.cluster_id, f.layer && f.layer.id === 'cl-photo'); return; }
