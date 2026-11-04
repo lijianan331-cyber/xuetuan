@@ -53,6 +53,7 @@
     var actor = owner, ticket = epoch;
     if (actor === undefined) return Promise.resolve(null);
     if (value) {
+      usingCache = false; announce();
       // Explicit allowlist: never serialize an SDK session or admin privileges.
       var clean = { places: value.places, reviews: value.reviews, wishlist: value.wishlist, homes: value.homes, profile: value.profile };
       if (JSON.stringify(clean).length > 8 * 1024 * 1024) return Promise.resolve(null);

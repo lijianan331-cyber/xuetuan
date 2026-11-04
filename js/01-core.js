@@ -1006,7 +1006,7 @@
       cachedPhotoURL: function (id,small) { var key=small?id+THUMB_KEY:id;return photoURLs.has(key)&&(!photoExpiries.has(key)||photoExpiries.get(key)>Date.now())?photoURLs.get(key):null; },
       photoURL: function (id, small) {
         var key = small ? id + THUMB_KEY : id;
-        if (offline && navigator.onLine === false) return offline.photo(id, small);
+        if (offline && (navigator.onLine === false || offline.status().cached)) return offline.photo(id, small);
         if (photoURLs.has(key) && (!photoExpiries.has(key) || photoExpiries.get(key) > Date.now())) return Promise.resolve(photoURLs.get(key));
         if (id.indexOf('/') === -1) return photoStore.get(id).then(function (b) { return b ? URL.createObjectURL(b) : null; });
         if (photoRequests.has(key)) return photoRequests.get(key);
