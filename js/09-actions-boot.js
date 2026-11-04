@@ -727,3 +727,12 @@
     authFinishReturn();
   });
 
+
+  // Revalidate on reconnection, without replacing an in-progress composer.
+  window.addEventListener('online', function () {
+    if (store.mode !== 'remote') return;
+    store.refresh().then(function () {
+      refreshMap(); renderChrome();
+      if (['form','bulk','add','pick'].indexOf(state.view) === -1) render();
+    }).catch(function () {});
+  });

@@ -16,6 +16,7 @@
      地图就不用拿到样式后再等一个来回才开始下瓦片（2026-10-27 提速） */
   function loadStyle(key) {
     if (!styleCache[key]) {
+      if (window.XueOffline) XueOffline.mapUsed(STYLE_URLS[key]);
       styleCache[key] = fetch(STYLE_URLS[key]).then(function (res) {
         if (!res.ok) throw new Error('style ' + res.status);
         return res.json();
@@ -25,6 +26,7 @@
         return Promise.all(Object.keys(json.sources || {}).map(function (id) {
           var src = json.sources[id];
           if (src.type !== 'vector' || !src.url || src.tiles) return null;
+          if (window.XueOffline) XueOffline.mapUsed(src.url);
           return fetch(src.url).then(function (res) { return res.ok ? res.json() : null; }).then(function (tj) {
             if (!tj || !tj.tiles || !tj.tiles.length) return;
             ['tiles', 'minzoom', 'maxzoom', 'bounds', 'attribution', 'scheme'].forEach(function (k) { if (tj[k] != null && src[k] == null) src[k] = tj[k]; });
@@ -55,6 +57,7 @@
       if (GMAP) style = { version: 8, glyphs: style.glyphs, sources: {}, layers: [] };
       map = new maplibregl.Map({
         container: 'map',
+        transformRequest: function (url) { if (window.XueOffline) XueOffline.mapUsed(url); return { url: url }; },
         style: style,
         interactive: !GMAP,
         /* 第一次打开直接在 XMUM，不再从地球飞过去：飞的路上每一级的瓦片都要下载，手机上要等好几秒（2026-10-27 提速） */

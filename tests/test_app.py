@@ -2997,6 +2997,12 @@ _idx = open(os.path.join(ROOT, 'index.html'), encoding='utf-8').read()
 _js = re.findall(r'<script src="(js/[^"]+)"></script>', _idx)
 check('split: index.html links css/app.css and every js file in order', 'href="css/app.css"' in _idx and _js == sorted(_js) and len(_js) >= 9 and all(os.path.exists(os.path.join(ROOT, f)) for f in _js + ['css/app.css']) and sorted(_js) == sorted('js/' + f for f in os.listdir(os.path.join(ROOT, 'js')) if re.match(r'^\d{2}-.*\.js$', f)), _js)
 
+# Every cached-source edit must produce a new coherent service-worker release.
+import runpy
+_offline_expected = runpy.run_path(os.path.join(ROOT, 'tools', 'update_offline_version.py'))['expected_version']()
+_sw = Path(ROOT, 'sw.js').read_text(encoding='utf8')
+check('offline: app shell version matches cached sources', "const VERSION = '" + _offline_expected + "';" in _sw)
+
 print()
 from collections import Counter
 print('errors:', dict(Counter(errors)))

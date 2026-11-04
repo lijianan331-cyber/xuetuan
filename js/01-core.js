@@ -745,8 +745,27 @@
     var ANON = { id: null, name: '', country: '', region: '', city: '', district: '' };
     var cache = { places: [], reviews: [], wishlist: [], homes: [], profile: ANON, admin: false };
     var session = null, email = '';
+    var offline = window.XueOffline && window.XueOffline.enabled ? window.XueOffline : null;
+    function saveOffline() { if (offline) offline.snapshot(cache); }
+    function restoreOffline(guard) {
+      var actor = uidNow();
+      return (offline ? offline.snapshot() : Promise.resolve(null)).then(function (saved) {
+        if (!saved || actor !== uidNow() || (guard && !guard())) throw new Error('No offline content');
+        ['places','reviews','wishlist','homes','profile'].forEach(function (k) { cache[k] = saved[k]; }); cache.admin = false;
+      });
+    }
+    function readAll(guard) {
+      if (offline && navigator.onLine === false) return restoreOffline(guard);
+      return loadAll(guard).catch(function (e) {
+        // Permission/auth failures must never be hidden by a stale snapshot.
+        if (e && (e.code || e.status || !/fetch|network|offline|connection/i.test(String(e.message || e)))) throw e;
+        return restoreOffline(guard);
+      });
+    }
     var photoURLs = new Map();
     var photoExpiries = new Map(), photoRequests = new Map();
+    if (offline) window.addEventListener('xuetuan-offline-clear', function () { photoURLs.clear(); photoExpiries.clear(); photoRequests.clear(); });
+    if (offline) window.addEventListener('xuetuan-photo-evicted', function (e) { photoURLs.forEach(function (u, k) { if (u === e.detail) { photoURLs.delete(k); photoExpiries.delete(k); } }); });
     var listeners = [];
     var signQueue=[],signBusy=0,signTimer=0;
     function signPhotoPath(path) {
@@ -882,13 +901,15 @@
         cache.reviews = visits.map(function (v) { return reviewFromRow(v); });
         cache.profile = uid ? Object.assign({}, ANON, profile || {}, { id: uid }) : ANON;
         cache.wishlist = (wish || []).map(function (w) { return { placeId: w.place_id, createdAt: Date.parse(w.created_at) }; });
+        saveOffline();
       });
     }
     function setSession(s) {
       var before = uidNow(), wasAnon = !!(session && session.user && session.user.is_anonymous), oldEmail = email;
       session = s;
       email = s && s.user ? s.user.email || '' : '';
-      if (before !== uidNow()) { cache.admin = false; photoURLs.forEach(function (u) { if (/^blob:/.test(u)) URL.revokeObjectURL(u); }); photoURLs.clear(); photoExpiries.clear(); photoRequests.clear(); }
+      if (offline) offline.setOwner(uidNow());
+      if (before !== uidNow()) { cache.places = []; cache.reviews = []; cache.wishlist = []; cache.homes = []; cache.profile = uidNow() ? Object.assign({}, ANON, {id:uidNow()}) : ANON; cache.admin = false; photoURLs.forEach(function (u) { if (/^blob:/.test(u)) URL.revokeObjectURL(u); }); photoURLs.clear(); photoExpiries.clear(); photoRequests.clear(); }
       return before !== uidNow() || wasAnon !== !!(s && s.user && s.user.is_anonymous) || oldEmail !== email;
     }
 
@@ -913,7 +934,7 @@
     };
     var areaCache = areas.list();
 
-    return {
+    var api = {
       mode: 'remote',
       isAdmin: function () { return cache.admin; },
       moderateVisit: function (id, decision) {
@@ -928,18 +949,25 @@
           return client.storage.from('photos').remove(paths).then(ok).then(function () { return paths.length; });
         });
       },
-      refresh: function (guard) { return loadAll(guard); },
+      refresh: function (guard) { return readAll(guard); },
       init: function () {
         client.auth.onAuthStateChange(function (event, s) {
+          if (event === 'SIGNED_OUT' && offline) { offline.setOwner(null); cache = { places: [], reviews: [], wishlist: [], homes: [], profile: ANON, admin: false }; }
           // 回调里不能直接再调 supabase，放到下一轮
           setTimeout(function () {
             if (!setSession(s)) return;
-            loadAll().then(function () { listeners.forEach(function (fn) { fn(); }); });
+            readAll().catch(function () {}).then(function () { listeners.forEach(function (fn) { fn(); }); });
           }, 0);
         });
-        return client.auth.getSession().then(function (res) {
+        var sessionRead = client.auth.getSession();
+        var pendingSession = sessionRead;
+        if (offline && navigator.onLine === false) sessionRead = new Promise(function (resolve, reject) {
+          var timer = setTimeout(function () { reject(new Error('Offline session unavailable; reconnect to sign in')); }, 2500);
+          Promise.resolve(pendingSession).then(function (r) { clearTimeout(timer); resolve(r); }, function (e) { clearTimeout(timer); reject(e); });
+        });
+        return sessionRead.then(function (res) {
           setSession(res.data && res.data.session);
-          return loadAll();
+          return readAll();
         });
       },
 
@@ -978,6 +1006,7 @@
       cachedPhotoURL: function (id,small) { var key=small?id+THUMB_KEY:id;return photoURLs.has(key)&&(!photoExpiries.has(key)||photoExpiries.get(key)>Date.now())?photoURLs.get(key):null; },
       photoURL: function (id, small) {
         var key = small ? id + THUMB_KEY : id;
+        if (offline && navigator.onLine === false) return offline.photo(id, small);
         if (photoURLs.has(key) && (!photoExpiries.has(key) || photoExpiries.get(key) > Date.now())) return Promise.resolve(photoURLs.get(key));
         if (id.indexOf('/') === -1) return photoStore.get(id).then(function (b) { return b ? URL.createObjectURL(b) : null; });
         if (photoRequests.has(key)) return photoRequests.get(key);
@@ -987,8 +1016,10 @@
           return small && res.error ? signPhotoPath(id) : res;
         }).then(function (res) {
           if (actor !== uidNow() || res.error || !res.data || !res.data.signedUrl) return null;
-          photoURLs.set(key, res.data.signedUrl); photoExpiries.set(key, Date.now() + 240000);
-          return res.data.signedUrl;
+          return (offline ? offline.photo(id, small, res.data.signedUrl) : Promise.resolve(res.data.signedUrl)).then(function (u) {
+            if (actor !== uidNow()) { if (u && /^blob:/.test(u)) URL.revokeObjectURL(u); return null; }
+            photoURLs.set(key, u); photoExpiries.set(key, Date.now() + 240000); return u;
+          });
         }, function () { return null; }).then(function (u) { if (photoRequests.get(key) === request) photoRequests.delete(key); return u; });
         photoRequests.set(key, request); return request;
       },
@@ -1235,6 +1266,16 @@
         }).then(function () { return added; });
       }
     };
+    ['addPlace','updatePlace','addReview','updateReview','moveReview','deleteReview','setSaved','updateProfile','setHome','deleteHome','moderateVisit'].forEach(function (name) {
+      if (!api[name]) return;
+      var original = api[name];
+      api[name] = function () {
+        if (offline && navigator.onLine === false) return Promise.reject(new Error('当前离线，请联网后保存。Offline: reconnect to save.'));
+        var actor = uidNow();
+        return original.apply(api, arguments).then(function (value) { if (actor === uidNow()) saveOffline(); return value; });
+      };
+    });
+    return api;
   }
 
   /* 有 Supabase 配置就用线上版；地址里加 ?local 或者 supabase 库没加载出来时用本地版 */
@@ -1261,7 +1302,7 @@
     var code = hash.get('error_code') || query.get('error_code') || hash.get('error') || query.get('error');
     return code ? { code: code, description: hash.get('error_description') || query.get('error_description') || '' } : null;
   })();
-  var sbClient = window.supabase && window.supabase.createClient && SUPABASE_URL ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { global: { headers: { 'x-xuetuan-device': browserDeviceId() } } }) : null;
+  var sbClient = window.supabase && window.supabase.createClient && SUPABASE_URL ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { global: { headers: { 'x-xuetuan-device': browserDeviceId() }, fetch: function (url, options) { if (navigator.onLine === false && options && options.method && !/^(GET|HEAD)$/i.test(options.method)) return Promise.reject(new Error('Offline: reconnect to send')); return fetch(url, options); } } }) : null;
   var store = (function () {
     var forceLocal = /[?&]local(=|&|$)/.test(location.search) || window.XUETUAN_LOCAL;
     if (!forceLocal && sbClient) return remoteStore(sbClient);
