@@ -2131,6 +2131,9 @@ with sync_playwright() as p:
     # 隐私政策页（谷歌登录发布成正式应用要求有，2026-11-02）：有页面、写了怎么删账号，我的页面能点到
     priv_src = open(os.path.join(ROOT, 'privacy.html'), encoding='utf-8').read()
     check('privacy policy page exists with contact for account deletion and is linked from the app', 'mailto:' in priv_src and '删除整个账号' in priv_src and 'privacy-link" href=' in APP_SRC.replace('\\"', '"'), len(priv_src))
+    # iPhone 微信会吞掉“POST/PATCH 带 ?select 要回传”的保存（用户 2026-11-05）：写入一律先写后读，不能再链 .select()
+    WRITE_SELECT = r"\.(?:insert|update|upsert)\((?:[^()]|\([^()]*\))*\)\s*(?:\.(?:eq|in)\([^)]*\)\s*)*\.select\("
+    check('no write asks for the row back in the same request (insert/update never chained with .select())', not re.findall(WRITE_SELECT, APP_SRC), re.findall(WRITE_SELECT, APP_SRC)[:3])
     # 邮箱登录（用户 2026-11-05：朋友用 Outlook 等别的邮箱）：发验证码 → 同一页输入 → 登录；错码提示；游客卡片也有邮箱入口
     ctxl = browser.new_context(viewport={'width': 390, 'height': 844}, device_scale_factor=2)
     route_all(ctxl, supabase=True)
@@ -2372,13 +2375,12 @@ with sync_playwright() as p:
     page6.wait_for_function('!document.querySelector("#f-submit").disabled')
     check('publish failure retains the draft and media; saving never re-uploads finished photos', page6.input_value('#f-name') == '线上测试店' and page6.locator('#f-photos .ph-edit').count() == 3
           and page6.evaluate('window.__sb.calls.filter(c => c[0]==="upload").length === window.__uploadCallsBefore && window.__sb.db.visits.length === window.__visitsBefore'))
-    # 微信（iPhone）里“回了成功、其实没写进去”：存完按编号再读一次，读不到就说没存上，不跳走
-    page6.evaluate('window.__sbFailVisit=false; window.__forceWriteCheck = true; window.__sbPhantomVisit = true')
+    # 微信（iPhone）里“回了成功、其实没写进去”：写完按编号读回，读不到就说没存上，不跳走
+    page6.evaluate('window.__sbFailVisit=false; window.__sbPhantomVisit = true')
     page6.click('#f-submit')
     page6.wait_for_function('!document.querySelector("#f-submit").disabled', timeout=6000)
     ghost_toast = page6.inner_text('#toast')
-    check('WeChat phantom save: a save the server never got is reported (open in browser), form stays', '微信没把这次保存发出去' in ghost_toast and page6.input_value('#f-name') == '线上测试店', ghost_toast)
-    page6.evaluate('window.__forceWriteCheck = false')
+    check('phantom save (WeChat): a save the server never got is reported as not saved, form stays', '没存上' in ghost_toast and page6.input_value('#f-name') == '线上测试店', ghost_toast)
     # 网卡住（用户 2026-11-05：朋友点保存等 10 秒，记录没存上）：超时明确说没存上、草稿留着；其实已经到了服务器的话，重试也不会多存一条
     page6.evaluate('window.__sbFailVisit=false; window.__sbSlowVisit=3000; window.__uploadCallsBefore=window.__sb.calls.filter(c => c[0]==="upload").length')
     page6.click('#f-submit')

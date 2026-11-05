@@ -805,11 +805,24 @@
     function withTimeout(p) {
       return Promise.race([p, new Promise(function (_, reject) { setTimeout(function () { reject(new Error('XUETUAN_SAVE_TIMEOUT')); }, WRITE_TIMEOUT); })]);
     }
-    /* 同一个编号已经存进去了（上次超时其实成功了）：读回那一条当作成功 */
+    /* 先只写（POST 不带 ?select、不要求回传整行），再按编号读回来：
+       iPhone 微信里“POST 带 ?select=* 要回传”的保存会被吞掉却显示成功（用户 2026-11-05 朋友实测；同一台手机上存照片、调 rpc 的 POST 都正常）。
+       读不到就当没存上；同一个编号已经存进去了（上次超时其实成功了）也当成功 */
     function insertOnce(table, row) {
-      return withTimeout(client.from(table).insert(row).select().single()).then(function (res) {
-        if (res.error && (res.error.code === '23505' || /duplicate key/i.test(res.error.message || ''))) return withTimeout(client.from(table).select('*').eq('id', row.id).single());
-        return res;
+      return withTimeout(client.from(table).insert(row)).then(function (res) {
+        if (res.error && !(res.error.code === '23505' || /duplicate key/i.test(res.error.message || ''))) throw res.error;
+        return withTimeout(client.from(table).select('*').eq('id', row.id).maybeSingle());
+      }).then(function (res) {
+        if (res.error) throw res.error;
+        if (!res.data) throw new Error('XUETUAN_WRITE_LOST');
+        return res.data;
+      });
+    }
+    /* 改也一样：先 PATCH（不带 ?select），再读回 */
+    function updateThenRead(table, row, id) {
+      return withTimeout(client.from(table).update(row).eq('id', id)).then(function (res) {
+        if (res.error) throw res.error;
+        return withTimeout(client.from(table).select('*').eq('id', id).single());
       }).then(ok);
     }
     function placeToRow(p) {
@@ -1061,7 +1074,7 @@
         delete row.mode;
         /* 国家代码只在新建时写；数据库只允许改几列，带上 cc 会整条被拒（编辑记录保存失败，用户 2026-11-02） */
         delete row.cc;
-        return needLogin() || Promise.resolve().then(function () { return client.from('places').update(row).eq('id', id).select().single().then(ok).then(function (r) {
+        return needLogin() || Promise.resolve().then(function () { return updateThenRead('places', row, id).then(function (r) {
           var p = find(cache.places, id);
           Object.assign(p, placeFromRow(r));
           return p;
@@ -1076,14 +1089,6 @@
           if (cache.halalCol) row.halal = validHalal(f.halal);
           row.id = f.id || newClientId();
           return insertOnce('visits', row).then(function (v) {
-            /* 微信内置浏览器（iPhone）会出现“看起来存好了、服务器其实没收到”（用户 2026-11-05 朋友实测，Safari 正常）：
-               在微信里存完再按编号读一次，读不到就当没存上 */
-            if (!/MicroMessenger/i.test(navigator.userAgent) && !window.__forceWriteCheck) return v;
-            return withTimeout(client.from('visits').select('id').eq('id', row.id).maybeSingle()).then(function (chk) {
-              if (!chk || chk.error || !chk.data) throw new Error('XUETUAN_WECHAT_LOST');
-              return v;
-            });
-          }).then(function (v) {
             var r = reviewFromRow(v, cache.profile);
             cache.reviews.unshift(r);
             return { review: r, photosOk: up.ok };
@@ -1100,7 +1105,7 @@
           var row = { rating: patch.rating, price: patch.price, price_currency: validPriceCurrency(patch.priceCurrency), text: patch.text, title: patch.title || null, visibility: patch.visibility, photos: orderPhotos(keepPhotos, up.paths, patch.photoOrder) };
           if (cache.halalCol && patch.halal !== undefined) row.halal = validHalal(patch.halal);
           if (patch.createdAt) row.created_at = new Date(patch.createdAt).toISOString();
-          return client.from('visits').update(row).eq('id', id).select().single().then(ok).then(function (v) {
+          return updateThenRead('visits', row, id).then(function (v) {
             removePhotos(dropped);
             Object.assign(r, reviewFromRow(v, cache.profile));
             return { review: r, photosOk: up.ok };
@@ -1116,11 +1121,12 @@
           if (!up.ok) throw up.error || new Error('photo-upload');
           if (progress) progress('write');
           var dropped = (r.photos || []).filter(function (p) { return keepPhotos.indexOf(p) === -1; });
-          var made = r._movedTo && r._movedTo.placeId === placeId ? Promise.resolve(r._movedTo) : client.from('visits').insert({
-            place_id: placeId, rating: patch.rating, price: patch.price, price_currency: validPriceCurrency(patch.priceCurrency), text: patch.text, title: patch.title || null, visibility: patch.visibility,
+          r._moveId = r._moveId || newClientId();
+          var made = r._movedTo && r._movedTo.placeId === placeId ? Promise.resolve(r._movedTo) : insertOnce('visits', {
+            id: r._moveId, place_id: placeId, rating: patch.rating, price: patch.price, price_currency: validPriceCurrency(patch.priceCurrency), text: patch.text, title: patch.title || null, visibility: patch.visibility,
             photos: orderPhotos(keepPhotos, up.paths, patch.photoOrder), created_at: new Date(patch.createdAt || r.createdAt).toISOString(), updated_at: new Date().toISOString(),
             halal: cache.halalCol ? validHalal(patch.halal) : undefined
-          }).select().single().then(ok).then(function (v) { r._movedTo = reviewFromRow(v, cache.profile); return r._movedTo; });
+          }).then(function (v) { r._movedTo = reviewFromRow(v, cache.profile); return r._movedTo; });
           return made.then(function (nr) {
             return client.from('visits').delete().eq('id', id).then(ok).then(function () {
               removePhotos(dropped);
@@ -1157,7 +1163,7 @@
       setVisibility: function (ids, visibility) {
         var owner = uidNow(), rows = ids.map(function (id) { return find(cache.reviews,id); });
         if (!owner || !rows.length || rows.some(function (r) { return !r || r.authorId !== owner; }) || ['private','public'].indexOf(visibility) === -1) return Promise.reject(new Error('not yours'));
-        return client.from('visits').update({visibility:visibility}).in('id',ids).eq('user_id',owner).select().then(ok).then(function (changed) {
+        return withTimeout(client.from('visits').update({visibility:visibility}).in('id',ids).eq('user_id',owner)).then(ok).then(function () { return withTimeout(client.from('visits').select('*').in('id',ids).eq('user_id',owner).eq('visibility',visibility)); }).then(ok).then(function (changed) {
           if (uidNow() !== owner) return [];
           changed.forEach(function (row) { var old = find(cache.reviews,row.id); if (old) Object.assign(old,reviewFromRow(row,cache.profile)); });
           if (changed.length !== ids.length) throw new Error('incomplete visibility update');
@@ -1188,7 +1194,7 @@
         var id = uidNow();
         if (!id) return Promise.reject(new Error('login required'));
         var q = h
-          ? client.from('homes').upsert({ user_id: id, city: h.city, lat: h.lat, lng: h.lng, is_public: !!h.public }).select('user_id, city, lat, lng, is_public').single()
+          ? withTimeout(client.from('homes').upsert({ user_id: id, city: h.city, lat: h.lat, lng: h.lng, is_public: !!h.public })).then(ok).then(function () { return withTimeout(client.from('homes').select('user_id, city, lat, lng, is_public').eq('user_id', id).single()); })
           : client.from('homes').delete().eq('user_id', id);
         return q.then(ok).then(function (row) {
           cache.homes = cache.homes.filter(function (x) { return x.userId !== id; });
@@ -1709,7 +1715,7 @@
     var msg = String(e && e.message || e || '');
     if (/XUETUAN_.*BLOCKED/.test(msg)) return state.lang === 'en' ? L('Publishing is restricted for this account or browser.') : '该账号或浏览器已被限制发布。';
     if (/XUETUAN_RATE_LIMIT/.test(msg)) return state.lang === 'en' ? L('Too many requests. Please try later.') : '操作太频繁，请稍后再试；草稿仍保留。';
-    if (/XUETUAN_WECHAT_LOST/.test(msg)) return state.lang === 'en' ? L('WeChat did not deliver this save. Tap ··· at the top right, open in your browser, and save again.') : '微信没把这次保存发出去。点右上角“···”→在浏览器打开，再保存一次。';
+    if (/XUETUAN_WRITE_LOST/.test(msg)) return /MicroMessenger/i.test(navigator.userAgent) ? (state.lang === 'en' ? L('WeChat did not deliver this save. Tap ··· at the top right, open in your browser, and save again.') : '微信没把这次保存发出去。点右上角“···”→在浏览器打开，再保存一次。') : (state.lang === 'en' ? L('The network is too slow, so this was not saved. Your draft is kept; tap save again.') : '网络太慢，这次没存上。草稿还在，再点一次保存。');
     if (/XUETUAN_SAVE_TIMEOUT|Failed to fetch|NetworkError|Load failed|Offline/i.test(msg)) return state.lang === 'en' ? L('The network is too slow, so this was not saved. Your draft is kept; tap save again.') : '网络太慢，这次没存上。草稿还在，再点一次保存。';
     if (/XUETUAN_RELOAD_REQUIRED/.test(msg)) return state.lang === 'en' ? L('Refresh to use the updated security settings.') : '防护已更新，请刷新页面后再操作。';
     return state.lang === 'en' ? L('Save failed. Your draft is kept; please try again.') : '保存失败，草稿仍保留，请稍后重试。';
