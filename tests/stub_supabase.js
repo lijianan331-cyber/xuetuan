@@ -218,6 +218,12 @@
           },
           onAuthStateChange: function (fn) { listeners.push(fn); setTimeout(function () { fn('INITIAL_SESSION', session); }, 0); return { data: { subscription: { unsubscribe: function () {} } } }; },
           signInWithOtp: function (o) { calls.push(['otp', o.email, o.options && o.options.emailRedirectTo]); return Promise.resolve({ data: {}, error: null }); },
+          verifyOtp: function (o) {
+            calls.push(['verify', o.email, o.token, o.type]);
+            if (o.token !== '123456') return Promise.resolve(err('Token has expired or is invalid'));
+            window.__sbLogin('dddddddd-0000-4000-8000-00000000000d', o.email);
+            return Promise.resolve({ data: { session: session }, error: null });
+          },
           signInWithOAuth: function (o) { calls.push(['oauth', o.provider]); return Promise.resolve({ data: {}, error: null }); },
           signOut: function () { window.__sbLogout(); return Promise.resolve({ error: null }); },
           signInAnonymously: function () {

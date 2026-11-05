@@ -1020,18 +1020,22 @@
     });
   }
 
+  /* 邮箱登录（Outlook、QQ 邮箱都行）：发验证码 → 在这页输入 */
+  function emailLoginHTML(label) {
+    return '<div class="or-line"><span>' + esc(label) + '</span></div>' +
+      '<form id="login-form" class="field" novalidate><input id="login-email" class="input" type="email" autocomplete="email" inputmode="email" placeholder="' + esc(t('loginEmailPh')) + '" aria-label="' + esc(t('loginEmailPh')) + '">' +
+      '<button type="submit" class="btn block" id="login-send">' + esc(t('loginSend')) + '</button></form>' +
+      '<p class="f-hint" id="login-msg" role="status"></p>';
+  }
   function renderLogin() {
     if (store.isAnon && store.isAnon()) {
-      view.innerHTML = '<div class="view-top"><button type="button" class="icon-btn flat" data-action="back" aria-label="' + esc(t('back')) + '">' + ICON.back + '</button><h2 class="view-title">' + esc(t('linkGoogle')) + '</h2></div><div class="form"><p class="note">' + esc(t('anonWhy')) + '</p><button type="button" class="btn primary block" data-action="link-google">' + ICON.google + esc(t('linkGoogle')) + '</button></div>';
+      view.innerHTML = '<div class="view-top"><button type="button" class="icon-btn flat" data-action="back" aria-label="' + esc(t('back')) + '">' + ICON.back + '</button><h2 class="view-title">' + esc(t('linkGoogle')) + '</h2></div><div class="form"><p class="note">' + esc(t('anonWhy')) + '</p><button type="button" class="btn primary block" data-action="link-google">' + ICON.google + esc(t('linkGoogle')) + '</button>' + emailLoginHTML(t('loginEmailGuest')) + '</div>';
       return;
     }
     view.innerHTML = '<div class="view-top"><button type="button" class="icon-btn flat" data-action="back" aria-label="' + esc(t('back')) + '">' + ICON.back + '</button><h2 class="view-title">' + esc(t('loginTitle')) + '</h2></div>' +
       '<div class="form"><p class="note">' + esc(t('loginWhy')) + '</p>' +
       '<button type="button" class="btn primary block" data-action="login-google">' + ICON.google + esc(t('loginGoogle')) + '</button>' +
-      '<div class="or-line"><span>' + esc(t('loginOr')) + '</span></div>' +
-      '<form id="login-form" class="field" novalidate><input id="login-email" class="input" type="email" autocomplete="email" inputmode="email" placeholder="' + esc(t('loginEmailPh')) + '" aria-label="' + esc(t('loginEmailPh')) + '">' +
-      '<button type="submit" class="btn block" id="login-send">' + esc(t('loginSend')) + '</button></form>' +
-      '<p class="f-hint" id="login-msg" role="status"></p></div>';
+      emailLoginHTML(t('loginOr')) + '</div>';
   }
   function openLogin() {
     rememberFeedSnap();
@@ -1071,10 +1075,46 @@
     btn.disabled = true;
     store.signInWithEmail(addr).then(function () {
       msg.textContent = t('loginSent', { e: addr });
+      showLoginCode(addr);
     }, function (err) {
       msg.textContent = t('loginFail', { m: (err && err.message) || '' });
       btn.disabled = false;
     });
+  }
+  /* 发完验证码：邮箱框下面出验证码框（6–8 位数字），输完自动登录；登录成功后 onAuthChange 会回首页 */
+  function showLoginCode(addr) {
+    var box = $('#login-code-form');
+    if (!box) {
+      box = document.createElement('form');
+      box.id = 'login-code-form'; box.className = 'field'; box.setAttribute('novalidate', '');
+      box.innerHTML = '<input id="login-code" class="input code-input" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="8" placeholder="' + esc(t('loginCodePh')) + '" aria-label="' + esc(t('loginCodePh')) + '">' +
+        '<div class="btn-row"><button type="submit" class="btn primary" id="login-verify">' + esc(t('loginVerify')) + '</button><button type="button" class="btn ghost" data-action="login-resend">' + esc(t('loginResend')) + '</button></div>';
+      var msg = $('#login-msg');
+      msg.parentNode.insertBefore(box, msg.nextSibling);
+    }
+    box.dataset.email = addr;
+    var lf = $('#login-form'); if (lf) lf.hidden = true;
+    var ci = $('#login-code'); if (ci) { ci.value = ''; ci.focus(); }
+  }
+  function verifyLoginCode() {
+    var box = $('#login-code-form'), input = $('#login-code'), btn = $('#login-verify'), msg = $('#login-msg');
+    if (!box || !input) return;
+    var code = input.value.replace(/\D/g, '');
+    if (code.length < 6) { input.setAttribute('aria-invalid', 'true'); input.focus(); return; }
+    input.removeAttribute('aria-invalid');
+    btn.disabled = true;
+    store.verifyEmailCode(box.dataset.email, code).then(function () { /* onAuthChange 接手 */ }, function () {
+      msg.textContent = t('loginCodeBad');
+      input.setAttribute('aria-invalid', 'true');
+      btn.disabled = false;
+    });
+  }
+  function resendLoginCode() {
+    var lf = $('#login-form'), box = $('#login-code-form'), btn = $('#login-send');
+    if (lf) lf.hidden = false;
+    if (box) box.remove();
+    if (btn) btn.disabled = false;
+    sendLoginLink();
   }
   function hasLegacyData() {
     try {

@@ -571,6 +571,8 @@
       case 'osm-pick': pickOsm(+d.i); break;
       case 'campus-pick': pickResult(campusHits[+d.i]); break;
       case 'login': openLogin(); break;
+      case 'login-resend': resendLoginCode(); break;
+      case 'login-email': openLogin(); break;
       case 'login-google': store.signInWithGoogle().catch(function (err) { toast(t('loginFail', { m: (err && err.message) || '' })); }); break;
       case 'auth-return-guest': authReturnGuest(); break;
       case 'logout': store.signOut().catch(function () {}); break;
@@ -591,6 +593,7 @@
     else if (e.target.id === 'area-form') { e.preventDefault(); saveArea(); }
     else if (e.target.id === 'profile-form') { e.preventDefault(); saveProfileDialog(); }
     else if (e.target.id === 'login-form') { e.preventDefault(); sendLoginLink(); }
+    else if (e.target.id === 'login-code-form') { e.preventDefault(); verifyLoginCode(); }
   });
   document.addEventListener('input', function (e) {
     var el = e.target;

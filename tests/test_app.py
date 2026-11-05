@@ -2131,6 +2131,26 @@ with sync_playwright() as p:
     # 隐私政策页（谷歌登录发布成正式应用要求有，2026-11-02）：有页面、写了怎么删账号，我的页面能点到
     priv_src = open(os.path.join(ROOT, 'privacy.html'), encoding='utf-8').read()
     check('privacy policy page exists with contact for account deletion and is linked from the app', 'mailto:' in priv_src and '删除整个账号' in priv_src and 'privacy-link" href=' in APP_SRC.replace('\\"', '"'), len(priv_src))
+    # 邮箱登录（用户 2026-11-05：朋友用 Outlook 等别的邮箱）：发验证码 → 同一页输入 → 登录；错码提示；游客卡片也有邮箱入口
+    ctxl = browser.new_context(viewport={'width': 390, 'height': 844}, device_scale_factor=2)
+    route_all(ctxl, supabase=True)
+    ctxl.add_init_script('window.__sbSeed = ' + json.dumps({'profiles': [], 'places': [], 'visits': []}) + ';')
+    pgl = ctxl.new_page(); pgl.goto(APP)
+    pgl.wait_for_function('window.__map && window.__map.getSource("places")', timeout=8000)
+    pgl.evaluate('openLogin()'); pgl.wait_for_selector('#login-email')
+    lbl = pgl.inner_text('#view .or-line')
+    pgl.fill('#login-email', 'friend@outlook.com'); pgl.click('#login-send')
+    pgl.wait_for_selector('#login-code', timeout=3000)
+    sent = pgl.evaluate('window.__sb.calls.filter(c => c[0] === "otp").map(c => c[1])')
+    check('email login: works for any mailbox, sends a code and shows a code box on the same page', 'Outlook' in lbl and sent == ['friend@outlook.com'] and pgl.locator('#login-form').is_hidden() and '验证码发到 friend@outlook.com' in pgl.inner_text('#login-msg'), (lbl, sent))
+    pgl.fill('#login-code', '000000'); pgl.click('#login-verify'); pgl.wait_for_timeout(200)
+    check('email login: a wrong code says so and keeps you on the page', '验证码不对' in pgl.inner_text('#login-msg') and pgl.locator('#login-code').get_attribute('aria-invalid') == 'true')
+    pgl.screenshot(path=os.path.join(SHOTS, '21-email-code.png'))
+    pgl.fill('#login-code', '123456'); pgl.click('#login-verify'); pgl.wait_for_timeout(400)
+    ver = pgl.evaluate('window.__sb.calls.filter(c => c[0] === "verify").pop()')
+    check('email login: the right code logs in (verifyOtp type email) and leaves the login page', ver == ['verify', 'friend@outlook.com', '123456', 'email'] and pgl.evaluate('store.signedIn()') and pgl.locator('#login-code').count() == 0, ver)
+    check('guest card offers email login next to Google', 'data-action="login-email"' in APP_SRC.replace('\\"', '"'))
+    ctxl.close()
     # Supabase 一次最多回 1000 行：读地点/记录/家要一页一页接着读，不能只拿到第一页（发布前检查 2026-11-02）
     pg_seed = {'profiles': [{'id': B, 'name': '小B'}], 'homes': [{'user_id': B, 'city': 'Klang', 'lat': 3.0, 'lng': 101.4, 'is_public': True}],
                'places': [{'id': 'pp-%d' % i, 'mode': 'food', 'cat': 'cn', 'precision': 'exact', 'lat': 2.83 + i * 0.001, 'lng': 101.70, 'name': '分页店%d' % i, 'alt_name': '', 'link': '', 'osm': '', 'created_by': B, 'created_at': '2026-10-01T00:00:00Z'} for i in range(5)],

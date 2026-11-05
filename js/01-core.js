@@ -232,8 +232,8 @@
       del: '删除', delReviewQ: '删除这条点评？', delOk: '删除', deleted: '已删除',
       edit: '编辑', saveEdit: '保存修改', updated: '改好了',
       login: '登录', loginTitle: '登录雪团', loginWhy: '无需登录也能添加地点、写点评和收藏。匿名使用后，可在“我的”绑定账号，换设备仍能找回记录。',
-      loginGoogle: '用 Google 登录', loginOr: '或者用邮箱', loginEmailPh: '你的邮箱', loginSend: '发登录链接',
-      loginSent: '登录链接发到 {e} 了，去邮箱点一下就行。', loginFail: '没成功：{m}', loginFirst: '先登录一下', anonName: '雪团用户{n}', anonReady: '已经给你分配了一个号，可以直接记了', anonTapAgain: '号分配好了，再点一下',
+      loginGoogle: '用 Google 登录', loginOr: '或者用邮箱（Outlook、QQ 邮箱都行）', loginEmailGuest: '或者用邮箱登录（游客记录不会合并）', loginEmailPh: '你的邮箱', loginSend: '发验证码',
+      loginSent: '验证码发到 {e} 了（可能在垃圾邮件里），在下面输入；也可以直接点邮件里的链接。', loginCodePh: '邮件里的验证码', loginVerify: '登录', loginCodeBad: '验证码不对或过期了，再试一次或重新发', loginResend: '重新发', loginFail: '没成功：{m}', loginFirst: '先登录一下', anonName: '雪团用户{n}', anonReady: '已经给你分配了一个号，可以直接记了', anonTapAgain: '号分配好了，再点一下',
       anonWhy: '你正在使用匿名账号，可以添加、点评和收藏。身份保存在当前浏览器；清除浏览器数据或换设备前，请绑定谷歌账号，以便找回记录。', anonFail: '匿名账号暂时创建失败，请检查网络后重试，无需先登录。', linkGoogle: '绑定谷歌账号',
       loggedIn: '登录了', loggedOut: '已退出登录', logout: '退出登录', account: '账号', signedInAs: '已登录：{e}',
       privacyLink: '隐私政策',
@@ -336,8 +336,8 @@
       del: 'Delete', delReviewQ: 'Delete this review?', delOk: 'Delete', deleted: 'Deleted',
       edit: 'Edit', saveEdit: 'Save changes', updated: 'Updated',
       login: 'Log in', loginTitle: 'Log in to XueTuan', loginWhy: 'Add places, write reviews and save spots without logging in. Link your guest account in Profile to recover your records on another device.',
-      loginGoogle: 'Continue with Google', loginOr: 'or use your email', loginEmailPh: 'Your email', loginSend: 'Email me a login link',
-      loginSent: 'Login link sent to {e}. Open it to log in.', loginFail: 'That didn’t work: {m}', loginFirst: 'Log in first', anonName: 'XueTuan user {n}', anonReady: 'You got a guest account, go ahead', anonTapAgain: 'Guest account ready, tap again',
+      loginGoogle: 'Continue with Google', loginOr: 'or use any email (Outlook, Yahoo…)', loginEmailGuest: 'or log in with email (guest records are not merged)', loginEmailPh: 'Your email', loginSend: 'Email me a code',
+      loginSent: 'Code sent to {e} (check spam). Enter it below, or tap the link in the email.', loginCodePh: 'Code from the email', loginVerify: 'Log in', loginCodeBad: 'Wrong or expired code. Try again or resend.', loginResend: 'Resend', loginFail: 'That didn’t work: {m}', loginFirst: 'Log in first', anonName: 'XueTuan user {n}', anonReady: 'You got a guest account, go ahead', anonTapAgain: 'Guest account ready, tap again',
       anonWhy: 'You can add places, review and save with this guest account. Its identity stays in this browser. Link Google before clearing browser data or switching devices to recover your records.', anonFail: 'Could not create your guest account. Check your connection and try again; no login is required.', linkGoogle: 'Link Google account',
       loggedIn: 'Logged in', loggedOut: 'Logged out', logout: 'Log out', account: 'Account', signedInAs: 'Logged in as {e}',
       privacyLink: 'Privacy policy',
@@ -981,6 +981,10 @@
       onAuthChange: function (fn) { listeners.push(fn); },
       signInWithEmail: function (addr) {
         return client.auth.signInWithOtp({ email: addr, options: { emailRedirectTo: location.origin + location.pathname } }).then(ok);
+      },
+      /* 邮件里的验证码：在同一个页面输入就登录，不用跳去别的浏览器开链接（微信、华为浏览器里点链接会换浏览器，登录就丢了） */
+      verifyEmailCode: function (addr, code) {
+        return client.auth.verifyOtp({ email: addr, token: code, type: 'email' }).then(ok);
       },
       signInWithGoogle: function () {
         return client.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: authReturnURL() } }).then(ok);
