@@ -439,8 +439,11 @@
         var pi=Math.max(0,PRICE_STOPS.indexOf(state.priceAbout));
         h+='<div class="field price-field"><span class="f-label">'+esc(t('filterPrice'))+'<b id="flt-price-val"'+(pi?'':' class="muted"')+'>'+esc(priceLabel(state.priceAbout))+'</b></span><input type="range" id="flt-price" min="0" max="'+(PRICE_STOPS.length-1)+'" step="1" value="'+pi+'" style="--fill:'+(pi/(PRICE_STOPS.length-1)*100)+'%" aria-label="'+esc(t('filterPrice'))+'"><div class="price-ticks" aria-hidden="true"><span>'+esc(t('anyOpt'))+'</span><span>RM500</span></div></div>';
       }
-      if(mine&&store.myHome()) h+='<button type="button" class="switch-row" role="switch" data-action="mine-home-toggle" aria-checked="'+state.mineHomeOn+'"><span class="sw-text"><b>'+esc(state.lang==='en'?L('Show my home'):'显示我的家')+'</b><small>'+esc(state.lang==='en'?L('A little house on your hometown'):'在家乡的位置放一个小房子')+'</small></span><span class="switch" aria-hidden="true"></span></button>';
-      if(mine&&state.tab==='foot') h+='<button type="button" class="switch-row" role="switch" data-action="mine-dots-toggle" aria-checked="'+!state.mineDots+'"><span class="sw-text"><b>'+esc(state.lang==='en'?L('Group nearby places'):'缩小时合并成数字')+'</b><small>'+esc(state.lang==='en'?L('Turn off to see every place as its own dot'):'关掉就每个地点一个点，不合并')+'</small></span><span class="switch" aria-hidden="true"></span></button>';
+      /* 两个开关放进同一张分组卡片，和上面的选项隔开（用户 2026-11-05：下面有点拥挤） */
+      var sw='';
+      if(mine&&store.myHome()) sw+='<button type="button" class="switch-row" role="switch" data-action="mine-home-toggle" aria-checked="'+state.mineHomeOn+'"><span class="sw-text"><b>'+esc(state.lang==='en'?L('Show my home'):'显示我的家')+'</b><small>'+esc(state.lang==='en'?L('A little house on your hometown'):'在家乡的位置放一个小房子')+'</small></span><span class="switch" aria-hidden="true"></span></button>';
+      if(mine&&state.tab==='foot') sw+='<button type="button" class="switch-row" role="switch" data-action="mine-dots-toggle" aria-checked="'+!state.mineDots+'"><span class="sw-text"><b>'+esc(state.lang==='en'?L('Group nearby places'):'缩小时合并成数字')+'</b><small>'+esc(state.lang==='en'?L('Turn off to see every place as its own dot'):'关掉就每个地点一个点，不合并')+'</small></span><span class="switch" aria-hidden="true"></span></button>';
+      if(sw) h+='<div class="field"><span class="f-label">'+esc(state.lang==='en'?L('Map display'):'地图显示')+'</span><div class="switch-group">'+sw+'</div></div>';
       h+='<div class="bsheet-foot"><button type="button" class="btn ghost" data-action="clear-filters">'+esc(t('filterReset'))+'</button><button type="button" class="btn primary" data-action="sheet-close">'+esc(t('filterShow',{n:shown}))+'</button></div>';
     }
     card.innerHTML=h;

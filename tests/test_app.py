@@ -1022,6 +1022,11 @@ with sync_playwright() as p:
     check('home: my house switch hides only the house and keeps places', page.evaluate('window.__map.getSource("homes").data.features.length===0') and page.evaluate('window.__map.getSource("places").data.features.length')==house_places_before)
     dsw = '#bsheet [data-action="mine-dots-toggle"]'
     check('foot: filter sheet has the “缩小时合并成数字” switch, on by default, places clustered', page.locator(dsw).count() == 1 and page.get_attribute(dsw, 'aria-checked') == 'true' and page.evaluate('window.__map.getSource("places").spec.cluster') is True)
+    grp = page.evaluate("""(() => { const g = document.querySelector('#bsheet .switch-group'); if (!g) return null; const f = g.closest('.field'), prev = f.previousElementSibling;
+        const gr = g.getBoundingClientRect(), fr = f.getBoundingClientRect(), pr = prev.getBoundingClientRect(), foot = document.querySelector('#bsheet .bsheet-foot').getBoundingClientRect();
+        return { n: g.querySelectorAll('.switch-row').length, label: f.querySelector('.f-label').textContent, gapAbove: Math.round(fr.top - pr.bottom), gapBelow: Math.round(foot.top - gr.bottom) }; })()""")
+    page.screenshot(path=os.path.join(SHOTS, '20-foot-filter-switches.png'))
+    check('foot filter: both map switches sit in one grouped card under “地图显示”, spaced from the chips above and the buttons below (用户 2026-11-05：下面有点拥挤)', grp is not None and grp['n'] == 2 and grp['label'] == '地图显示' and grp['gapAbove'] >= 10 and grp['gapBelow'] >= 12, grp)
     page.click(dsw); page.wait_for_timeout(100)
     check('foot: turning it off shows every place as its own dot (no clustering), choice remembered', page.get_attribute(dsw, 'aria-checked') == 'false' and page.evaluate('window.__map.getSource("places").spec.cluster') is False and page.evaluate('JSON.parse(localStorage.getItem(LS_VIEW)).mineDots') is True)
     page.keyboard.press('Escape'); page.wait_for_timeout(100)
