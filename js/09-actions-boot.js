@@ -26,6 +26,16 @@
     });
   }
 
+  function openComposeChoice() {
+    var en = state.lang === 'en';
+    function opt(action, icon, title, sub) {
+      return '<button type="button" class="compose-opt" data-action="' + action + '"><span class="co-ic" aria-hidden="true">' + icon + '</span><span class="co-tx"><b>' + esc(title) + '</b><small>' + esc(sub) + '</small></span></button>';
+    }
+    openModal('<div class="modal-card compose-choice" role="dialog" aria-modal="true" aria-label="' + esc(en ? L('What do you want to add?') : '想记点什么？') + '"><h3>' + esc(en ? L('What do you want to add?') : '想记点什么？') + '</h3>' +
+      opt('compose-record', ICON.pin, en ? L('A place I went') : '记一个去过的地方', en ? L('Saved to your footprints. Share to the big map if you like; photos and words optional.') : '存进足迹，可以选分享到大地图；照片和文字都可以不填') +
+      opt('compose-post', ICON.camera, en ? L('A post') : '发帖', en ? L('Photos and a few words, shown on the home feed.') : '有图有文字，会出现在首页') +
+      '<button type="button" class="btn ghost" data-modal="no">' + esc(t('cancel')) + '</button></div>');
+  }
   function openAreaDialog() {
     if (!map) { toast(t('mapFail')); return; }
     openModal('<form class="modal-card" id="area-form"><h3>' + esc(t('saveArea')) + '</h3>' +
@@ -483,7 +493,10 @@
       case 'set-style': setBasemap(d.style); break;
       case 'campus': closeBSheet(); if (state.view === 'search') { toMapTab(); goFeed(); } flyTo([XMUM.lng, XMUM.lat], state.mode === 'travel' ? TRAVEL_ZOOM : 14.6); break;
       case 'locate': closeBSheet(); if (state.view === 'search') { toMapTab(); goFeed(); } locate(); break;
-      case 'new-post': if (requireLogin(openPostComposer)) openPostComposer(); break;
+      /* 首页「发帖」先问想做哪件事（用户 2026-11-05：新人以为进首页就只能发帖，不知道能只记足迹） */
+      case 'new-post': openComposeChoice(); break;
+      case 'compose-record': closeModal(); if (requireLogin(openAdd)) openAdd(); break;
+      case 'compose-post': closeModal(); if (requireLogin(openPostComposer)) openPostComposer(); break;
       case 'post-location': choosePostLocation(false); break;
       case 'post-map': choosePostLocation(true); break;
       case 'post-mode': if (state.form && !state.form.saving && d.v !== state.mode) { captureFormDraft(); Object.assign(state.form, { placeId:null, loc:null, osm:'', cat:null, lockedName:false }); setMode(d.v, { noFly: true }); returnPostComposer(); } break;

@@ -2632,7 +2632,14 @@ with sync_playwright() as p:
 
     # Home composer: a single visit powers both the public post and private footprint ownership.
     tab(page6, 'home')
-    page6.click('[data-action="new-post"]')
+    page6.click('[data-action="new-post"]'); page6.wait_for_selector('#modal .compose-choice')
+    opts_ = page6.evaluate('[...document.querySelectorAll("#modal .compose-opt b")].map(b => b.textContent)')
+    page6.wait_for_timeout(400); page6.screenshot(path=os.path.join(SHOTS, '22-compose-choice.png'))
+    check('home 发帖 first asks: record a place (footprints) or write a post (用户 2026-11-05)', opts_ == ['记一个去过的地方', '发帖'], opts_)
+    page6.click('[data-action="compose-record"]'); page6.wait_for_timeout(300)
+    check('choosing “记一个去过的地方” opens the normal add-a-place flow, modal closed', page6.locator('#modal').is_hidden() and page6.evaluate('state.view') == 'add' and not page6.evaluate('state.posting'), page6.evaluate('state.view'))
+    page6.evaluate('goFeed()'); tab(page6, 'home'); page6.wait_for_timeout(150)
+    page6.click('[data-action="new-post"]'); page6.wait_for_selector('#modal .compose-choice'); page6.click('[data-action="compose-post"]'); page6.wait_for_timeout(200)
     check('home composer starts with photos, followed by place selection and one combined caption', page6.locator('#q').count()==0 and page6.evaluate('document.querySelector("#f-photos").compareDocumentPosition(document.querySelector("#f-title")) & Node.DOCUMENT_POSITION_FOLLOWING') and page6.locator('#post-location').count()==1 and page6.locator('#f-text').count()==0 and page6.evaluate('document.querySelector("#post-location").compareDocumentPosition(document.querySelector("#f-title")) & Node.DOCUMENT_POSITION_FOLLOWING'))
     page6.click('[data-action="post-mode"][data-v="travel"]'); page6.wait_for_timeout(100)
     pr_travel = page6.locator('#f-price').count()
@@ -3014,7 +3021,7 @@ with sync_playwright() as p:
     av = pu.evaluate('["小雪", "阿团", "Mei", "z", "林"].map(n => { const d = document.createElement("div"); d.innerHTML = avatarHTML(n); return d.firstChild.style.getPropertyValue("--av"); })')
     check('avatars pick from the blue-white friendly palette (no olive / mud colours)', all(c in ('#5B8DEF', '#45A7C4', '#7C6FE0', '#E0719E', '#EF9A5A', '#4FB08A', '#3F7DC0', '#A77AD6', '#E5868A', '#2FA3A0') for c in av), av)
     # 照片按住拖动换顺序（用户 2026-11-01）：把最后一张拖到最前面当封面
-    tab(pu, 'home'); pu.click('[data-action="new-post"]'); pu.wait_for_timeout(300)
+    tab(pu, 'home'); pu.click('[data-action="new-post"]'); pu.wait_for_selector('#modal .compose-choice'); pu.click('[data-action="compose-post"]'); pu.wait_for_timeout(300)
     sortf = []
     for i_, col_ in enumerate([(220, 60, 60), (60, 160, 70), (50, 90, 220)]):
         fp_ = os.path.join(SHOTS, 'sort-%d.jpg' % i_); Image.new('RGB', (600, 600), col_).save(fp_, 'JPEG'); sortf.append(fp_)
