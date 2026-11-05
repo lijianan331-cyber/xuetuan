@@ -2372,6 +2372,13 @@ with sync_playwright() as p:
     page6.wait_for_function('!document.querySelector("#f-submit").disabled')
     check('publish failure retains the draft and media; saving never re-uploads finished photos', page6.input_value('#f-name') == '线上测试店' and page6.locator('#f-photos .ph-edit').count() == 3
           and page6.evaluate('window.__sb.calls.filter(c => c[0]==="upload").length === window.__uploadCallsBefore && window.__sb.db.visits.length === window.__visitsBefore'))
+    # 微信（iPhone）里“回了成功、其实没写进去”：存完按编号再读一次，读不到就说没存上，不跳走
+    page6.evaluate('window.__sbFailVisit=false; window.__forceWriteCheck = true; window.__sbPhantomVisit = true')
+    page6.click('#f-submit')
+    page6.wait_for_function('!document.querySelector("#f-submit").disabled', timeout=6000)
+    ghost_toast = page6.inner_text('#toast')
+    check('WeChat phantom save: a save the server never got is reported (open in browser), form stays', '微信没把这次保存发出去' in ghost_toast and page6.input_value('#f-name') == '线上测试店', ghost_toast)
+    page6.evaluate('window.__forceWriteCheck = false')
     # 网卡住（用户 2026-11-05：朋友点保存等 10 秒，记录没存上）：超时明确说没存上、草稿留着；其实已经到了服务器的话，重试也不会多存一条
     page6.evaluate('window.__sbFailVisit=false; window.__sbSlowVisit=3000; window.__uploadCallsBefore=window.__sb.calls.filter(c => c[0]==="upload").length')
     page6.click('#f-submit')

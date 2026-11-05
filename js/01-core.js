@@ -1076,6 +1076,14 @@
           if (cache.halalCol) row.halal = validHalal(f.halal);
           row.id = f.id || newClientId();
           return insertOnce('visits', row).then(function (v) {
+            /* 微信内置浏览器（iPhone）会出现“看起来存好了、服务器其实没收到”（用户 2026-11-05 朋友实测，Safari 正常）：
+               在微信里存完再按编号读一次，读不到就当没存上 */
+            if (!/MicroMessenger/i.test(navigator.userAgent) && !window.__forceWriteCheck) return v;
+            return withTimeout(client.from('visits').select('id').eq('id', row.id).maybeSingle()).then(function (chk) {
+              if (!chk || chk.error || !chk.data) throw new Error('XUETUAN_WECHAT_LOST');
+              return v;
+            });
+          }).then(function (v) {
             var r = reviewFromRow(v, cache.profile);
             cache.reviews.unshift(r);
             return { review: r, photosOk: up.ok };
@@ -1701,6 +1709,7 @@
     var msg = String(e && e.message || e || '');
     if (/XUETUAN_.*BLOCKED/.test(msg)) return state.lang === 'en' ? L('Publishing is restricted for this account or browser.') : '该账号或浏览器已被限制发布。';
     if (/XUETUAN_RATE_LIMIT/.test(msg)) return state.lang === 'en' ? L('Too many requests. Please try later.') : '操作太频繁，请稍后再试；草稿仍保留。';
+    if (/XUETUAN_WECHAT_LOST/.test(msg)) return state.lang === 'en' ? L('WeChat did not deliver this save. Tap ··· at the top right, open in your browser, and save again.') : '微信没把这次保存发出去。点右上角“···”→在浏览器打开，再保存一次。';
     if (/XUETUAN_SAVE_TIMEOUT|Failed to fetch|NetworkError|Load failed|Offline/i.test(msg)) return state.lang === 'en' ? L('The network is too slow, so this was not saved. Your draft is kept; tap save again.') : '网络太慢，这次没存上。草稿还在，再点一次保存。';
     if (/XUETUAN_RELOAD_REQUIRED/.test(msg)) return state.lang === 'en' ? L('Refresh to use the updated security settings.') : '防护已更新，请刷新页面后再操作。';
     return state.lang === 'en' ? L('Save failed. Your draft is kept; please try again.') : '保存失败，草稿仍保留，请稍后重试。';
