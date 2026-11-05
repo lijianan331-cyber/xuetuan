@@ -1,0 +1,36 @@
+plugins { id 'com.android.application' }
+
+// 雪团安卓壳：只是一个打开 https://xuetuan.vercel.app 的 WebView。
+// 网站更新后 app 里自动是新的，不用重新装；只有改这个壳才需要重新打包。
+def vc = (project.findProperty('versionCode') ?: '1') as int
+
+android {
+    namespace 'app.xuetuan'
+    compileSdk 34
+    defaultConfig {
+        applicationId 'app.xuetuan'
+        minSdk 24
+        targetSdk 34
+        versionCode vc
+        versionName "1.0.${vc}"
+    }
+    // 签名钥匙不放进仓库：GitHub Actions 从仓库 Secrets 里取（见 .github/workflows/android.yml）
+    signingConfigs {
+        release {
+            storeFile file(System.getenv('XT_KEYSTORE') ?: 'missing.jks')
+            storePassword System.getenv('XT_STORE_PASS')
+            keyAlias 'xuetuan'
+            keyPassword System.getenv('XT_STORE_PASS')
+        }
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.release
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}

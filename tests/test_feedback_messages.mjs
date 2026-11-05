@@ -1,0 +1,56 @@
+// Actual PostgreSQL functions, grants and ownership checks. Synthetic accounts only; no cloud writes.
+import fs from 'node:fs';
+import {pathToFileURL} from 'node:url';
+const {PGlite}=await import(pathToFileURL(process.argv[2]).href), db=new PGlite();
+const A='aaaaaaaa-0000-4000-8000-000000000001',B='bbbbbbbb-0000-4000-8000-000000000002',C='cccccccc-0000-4000-8000-000000000003',G='eeeeeeee-0000-4000-8000-000000000004',D='dddddddd-0000-4000-8000-000000000001';
+const V='22222222-0000-4000-8000-000000000001',W='22222222-0000-4000-8000-000000000002',P='11111111-0000-4000-8000-000000000001';
+const c1='33333333-0000-4000-8000-000000000001',c2='33333333-0000-4000-8000-000000000002',c3='33333333-0000-4000-8000-000000000003';
+let passed=0;
+const check=(name,ok)=>{if(!ok)throw Error(name);console.log('PASS '+name);passed++;};
+async function deny(name,sql,pattern=/permission|XUETUAN|denied|Invalid|unavailable|already used|Admin|cannot/i){try{await db.exec(sql);}catch(e){check(name,pattern.test(e.message));return;}throw Error('Allowed: '+name);}
+async function actor(id,device=D){await db.exec(`reset role;set request.jwt.claim.sub='${id||''}';set request.headers='{"x-xuetuan-device":"${device}"}';set role ${id?'authenticated':'anon'}`);}
+const read=async(id=V,at=null,cursor=null)=>(await db.query('select public.xuetuan_post_social($1,$2,$3) as d',[id,at,cursor])).rows[0].d;
+const write=async(action,id=V,body='',target=null,request=null,liked=null)=>(await db.query('select public.xuetuan_social_write($1,$2,$3,$4,$5,$6) as d',[action,id,body,target,request,liked])).rows[0].d;
+await db.exec(`create role anon;create role authenticated;create role service_role;create schema auth;create schema storage;
+create table auth.users(id uuid primary key,email_confirmed_at timestamptz,is_anonymous boolean default false);
+create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;
+grant usage on schema auth,storage to anon,authenticated;
+create table storage.buckets(id text primary key,name text,public boolean,file_size_limit bigint,allowed_mime_types text[]);
+create table storage.objects(id uuid default gen_random_uuid(),bucket_id text,name text,unique(bucket_id,name));
+alter table storage.objects enable row level security;grant select on storage.objects to anon;grant select,insert,delete on storage.objects to authenticated;
+create function storage.foldername(text) returns text[] language sql immutable as $$select string_to_array($1,'/')$$;`);
+for(const f of ['20261025065031_core_schema.sql','20261025065744_visits_rating_nullable_for_imports.sql','20261025065824_revoke_trigger_functions_from_api.sql','20261026135702_homes.sql','20261027090709_visits_half_star_rating.sql','20261027120500_keep_saved_places.sql','20261028060000_photos_gif_video.sql','20261029093501_visit_post_title.sql','20261030064731_security_hardening.sql','20261101150000_profile_page_public.sql','20261102150713_post_interactions.sql'])await db.exec(fs.readFileSync('supabase/migrations/'+f,'utf8'));
+await db.exec(`insert into auth.users(id,email_confirmed_at,is_anonymous) values('${A}',now(),false),('${B}',now(),false),('${C}',now(),false),('${G}',now(),true);
+insert into xuetuan_guard.admins values('${A}');update public.profiles set name='Synthetic',page_public=true;
+insert into public.places(id,mode,cat,lat,lng,name,created_by) values('${P}','food','other',2,101,'Synthetic','${B}');
+insert into public.visits(id,place_id,user_id,visibility) values('${V}','${P}','${B}','public'),('${W}','${P}','${B}','private');`);
+
+await db.exec(fs.readFileSync('supabase/migrations/20261103060728_private_messages.sql','utf8'));
+const dmRead=async(kind,id=null,cursor=null)=>(await db.query('select public.xuetuan_dm_read($1,$2,$3) d',[kind,id,cursor])).rows[0].d;
+const dmWrite=async(action,{peer=null,thread=null,body='',request=null,message=null,seen=null,allow=null}={})=>(await db.query('select public.xuetuan_dm_write($1,$2,$3,$4,$5,$6,$7,$8) d',[action,peer,thread,body,request,message,seen,allow])).rows[0].d;
+await db.exec(`alter table auth.users add column email text;update auth.users set email='lijianan331@gmail.com' where id='${A}'`);
+await db.exec(fs.readFileSync('supabase/migrations/20261103074112_guest_social_interactions.sql','utf8'));
+await db.exec(fs.readFileSync('supabase/migrations/20261103124558_message_activity.sql','utf8'));
+await db.exec(fs.readFileSync('supabase/migrations/20261103140645_feedback_messages.sql','utf8'));
+const feedback=async(kind='feedback',id=null,before=null)=>(await db.query('select public.xuetuan_feedback_read($1,$2,$3) d',[kind,id,before])).rows[0].d;
+const send=async(body,req=crypto.randomUUID())=>(await db.query("select public.xuetuan_feedback_write('send',$1,$2) d",[body,req])).rows[0].d;
+await actor(null);await deny('unidentified feedback denied',"select public.xuetuan_feedback_read()");
+await actor(G);await deny('guest ordinary DM gate remains',"select public.xuetuan_dm_read('inbox')");
+check('guest can open feedback without a thread',(await feedback()).messages.length===0);
+const request=crypto.randomUUID();const sent=await send('Synthetic guest feedback',request);await send('Synthetic guest feedback',request);
+check('retry stores exactly one message',(await feedback()).messages.length===1);
+await actor(A);let d=await dmRead('inbox');check('owner inbox automatically receives guest feedback',d.threads.length===1&&d.threads[0].unread&&d.threads[0].preview.includes('[意见反馈]'));
+await dmWrite('send',{thread:sent.thread_id,body:'Synthetic owner reply',request:crypto.randomUUID()});
+await actor(G);d=await feedback('inbox');check('guest sees reply unread',d.unread===1&&d.threads.length===1);
+d=await feedback('thread',sent.thread_id);check('guest can read full feedback and owner response',d.messages.length===2&&d.messages[1].body==='Synthetic owner reply');
+await db.query("select public.xuetuan_feedback_write('read',seen_seq=>$1)",[d.messages[1].seq]);check('guest read acknowledgement persists',(await feedback('inbox')).unread===0);
+await actor(B);check('other recipient cannot list guest feedback',(await feedback('inbox')).threads.length===0);await deny('guessed feedback thread denied',`select public.xuetuan_feedback_read('thread','${sent.thread_id}')`);
+await deny('ordinary peer mode not exposed',"select public.xuetuan_feedback_read('peer')");await deny('no direct message access','select * from xuetuan_guard.dm_messages');
+await actor(A);await dmWrite('prefs',{allow:false});await actor(C);await send('Feedback despite owner stranger opt-out');check('owner explicitly accepts feedback despite stranger preference',(await feedback()).can_send);
+await actor(A);await dmWrite('block',{peer:C});await actor(C);await deny('feedback honors owner block',"select public.xuetuan_feedback_write('send','blocked',gen_random_uuid())");
+await actor(G);await deny('feedback cannot mutate body via reused UUID',`select public.xuetuan_feedback_write('send','changed','${request}')`);
+await send('Second feedback');await send('Third feedback');await deny('fourth feedback per minute rate-limited',"select public.xuetuan_feedback_write('send','too many',gen_random_uuid())");
+await db.exec(`reset role;insert into xuetuan_guard.banned_users values('${G}')`);await actor(G);await deny('banned guest cannot send feedback',"select public.xuetuan_feedback_write('send','ban bypass',gen_random_uuid())");
+await actor(A);await deny('owner cannot use self-feedback channel','select public.xuetuan_feedback_read()');
+await db.exec(`reset role;update auth.users set email_confirmed_at=null where id='${A}'`);await actor(B);await deny('routing requires a verified allowlisted main account','select public.xuetuan_feedback_read()');
+console.log(`${passed}/${passed} feedback database checks passed`);await db.close();

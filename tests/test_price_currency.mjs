@@ -1,0 +1,50 @@
+// Real PostgreSQL via PGlite; synthetic accounts/files only. Pass the installed PGlite module path.
+import fs from 'node:fs';
+import path from 'node:path';
+import { pathToFileURL } from 'node:url';
+const {PGlite}=await import(pathToFileURL(process.argv[2]).href);
+const db=new PGlite();
+const A='aaaaaaaa-0000-4000-8000-000000000001', B='bbbbbbbb-0000-4000-8000-000000000002', C='cccccccc-0000-4000-8000-000000000003';
+const DEV='dddddddd-0000-4000-8000-000000000001';
+let passed=0;
+const check=(name,ok)=>{if(!ok)throw Error(name);passed++;console.log('PASS '+name);};
+async function denied(name,sql,match=/permission|policy|XUETUAN|Admin|not found/i){try{await db.exec(sql);}catch(e){check(name,match.test(e.message));return;}throw Error('Allowed: '+name);}
+async function actor(uid,device=DEV){await db.exec(`reset role;set request.jwt.claim.sub='${uid||''}';set request.headers='{"x-xuetuan-device":"${device}"}';set role ${uid?'authenticated':'anon'};`);}
+await db.exec(`create role anon;create role authenticated;create role service_role;
+create schema auth;create schema storage;
+create table auth.users(id uuid primary key,email_confirmed_at timestamptz,is_anonymous boolean default false);
+create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;
+grant usage on schema auth,storage to anon,authenticated;
+create table storage.buckets(id text primary key,name text,public boolean,file_size_limit bigint,allowed_mime_types text[]);
+create table storage.objects(id uuid default gen_random_uuid(),bucket_id text,name text,unique(bucket_id,name));
+alter table storage.objects enable row level security;
+grant select on storage.objects to anon;grant select,insert,delete on storage.objects to authenticated;
+create function storage.foldername(text) returns text[] language sql immutable as $$select string_to_array($1,'/')$$;`);
+const root=process.cwd();
+for(const f of ['20261025065031_core_schema.sql','20261025065744_visits_rating_nullable_for_imports.sql','20261025065824_revoke_trigger_functions_from_api.sql','20261026135702_homes.sql','20261027090709_visits_half_star_rating.sql','20261027120500_keep_saved_places.sql','20261028060000_photos_gif_video.sql','20261029093501_visit_post_title.sql','20261030064731_security_hardening.sql'])await db.exec(fs.readFileSync(path.join(root,'supabase/migrations',f),'utf8'));
+await db.exec(`insert into auth.users(id,email_confirmed_at) values('${A}',now()),('${B}',now()),('${C}',now());insert into xuetuan_guard.admins values('${A}');
+insert into public.places(id,mode,cat,lat,lng,name,created_by) values('11111111-0000-4000-8000-000000000001','food','other',2,101,'Synthetic','${B}');
+insert into public.visits(id,place_id,user_id,photos,visibility) values('22222222-0000-4000-8000-000000000001','11111111-0000-4000-8000-000000000001','${B}',array['${B}/ph-one.jpg'],'private');
+insert into storage.objects(bucket_id,name) values('photos','${B}/ph-one.jpg'),('photos','${B}/ph-one_t.jpg');`);
+
+await db.exec(fs.readFileSync(path.join(root,'supabase/migrations/20261102082953_visit_price_currency.sql'),'utf8'));
+await db.exec('grant all on public.visits to anon');
+await db.exec(fs.readFileSync(path.join(root,'supabase/migrations/20261102085058_visit_price_currency_permissions.sql'),'utf8'));
+check('shared unauthenticated role retains SELECT but no table write grant', (await db.query("select has_table_privilege('anon','public.visits','SELECT') as can_read, has_table_privilege('anon','public.visits','UPDATE') as can_write")).rows.every(r=>r.can_read && !r.can_write));
+const visit='22222222-0000-4000-8000-000000000001';
+check('legacy price currency remains nullable', (await db.query(`select price_currency from public.visits where id='${visit}'`)).rows[0].price_currency === null);
+await actor(B);
+await db.exec(`update public.visits set price=2000,price_currency='JPY' where id='${visit}'`);
+let row=(await db.query(`select price,price_currency from public.visits where id='${visit}'`)).rows[0];
+check('owner can store original Japanese yen amount', +row.price===2000 && row.price_currency==='JPY');
+await db.exec(`update public.visits set price_currency='MYR' where id='${visit}'`);
+row=(await db.query(`select price,price_currency from public.visits where id='${visit}'`)).rows[0];
+check('currency field does not rewrite amount', +row.price===2000 && row.price_currency==='MYR');
+await denied('invalid currency rejected',`update public.visits set price_currency='FAKE' where id='${visit}'`,/check constraint/i);
+await denied('ownership columns remain forbidden',`update public.visits set user_id='${C}' where id='${visit}'`);
+await actor(C);
+let changed=await db.query(`update public.visits set price_currency='JPY' where id='${visit}' returning id`);
+check('other accounts cannot change private price or currency',changed.rows.length===0);
+await actor(null);
+await denied('anonymous SQL role cannot write currencies',`update public.visits set price_currency='JPY' where id='${visit}'`);
+console.log(`${passed}/${passed} currency database checks passed`);await db.close();
