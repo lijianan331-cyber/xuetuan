@@ -148,19 +148,21 @@
     var c = map.getCenter();
     return haversine(XMUM, { lat: c.lat, lng: c.lng }) < 2500 ? CAMPUS_CLUSTER_RADIUS : PLACE_CLUSTER_RADIUS;
   }
-  function placeClusterProfile() { return placeClusterMaxZoom() + ':' + placeClusterRadius(); }
+  /* 足迹可以切成“只显示点”（用户 2026-11-05：好奇不合并成数字是什么样）：筛选里的开关，只管足迹，默认照旧合并 */
+  function placeClusterOn() { return !(state.tab === 'foot' && state.scope === 'mine' && state.mineDots); }
+  function placeClusterProfile() { return placeClusterOn() ? placeClusterMaxZoom() + ':' + placeClusterRadius() : 'off'; }
   function syncPlaceCluster() {
     var src = map && map.getSource && map.getSource('places'), want = placeClusterProfile();
     if (!src || typeof src.setClusterOptions !== 'function' || placeClusterProfiles.get(src) === want) return;
     placeClusterProfiles.set(src, want);
-    Promise.resolve(src.setClusterOptions({ cluster: true, clusterMaxZoom: placeClusterMaxZoom(), clusterRadius: placeClusterRadius() })).catch(function () { placeClusterProfiles.delete(src); });
+    Promise.resolve(src.setClusterOptions({ cluster: placeClusterOn(), clusterMaxZoom: placeClusterMaxZoom(), clusterRadius: placeClusterRadius() })).catch(function () { placeClusterProfiles.delete(src); });
   }
   function addAppLayers() {
     var fonts = pickFonts();
     /* 数字圈用雪团的浅冰蓝，不跟着玩乐地图变深（用户 2026-10-28） */
     var accent = CLUSTER_BLUE;
     homePlacement = null;
-    map.addSource('places', { type: 'geojson', data: placesGeoJSON(), cluster: true, clusterMaxZoom: placeClusterMaxZoom(), clusterRadius: placeClusterRadius(),
+    map.addSource('places', { type: 'geojson', data: placesGeoJSON(), cluster: placeClusterOn(), clusterMaxZoom: placeClusterMaxZoom(), clusterRadius: placeClusterRadius(),
       clusterProperties: { photoRef: [['case', ['!=', ['accumulated'], ''], ['accumulated'], ['get', 'photoRef']], ['get', 'photoRef']], photoTotal: ['+', ['get', 'photoCount']], locationCount: ['+', ['get', 'locationCount']] } });
     placeClusterProfiles.set(map.getSource('places'), placeClusterProfile());
     map.addSource('me', { type: 'geojson', data: meFC() });

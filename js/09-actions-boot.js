@@ -452,6 +452,7 @@
         if (map) flyTo([108, 12], 3);
         break;
       case 'homes-toggle': closeBSheet(); state.homesOn = !state.homesOn; goFeed(); refreshMap(); renderFilters(); saveView(); toast(t(state.homesOn ? 'homesOpened' : 'homesClosed')); break;
+      case 'mine-dots-toggle': state.mineDots = !state.mineDots; refreshMap(); saveView(); if (state.bsheet) renderBSheet(); break;
       case 'mine-home-toggle': state.mineHomeOn = !state.mineHomeOn; refreshMap(); renderFilters(); saveView(); if (state.bsheet) renderBSheet(); toast(state.lang === 'en' ? (state.mineHomeOn ? 'My hometown shown' : 'My hometown hidden') : (state.mineHomeOn ? '已显示我的家乡' : '已隐藏我的家乡')); break;
       case 'home-set': openHomeSet(); break;
       case 'acct': switchAccount(d.id); break;
@@ -712,7 +713,7 @@
     if (savedView.mode === 'travel' || savedView.mode === 'food') state.mode = savedView.mode;
     if (STYLE_URLS[savedView.styleKey]) state.styleKey = savedView.styleKey === 'dark' ? 'light' : savedView.styleKey;
     state.mineBoth = savedView.mineBoth === true; state.countries = savedView.countries === true; state.homesOn = false;
-    state.mineHomeOn = savedView.mineHomeOn === true;
+    state.mineHomeOn = savedView.mineHomeOn === true; state.mineDots = savedView.mineDots === true;
   }
   var dataReady = store.init().catch(function () { toast(t('loadFail')); });
   var incomingShare = readSharedCard();

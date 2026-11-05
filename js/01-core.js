@@ -401,7 +401,7 @@
     lang: 'zh', mode: 'food', tab: 'home', scope: 'all', cat: 'all', priceAbout: 0, minScore: 0, dist: 'any', halal: '',
     view: 'feed', placeId: null, postId: null, placeBack: null, form: null, nearby: null, query: '',
     homeMode: 'all', homeDays: HOME_DAYS, homeMin: 0, homeSort: 'newest', homeFiltersOpen: false, bootLoading: true, posting: false, snap: 'peek', feedSnap: 'peek', picking: null, preview: null, bsheet: null, me: null, styleKey: 'light',
-    person: null, personBack: null, mineBoth: false, countries: false, savedWant: false, savedStatus: 'all', favoritesBack: null, mineSub: 'mine', homesOn: false, mineHomeOn: false, homes: null, homeBack: null, clusterPlaces: null, bulk: null
+    person: null, personBack: null, mineBoth: false, countries: false, savedWant: false, savedStatus: 'all', favoritesBack: null, mineSub: 'mine', homesOn: false, mineHomeOn: false, mineDots: false, homes: null, homeBack: null, clusterPlaces: null, bulk: null
   };
   var map = null;
   var lastRenderedView = null;
@@ -1330,7 +1330,7 @@
       }
       v.mode = state.mode; v.lang = state.lang; v.styleKey = state.styleKey;
       v.mineBoth = state.mineBoth; v.countries = state.countries; v.homesOn = state.homesOn;
-      v.mineHomeOn = state.mineHomeOn;
+      v.mineHomeOn = state.mineHomeOn; v.mineDots = state.mineDots;
       localStorage.setItem(LS_VIEW, JSON.stringify(v));
     } catch (e) { /* storage blocked: keep going */ }
   }
