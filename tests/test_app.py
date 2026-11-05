@@ -2166,7 +2166,7 @@ with sync_playwright() as p:
     ctxp.close()
     ctx6 = browser.new_context(viewport={'width': 390, 'height': 844}, device_scale_factor=2, has_touch=True, accept_downloads=True)
     route_all(ctx6, supabase=True)
-    ctx6.add_init_script('window.__sbSeed = ' + json.dumps(sb_seed) + ';')
+    ctx6.add_init_script('window.__writeTimeout = 1500; window.__sbSeed = ' + json.dumps(sb_seed) + ';')
     poi = [{'id': 'aaa', 'name': 'Kafe Ujian Dekat', 'alt_name': '', 'mode': 'food', 'cat': 'cafe', 'lat': 2.8341, 'lng': 101.704, 'locality': 'Sepang', 'dist_m': 150},
            {'id': 'bbb', 'name': 'Kafe Ujian', 'alt_name': '', 'mode': 'food', 'cat': 'cafe', 'lat': 2.8502, 'lng': 101.7201, 'locality': 'Sepang', 'dist_m': 2500}]
     ctx6.add_init_script('window.__poi = ' + json.dumps(poi) + ';')
@@ -2372,9 +2372,16 @@ with sync_playwright() as p:
     page6.wait_for_function('!document.querySelector("#f-submit").disabled')
     check('publish failure retains the draft and media; saving never re-uploads finished photos', page6.input_value('#f-name') == '线上测试店' and page6.locator('#f-photos .ph-edit').count() == 3
           and page6.evaluate('window.__sb.calls.filter(c => c[0]==="upload").length === window.__uploadCallsBefore && window.__sb.db.visits.length === window.__visitsBefore'))
-    page6.evaluate('window.__sbFailVisit=false; window.__uploadCallsBefore=window.__sb.calls.filter(c => c[0]==="upload").length')
+    # 网卡住（用户 2026-11-05：朋友点保存等 10 秒，记录没存上）：超时明确说没存上、草稿留着；其实已经到了服务器的话，重试也不会多存一条
+    page6.evaluate('window.__sbFailVisit=false; window.__sbSlowVisit=3000; window.__uploadCallsBefore=window.__sb.calls.filter(c => c[0]==="upload").length')
+    page6.click('#f-submit')
+    page6.wait_for_function('!document.querySelector("#f-submit").disabled', timeout=6000)
+    slow_toast = page6.inner_text('#toast')
+    check('slow network: save stops waiting after a while, says it was not saved and keeps the draft', '网络太慢' in slow_toast and page6.input_value('#f-name') == '线上测试店', slow_toast)
+    page6.wait_for_timeout(1800)
     page6.click('#f-submit')
     page6.wait_for_timeout(800)
+    check('slow network: retry after a write that did land saves exactly one record (same id reused)', page6.evaluate('window.__sb.db.visits.length === window.__visitsBefore + 1'), page6.evaluate('window.__sb.db.visits.length - window.__visitsBefore'))
     check('retry reuses uploaded files and creates only one place', page6.evaluate('window.__sb.calls.filter(c => c[0]==="upload").length === window.__uploadCallsBefore && window.__sb.db.places.filter(p => p.name==="线上测试店").length===1'))
     db6 = page6.evaluate('window.__sb.db')
     mine6 = [p_ for p_ in db6['places'] if p_['name'] == '线上测试店']

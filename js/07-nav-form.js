@@ -815,6 +815,8 @@
     rv.photoOrder = f.photos.map(function (ph) { return ph.existing ? { k: ph.id } : { n: newPhotos.indexOf(ph) }; });
     /* 照片和地点同时传，不用等地点存完再传照片 */
     if (store.preupload) store.preupload(newPhotos);
+    /* 新地点、新记录的编号第一次保存时定下，重试沿用：上次其实存上了也不会重复 */
+    if (!f.editId) { f.newPlaceId = f.newPlaceId || newClientId(); f.newVisitId = f.newVisitId || newClientId(); rv.id = f.newVisitId; if (placeData && !p0) placeData.id = f.newPlaceId; }
     var placeStep = !placeData ? Promise.resolve(p0) : p0 ? store.updatePlace(p0.id, placeData) : store.addPlace(placeData);
     placeStep.then(function (place) {
       /* 重试时复用刚创建成功的地点，避免重复创建。 */

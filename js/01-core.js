@@ -799,6 +799,19 @@
         createdAt: Date.parse(r.created_at), sample: false
       };
     }
+    /* 网卡住时保存别一直转（用户 2026-11-05：朋友在微信里点保存等了 10 秒，记录却没到服务器）：
+       超时就报错让人重试；新记录用前端生成的编号，重试时请求其实已经到了也不会存两条 */
+    var WRITE_TIMEOUT = window.__writeTimeout || 15000;
+    function withTimeout(p) {
+      return Promise.race([p, new Promise(function (_, reject) { setTimeout(function () { reject(new Error('XUETUAN_SAVE_TIMEOUT')); }, WRITE_TIMEOUT); })]);
+    }
+    /* 同一个编号已经存进去了（上次超时其实成功了）：读回那一条当作成功 */
+    function insertOnce(table, row) {
+      return withTimeout(client.from(table).insert(row).select().single()).then(function (res) {
+        if (res.error && (res.error.code === '23505' || /duplicate key/i.test(res.error.message || ''))) return withTimeout(client.from(table).select('*').eq('id', row.id).single());
+        return res;
+      }).then(ok);
+    }
     function placeToRow(p) {
       var row = {};
       [['mode', 'mode'], ['cat', 'cat'], ['precision', 'precision'], ['lat', 'lat'], ['lng', 'lng'], ['name', 'name'],
@@ -1037,7 +1050,7 @@
 
       /* ---- 写 ---- */
       addPlace: function (f) {
-        return needLogin() || ccAt(f.lat, f.lng).then(function (cc) { return client.from('places').insert(placeToRow(Object.assign({}, f, { cc: cc }))).select().single(); }).then(ok).then(function (row) {
+        return needLogin() || ccAt(f.lat, f.lng).then(function (cc) { return insertOnce('places', Object.assign(placeToRow(Object.assign({}, f, { cc: cc })), { id: f.id || newClientId() })); }).then(function (row) {
           var p = placeFromRow(row);
           cache.places.push(p);
           return p;
@@ -1061,7 +1074,8 @@
           var row = { place_id: f.placeId, rating: f.rating, price: f.price, price_currency: validPriceCurrency(f.priceCurrency), text: f.text, title: f.title || null, visibility: f.visibility, photos: up.paths, updated_at: new Date().toISOString() };
           if (f.createdAt) row.created_at = new Date(f.createdAt).toISOString();
           if (cache.halalCol) row.halal = validHalal(f.halal);
-          return client.from('visits').insert(row).select().single().then(ok).then(function (v) {
+          row.id = f.id || newClientId();
+          return insertOnce('visits', row).then(function (v) {
             var r = reviewFromRow(v, cache.profile);
             cache.reviews.unshift(r);
             return { review: r, photosOk: up.ok };
@@ -1417,6 +1431,14 @@
       return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
     });
   }
+  function newClientId() {
+    if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+    var b = new Uint8Array(16), i;
+    if (window.crypto && crypto.getRandomValues) crypto.getRandomValues(b); else for (i = 0; i < 16; i++) b[i] = Math.random() * 256 | 0;
+    b[6] = b[6] & 15 | 64; b[8] = b[8] & 63 | 128;
+    var h = Array.prototype.map.call(b, function (x) { return (x + 256).toString(16).slice(1); }).join('');
+    return h.slice(0, 8) + '-' + h.slice(8, 12) + '-' + h.slice(12, 16) + '-' + h.slice(16, 20) + '-' + h.slice(20);
+  }
   function uid(prefix) { return prefix + '-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
   function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
   function round6(v) { return Math.round(v * 1e6) / 1e6; }
@@ -1679,6 +1701,7 @@
     var msg = String(e && e.message || e || '');
     if (/XUETUAN_.*BLOCKED/.test(msg)) return state.lang === 'en' ? L('Publishing is restricted for this account or browser.') : '该账号或浏览器已被限制发布。';
     if (/XUETUAN_RATE_LIMIT/.test(msg)) return state.lang === 'en' ? L('Too many requests. Please try later.') : '操作太频繁，请稍后再试；草稿仍保留。';
+    if (/XUETUAN_SAVE_TIMEOUT|Failed to fetch|NetworkError|Load failed|Offline/i.test(msg)) return state.lang === 'en' ? L('The network is too slow, so this was not saved. Your draft is kept; tap save again.') : '网络太慢，这次没存上。草稿还在，再点一次保存。';
     if (/XUETUAN_RELOAD_REQUIRED/.test(msg)) return state.lang === 'en' ? L('Refresh to use the updated security settings.') : '防护已更新，请刷新页面后再操作。';
     return state.lang === 'en' ? L('Save failed. Your draft is kept; please try again.') : '保存失败，草稿仍保留，请稍后重试。';
   }

@@ -124,6 +124,7 @@
       row.created_at = row.created_at || now;
       if (this.table === 'visits') { row.photos = row.photos || []; if (row.rating != null && (row.rating < 0 || row.rating > 5 || row.rating * 2 % 1)) return err('rating out of range'); }
       if (!canWrite(this.table, row)) return err('new row violates row-level security policy');
+      if (t.some(function (x) { return x.id && x.id === row.id; })) { var dup = err('duplicate key value violates unique constraint'); dup.error.code = '23505'; return dup; }
       t.push(row);
       rows = [row];
     } else {
@@ -158,6 +159,8 @@
   Query.prototype.then = function (a, b) {
     var self = this;
     if (window.__holdDbReads && self.op === 'select') return new Promise(function (resolve) { (window.__resumeDbReads || (window.__resumeDbReads = [])).push(function () { resolve(self.run()); }); }).then(a,b);
+    /* 测试：请求到了服务器、写进去了，但回应很久才回来（网卡住） */
+    if (window.__sbSlowVisit && self.table === 'visits' && self.op === 'insert') { var res0 = self.run(), wait = window.__sbSlowVisit; window.__sbSlowVisit = 0; return new Promise(function (resolve) { setTimeout(function () { resolve(res0); }, wait); }).then(a, b); }
     return new Promise(function (resolve) { setTimeout(function () { resolve(self.run()); }, 5); }).then(a, b);
   };
 
