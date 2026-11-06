@@ -343,7 +343,7 @@ body[data-snap="page"] .panel-body { padding-top: env(safe-area-inset-top, 0px);
 .grip span { width: 36px; height: 5px; border-radius: 3px; background: #D7E0EA; }
 .panel-brand { display: none; align-items: center; gap: 12px; padding: 20px 20px 14px; }
 .brand-name { font-weight: 700; font-size: 17px; letter-spacing: -.01em; line-height: 1.2; }
-.brand-name span { font-family: var(--font-display); font-weight: 400; font-size: 22px; margin-right: 2px; color: var(--accent); }
+.brand-name span { font-family: "XT Brand", var(--font-display); font-weight: 400; font-size: 22px; margin-right: 2px; color: var(--accent); }
 .brand-tag { font-size: 12.5px; color: var(--muted); }
 .panel-body {
   flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain;
@@ -1093,7 +1093,7 @@ html.splash-on .splash { position: fixed; top: 0; right: 0; bottom: 0; left: 0; 
 html.splash-out .splash { opacity: 0; pointer-events: none; }
 .sp-mark { position: relative; display: flex; flex-direction: column; align-items: center; margin-top: -8vh; }
 .sp-ball { display: block; width: 128px; height: 128px; filter: drop-shadow(0 12px 18px rgba(14, 70, 130, .28)); }
-.sp-mark b { margin-top: 6px; font-family: var(--font-display); font-size: 40px; font-weight: 400; line-height: 1.1; letter-spacing: .12em; color: #fff; text-shadow: 0 2px 10px rgba(14, 70, 130, .22); }
+.sp-mark b { margin-top: 6px; font-family: "XT Brand", var(--font-display); font-size: 40px; font-weight: 400; line-height: 1.1; letter-spacing: .12em; color: #fff; text-shadow: 0 2px 10px rgba(14, 70, 130, .22); }
 .sp-mark .sp-en { margin-top: 2px; font-style: normal; font-size: 15px; font-weight: 500; letter-spacing: .32em; text-indent: .32em; color: rgba(255, 255, 255, .88); }
 .sp-tag { position: absolute; left: 0; right: 0; bottom: calc(44px + env(safe-area-inset-bottom, 0px)); text-align: center; color: rgba(255, 255, 255, .9); font-size: 13.5px; font-weight: 500; letter-spacing: .14em; }
 .sp-flakes { position: absolute; top: 0; right: 0; bottom: 0; left: 0; pointer-events: none; }
