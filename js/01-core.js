@@ -1336,6 +1336,8 @@
     if (token && /^[A-Za-z0-9_-]{10,200}$/.test(token)) u.searchParams.set('_vercel_share', token);
     return u.href;
   }
+  /* 安卓 app 登录完把 #access_token=... 接到当前地址后面；地址只差 # 时 WebView 不会重新打开页面，Supabase 就读不到，所以这里重新载入一次 */
+  window.addEventListener('hashchange', function () { if (/(^#|&)(access_token|error_description|error_code)=/.test(location.hash)) location.reload(); });
   /* Capture only OAuth errors before the SDK consumes the fragment; never copy tokens into application state. */
   var authCallbackProblem = (function () {
     var hash = new URLSearchParams(location.hash.slice(1)), query = new URLSearchParams(location.search);

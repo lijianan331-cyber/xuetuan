@@ -125,7 +125,9 @@ public class MainActivity extends Activity {
     /* 浏览器里登录完跳回 xuetuan://auth#access_token=...，把这串交给网站，网站自己存好登录状态 */
     void finishLogin(Uri u) {
         String frag = u.getEncodedFragment(), query = u.getEncodedQuery();
-        String url = HOME + (query != null ? "?" + query : "") + (frag != null ? "#" + frag : "");
+        // 总带一个新的 ?app_auth=，这样一定是重新打开页面（只差 # 的话 WebView 不重新载入，网站读不到登录结果）
+        String q = "app_auth=" + System.currentTimeMillis() + (query != null ? "&" + query : "");
+        String url = HOME + "?" + q + (frag != null ? "#" + frag : "");
         web.loadUrl(url);
     }
 

@@ -3063,6 +3063,10 @@ with sync_playwright() as p:
 
     browser.close()
 
+# 安卓 app 登录回跳：网页在只改 # 时也重新载入；壳每次带新的 ?app_auth= 强制重开页面
+_core = open(os.path.join(ROOT, 'js/01-core.js'), encoding='utf-8').read()
+_main = open(os.path.join(ROOT, 'android/app/src/main/java/app/xuetuan/MainActivity.java'), encoding='utf-8').read()
+check('app login: hash with access_token reloads page; shell forces a fresh load', "addEventListener('hashchange'" in _core and 'access_token' in _core and '"app_auth=" + System.currentTimeMillis()' in _main)
 # 拆开的文件：index.html 引用的 css/js 都在，且按序号顺序加载
 _idx = open(os.path.join(ROOT, 'index.html'), encoding='utf-8').read()
 _js = re.findall(r'<script src="(js/[^"]+)"></script>', _idx)
