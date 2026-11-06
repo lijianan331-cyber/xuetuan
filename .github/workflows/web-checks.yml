@@ -26,8 +26,14 @@ jobs:
       - name: Install isolated test tools
         shell: pwsh
         run: |
-          python -m pip install playwright==1.63.0 Pillow==13.0.0
+          python -m pip install playwright==1.63.0 Pillow==13.0.0 imageio-ffmpeg==0.6.0
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $ffmpegBin = Join-Path $env:RUNNER_TEMP 'xuetuan-ffmpeg'
+          New-Item -Path $ffmpegBin -ItemType Directory -Force | Out-Null
+          $ffmpeg = python -c "import imageio_ffmpeg; print(imageio_ffmpeg.get_ffmpeg_exe())"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Copy-Item -LiteralPath $ffmpeg -Destination (Join-Path $ffmpegBin 'ffmpeg.exe')
+          $ffmpegBin >> $env:GITHUB_PATH
           npm install --prefix "$env:RUNNER_TEMP/xuetuan-checks" --no-audit --no-fund --ignore-scripts @electric-sql/pglite@0.5.15
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           "XUETUAN_TEST_PGLITE=$env:RUNNER_TEMP/xuetuan-checks/node_modules/@electric-sql/pglite/dist/index.js" >> $env:GITHUB_ENV
