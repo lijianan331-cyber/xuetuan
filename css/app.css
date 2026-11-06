@@ -742,6 +742,11 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
 .home-search img { flex: none; border-radius: 8px; }
 .home-search svg { flex: none; width: 17px; height: 17px; color: var(--accent); }
 .home-share { flex: none; width: 36px; height: 36px; color: var(--food); }
+.home-xuepin { flex: none; margin-left: auto; position: relative; display: block; width: 30px; height: 30px; -webkit-tap-highlight-color: transparent; }
+.home-xuepin img { display: block; width: 30px; height: 30px; border-radius: 9px; box-shadow: 0 1px 3px rgba(150, 70, 0, .22); }
+.home-xuepin .sw-badge { position: absolute; left: -5px; bottom: -4px; display: grid; place-items: center; width: 15px; height: 15px; border-radius: 50%; background: #fff; color: #C9590A; box-shadow: 0 0 0 1px rgba(201, 89, 10, .25), 0 1px 2px rgba(0, 0, 0, .12); }
+.home-xuepin .sw-badge svg { width: 9px; height: 9px; }
+.home-xuepin:active { transform: scale(.94); }
 .home-search span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* 地图预览就是那张地图，挪进这张卡片；上面盖一个透明按钮，点了去探索，手指上下划照样滚页面 */
 .home-map { position: relative; height: 188px; margin: 2px 0 4px; border-radius: 18px; overflow: hidden; background: #E4EEF8; box-shadow: var(--shadow-soft); }

@@ -1,0 +1,16 @@
+{
+  "name": "雪拼 · XMUM 拼车",
+  "short_name": "雪拼",
+  "description": "XMUM 同学一起拼车：机场、商场、KL。",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#FFF8F0",
+  "theme_color": "#FFF8F0",
+  "lang": "zh-CN",
+  "icons": [
+    { "src": "icons/xuepin-icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/xuepin-icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/xuepin-icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

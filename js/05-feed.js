@@ -51,6 +51,13 @@
   }
   setInterval(function () { if (homeVisible()) refreshHome(false); }, 45000);
   document.addEventListener('visibilitychange', function () { if (homeVisible()) refreshHome(false); });
+  /* 姐妹站雪拼（拼车）：首页“最新分享”右边、刷新上面一个小图标，点了打开 xuepin/，同一个账号（用户 2026-11-06） */
+  function xuepinButton() {
+    var label = state.lang === 'en' ? L('Switch to XuePin (carpool)') : '切换到雪拼（拼车）';
+    return '<a class="home-xuepin" href="xuepin/" aria-label="' + esc(label) + '" title="' + esc(label) + '"><img src="xuepin/icons/xuepin-icon-180.png" width="30" height="30" alt=""><i class="sw-badge">' + SWITCH_ICON + '</i></a>';
+  }
+  /* 左下角的小 ⇄ 角标：提示“点了是切换到另一个应用” */
+  var SWITCH_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h14l-4-4M20 16H6l4 4"/></svg>';
   function renderHome() {
     var items = homeReviews(), h = '';
     if (isMobile()) {
@@ -61,7 +68,7 @@
         '<div class="home-attrib">' + $('.attrib').innerHTML + '</div></div>';
     }
     if (!isMobile()) h += '<div style="display:flex;justify-content:flex-end">' + langButtonHTML() + appShareButton() + '</div>';
-    h += '<div class="home-sec"><h2>' + esc(t('latest')) + '</h2></div>';
+    h += '<div class="home-sec"><h2>' + esc(t('latest')) + '</h2>' + xuepinButton() + '</div>';
     h += homeFiltersHTML();
     /* 首次加载：先放四张灰卡片占位（不再是一行字 + 空白），加载完换成真卡片 */
     if (!items.length && state.bootLoading) h += '<ul class="post-grid skeleton" aria-hidden="true">' + '<li class="post-card"><span class="sk-cover"></span><span class="sk-line"></span><span class="sk-line short"></span></li>'.repeat(4) + '</ul>' +
