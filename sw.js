@@ -1,6 +1,6 @@
 /* Atomic app-shell releases. This worker never caches API/auth/signed-photo requests. */
 'use strict';
-const VERSION = 'xuetuan-shell-49744c2c66abc29b';
+const VERSION = 'xuetuan-shell-d650dd1969da72f6';
 const MAP_CACHE = 'xuetuan-map-v1';
 const ROOT = new URL('./', self.location.href);
 const SHELL = [

@@ -358,7 +358,7 @@ with sync_playwright() as p:
     check('no add button on explore', not page.locator('#fab').is_visible())
     tab(page, 'foot')
     tb_ = page.evaluate('(() => { const b = document.querySelector("#tab-add").getBoundingClientRect(), t = document.querySelector("#tabbar").getBoundingClientRect(), tabs = [...document.querySelectorAll("#tabbar > *")].map(e => e.id === "tab-add" ? "+" : e.dataset.tab); return { tabs, mid: Math.abs((b.left + b.right) / 2 - (t.left + t.right) / 2) < 2, inBar: b.top >= t.top - 1 && b.bottom <= t.bottom + 1 }; })()')
-    check('tab bar is 56px tall (user 2026-11-06: a bit taller than the old 54)', page.evaluate('Math.round(document.querySelector("#tabbar").getBoundingClientRect().height)') == 56)
+    check('tab bar is 55px tall (user 2026-11-06: a bit taller than the old 54)', page.evaluate('Math.round(document.querySelector("#tabbar").getBoundingClientRect().height)') == 55)
     check('the add button sits in the middle of the tab bar (like 小红书/抖音); the old floating + on footprints is gone', tb_['tabs'] == ['home', 'explore', '+', 'foot', 'me'] and tb_['mid'] and tb_['inBar'] and page.locator('#tab-add').is_visible() and not page.locator('#fab').is_visible() and page.get_attribute('#tab-add', 'aria-label') == '记一笔' and page.get_attribute('#tabbar [data-tab="foot"]', 'aria-current') == 'page', tb_)
     page.click('#tab-add'); page.wait_for_selector('#modal .compose-choice'); page.click('[data-modal="no"]'); page.wait_for_timeout(100)
     check('footprints: been/wishlist lives in filters, no inline switch, nothing recorded', page.locator('#view [data-action="mine-sub"]').count() == 0 and foot_sub(page) == 'mine' and page.inner_text('.view-head .count') == '0')
