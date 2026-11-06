@@ -192,7 +192,7 @@
     var f = state.form, pid = f && f.placeId;
     if (f && f.saving) { toast(t('saveWorking')); return; }
     if (f && !f.editId) { saveFormDraft(); if (f.drafted) setTimeout(function () { toast(state.lang === 'en' ? L('Draft kept: tap + to continue') : '草稿已存，下次点加号接着写'); }, 0); }
-    if (f) f.photos.forEach(releaseFormPreview);
+    if (f) f.photos.forEach(f.editId ? discardFormPhoto : releaseFormPreview);
     state.form = null; state.posting = false;
     if (pid && placeById(pid)) {
       state.view = 'place'; state.placeId = pid; render(); setSnap('half'); updateSelection();
@@ -580,6 +580,10 @@
     var ext = out.ext || 'jpg', ph = { id: uid('ph') + takenSuffix(takenAt) + (ext === 'jpg' ? '' : '.' + ext), blob: out.blob, thumb: out.thumb, url: URL.createObjectURL(out.blob) };
     ph.preview = out.thumb ? URL.createObjectURL(out.thumb) : ph.url;
     return ph;
+  }
+  function discardFormPhoto(ph) {
+    releaseFormPreview(ph);
+    if (store.discardPreupload) store.discardPreupload(ph);
   }
   function releaseFormPreview(ph) {
     if (ph.existing) return;

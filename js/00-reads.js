@@ -4,7 +4,7 @@ window.XueReads = { create: function (client, ctx) {
   var enabled = false, unavailable = false, epoch = 0, actor, ownReady = false, ownWork = null;
   var feed = { key: '', ids: [], more: false, cursor: null }, placesLoaded = new Map(), personLoaded = new Set();
   var authorHomes = new Map();
-  var detailWork = new Map(), searchKey = '', homesReady = false, homeCount = null;
+  var detailWork = new Map(), searchKey = '', searchTicket = 0, homesReady = false, homeCount = null;
   var mapIDs = [], groups = [], mapKey = '', loadedContext = '', loadedZoom = 15, mapTicket = 0, mapController = null;
   var metrics = { calls: 0, failures: 0, aborted: 0, bytes: 0, lastMs: 0, samples: [], mapRows: 0, feedRows: 0 };
   function current(uid, ticket) { return uid === ctx.uid() && ticket === epoch; }
@@ -150,10 +150,20 @@ window.XueReads = { create: function (client, ctx) {
     return call('homes').then(function (r) { ctx.cache().homes = r.homes.map(ctx.home); homeCount = r.homes.filter(function (h) { return h.is_public; }).length; homesReady = true; changed('homes'); });
   }
   function search(query) {
-    var key = query.trim().toLowerCase();
-    if (!enabled || navigator.onLine === false || key === searchKey || !key) return Promise.resolve();
+    var term = query.trim().toLowerCase(), mode = state.mode;
+    var key = mode + ':' + term;
+    if (!enabled || navigator.onLine === false || key === searchKey || !term) return Promise.resolve();
     searchKey = key;
-    return call('search', { query: key, mode: state.mode }).then(function (r) { if (key !== searchKey) return; mergePlaces(r.rows, 'all'); changed('search'); }, function (e) { if (key === searchKey) searchKey = ''; throw e; });
+    var ticket = ++searchTicket;
+    return call('search', { query: term, mode: mode }).then(function (r) {
+      if (ticket !== searchTicket || key !== searchKey) return;
+      if (mode !== state.mode) { searchKey = ''; return; }
+      mergePlaces(r.rows, 'all');
+      changed('search');
+    }, function (e) {
+      if (ticket === searchTicket && key === searchKey) searchKey = '';
+      throw e;
+    });
   }
   function refresh(guard) {
     if (unavailable) return Promise.resolve(false);

@@ -67,4 +67,37 @@ check('moderator does not get blanket access to other private photos',(await db.
 await denied('moderation cannot target private posts',`select public.xuetuan_moderate_visit('33333333-0000-4000-8000-000000000001','delete')`,/not found/);
 await db.exec(`reset role;update auth.users set email_confirmed_at=null where id='${A}';set role authenticated;`);
 check('unverified account cannot retain administrator powers',!(await db.query('select public.xuetuan_is_admin() as yes')).rows[0].yes);
+await db.exec('reset role');
+for (const file of ['20261106100000_errors_and_self_delete.sql', '20261106101026_safe_account_deletion.sql']) {
+  await db.exec(fs.readFileSync('supabase/migrations/'+file,'utf8'));
+}
+await actor(C,'dddddddd-0000-4000-8000-000000000003');
+await denied('old client cannot directly delete auth user','select public.xuetuan_delete_my_account()');
+await denied('ordinary user cannot call privileged deletion step',`select public.xuetuan_account_delete_step('${C}')`);
+await db.exec('reset role; set role service_role');
+let stage = (await db.query('select public.xuetuan_account_delete_step($1) as d',[C])).rows[0].d;
+check('server plans owner-only cleanup without deleting account',stage.status==='pending' && stage.paths.length===1 && stage.paths[0]===C+'/ph-private.jpg');
+await actor(C,'dddddddd-0000-4000-8000-000000000003');
+await denied('pending deletion blocks a new photo upload',`insert into storage.objects(bucket_id,name) values('photos','${C}/late.jpg')`);
+const deleteOwnPhoto = `delete from storage.objects where bucket_id='photos' and name='${C}/ph-private.jpg' returning name`;
+check('cached legacy client cannot silently remove the account photos',(await db.query(deleteOwnPhoto)).rows.length===0);
+await db.exec(`set request.headers='{"x-client-info":"xuetuan-delete-safe/1","x-xuetuan-device":"dddddddd-0000-4000-8000-000000000003"}'`);
+check('current client retains ordinary own-photo removal',(await db.query(deleteOwnPhoto)).rows.length===1);
+await db.exec('reset role; set role service_role');
+stage = (await db.query('select public.xuetuan_account_delete_step($1) as d',[C])).rows[0].d;
+check('server finalizes only after media is absent',stage.status==='deleted');
+check('repeated finalization is safe',(await db.query('select public.xuetuan_account_delete_step($1) as d',[C])).rows[0].d.status==='deleted');
+check('administrator is protected from self deletion',(await db.query('select public.xuetuan_account_delete_step($1) as d',[A])).rows[0].d.status==='forbidden');
+await db.exec('reset role');
+check('other accounts and shared places remain',(await db.query('select count(*)::int as n from auth.users')).rows[0].n===2 && (await db.query('select count(*)::int as n from public.places')).rows[0].n===1);
+await db.exec(fs.readFileSync('supabase/migrations/20261106101740_diagnostics_and_rpc_grants.sql','utf8'));
+await actor(null);
+await denied('anonymous cannot invoke the moderator action',`select public.xuetuan_moderate_visit('22222222-0000-4000-8000-000000000001','delete')`);
+await denied('anonymous cannot invoke pending moderator cleanup','select public.xuetuan_moderation_pending()');
+await db.exec("insert into public.client_errors(kind,message,page,ua,app) values('save','synthetic sensitive content','query=synthetic','full synthetic UA','host.example')");
+await denied('diagnostics are still write-only to clients','select * from public.client_errors');
+await db.exec('reset role');
+const errorRow = (await db.query('select message,page,ua,app from public.client_errors')).rows[0];
+check('server discards raw error strings and detailed browser or host information',
+  errorRow.message==='UNKNOWN' && errorRow.page==='unknown' && errorRow.ua==='Other' && errorRow.app==='legacy');
 console.log(`${passed} PostgreSQL security checks passed`);await db.close();

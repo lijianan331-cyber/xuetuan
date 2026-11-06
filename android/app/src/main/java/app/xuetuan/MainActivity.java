@@ -60,7 +60,7 @@ public class MainActivity extends Activity {
         web.setWebViewClient(new WebViewClient() {
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest req) {
-                return handleUrl(req.getUrl());
+                return req.isForMainFrame() && handleUrl(req.getUrl());
             }
             @Override
             public void onReceivedError(WebView view, WebResourceRequest req, WebResourceError err) {
@@ -80,6 +80,10 @@ public class MainActivity extends Activity {
             }
             @Override
             public void onGeolocationPermissionsShowPrompt(String origin, GeolocationPermissions.Callback cb) {
+                if (!isSite(Uri.parse(origin))) {
+                    cb.invoke(origin, false, false);
+                    return;
+                }
                 if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
                     cb.invoke(origin, true, false);
                     return;
@@ -91,8 +95,8 @@ public class MainActivity extends Activity {
         });
 
         Uri start = getIntent() != null ? getIntent().getData() : null;
-        if (start != null && "xuetuan".equals(start.getScheme())) finishLogin(start);
-        else if (state != null) web.restoreState(state);
+        if (start != null && finishLogin(start)) return;
+        if (state != null) web.restoreState(state);
         else web.loadUrl(HOME);
     }
 
@@ -106,29 +110,40 @@ public class MainActivity extends Activity {
         return p.toArray(new String[0]);
     }
 
-    /* 站内的留在 app 里，其它的（地图导航、谷歌登录、外部链接）交给手机 */
+    boolean isSite(Uri u) {
+        return "https".equals(u.getScheme()) && HOST.equals(u.getHost())
+                && u.getUserInfo() == null && (u.getPort() == -1 || u.getPort() == 443);
+    }
+
     boolean handleUrl(Uri u) {
         String scheme = u.getScheme() == null ? "" : u.getScheme();
-        if ("xuetuan".equals(scheme)) { finishLogin(u); return true; }
-        if (("https".equals(scheme) || "http".equals(scheme)) && u.getHost() != null
-                && (u.getHost().equals(HOST) || u.getHost().endsWith(".vercel.app"))) return false;
+        if ("xuetuan".equals(scheme)) {
+            finishLogin(u);
+            return true;
+        }
+        if (isSite(u)) return false;
+        if (!("https".equals(scheme) || "http".equals(scheme)
+                || "geo".equals(scheme) || "mailto".equals(scheme) || "tel".equals(scheme))) return true;
         try {
-            Intent i = "intent".equals(scheme) ? Intent.parseUri(u.toString(), Intent.URI_INTENT_SCHEME) : new Intent(Intent.ACTION_VIEW, u);
+            Intent i = new Intent(Intent.ACTION_VIEW, u);
             i.addCategory(Intent.CATEGORY_BROWSABLE);
             startActivity(i);
         } catch (Exception e) {
-            // 没有能打开的 app：什么也不做
+            // No compatible external app is installed.
         }
         return true;
     }
 
-    /* 浏览器里登录完跳回 xuetuan://auth#access_token=...，把这串交给网站，网站自己存好登录状态 */
-    void finishLogin(Uri u) {
-        String frag = u.getEncodedFragment(), query = u.getEncodedQuery();
-        // 总带一个新的 ?app_auth=，这样一定是重新打开页面（只差 # 的话 WebView 不重新载入，网站读不到登录结果）
-        String q = "app_auth=" + System.currentTimeMillis() + (query != null ? "&" + query : "");
-        String url = HOME + "?" + q + (frag != null ? "#" + frag : "");
-        web.loadUrl(url);
+    /* The verifier stays in the original WebView. Only its Supabase client can exchange the code. */
+    boolean finishLogin(Uri u) {
+        if (!"xuetuan".equals(u.getScheme()) || !"auth".equals(u.getEncodedAuthority())
+                || u.getFragment() != null
+                || (u.getPath() != null && !u.getPath().isEmpty())) return false;
+        if (u.getQueryParameters("code").size() != 1) return false;
+        String code = u.getQueryParameter("code");
+        if (code == null || !code.matches("[A-Za-z0-9_-]{10,256}")) return false;
+        web.loadUrl(HOME + "?app_auth=" + System.currentTimeMillis() + "&code=" + Uri.encode(code));
+        return true;
     }
 
     void openChooser() {

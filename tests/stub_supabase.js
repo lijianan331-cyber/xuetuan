@@ -190,7 +190,18 @@
       window.__sb.url = url; window.__sb.key = key;
       return {
         from: function (table) { return new Query(table); },
-        functions:{invoke:function(name){calls.push(['function',name]);return window.__identityEdge ? window.__identityEdge(name) : Promise.resolve(err('function unavailable'));}},
+        functions: { invoke: function (name, options) {
+          calls.push(['function', name]);
+          if (name !== 'xuetuan-delete-account') return window.__identityEdge ? window.__identityEdge(name) : Promise.resolve(err('function unavailable'));
+          var actor = uid();
+          if (!actor || !options || !options.body.confirmed || actor === window.__sbAdmin) return Promise.resolve(err('Deletion forbidden'));
+          if (window.__deleteAccountStatus) return Promise.resolve({data:{status:window.__deleteAccountStatus},error:null});
+          Object.keys(files).forEach(function (path) { if (path.startsWith(actor + '/')) delete files[path]; });
+          db.visits = db.visits.filter(function (r) { return r.user_id !== actor; });
+          window.__sb.db.visits = db.visits;
+          window.__sbDeleted = actor;
+          return Promise.resolve({data:{status:'deleted'},error:null});
+        } },
         /* 地点库搜索：名字里包含关键词就算搜到 */
         rpc: function (name, args) {
           calls.push(['rpc', name, args]);
@@ -208,15 +219,6 @@
             if(args.decision==='delete_and_ban') window.__sbBanned=rv.user_id;
             db.visits=db.visits.filter(function(r){return r.id!==rv.id;});window.__sb.db.visits=db.visits;
             return Promise.resolve({data:{files:paths,banned:args.decision==='delete_and_ban'},error:null});
-          }
-          if (name === 'xuetuan_delete_my_account') {
-            var me0 = uid();
-            if (!me0) return Promise.resolve(err('Sign in first'));
-            if (me0 === window.__sbAdmin) return Promise.resolve(err('XUETUAN_ADMIN_SELF_DELETE'));
-            var n0 = db.visits.filter(function (r) { return r.user_id === me0; }).length;
-            db.visits = db.visits.filter(function (r) { return r.user_id !== me0; }); window.__sb.db.visits = db.visits;
-            window.__sbDeleted = me0;
-            return Promise.resolve({ data: { visits: n0 }, error: null });
           }
           if (name === 'xuetuan_moderation_pending') return uid()===window.__sbAdmin ? Promise.resolve({data:[],error:null}) : Promise.resolve(err('Admin required'));
           if (name !== 'search_poi') return Promise.resolve(err('no such function'));
