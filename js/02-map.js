@@ -16,6 +16,7 @@
      地图就不用拿到样式后再等一个来回才开始下瓦片（2026-10-27 提速） */
   function loadStyle(key) {
     if (!styleCache[key]) {
+      if (window.XueOffline) XueOffline.mapUsed(STYLE_URLS[key]);
       styleCache[key] = fetch(STYLE_URLS[key]).then(function (res) {
         if (!res.ok) throw new Error('style ' + res.status);
         return res.json();
@@ -25,6 +26,7 @@
         return Promise.all(Object.keys(json.sources || {}).map(function (id) {
           var src = json.sources[id];
           if (src.type !== 'vector' || !src.url || src.tiles) return null;
+          if (window.XueOffline) XueOffline.mapUsed(src.url);
           return fetch(src.url).then(function (res) { return res.ok ? res.json() : null; }).then(function (tj) {
             if (!tj || !tj.tiles || !tj.tiles.length) return;
             ['tiles', 'minzoom', 'maxzoom', 'bounds', 'attribution', 'scheme'].forEach(function (k) { if (tj[k] != null && src[k] == null) src[k] = tj[k]; });
@@ -55,6 +57,7 @@
       if (GMAP) style = { version: 8, glyphs: style.glyphs, sources: {}, layers: [] };
       map = new maplibregl.Map({
         container: 'map',
+        transformRequest: function (url) { if (window.XueOffline) XueOffline.mapUsed(url); return { url: url }; },
         style: style,
         interactive: !GMAP,
         /* 第一次打开直接在 XMUM，不再从地球飞过去：飞的路上每一级的瓦片都要下载，手机上要等好几秒（2026-10-27 提速） */
@@ -89,8 +92,10 @@
   var viewTimer = null, lastGlobeChip = false;
   function onMoveEnd() {
     clearTimeout(viewTimer); viewTimer = setTimeout(saveView, 400);
+    syncPlaceCluster();
     queueLib();
     ensurePinThumbs();
+    if (store.pagedReads && store.pagedReads()) store.reader().readMap(false).catch(function () {});
     updateSelPin();
     var g = globeChipShown();
     if (g !== lastGlobeChip) { lastGlobeChip = g; renderFilters(); }
@@ -170,6 +175,7 @@
         if (PERF.jank.length) lines.push('卡在缩放 ' + PERF.jank.join(' '));
       } else lines.push('滑动 拖一下地图再看');
       if (map) lines.push('现在缩放 ' + map.getZoom().toFixed(1) + ' · ' + (GMAP ? '谷歌平面' : map.getZoom() < 7 ? '地球' : '平面'));
+      if(store.pagedReads&&store.pagedReads()){var rm=store.reader().metrics();lines.push('数据 '+rm.calls+' 次 · 最近 '+rm.lastMs+'ms · P95 '+rm.p95+'ms · JSON '+Math.round(rm.bytes/1024)+'KB · 错误 '+rm.failures);lines.push('已加载 首页 '+rm.feedRows+' 条 · 地图 '+rm.mapRows+' 项');}
       lines.push('新着色器 ' + PERF.sh + ' 个 ' + Math.round(PERF.shMs) + 'ms · 画字 ' + PERF.gl + ' 个 ' + Math.round(PERF.glMs) + 'ms');
       if (PERF.warm) lines.push('提前画字 ' + (PERF.warm - warmTodo.length) + '/' + PERF.warm);
       box.textContent = lines.join('\n');
@@ -531,14 +537,18 @@
   }
 
   var pinThumbs = new Map();   // 照片 id → 'loading' | canvas | false（读不了）
-  var thumbQueue = [], thumbBusy = 0, THUMB_PIN_MAX = 300, pinRefreshTimer = null;
+  var thumbQueue = [], thumbBusy = 0, THUMB_PIN_MAX = 300, pinRefreshTimer = null, activePinPhotos=new Set(),managedPinImages=new Map(),currentPinImages=new Set();
   function photoPinImage(photo, score, saved, count) {
     var cv = pinThumbs.get(photo);
     if (!cv || cv === 'loading' || !map) return null;
+    if(!activePinPhotos.has(photo))return null;
+    if(activePinPhotos.has(photo)){pinThumbs.delete(photo);pinThumbs.set(photo,cv);}
     var bucket = score == null ? null : Math.round(score * 2) / 2;
     var id = 'ph-' + photo + '-' + (bucket == null ? 'none' : bucket * 10) + (saved ? '-s' : '') + '-n' + (count || 1);
     if (!map.hasImage(id)) {
+      if(!activePinPhotos.has(photo))return null;
       try { map.addImage(id, drawPhotoPin(cv, bucket == null ? DOT_NONE : scoreColor(bucket), saved, count), { pixelRatio: DPR }); } catch (e) { return null; }
+      managedPinImages.set(id,photo);
     }
     return id;
   }
@@ -597,7 +607,8 @@
     });
   }
   function queueThumb(photo) {
-    if (pinThumbs.has(photo) || pinThumbs.size >= THUMB_PIN_MAX) return;
+    if (pinThumbs.has(photo)) return;
+    if(pinThumbs.size>=THUMB_PIN_MAX){var evict=Array.from(pinThumbs.keys()).find(function(k){return pinThumbs.get(k)!=='loading'&&!activePinPhotos.has(k);});if(!evict)return;pinThumbs.delete(evict);}
     pinThumbs.set(photo, 'loading');
     thumbQueue.push(photo);
     pumpThumbs();
@@ -616,7 +627,7 @@
     clearTimeout(pinRefreshTimer);
     pinRefreshTimer = setTimeout(function () {
       var src = map && map.getSource && map.getSource('places');
-      if (src) src.setData(placesGeoJSON());
+      if (src) setMapSourceData(src,placesGeoJSON());
       updateSelPin();
     }, 120);
   }
@@ -626,10 +637,21 @@
   /* 地图挪动后，看得到但照片还没读的地点去读照片 */
   function ensurePinThumbs() {
     var b = viewBounds();
-    placesInView().forEach(function (p) {
+    var visible=placesInView().filter(function(p){return !b||b.contains([p.lng,p.lat]);});
+    activePinPhotos=new Set(visible.map(function(p){return coverPhoto(p);}).filter(Boolean));
+    visible.forEach(function (p) {
       var photo = coverPhoto(p);
       if (photo && !pinThumbs.has(photo) && photoWanted(p) && (!b || b.contains([p.lng, p.lat]))) queueThumb(photo);
     });
+    queuePinRefresh();
+  }
+  var sourceSnapshots=new WeakMap();
+  function setMapSourceData(src,data) { var signature=JSON.stringify(data);if(sourceSnapshots.get(src)===signature)return false;src.setData(data);sourceSnapshots.set(src,signature);return true; }
+  function trimPinImages() {
+    if(!map||!map.removeImage||managedPinImages.size<=600)return;
+    var keep=new Set(currentPinImages);
+    try{map.queryRenderedFeatures().forEach(function(f){var p=f.properties||{};if(p.pic)keep.add(p.pic);if(p.photoRef&&p.photoTotal)keep.add('cg:'+p.photoTotal+':'+p.photoRef);});}catch(e){}
+    managedPinImages.forEach(function(photo,id){if(managedPinImages.size>600&&!keep.has(id)){try{if(map.hasImage(id))map.removeImage(id);managedPinImages.delete(id);}catch(e){}}});
   }
 
   function placesInView() {
@@ -638,12 +660,15 @@
   }
   function placesGeoJSON() {
     if (hometownMode()) return { type: 'FeatureCollection', features: [] };
-    var b = viewBounds(), points = new Map();
-    placesInView().forEach(function (p) {
+    var b = viewBounds(), points = new Map(),places=placesInView();
+    activePinPhotos=new Set(places.filter(function(p){return !b||b.contains([p.lng,p.lat]);}).map(function(p){return coverPhoto(p);}).filter(Boolean));
+    currentPinImages=new Set();
+    places.forEach(function (p) {
         /* 收藏地图上每个都是收藏的，就不再加星 */
         var saved = state.scope !== 'saved' && store.isSaved(p.id);
-        var s = stats(p), photo = coverPhoto(p), count = placePhotos(p).length, ph = photo ? photoPinImage(photo, s.score, saved, count) : null;
+        var s = stats(p), photo = coverPhoto(p), count = placePhotoCount(p), ph = photo ? photoPinImage(photo, s.score, saved, count) : null;
         if (photo && !ph && !pinThumbs.has(photo) && photoWanted(p) && (!b || b.contains([p.lng, p.lat]))) queueThumb(photo);
+        if(ph)currentPinImages.add(ph);
         var f = {
           type: 'Feature',
           geometry: { type: 'Point', coordinates: [p.lng, p.lat] },
@@ -663,5 +688,6 @@
           }
         }
     });
+    trimPinImages();
     return { type: 'FeatureCollection', features: Array.from(points.values()) };
   }

@@ -26,6 +26,16 @@
     });
   }
 
+  function openComposeChoice() {
+    var en = state.lang === 'en';
+    function opt(action, icon, title, sub) {
+      return '<button type="button" class="compose-opt" data-action="' + action + '"><span class="co-ic" aria-hidden="true">' + icon + '</span><span class="co-tx"><b>' + esc(title) + '</b><small>' + esc(sub) + '</small></span></button>';
+    }
+    openModal('<div class="modal-card compose-choice" role="dialog" aria-modal="true" aria-label="' + esc(en ? L('What do you want to add?') : '想记点什么？') + '"><h3>' + esc(en ? L('What do you want to add?') : '想记点什么？') + '</h3>' +
+      opt('compose-record', ICON.pin, en ? L('A place I went') : '记一个去过的地方', en ? L('Saved to your footprints. Share to the big map if you like; photos and words optional.') : '存进足迹，可以选分享到大地图；照片和文字都可以不填') +
+      opt('compose-post', ICON.camera, en ? L('A post') : '发帖', en ? L('Photos and a few words, shown on the home feed.') : '有图有文字，会出现在首页') +
+      '<button type="button" class="btn ghost" data-modal="no">' + esc(t('cancel')) + '</button></div>');
+  }
   function openAreaDialog() {
     if (!map) { toast(t('mapFail')); return; }
     openModal('<form class="modal-card" id="area-form"><h3>' + esc(t('saveArea')) + '</h3>' +
@@ -38,11 +48,11 @@
   /* 改名字：个人主页点头像/名字打开（头像现在是名字的第一个字，改名字头像跟着变） */
   function openProfileDialog() {
     var en = state.lang === 'en', name = me().name || '';
-    openModal('<form class="modal-card" id="profile-form"><h3>' + esc(en ? 'Avatar and name' : '头像和名字') + '</h3>' +
-      '<div class="pf-preview"><button type="button" class="pf-av-btn" data-action="pf-avatar-pick" aria-label="' + esc(en ? 'Change photo' : '换头像照片') + '"><span id="pf-preview">' + avatarHTML(name || '?', me().id) + '</span><i>' + esc(en ? 'Change photo' : '换照片') + '</i></button>' +
+    openModal('<form class="modal-card" id="profile-form"><h3>' + esc(en ? L('Avatar and name') : '头像和名字') + '</h3>' +
+      '<div class="pf-preview"><button type="button" class="pf-av-btn" data-action="pf-avatar-pick" aria-label="' + esc(en ? L('Change photo') : '换头像照片') + '"><span id="pf-preview">' + avatarHTML(name || '?', me().id) + '</span><i>' + esc(en ? L('Change photo') : '换照片') + '</i></button>' +
       '<input id="pf-avatar-file" type="file" accept="image/*" hidden></div>' +
       '<input id="pf-dialog-name" class="input" maxlength="20" autocomplete="nickname" value="' + esc(name) + '" placeholder="' + esc(t('nicknamePh')) + '">' +
-      '<p class="f-hint">' + esc(en ? 'Tap the avatar to use a photo. Without one, it shows the first letter of your name.' : '点头像可以换成照片；没有照片时显示名字的第一个字。') + '</p>' +
+      '<p class="f-hint">' + esc(en ? L('Tap the avatar to use a photo. Without one, it shows the first letter of your name.') : '点头像可以换成照片；没有照片时显示名字的第一个字。') + '</p>' +
       '<div class="btn-row end"><button type="button" class="btn ghost" data-modal="no">' + esc(t('cancel')) + '</button>' +
       '<button type="submit" class="btn primary">' + esc(t('save')) + '</button></div></form>');
     setTimeout(function () { var i = $('#pf-dialog-name'); if (i) { i.focus(); i.select(); } }, 30);
@@ -72,7 +82,7 @@
       pendingAvatar = out;
       var pv = $('#pf-preview');
       if (pv) pv.innerHTML = '<span class="avatar has-photo" aria-hidden="true"><img src="' + URL.createObjectURL(out.thumb) + '" alt=""></span>';
-    }, function () { toast(state.lang === 'en' ? 'Could not read this photo' : '这张照片读不出来，换一张试试'); });
+    }, function () { toast(state.lang === 'en' ? L('Could not read this photo') : '这张照片读不出来，换一张试试'); });
   }
   function saveProfileDialog() {
     var i = $('#pf-dialog-name'), name = (i && i.value || '').trim().slice(0, 20), btn = $('#profile-form [type="submit"]');
@@ -124,29 +134,42 @@
     });
   }
 
-  function toggleSave(placeId) {
-    var on = !store.isSaved(placeId);
-    store.setSaved(placeId, on).then(function () {
-      toast(t(on ? 'wishAdded' : 'wishRemoved'));
-      refreshMap();
-      if (placeById(placeId)) render(); else goFeed();
+  var savedWrites = new Map();
+  function savedButtons(placeId) {
+    return $$('[data-action="save-place"], [data-action="toggle-save"]').filter(function (b) { return b.dataset.id === placeId || (b.dataset.action === 'toggle-save' && state.placeId === placeId); });
+  }
+  function paintSavedButtons(placeId) {
+    savedButtons(placeId).forEach(function (b) {
+      var tmp = document.createElement('div'), action = b.dataset.action;
+      tmp.innerHTML = saveBtnHTML(placeId,b.classList.contains('pc-save'));
+      var fresh = tmp.firstElementChild; fresh.dataset.action = action;
+      fresh.disabled = savedWrites.has(placeId); fresh.setAttribute('aria-busy',String(savedWrites.has(placeId)));
+      b.replaceWith(fresh);
     });
   }
-
-  /* 卡片、帖子上的收藏：只换按钮的样子，不重画整页（不然图片会闪） */
   function savePlace(placeId) {
-    var on = !store.isSaved(placeId);
-    store.setSaved(placeId, on).then(function () {
-      toast(t(on ? 'wishAdded' : 'wishRemoved'));
-      refreshMap();
-      $$('[data-action="save-place"]').forEach(function (b) {
-        if (b.dataset.id !== placeId) return;
-        var tmp = document.createElement('div');
-        tmp.innerHTML = saveBtnHTML(placeId, b.classList.contains('pc-save'));
-        b.replaceWith(tmp.firstChild);
-      });
-    }, function () { toast(t('saveFail')); });
+    if (!placeId) { toast(state.lang === 'en' ? L('Place is still loading. Try again.') : '地点还没加载好，请稍后再试'); return Promise.resolve(false); }
+    if (savedWrites.has(placeId)) return savedWrites.get(placeId);
+    var on = !store.isSaved(placeId), actor = me().id;
+    savedButtons(placeId).forEach(function (b) { b.disabled = true; b.setAttribute('aria-busy','true'); b.classList.add('saving'); if (!b.classList.contains('pc-save')) b.innerHTML = (on ? ICON.star : ICON.starOn) + esc(state.lang === 'en' ? (on ? 'Saving…' : 'Removing…') : (on ? '收藏中…' : '取消中…')); });
+    var slow = setTimeout(function () { if (savedWrites.has(placeId)) toast(state.lang === 'en' ? L('Saving is taking longer. Please wait…') : '收藏保存较慢，请稍候…'); }, 4000);
+    var work = Promise.resolve().then(function () { return store.setSaved(placeId,on); }).then(function () {
+      if (actor !== me().id) return false;
+      toast(t(on ? 'wishAdded' : 'wishRemoved')); refreshMap();
+      if (!placeById(placeId) && state.view === 'place' && state.placeId === placeId) goFeed();
+      return true;
+    }, function (e) {
+      if (actor !== me().id) return false;
+      var message = String(e && e.message || e || '');
+      toast(/XUETUAN_/.test(message) ? securitySaveError(e) : (state.lang === 'en' ? L('Could not save. Check your connection and retry.') : '收藏没有保存成功，请检查网络后重试'));
+      return false;
+    }).finally(function () {
+      clearTimeout(slow); savedWrites.delete(placeId);
+      if (actor === me().id) paintSavedButtons(placeId);
+    });
+    savedWrites.set(placeId,work); return work;
   }
+  function toggleSave(placeId) { return savePlace(placeId); }
   /* 还不在雪团的地方（搜索结果、底图上的店）先收藏：建一个没有记录的地点，放进想去 */
   function savePreview(r) {
     var p0 = osmExisting(r);
@@ -245,7 +268,7 @@
   function openLightbox(id, group) {
     if (group === 'place' && state.placeId) { openPlacePhotos(state.placeId, id); return; }
     var ids = $$('[data-action="photo"][data-group="' + group + '"]', view).map(function (b) { return b.dataset.id; });
-    lb = { ids: ids.length ? ids : [id], i: Math.max(0, ids.indexOf(id)) };
+    lb = { ids: ids.length ? ids : [id], i: Math.max(0, ids.indexOf(id)), reviewId:group==='post'?state.postId:group&&group.indexOf('rv-')===0?group.slice(3):null };
     lbOpenBox();
     showLightbox();
     syncNavGuard();
@@ -264,23 +287,24 @@
     $('#lb-navigation').hidden = !multi;
     $('#lb-prev').hidden = !multi; $('#lb-next').hidden = !multi;
     $('#lb-hint-l').hidden = !multi; $('#lb-hint-r').hidden = !multi;
-    $('#lb-prev').setAttribute('aria-label', state.lang === 'en' ? 'Previous photo' : '上一张');
-    $('#lb-next').setAttribute('aria-label', state.lang === 'en' ? 'Next photo' : '下一张');
+    $('#lb-prev').setAttribute('aria-label', state.lang === 'en' ? L('Previous photo') : '上一张');
+    $('#lb-next').setAttribute('aria-label', state.lang === 'en' ? L('Next photo') : '下一张');
     $('#lb-count').textContent = multi ? (lb.i + 1) + ' / ' + lb.ids.length : '';
     var id = lb.ids[lb.i], clip = isClip(id), img = $('#lb-img'), vid = $('#lb-vid');
     var place = lb.place || (lb.placeIds && lb.placeIds[id]);
-    var comment = $('#lb-comment'), review = place && scopedReviews(place).find(function (r) { return (r.photos || []).indexOf(id) !== -1; });
-    comment.textContent = review ? [lb.placeIds ? placeTitle(placeById(place)) : '', authorLabel(review), review.rating == null ? '' : fmtScore(review.rating) + ' / 5', review.text].filter(Boolean).join(' · ') : '';
+    var comment = $('#lb-comment'), review = place ? scopedReviews(place).find(function (r) { return (r.photos || []).indexOf(id) !== -1; }) : lb.reviewId&&store.review(lb.reviewId);
+    if(review&&((review.photos||[]).indexOf(id)===-1||(review.visibility!=='public'&&!isMine(review))))review=null;
+    comment.textContent = review ? [photoDateLabel(id,review),lb.placeIds ? placeTitle(placeById(place)) : '', authorLabel(review), review.rating == null ? '' : fmtScore(review.rating) + ' / 5', review.text].filter(Boolean).join(' · ') : photoDateLabel(id);
     comment.hidden = !comment.textContent;
     img.hidden = clip; vid.hidden = !clip;
     if (clip) img.removeAttribute('src'); else { vid.pause(); vid.removeAttribute('src'); }
     var draft = lb.photos && lb.photos.find(function (ph) { return ph.id === id && !ph.existing; });
     var status = $('#lb-status'), retry = $('#lb-retry');
-    status.hidden = false; retry.hidden = true; retry.textContent = state.lang === 'en' ? 'Retry' : '重试';
-    $('#lb-status-text').textContent = state.lang === 'en' ? 'Loading…' : '加载中…';
+    status.hidden = false; retry.hidden = true; retry.textContent = state.lang === 'en' ? L('Retry') : '重试';
+    $('#lb-status-text').textContent = state.lang === 'en' ? L('Loading…') : '加载中…';
     function current() { return request === lbRequest && !$('#lightbox').hidden && lb.ids[lb.i] === id; }
     function loaded() { if (current()) status.hidden = true; }
-    function failed() { if (!current()) return; status.hidden = false; retry.hidden = false; $('#lb-status-text').textContent = state.lang === 'en' ? 'Could not load this photo.' : '这张图片暂时没加载出来'; }
+    function failed() { if (!current()) return; status.hidden = false; retry.hidden = false; $('#lb-status-text').textContent = state.lang === 'en' ? L('Could not load this photo.') : '这张图片暂时没加载出来'; }
     img.onload = loaded; vid.onloadeddata = loaded; vid.onerror = failed;
     if (!clip) img.removeAttribute('src');
     var pending = null;
@@ -355,7 +379,7 @@
     var btn = $('#bsheet-card .bsheet-foot .btn.primary');
     if (btn) btn.textContent = t('filterShow', { n: store.places().filter(function (p) { return inScope(p) && passesFilters(p); }).length });
   }
-  document.addEventListener('change', function (e) { if (e.target.id === 'flt-price') setPriceAbout(e.target, true); if (e.target.id === 'pf-avatar-file') { pickAvatarFile(e.target.files && e.target.files[0]); e.target.value = ''; } });
+  document.addEventListener('change', function (e) { if (e.target.id === 'flt-price') setPriceAbout(e.target, true); if (e.target.id === 'f-visit' && state.form) state.form.visitAt = formVisitAt(state.form); if (e.target.id === 'pf-avatar-file') { pickAvatarFile(e.target.files && e.target.files[0]); e.target.value = ''; } });
   function refilter() {
     renderFilters(); refreshMap();
     if (state.view === 'feed') render();
@@ -371,6 +395,11 @@
     var el = e.target.closest('[data-action]');
     if (!el) return;
     var a = el.dataset.action, d = el.dataset;
+    if (a === 'person-card') { openPersonCard(d.uid); return; }
+    if (a === 'dm-open' && !$('#modal').hidden) closeModal(false);
+    if (handleDMAction(a,el)) return;
+    if (handleIdentityAction(a)) return;
+    if (handleSocialAction(a,el)) return;
     switch (a) {
       case 'price-toggle': e.preventDefault(); e.stopPropagation(); togglePrice(el); break;
       case 'google-retry': retryGoogle(el.closest('.g-search')); break;
@@ -386,17 +415,18 @@
       case 'visit-select': if (!visibilityBusy && store.review(d.id) && isMine(store.review(d.id))) { if(selectedVisits.has(d.id))selectedVisits.delete(d.id);else selectedVisits.add(d.id); var sy=view.scrollTop;render();view.scrollTop=sy; } break;
       case 'visit-all': if (!visibilityBusy) { var all=feedReviews().filter(isMine); var allOn=all.length && all.every(function(r){return selectedVisits.has(r.id);}); all.forEach(function(r){if(allOn)selectedVisits.delete(r.id);else selectedVisits.add(r.id);});var ay=view.scrollTop;render();view.scrollTop=ay; } break;
       case 'visit-privacy': if (d.v === 'public' && guestBlocked()) break; changeVisitVisibility([d.id],d.v); break;
+      case 'review-visibility': if(reviewSwipe.id!==d.id||Date.now()>reviewSwipe.until)setReviewPublic(el); break;
       case 'visit-bulk': if (d.v === 'public' && guestBlocked()) break; changeVisitVisibility(Array.from(selectedVisits),d.v); break;
       case 'home-mode': state.homeMode = ['all','food','travel'].indexOf(d.v) !== -1 ? d.v : 'all'; render(); view.scrollTop = 0; break;
       case 'home-filters': setHomeFiltersOpen(!state.homeFiltersOpen); break;
       case 'my-share': openMyShare(); break;
       case 'moderation': openModeration(d.id); break;
       case 'moderation-confirm': moderateVisit(d.id,d.decision); break;
-      case 'moderation-clean': if (isModerator()) store.cleanModerationMedia().then(function (n) { toast(state.lang === 'en' ? 'Media cleanup complete: ' + n : '图片清理完成：' + n); }, function (e) { toast(securitySaveError(e)); }); break;
+      case 'moderation-clean': if (isModerator()) store.cleanModerationMedia().then(function (n) { toast(state.lang === 'en' ? L('Media cleanup complete: ') + n : '图片清理完成：' + n); }, function (e) { toast(securitySaveError(e)); }); break;
       case 'app-share': openAppShare(); break;
       case 'app-share-copy': copyAppShare(); break;
       case 'app-share-system': sendAppShare(); break;
-      case 'share-theme': if (shareCard && shareCard.own) { shareCard.theme = d.v === 'stats' ? 'stats' : 'atlas'; render(); } break;
+      case 'share-theme': if (shareCard && shareCard.own) { shareCard.theme = ['atlas','stats','food-kl','food-xmum','food-world'].indexOf(d.v)>=0?d.v:'atlas'; shareCard.includePrivate=false; render(); } break;
       case 'share-card': sendShareCard(); break;
       case 'save-share-card': saveShareCard(); break;
       case 'copy-share-card': copyShareCard(); break;
@@ -404,6 +434,8 @@
       case 'home-apply': render(); view.scrollTop = 0; break;
       /* 足迹标题旁边的 去过 / 想去 */
       case 'foot-filters': openBSheet('filters'); break;
+      case 'open-favorites': openFavorites(); break;
+      case 'favorites-back': closeFavorites(); break;
       case 'mine-sub':
         state.scope = state.mineSub = d.v;
         renderFilters(); refreshMap();
@@ -411,7 +443,7 @@
         if (state.bsheet) renderBSheet();
         break;
       /* 我的里点“去过 / 想去”的数字：去足迹的那一边 */
-      case 'foot-sub': state.mineSub = d.v; setTab('foot'); break;
+      case 'foot-sub': if(d.v==='saved') openFavorites(); else setTab('foot'); break;
       case 'open-post': openPost(d.id); break;
       case 'person': openPerson(d.uid); break;
       case 'page-public':
@@ -419,10 +451,10 @@
         store.updateProfile({ page_public: !store.pagePublic(me().id) }).then(function () { if (state.view === 'feed' && state.tab === 'me') { var y = view.scrollTop; render(); view.scrollTop = y; } }, function () { toast(t('saveFail')); });
         break;
       case 'post-place': openPostPlace(d.id); break;
-      case 'save-place': { var spl = d.id; if (requireLogin(function () { savePlace(spl); })) savePlace(spl); break; }
+      case 'save-place': { if (!store.signedIn()) toast(state.lang === 'en' ? L('Preparing to save…') : '正在准备收藏，请稍候…'); var spl = d.id; if (requireLogin(function () { savePlace(spl); })) savePlace(spl); break; }
       case 'save-preview': { var spv = state.preview; if (spv && requireLogin(function () { savePreview(spv); })) savePreview(spv); break; }
-      case 'cat': state.cat = d.cat; refilter(); break;
-      case 'saved-want': state.savedWant = d.v === 'want'; refilter(); break;
+      case 'cat': if(d.catMode && state.scope==='mine' && state.mineBoth){state.mineBoth=false;state.mode=d.catMode;} state.cat = d.cat; refilter(); break;
+      case 'saved-want': state.savedWant = d.v === 'want'; state.savedStatus=d.v; refilter(); break;
       case 'mine-mode': if (state.view !== 'feed') goFeed(); setMineView(d.v); if (state.bsheet) renderBSheet(); break;
       case 'homes-open':
         setTab('explore'); if (state.mode !== 'travel') setMode('travel', { noFly: true });
@@ -430,6 +462,7 @@
         if (map) flyTo([108, 12], 3);
         break;
       case 'homes-toggle': closeBSheet(); state.homesOn = !state.homesOn; goFeed(); refreshMap(); renderFilters(); saveView(); toast(t(state.homesOn ? 'homesOpened' : 'homesClosed')); break;
+      case 'mine-dots-toggle': state.mineDots = !state.mineDots; refreshMap(); saveView(); if (state.bsheet) renderBSheet(); break;
       case 'mine-home-toggle': state.mineHomeOn = !state.mineHomeOn; refreshMap(); renderFilters(); saveView(); if (state.bsheet) renderBSheet(); toast(state.lang === 'en' ? (state.mineHomeOn ? 'My hometown shown' : 'My hometown hidden') : (state.mineHomeOn ? '已显示我的家乡' : '已隐藏我的家乡')); break;
       case 'home-set': openHomeSet(); break;
       case 'acct': switchAccount(d.id); break;
@@ -437,7 +470,7 @@
       case 'home-pick': if (requireLogin(function () { startPick({ home: true }); })) startPick({ home: true }); break;
       case 'home-result': var hr = homeQ.results[+d.i]; if (hr) saveHome(hr.name, hr); break;
       case 'home-del':
-        store.setHome(null).then(function () { toast(t('homeRemoved')); afterHomeChange(); render(); }, function () { toast(t('saveFail')); });
+        store.setHome(null).then(function () { toast(t('homeRemoved')); afterHomeChange(); if (state.view === 'home') leaveHomeSet(); else render(); }, function () { toast(t('saveFail')); });
         break;
       case 'home-public':
         var mh = store.myHome();
@@ -449,14 +482,22 @@
       case 'sheet-close': closeBSheet(); break;
       case 'set-score': state.minScore = +d.v; refilter(); break;
       case 'set-dist': state.dist = d.v; refilter(); break;
-      case 'clear-filters': state.savedWant = false; state.cat = 'all'; state.priceAbout = 0; state.minScore = 0; state.dist = 'any'; renderFilters(); refreshMap(); render(); if (state.bsheet) renderBSheet(); break;
+      case 'halal-toggle': state.halal = state.halal ? '' : 'halal'; refilter(); break;
+      case 'clear-filters': state.halal = ''; state.cat = 'all'; state.priceAbout = 0; state.minScore = 0; state.dist = 'any'; renderFilters(); refreshMap(); render(); if (state.bsheet) renderBSheet(); break;
       case 'search': rememberFeedSnap(); state.view = 'search'; render(); setSnap('full'); break;
       case 'search-retry': osm.q = ''; osm.ck = ''; queueOsmSearch(); renderSearchResults(); break;
-      case 'set-lang': setLang(d.lang); break;
+      case 'set-lang': lsSet(LS_TRLANG, d.lang); if (d.lang === state.lang) { applyStaticI18n(); renderChrome(); render(); refreshMap(); patchLabels(); } else setLang(d.lang); break;
+      case 'lang-menu': openBSheet('lang'); break;
+      case 'pick-lang': lsSet(LS_TRLANG, d.lang); closeBSheet(); if (state.lang !== (d.lang === 'zh' ? 'zh' : 'en')) setLang(d.lang === 'zh' ? 'zh' : 'en'); else { applyStaticI18n(); renderChrome(); render(); refreshMap(); patchLabels(); } break;
+      case 'translate': toggleTranslate(el, d.id); break;
       case 'set-style': setBasemap(d.style); break;
+      case 'set-start': { var sp = startPrefs(); sp.pin = START_TABS.indexOf(d.start) >= 0 ? d.start : ''; saveStartPrefs(sp); var sy = view.scrollTop; render(); view.scrollTop = sy; break; }
       case 'campus': closeBSheet(); if (state.view === 'search') { toMapTab(); goFeed(); } flyTo([XMUM.lng, XMUM.lat], state.mode === 'travel' ? TRAVEL_ZOOM : 14.6); break;
       case 'locate': closeBSheet(); if (state.view === 'search') { toMapTab(); goFeed(); } locate(); break;
-      case 'new-post': if (requireLogin(openPostComposer)) openPostComposer(); break;
+      /* 首页「发帖」先问想做哪件事（用户 2026-11-05：新人以为进首页就只能发帖，不知道能只记足迹） */
+      case 'new-post': openComposeChoice(); break;
+      case 'compose-record': closeModal(); if (requireLogin(openAdd)) openAdd(); break;
+      case 'compose-post': closeModal(); if (requireLogin(openPostComposer)) openPostComposer(); break;
       case 'post-location': choosePostLocation(false); break;
       case 'post-map': choosePostLocation(true); break;
       case 'post-mode': if (state.form && !state.form.saving && d.v !== state.mode) { captureFormDraft(); Object.assign(state.form, { placeId:null, loc:null, osm:'', cat:null, lockedName:false }); setMode(d.v, { noFly: true }); returnPostComposer(); } break;
@@ -474,7 +515,7 @@
       case 'open-place': openPlace(d.id); break;
       case 'back': back(); break;
       case 'write-review': { var wpid = state.placeId; if (wpid && requireLogin(function () { startReview(wpid); })) startReview(wpid); break; }
-      case 'toggle-save': { var tpid = d.id || state.placeId; if (tpid && requireLogin(function () { toggleSave(tpid); })) toggleSave(tpid); break; }
+      case 'toggle-save': { if (!store.signedIn()) toast(state.lang === 'en' ? L('Preparing to save…') : '正在准备收藏，请稍候…'); var tpid = d.id || state.placeId; if (tpid && requireLogin(function () { toggleSave(tpid); })) toggleSave(tpid); break; }
       case 'copy-coords': copyCoords(d.c); break;
       case 'photo': openLightbox(d.id, d.group); break;
       /* 点照片任何地方都放大（右下角的放大图标只是提示，用户 2026-11-02） */
@@ -544,7 +585,10 @@
       case 'osm-pick': pickOsm(+d.i); break;
       case 'campus-pick': pickResult(campusHits[+d.i]); break;
       case 'login': openLogin(); break;
-      case 'login-google': (store.isAnon && store.isAnon() ? store.linkGoogle() : store.signInWithGoogle()).catch(function (err) { toast(t('loginFail', { m: (err && err.message) || '' })); }); break;
+      case 'login-resend': resendLoginCode(); break;
+      case 'login-email': openLogin(); break;
+      case 'login-google': store.signInWithGoogle().catch(function (err) { toast(t('loginFail', { m: (err && err.message) || '' })); }); break;
+      case 'auth-return-guest': authReturnGuest(); break;
       case 'logout': store.signOut().catch(function () {}); break;
       case 'link-google': store.linkGoogle().catch(function (err) { toast(t('loginFail', { m: (err && err.message) || '' })); }); break;
       case 'upload-local': uploadLegacy(); break;
@@ -563,6 +607,7 @@
     else if (e.target.id === 'area-form') { e.preventDefault(); saveArea(); }
     else if (e.target.id === 'profile-form') { e.preventDefault(); saveProfileDialog(); }
     else if (e.target.id === 'login-form') { e.preventDefault(); sendLoginLink(); }
+    else if (e.target.id === 'login-code-form') { e.preventDefault(); verifyLoginCode(); }
   });
   document.addEventListener('input', function (e) {
     var el = e.target;
@@ -594,6 +639,7 @@
   /* 关掉最上面那一层：大图 → 弹窗 → 底部弹层 → 选点 → 子页面 */
   /* 再往下一层是别的栏的首页：手机返回键回到“首页”这一栏再离开网站（[建议]，像大部分 App）；Esc 不换栏 */
   function stepBack(key) {
+    if (state.view==='feed' && state.scope==='saved' && !state.bsheet && $('#modal').hidden && $('#lightbox').hidden) { closeFavorites(); return; }
     if (!$('#lightbox').hidden) closeLightbox();
     else if (!$('#modal').hidden) closeModal(false);
     else if (state.bsheet) closeBSheet();
@@ -682,18 +728,30 @@
   if (savedView) {
     if (savedView.lang === 'en' || savedView.lang === 'zh') state.lang = savedView.lang;
     if (savedView.mode === 'travel' || savedView.mode === 'food') state.mode = savedView.mode;
-    if (STYLE_URLS[savedView.styleKey]) state.styleKey = savedView.styleKey;
+    if (STYLE_URLS[savedView.styleKey]) state.styleKey = savedView.styleKey === 'dark' ? 'light' : savedView.styleKey;
     state.mineBoth = savedView.mineBoth === true; state.countries = savedView.countries === true; state.homesOn = false;
-    state.mineHomeOn = savedView.mineHomeOn === true;
+    state.mineHomeOn = savedView.mineHomeOn === true; state.mineDots = savedView.mineDots === true;
   }
   var dataReady = store.init().catch(function () { toast(t('loadFail')); });
   var incomingShare = readSharedCard();
   if (incomingShare) { shareCard = { own: false, data: incomingShare }; state.view = 'share'; }
+  else { state.tab = startTab(); state.scope = scopeOfTab(state.tab); }
   applyStaticI18n(); renderChrome(); render(); setSnap(incomingShare ? 'full' : feedSnapNow('peek')); perfStart(); initMap();
   if (incomingShare) loadWorld().then(function () { if (shareCard && !shareCard.own && state.view === 'share') render(); }, function () {});
   dataReady.then(function () {
+    dmRefreshBadge(true);
     state.bootLoading = false;
     if (state.view === 'form') captureFormDraft();
     renderChrome(); refreshMap(); render();
+    authFinishReturn();
   });
 
+
+  // Revalidate on reconnection, without replacing an in-progress composer.
+  window.addEventListener('online', function () {
+    if (store.mode !== 'remote') return;
+    store.refresh().then(function () {
+      refreshMap(); renderChrome();
+      if (['form','bulk','add','pick'].indexOf(state.view) === -1) render();
+    }).catch(function () {});
+  });

@@ -58,6 +58,9 @@ with sync_playwright() as p:
     page.evaluate('''realMap.getSource('places').setData({type:'FeatureCollection',features:[{...realFixture.features[0],properties:{...realFixture.features[0].properties,id:'one-position',memberIds:'["a","b"]',point_count:2,point_count_abbreviated:'2',photoCount:3,photoTotal:3,locationCount:2}}]})''')
     page.wait_for_function('realMap.queryRenderedFeatures({layers:["cl-photo"]}).some(f=>f.properties.memberIds && f.properties.point_count===2 && !f.properties.cluster)')
     print('PASS real MapLibre: pre-grouped identical positions keep their count and clickable members')
+    page.evaluate('''realMap.getSource('places').setData({type:'FeatureCollection',features:[2000,7].map((count,i)=>({type:'Feature',geometry:{type:'Point',coordinates:[101.7+i*.000001,2.8]},properties:{serverGroup:true,point_count:count,locationCount:count,photoCount:0,photoTotal:0,photoRef:''}}))})''')
+    page.wait_for_function('realMap.queryRenderedFeatures({layers:["cl-circle"]}).some(f=>f.properties.cluster && f.properties.locationCount===2007)')
+    print('PASS real MapLibre: server spatial groups reduce weighted location totals without losing members')
     assert not page.evaluate('mapErrors'), page.evaluate('mapErrors')
     print('PASS real MapLibre: cluster property reductions survive options updates with no style errors')
     page.screenshot(path=str(Path(__file__).parent / 'shots' / '20-real-map-cluster.png'))
@@ -66,7 +69,8 @@ with sync_playwright() as p:
     # Render production photo sprites, not rectangular placeholders. A real cluster
     # and a singleton share one mobile viewport; measure their actual colored border.
     html = (Path(__file__).parents[1] / 'index.html').read_text(encoding='utf-8')
-    draw = html[html.index('  function drawPhotoPin('):html.index('  function loadImage(')]
+    map_source=(Path(__file__).parents[1]/'js'/'02-map.js').read_text(encoding='utf8')
+    draw = map_source[map_source.index('  function drawPhotoPin('):map_source.index('  function loadImage(')]
     for dpr in [1, 2]:
         ctx = browser.new_context(viewport={'width':390,'height':700},device_scale_factor=dpr)
         pg = ctx.new_page()

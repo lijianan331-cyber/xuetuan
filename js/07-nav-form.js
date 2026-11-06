@@ -4,6 +4,7 @@
   /* 每一栏的首页在手机上怎么放：首页、我的是整页；探索只有地图，不放列表（用户 2026-10-27）；
      足迹是能拖的列表面板，回到上次拉到的高度 */
   function feedSnapNow(snap) {
+    if (state.scope==='saved') return 'full';
     if (isMobile()) {
       if (state.tab === 'home' || state.tab === 'me') return 'page';
       if (state.tab === 'explore') return 'hidden';
@@ -27,7 +28,7 @@
   }
   /* 换一栏：地图跟着换（探索、首页看公开的，足迹看我的），回到那一栏的首页。
      再点一下当前这一栏：在子页面就回到这一栏的首页，已经在首页就滚回最上面 */
-  function scopeOfTab(tab) { return tab === 'foot' ? state.mineSub : 'all'; }
+  function scopeOfTab(tab) { return tab === 'foot' ? 'mine' : 'all'; }
   function setTab(tab) {
     if (state.form && state.form.saving) { toast(t('saveWorking')); return; }
     if (state.bsheet) closeBSheet();
@@ -36,25 +37,39 @@
       if (tab === state.tab) { state.scope = scopeOfTab(tab); renderFilters(); refreshMap(); goFeed(); return; }
     }
     if (tab === state.tab) {
+      if (tab === 'foot' && state.scope === 'saved') { changeMapScope('mine'); state.favoritesBack=null; state.mineSub='mine'; renderFilters(); refreshMap(); goFeed(); return; }
       if (state.view !== 'feed') goFeed();
       else if (view.scrollTo) view.scrollTo({ top: 0, behavior: reduceMotion ? 'auto' : 'smooth' });
       renderFilters();
       return;
     }
     if (tab !== 'foot') { selectingVisits = false; selectedVisits.clear(); }
-    state.tab = tab;
+    state.tab = tab; rememberTab(tab);
     state.homesOn = false;
     state.preview = null; state.homes = null;
     var scope = scopeOfTab(tab);
-    if (scope !== state.scope) state.scope = scope;
+    if (scope !== state.scope) changeMapScope(scope);
     renderFilters(); refreshMap();
     goFeed();
+  }
+  function openFavorites() {
+    if (state.scope==='saved' && state.view==='feed') { closeFavorites(); return; }
+    if (state.form && state.form.saving) return;
+    if (state.bsheet) closeBSheet();
+    if (state.scope !== 'saved') state.favoritesBack = {tab:state.tab,mode:state.mode};
+    state.person=null; state.personBack=null; state.tab='foot'; state.mineSub='mine';
+    changeMapScope('saved'); renderFilters(); refreshMap(); goFeed('full');
+  }
+  function closeFavorites() {
+    var b=state.favoritesBack || {tab:'foot',mode:state.mode}; state.favoritesBack=null;
+    state.tab=b.tab; state.mode=b.mode; changeMapScope(scopeOfTab(b.tab));
+    renderFilters(); refreshMap(); goFeed();
   }
   /* 地图上的东西（地点、搜索结果、去哪儿看）在首页、我的里打开时，跳到探索去看 */
   function toMapTab() {
     if (state.tab !== 'home' && state.tab !== 'me') return;
     state.tab = 'explore';
-    if (state.scope !== 'all') { state.scope = 'all'; renderFilters(); refreshMap(); }
+    if (state.scope !== 'all') { changeMapScope('all'); renderFilters(); refreshMap(); }
     renderFilters();
   }
   function openPost(id) {
@@ -78,7 +93,7 @@
     if (p.mode !== state.mode) setMode(p.mode, { noFly: true });
     toMapTab();
     /* 只有我自己的私密记录：在足迹里看 */
-    if (!scopedReviews(p.id).length && reviewsOf(p.id).some(isMine)) {
+    if (!inScope(p) && reviewsOf(p.id).some(isMine)) {
       state.tab = 'foot'; state.scope = state.mineSub = 'mine'; renderFilters(); refreshMap();
     }
     rememberFeedSnap();
@@ -96,6 +111,8 @@
     if (opts.drop) setTimeout(function () { dropMarker(p); }, reduceMotion ? 0 : 900);
   }
   function back() {
+    if (state.view === 'messages') { dmBack(); return; }
+    if (state.view === 'feed' && state.scope === 'saved') { closeFavorites(); return; }
     if (state.view === 'add' && formKeepsDraft(state.form)) { returnPostComposer(); return; }
     if (state.view === 'person') { leavePerson(); return; }
     if (state.view === 'place' && state.placeBack && state.placeBack.person) { goFeed(); return; }
@@ -145,8 +162,22 @@
     /* 把他所有分享过的地点框进来 */
     var w = 180, s = 90, e = -180, n = -90;
     ps.forEach(function (p) { w = Math.min(w, p.lng); e = Math.max(e, p.lng); s = Math.min(s, p.lat); n = Math.max(n, p.lat); });
+    state.person.globe = e-w>100 || n-s>65;
+    if(state.person.globe){syncPersonMapLayout(true);return;}
     if (ps.length === 1) { flyTo([ps[0].lng, ps[0].lat], ps[0].precision === 'city' ? 9 : 14); return; }
     try { map.fitBounds([[w, s], [e, n]], { padding: mapPadding(), maxZoom: 15, duration: reduceMotion ? 0 : 600 }); } catch (err) { /* 太大框不住就不动 */ }
+  }
+  function syncPersonMapLayout(initial) {
+    if(!map||state.view!=='person'||!state.person||!state.person.globe)return;
+    var el=map.getContainer(),w=el.clientWidth,h=el.clientHeight;
+    if(!w||!h)return;
+    var top=isMobile()?76:32,bottom=isMobile()?Math.min(snapVisible(state.snap)+tabbarH()+12,h-top-100):36;
+    var pad={top:top,bottom:bottom,left:isMobile()?16:mapPadding().left,right:16};
+    var key=[w,h,top,bottom].join(':');if(!initial&&state.person.cameraLayout===key)return;
+    state.person.cameraLayout=key;
+    var diameter=Math.max(210,Math.min(w-32,h-top-bottom)*.94);
+    var zoom=clamp(Math.log2(diameter*Math.PI/512),.85,1.4);
+    var c=map.getCenter();map.easeTo({center:initial?[120,20]:[c.lng,c.lat],zoom:zoom,pitch:0,bearing:0,padding:pad,duration:reduceMotion?0:350});
   }
   function leavePerson() {
     var b = state.personBack || { tab: 'home', view: 'feed' };
@@ -160,7 +191,7 @@
   function formCancel() {
     var f = state.form, pid = f && f.placeId;
     if (f && f.saving) { toast(t('saveWorking')); return; }
-    if (f && !f.editId) { saveFormDraft(); if (f.drafted) setTimeout(function () { toast(state.lang === 'en' ? 'Draft kept: tap + to continue' : '草稿已存，下次点加号接着写'); }, 0); }
+    if (f && !f.editId) { saveFormDraft(); if (f.drafted) setTimeout(function () { toast(state.lang === 'en' ? L('Draft kept: tap + to continue') : '草稿已存，下次点加号接着写'); }, 0); }
     if (f) f.photos.forEach(releaseFormPreview);
     state.form = null; state.posting = false;
     if (pid && placeById(pid)) {
@@ -174,20 +205,14 @@
     state.homesOn = false;
     if (mode === state.mode) return;
     state.mode = mode; state.cat = 'all';
-    if (mode === 'travel') { state.priceAbout = 0; state.dist = 'any'; }
+    if (mode === 'travel') { state.priceAbout = 0; state.dist = 'any'; state.halal = ''; }
     renderChrome();
     refreshMap();
     repaintAccent();
     trimBaseLabels();
     saveView();
     if (state.view === 'feed') render();
-    /* 换吃 / 玩时地图基本不动（用户 2026-10-27 嫌一换就飞到地球或一下放很大）：
-       玩时贴得太近就退到 TRAVEL_ZOOM（10 级用户嫌远，改 11）；吃时在看整个大洲以上，回到自己附近 */
-    if (map && !opts.noFly) {
-      var z = map.getZoom();
-      if (mode === 'travel' && z > TRAVEL_ZOOM) map.easeTo({ zoom: TRAVEL_ZOOM, duration: reduceMotion ? 0 : 500, padding: mapPadding() });
-      if (mode === 'food' && z < 5) flyTo([(state.me || XMUM).lng, (state.me || XMUM).lat], 12);
-    }
+    /* Switching food / things to do keeps the current camera; explicit location buttons still move it. */
   }
 
   function setLang(lang) {
@@ -235,8 +260,8 @@
     var home = state.picking && state.picking.home;
     var mode = state.picking && state.picking.mode || state.mode;
     var selected = state.picking && state.picking.selected;
-    $('#pick-hint').textContent = selected ? (state.lang === 'en' ? 'Selected: ' : '已选：') + selected.name : t(home ? 'homePickHint' : mode === 'food' ? 'pickHintFood' : 'pickHintTravel') + (home ? '' : state.lang === 'en' ? ' · Or tap a business name/icon.' : ' · 也可以直接点店名或图标');
-    $('[data-action="pick-confirm"]').textContent = selected ? (state.lang === 'en' ? 'Choose this place' : '选择这家') : t('confirmSpot');
+    $('#pick-hint').textContent = selected ? (state.lang === 'en' ? L('Selected: ') : '已选：') + selected.name : t(home ? 'homePickHint' : mode === 'food' ? 'pickHintFood' : 'pickHintTravel') + (home ? '' : state.lang === 'en' ? L(' · Or tap a business name/icon.') : ' · 也可以直接点店名或图标');
+    $('[data-action="pick-confirm"]').textContent = selected ? (state.lang === 'en' ? L('Choose this place') : '选择这家') : t('confirmSpot');
     var prec = $('#pick-prec');
     if (mode === 'travel' && map && !home) {
       prec.innerHTML = esc(t('pickPrecision', { p: '§' })).replace('§', '<b>' + esc(precLabel(map.getZoom() >= 14 ? 'exact' : map.getZoom() >= 9 ? 'area' : 'city')) + '</b>');
@@ -253,8 +278,8 @@
     var en = state.lang === 'en';
     if (status === 'idle') { box.hidden = true; box.innerHTML = ''; return; }
     box.hidden = false;
-    if (status === 'loading' && !pickQ.results.length) { box.innerHTML = '<li class="muted">' + esc(en ? 'Searching…' : '搜索中…') + '</li>'; return; }
-    if (!pickQ.results.length) { box.innerHTML = '<li class="muted">' + esc(status === 'fail' ? (en ? 'Search failed, try again' : '搜索失败，再试一次') : (en ? 'Nothing found' : '没找到')) + '</li>'; return; }
+    if (status === 'loading' && !pickQ.results.length) { box.innerHTML = '<li class="muted">' + esc(en ? L('Searching…') : '搜索中…') + '</li>'; return; }
+    if (!pickQ.results.length) { box.innerHTML = '<li class="muted">' + esc(status === 'fail' ? (en ? L('Search failed, try again') : '搜索失败，再试一次') : (en ? L('Nothing found') : '没找到')) + '</li>'; return; }
     box.innerHTML = pickQ.results.map(function (r, k) {
       return '<li><button type="button" data-action="pick-go" data-k="' + k + '"><b>' + esc(r.name) + '</b>' + (r.where ? '<small>' + esc(r.where) + '</small>' : '') + '</button></li>';
     }).join('');
@@ -267,11 +292,17 @@
     renderPickResults('loading');
     pickQ.timer = setTimeout(function () {
       var c = map ? map.getCenter() : XMUM;
-      withTimeout(photonSearch(q, { lat: c.lat, lng: c.lng }), SEARCH_TIMEOUT).then(function (rs) {
+      /* Photon 认不出中文城市的简称（搜“广州”没结果，要“广州市”，用户 2026-11-02）：
+         同时问维基（城市、景点认得中文），中文再多问一次“…市”；哪个有结果用哪个 */
+      var at = { lat: c.lat, lng: c.lng }, cjk = /[\u4e00-\u9fff]/.test(q) && !/[市县区镇]$/.test(q);
+      function soft(p) { return withTimeout(p, SEARCH_TIMEOUT).then(function (r) { return r || []; }, function () { return null; }); }
+      Promise.all([soft(wikiSearch(q)), soft(photonSearch(q, at)), cjk ? soft(photonSearch(q + '市', at)) : Promise.resolve([])]).then(function (got) {
         if (seq !== pickQ.seq) return;
-        pickQ.results = (rs || []).slice(0, 6);
+        if (got[0] === null && got[1] === null) { pickQ.results = []; renderPickResults('fail'); return; }
+        var photon = (got[1] || []).concat(got[2] || []), towns = townsIn(photon);
+        pickQ.results = mergeResults(snapToTown(got[0] || [], towns), photon).slice(0, 6);
         renderPickResults('done');
-      }, function () { if (seq === pickQ.seq) { pickQ.results = []; renderPickResults('fail'); } });
+      });
     }, 250);
   }
   function pickGo(k) {
@@ -283,7 +314,7 @@
   }
   function resetPickSearch() {
     clearTimeout(pickQ.timer); pickQ.seq++; pickQ.results = [];
-    var q = $('#pick-q'); if (q) { q.value = ''; q.placeholder = state.lang === 'en' ? 'Search a city or area to fly there' : '搜城市、街区，地图飞过去'; }
+    var q = $('#pick-q'); if (q) { q.value = ''; q.placeholder = state.lang === 'en' ? L('Search a city or area to fly there') : '搜城市、街区，地图飞过去'; }
     renderPickResults('idle');
   }
   function endPick() {
@@ -383,7 +414,7 @@
     state.form = newForm({
       placeId: p.id, editId: r.id, loc: { lng: p.lng, lat: p.lat }, cat: p.cat, precision: p.precision, osm: p.osm || '',
       relocate: true, origPlaceId: p.id, origName: p.name || '',
-      rating: r.rating, visibility: r.visibility, priceCurrency: reviewPriceCurrency(p,r),
+      rating: r.rating, visibility: r.visibility, priceCurrency: reviewPriceCurrency(p,r), halal: r.halal || null, visitAt: r.createdAt || null, visit0: r.createdAt || null,
       photos: (r.photos || []).map(function (id) { return { id: id, existing: true }; }),
       draft: { name: p.name, alt: p.altName, link: p.link, price: r.price ? String(r.price) : '', title: r.title || '', text: r.text }
     });
@@ -407,10 +438,10 @@
     $$('[aria-invalid]').forEach(function (el) { el.removeAttribute('aria-invalid'); });
   }
 
-  /* 动图和短视频（用户 2026-10-28：动图可以，视频 5 秒以内）。
-     GIF 原样存；小视频优先保留原文件，普通添加的大文件可尝试 720p 重录。编码兼容性仍取决于浏览器，不能保证任意格式都能播放。
+  /* 动图和短视频（用户 2026-10-28：动图可以；2026-11-02 视频放宽至 10 秒、原文件 30MB）。
+     GIF 原样存；10 秒、30MB 以内的 MP4/MOV/WebM 保留原文件，不强制压缩；未知编码尝试 720p 转码。编码兼容性仍取决于浏览器，不能保证任意格式都能播放。
      都另做一张 jpg 小图，地图和列表用小图，点开才动 */
-  var CLIP_MAX_SEC = 5, MEDIA_MAX_BYTES = 5 * 1024 * 1024;
+  var CLIP_MAX_SEC = 10, CLIP_INPUT_MAX_BYTES = 30 * 1024 * 1024, MEDIA_MAX_BYTES = 5 * 1024 * 1024;
   var MEDIA_TYPES = { gif: 'image/gif', mp4: 'video/mp4', mov: 'video/quicktime', webm: 'video/webm' };
   function isClip(id) { return /\.(mp4|mov|webm)$/i.test(id || ''); }
   function isGif(id) { return /\.gif$/i.test(id || ''); }
@@ -444,6 +475,7 @@
     return new Promise(function (resolve) { cv.toBlob(function (b) { cv.width = cv.height = 0; resolve(b); }, 'image/jpeg', 0.8); });
   }
   function prepareClip(file) {
+    if (file.size > CLIP_INPUT_MAX_BYTES) return Promise.reject(new Error('clipBig'));
     var src = URL.createObjectURL(file), v = document.createElement('video');
     v.muted = true; v.playsInline = true; v.setAttribute('playsinline', ''); v.preload = 'auto';
     function waitFor(ev, ms) {
@@ -467,14 +499,14 @@
       return frameJpeg(v, v.videoWidth, v.videoHeight, THUMB_SIDE);
     }).then(function (thumb) {
       var originalExt = extOf(file.type);
-      if (originalExt && file.size <= MEDIA_MAX_BYTES) return { blob: file, thumb: thumb, ext: originalExt };
+      if (originalExt && file.size <= CLIP_INPUT_MAX_BYTES) return { blob: file, thumb: thumb, ext: originalExt };
       return reencodeClip(v).then(function (blob) {
         if (!blob) {
           var ext = extOf(file.type);
-          if (ext && file.size <= MEDIA_MAX_BYTES) return { blob: file, thumb: thumb, ext: ext };
+          if (ext && file.size <= CLIP_INPUT_MAX_BYTES) return { blob: file, thumb: thumb, ext: ext };
           throw new Error('clipBig');
         }
-        if (blob.size > MEDIA_MAX_BYTES) throw new Error('clipBig');
+        if (blob.size > CLIP_INPUT_MAX_BYTES) throw new Error('clipBig');
         return { blob: blob, thumb: thumb, ext: extOf(blob.type) || 'webm' };
       });
     }).then(function (out) { cleanup(); return out; }, function (e) { cleanup(); throw e; });
@@ -543,8 +575,9 @@
   }
 
   /* 新照片：url 是点开看的（动图、视频本身），preview 是缩略图 */
-  function mediaPhoto(out) {
-    var ext = out.ext || 'jpg', ph = { id: uid('ph') + (ext === 'jpg' ? '' : '.' + ext), blob: out.blob, thumb: out.thumb, url: URL.createObjectURL(out.blob) };
+  /* takenAt：照片的拍摄时间，写进文件名，照片下面就显示它 */
+  function mediaPhoto(out, takenAt) {
+    var ext = out.ext || 'jpg', ph = { id: uid('ph') + takenSuffix(takenAt) + (ext === 'jpg' ? '' : '.' + ext), blob: out.blob, thumb: out.thumb, url: URL.createObjectURL(out.blob) };
     ph.preview = out.thumb ? URL.createObjectURL(out.thumb) : ph.url;
     return ph;
   }
@@ -553,25 +586,41 @@
     if (ph.preview && ph.preview !== ph.url) URL.revokeObjectURL(ph.preview);
     if (!ph.uploadedPath && !store.hasPhotoURL(ph.id)) URL.revokeObjectURL(ph.url);
   }
-  /* 发帖也读照片的拍摄时间（用户 2026-11-01）：记录的日期用最早那张照片拍的时间，
-     首页按这个时间推，几年前的照片不会被当成新动态。读不到就用保存的时间 */
-  function formTakenAt(f, file) {
-    /* 照片里没有拍摄时间（有的手机交给网页时会去掉）就退回文件的修改时间，和批量添加一样（用户 2026-11-02：单条加的照片显示“刚刚”） */
-    function use(ts) {
-      if (state.form !== f || !isFinite(ts) || ts > Date.now() || ts < Date.UTC(2000, 0, 1)) return false;
-      if (!f.takenAt || ts < f.takenAt) f.takenAt = ts;
-      return true;
-    }
-    loadExifr().then(function () {
+  /* 记录的到访日期用最早那张照片的拍摄时间，读不到就用保存时间。
+     首页另按首次记录/补图时间排序，评分和文字编辑不刷新时间。 */
+  /* 一张照片的拍摄时间（毫秒），读不到给 0。
+     照片里没有拍摄时间（有的手机交给网页时会去掉）就退回文件的修改时间，和批量添加一样（用户 2026-11-02：单条加的照片显示“刚刚”） */
+  function fileTakenAt(file) {
+    function okTs(ts) { return isFinite(ts) && ts <= Date.now() && ts >= Date.UTC(2000, 0, 1) ? ts : 0; }
+    return loadExifr().then(function () {
       return window.exifr.parse(file, ['DateTimeOriginal', 'CreateDate', 'ModifyDate']);
     }).then(function (x) {
       var t0 = x && (x.DateTimeOriginal || x.CreateDate || x.ModifyDate);
-      return use(t0 instanceof Date ? t0.getTime() : NaN);
-    }, function () { return false; }).then(function (ok) {
-      if (!ok && file.lastModified && file.lastModified < Date.now() - 3600000) use(file.lastModified);
+      return okTs(t0 instanceof Date ? t0.getTime() : NaN);
+    }, function () { return 0; }).then(function (ts) {
+      return ts || (file.lastModified && file.lastModified < Date.now() - 3600000 ? okTs(file.lastModified) : 0);
     });
   }
-  window.__formTakenAt = function (f, file) { formTakenAt(f, file); }; /* 测试用 */
+  /* 记录日期跟着最早那张照片走；编辑时也一样，但只往前改（加了更早的照片才改），日期框跟着变 */
+  function useTakenAt(f, ts) {
+    if (state.form !== f || !ts) return;
+    if (!f.takenAt || ts < f.takenAt) f.takenAt = ts;
+    if (f.editId && (!f.visitAt || ts < f.visitAt)) {
+      f.visitAt = ts;
+      var box = document.getElementById('f-visit');
+      if (box) box.value = visitDay(ts);
+    }
+  }
+  /* 日期框里的日子；时刻沿用原来的，原来没有就用中午 */
+  function formVisitAt(f) {
+    var box = document.getElementById('f-visit'), m = box && /^(\d{4})-(\d{2})-(\d{2})$/.exec(box.value || '');
+    if (!m) return f.visitAt || null;
+    var old = f.visitAt ? new Date(f.visitAt) : null;
+    var at = new Date(+m[1], +m[2] - 1, +m[3], old ? old.getHours() : 12, old ? old.getMinutes() : 0).getTime();
+    return at > Date.now() ? Date.now() : at;
+  }
+  function formTakenAt(f, file) { return fileTakenAt(file).then(function (ts) { useTakenAt(f, ts); return ts; }); }
+  window.__formTakenAt = function (f, file) { return formTakenAt(f, file); }; /* 测试用 */
   function addFormPhotos(files) {
     var f = state.form;
     if (!f || f.saving) return;
@@ -584,12 +633,12 @@
     list.reduce(function (chain, file, k) {
       return chain.then(function () {
         var clip = videoFile(file);
-        return prepareMedia(file).then(function (out) {
+        return Promise.all([prepareMedia(file), clip ? 0 : formTakenAt(f, file)]).then(function (r) {
+          var out = r[0];
           if (!out.blob || state.form !== f) return;
-          var added = mediaPhoto(out);
+          var added = mediaPhoto(out, r[1]);
           f.photos.push(added);
           if (store.preupload) store.preupload([added]);
-          if (!f.editId && !clip) formTakenAt(f, file);
           if (f.photos.length === 1 || !f.catGuessTried) guessCat(f, out.thumb);
         }).catch(function (e) {
           toast(t(e && (e.message === 'clipLong' || e.message === 'clipBig' || e.message === 'gifTooBig') ? e.message : clip ? 'clipRead' : 'photoReadFail', { n: CLIP_MAX_SEC }));
@@ -725,11 +774,11 @@
     var p0 = f.placeId ? placeById(f.placeId) : null;
     var placeFields = formHasPlaceFields(f, p0);
     var bad = null;
-    if (f.post && !(d.title || '').trim()) { toast(state.lang === 'en' ? 'Add a title' : '请写一个标题'); bad = $('#f-title'); }
-    if (f.post && !f.photos.length) { toast(state.lang === 'en' ? 'Add at least one photo' : '请至少添加一张图片'); if (!bad) { $('#f-photos').scrollIntoView({ block: 'center' }); return; } }
+    if (f.post && !(d.title || '').trim()) { toast(state.lang === 'en' ? L('Write about this visit') : '写一点分享内容'); bad = $('#f-title'); }
+    if (f.post && !f.photos.length) { toast(state.lang === 'en' ? L('Add at least one photo') : '请至少添加一张图片'); if (!bad) { $('#f-photos').scrollIntoView({ block: 'center' }); return; } }
     /* 评分选填（用户 2026-10-28）：不打分也能保存，地图上是蓝点 */
     if (bad) { bad.focus({ preventScroll: true }); centerInPanel(bad, !reduceMotion); return; }
-    if (f.post && !p0 && !f.loc) { toast(state.lang === 'en' ? 'Choose a place for your footprints' : '再选一个地点，就能保存到足迹了'); $('#post-location').scrollIntoView({ block: 'center' }); return; }
+    if (f.post && !p0 && !f.loc) { toast(state.lang === 'en' ? L('Choose a place for your footprints') : '再选一个地点，就能保存到足迹了'); $('#post-location').scrollIntoView({ block: 'center' }); return; }
 
     var btn = $('#f-submit');
     f.saving = true;
@@ -738,7 +787,7 @@
     frozen.forEach(function (el) { el.disabled = true; });
     var status = document.createElement('p'); status.className = 'save-status'; status.setAttribute('role', 'status');
     $('#place-form').appendChild(status);
-    function progress(stage, done, total) { status.textContent = stage === 'upload' ? t('saveUploading', { n: done, m: total }) : t('saveWriting'); if (btn) btn.textContent = stage === 'upload' ? (state.lang === 'en' ? 'Uploading ' : '上传 ') + done + '/' + total : t('saveWorking'); }
+    function progress(stage, done, total) { status.textContent = stage === 'upload' ? t('saveUploading', { n: done, m: total }) : t('saveWriting'); if (btn) btn.textContent = stage === 'upload' ? (state.lang === 'en' ? L('Uploading ') : '上传 ') + done + '/' + total : t('saveWorking'); }
     progress('write');
     if (f.visibility === 'public' && (d.nick || '').trim()) store.updateProfile({ name: d.nick.trim().slice(0, 20) });
     /* 编辑记录时没有名称框：已有地点的名字、位置不动，只改分类；原地点的“更多”里的字段照常改 */
@@ -754,15 +803,20 @@
     var price = ((p0 ? p0.mode : state.mode) === 'food') ? parseFloat(d.price) : NaN;
     var rv = {
       rating: f.rating, priceCurrency: formPriceCurrency(), price: isFinite(price) && price > 0 ? Math.round(price * 100) / 100 : null,
-      title: (d.title || '').trim().slice(0, 80) || null, text: (d.text || '').trim().slice(0, 1000), visibility: f.visibility
+      title: (d.title || '').trim().slice(0, 80) || null, text: (d.text || '').trim().slice(0, 1000), visibility: f.visibility,
+      halal: (p0 ? p0.mode : state.mode) === 'food' ? validHalal(f.halal) : null
     };
     /* 照片是一小时以前拍的才改日期，刚拍刚发的照常用现在 */
     if (!f.editId && f.takenAt && f.takenAt < Date.now() - 3600000) rv.createdAt = f.takenAt;
+    /* 编辑时改了日期（自己改，或加了更早拍的照片）才写日期 */
+    if (f.editId) { var vd = formVisitAt(f); if (vd && visitDay(vd) !== visitDay(f.visit0)) rv.createdAt = vd; }
     var newPhotos = f.photos.filter(function (ph) { return !ph.existing; });
     var keepPhotos = f.photos.filter(function (ph) { return ph.existing; }).map(function (ph) { return ph.id; });
     rv.photoOrder = f.photos.map(function (ph) { return ph.existing ? { k: ph.id } : { n: newPhotos.indexOf(ph) }; });
     /* 照片和地点同时传，不用等地点存完再传照片 */
     if (store.preupload) store.preupload(newPhotos);
+    /* 新地点、新记录的编号第一次保存时定下，重试沿用：上次其实存上了也不会重复 */
+    if (!f.editId) { f.newPlaceId = f.newPlaceId || newClientId(); f.newVisitId = f.newVisitId || newClientId(); rv.id = f.newVisitId; if (placeData && !p0) placeData.id = f.newPlaceId; }
     var placeStep = !placeData ? Promise.resolve(p0) : p0 ? store.updatePlace(p0.id, placeData) : store.addPlace(placeData);
     placeStep.then(function (place) {
       /* 重试时复用刚创建成功的地点，避免重复创建。 */

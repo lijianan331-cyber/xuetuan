@@ -69,8 +69,9 @@
     travel: [
       { id: 'island', zh: '海岛海滩', en: 'Islands & beaches', emoji: '🏝️', color: '#0E9BB5' },
       { id: 'city', zh: '城市街区', en: 'Cities', emoji: '🏙️', color: '#3B5BDB' },
-      { id: 'nature', zh: '自然徒步', en: 'Nature & hikes', emoji: '⛰️', color: '#2F9E44' },
-      { id: 'culture', zh: '人文古迹', en: 'Culture & heritage', emoji: '🏛️', color: '#A35A2B' },
+      { id: 'nature', zh: '公园自然', en: 'Parks & nature', emoji: '⛰️', color: '#2F9E44' },
+      { id: 'culture', zh: '人文展览', en: 'Culture & exhibitions', emoji: '🏛️', color: '#A35A2B' },
+      { id: 'books', zh: '书店阅读', en: 'Bookshops & reading', emoji: '📚', color: '#527DA3' },
       { id: 'mall', zh: '商场购物', en: 'Malls & shopping', emoji: '🛍️', color: '#C2255C' },
       { id: 'fun', zh: '玩乐活动', en: 'Activities', emoji: '🎡', color: '#F08C00' },
       { id: 'stay', zh: '住宿', en: 'Stays', emoji: '🏨', color: '#7048E8' },
@@ -174,11 +175,11 @@
       dist_walk: '步行 · 校园周边', dist_short: '短途打车 · 6km 内', dist_mid: '中距离 · 龙溪 / IOI', dist_kl: '吉隆坡', dist_far: '出吉隆坡',
       tier_walk: '步行可达', tier_short: '短途打车', tier_mid: '中距离打车', tier_kl: '吉隆坡', tier_far: '吉隆坡以外',
       feedFoodAll: '大家最近在吃', feedTravelAll: '大家最近去了', feedFoodMine: '我吃过的', feedTravelMine: '我去过的', feedBothMine: '我的足迹',
-      mine_food: '美食', mine_travel: '玩乐', mine_both: '合并', savedAll: '全部', savedWant: '还没去过', mineShow: '显示', subBeen: '去过', subSaved: '想去', savedShow: '想去里', filterCat: '分类',
+      mine_food: '美食', mine_travel: '玩乐', mine_both: '全部', savedAll: '全部', savedWant: '还没去过', mineShow: '显示', subBeen: '去过', subSaved: '想去', savedShow: '想去里', filterCat: '分类',
       modeToTravel: '切换到玩乐地图', modeToFood: '切换到美食地图', litCountries: '点亮国家', litN: '已去 {n} 国', worldFail: '国家边界没加载出来，等下再试',
       feedSavedFood: '想去吃的', feedSavedTravel: '想去的地方', placesFoodAll: '探索美食', placesTravelAll: '探索玩乐', exploreHint: '点地图上的图钉看大家的评价；大家最近分享了什么在“首页”。',
-      emptySaved: '还没有想去的地方，点“收藏”就会出现在这里。', emptyWant: '收藏的地方都去过了。', goExplore: '去探索',
-      wish: '收藏', wished: '已收藏', wishAdded: '收藏了，在“足迹 · 想去”里能找到', wishRemoved: '取消收藏了',
+      emptySaved: '还没有收藏的地方，点“收藏”就会出现在这里。', emptyWant: '收藏的地方都去过了。', goExplore: '去探索',
+      wish: '收藏', wished: '已收藏', wishAdded: '收藏了，点击星星就能找到', wishRemoved: '取消收藏了',
       emptyFoodAll: '这片还没人写过。',
       emptyTravelAll: '还没人分享去处。',
       emptyMine: '还没记录过地方。', emptyFiltered: '没有符合筛选的地方。', clearFilters: '清除筛选',
@@ -202,7 +203,7 @@
       bulkBtn: '从照片批量加', bulkTitle: '从照片批量加', bulkReading: '正在读照片 {n}/{m}…',
       bulkSum: '{n} 张照片，分成 {g} 组，打了分的才保存。', bulkNoGps: '{n} 张读不到位置，按拍摄时间分了组，自己搜店名。',
       bulkTip: '位置多半是手机交给网页时去掉的，从文件管理里选（DCIM → Camera）也许能读到。', bulkFiles: '从文件管理选',
-      bulkFindPh: '搜谷歌：店名或地点', bulkFromPhoto: '离拍照处 {d}', bulkPrice: '人均 {c}', footTaken: '拍摄时间', footTakenAt: '拍于 {t}', bulkMerge: '和上一组是同一个地方', gifTooBig: '动图超过 5MB，请压缩动图后重试；不会转成静图', clipLong: '视频要在 {n} 秒以内', clipBig: '视频太大了，剪短一点再试', clipRead: '这个视频读不了', clipBusy: '视频处理中…', bulkModeLabel: '记到美食还是玩乐', bulkNoLoc: '没有位置', bulkNeed: '搜到地点才能保存', bulkNoMatch: '没搜到，换个写法试试', bulkFinding: '正在搜…',
+      bulkFindPh: '搜谷歌：店名或地点', bulkFromPhoto: '离拍照处 {d}', bulkPrice: '人均 {c}', footTaken: '拍摄时间', footTakenAt: '拍于 {t}', bulkMerge: '和上一组是同一个地方', gifTooBig: '动图超过 5MB，请压缩动图后重试；不会转成静图', clipLong: '视频要在 {n} 秒以内', clipBig: '视频不能超过 30MB，请剪短或压缩后重试', clipRead: '这个视频读不了', clipBusy: '视频处理中…', bulkModeLabel: '记到美食还是玩乐', bulkNoLoc: '没有位置', bulkNeed: '搜到地点才能保存', bulkNoMatch: '没搜到，换个写法试试', bulkFinding: '正在搜…',
       bulkNone: '选的照片里都没有拍摄地点。相机设置里打开“地理位置”，以后拍的就有了。',
       bulkSave: '保存 {n}', bulkSaving: '保存中 {n}/{m}', bulkDone: '存进足迹 {n} 个', bulkFailSome: '{n} 个没存上，过会儿再试',
       bulkPhotos: '{n} 张', bulkLooking: '正在找附近的店…', bulkOwn: '自己写', bulkBeen: '记过',
@@ -220,7 +221,7 @@
       homesBtn: '看看大家来自哪', homesOpened: '红点是同学们的家乡', homesClosed: '已回到探索', saveWorking: '正在保存…', saveUploading: '正在上传照片 {n}/{m}', saveWriting: '正在保存记录…', mediaPreparing: '正在处理照片…', photoPreview: '放大查看照片', homeOf: '{n}的家乡', homesN: '{n} 位同学的家乡', homeOnlyYou: '只有你自己看得到', homeEdit: '改我的家', homeSetCta: '你也标上家乡',
       publish: '发布',
       location: '位置', repick: '重新选',
-      noRating: '暂无评分', myScore: '我的评分', avgOf: '{n} 人打分的平均', avgNoZero: '（不算 {n} 个 0 分）', perPerson: '人均', costLabel: '花费', reviewsLabel: '条点评', reviewsTitle: '点评',
+      noRating: '暂无评分', myScore: '我的评分', avgOf: '{n} 次评分的平均', avgNoZero: '（不算 {n} 个 0 分）', perPerson: '人均', costLabel: '花费', reviewsLabel: '条点评', reviewsTitle: '点评',
       navGoogle: 'Google 地图', navApple: '苹果地图', viewApple: '在苹果地图看', navWaze: 'Waze', viewGoogle: '在 Google 地图看', copyCoords: '复制坐标',
       copied: '坐标已复制', copyFail: '复制不了，坐标是 {c}', openLink: '相关链接',
       distFrom: '距 XMUM {d}',
@@ -231,8 +232,8 @@
       del: '删除', delReviewQ: '删除这条点评？', delOk: '删除', deleted: '已删除',
       edit: '编辑', saveEdit: '保存修改', updated: '改好了',
       login: '登录', loginTitle: '登录雪团', loginWhy: '无需登录也能添加地点、写点评和收藏。匿名使用后，可在“我的”绑定账号，换设备仍能找回记录。',
-      loginGoogle: '用 Google 登录', loginOr: '或者用邮箱', loginEmailPh: '你的邮箱', loginSend: '发登录链接',
-      loginSent: '登录链接发到 {e} 了，去邮箱点一下就行。', loginFail: '没成功：{m}', loginFirst: '先登录一下', anonName: '雪团用户{n}', anonReady: '已经给你分配了一个号，可以直接记了', anonTapAgain: '号分配好了，再点一下',
+      loginGoogle: '用 Google 登录', loginOr: '或者用邮箱（Outlook、QQ 邮箱都行）', loginEmailGuest: '或者用邮箱登录（游客记录不会合并）', loginEmailPh: '你的邮箱', loginSend: '发验证码',
+      loginSent: '验证码发到 {e} 了（可能在垃圾邮件里），在下面输入；也可以直接点邮件里的链接。', loginCodePh: '邮件里的验证码', loginVerify: '登录', loginCodeBad: '验证码不对或过期了，再试一次或重新发', loginResend: '重新发', loginFail: '没成功：{m}', loginFirst: '先登录一下', anonName: '雪团用户{n}', anonReady: '已经给你分配了一个号，可以直接记了', anonTapAgain: '号分配好了，再点一下',
       anonWhy: '你正在使用匿名账号，可以添加、点评和收藏。身份保存在当前浏览器；清除浏览器数据或换设备前，请绑定谷歌账号，以便找回记录。', anonFail: '匿名账号暂时创建失败，请检查网络后重试，无需先登录。', linkGoogle: '绑定谷歌账号',
       loggedIn: '登录了', loggedOut: '已退出登录', logout: '退出登录', account: '账号', signedInAs: '已登录：{e}',
       privacyLink: '隐私政策',
@@ -261,10 +262,10 @@
       mapFail: '地图没加载出来。检查网络后刷新页面。',
       justNow: '刚刚', minAgo: '{n} 分钟前', hourAgo: '{n} 小时前', dayAgo: '{n} 天前',
       locate: '我的位置', toCampus: '回到 XMUM',
-      tabsAria: '主菜单', tabHome: '首页', tabExplore: '探索', tabFoot: '足迹', tabMe: '我的',
+      tabsAria: '主菜单', tabAdd: '记一笔', tabHome: '首页', tabExplore: '探索', tabFoot: '足迹', tabMe: '我的',
       latest: '最新分享', latestEmpty: '还没有人分享。记下吃过、去过的地方，打开“分享到大地图”，就会出现在这里。', goRecord: '去记录',
       openMap: '探索地图', postPlace: '在地图上看', placeEmpty: '还没有人记录过这里。',
-      meBeen: '去过', meWant: '想去', meShared: '分享', meNoName: '还没起昵称', meNoHome: '还没设家乡', meGuest: '还没登录',
+      meBeen: '去过', meWant: '收藏', meShared: '分享', meNoName: '还没起昵称', meNoHome: '还没设家乡', meGuest: '还没登录',
       filterBtn: '筛选', filtersTitle: '筛选', filterScore: '评分', filterDist: '离学校多远', filterPrice: '人均价位', anyOpt: '不限',
       scoreOpt: '{n} 分以上', priceAbout: 'RM{n} 左右', filterReset: '重置', filterShow: '看 {n} 个地方',
       areasTitle: '去哪儿看', locWorld: '全球', locHere: '这附近', saveHere: '记住现在这片'
@@ -278,10 +279,10 @@
       dist_walk: 'Walk · around campus', dist_short: 'Short ride · within 6 km', dist_mid: 'Mid ride · Dengkil / IOI', dist_kl: 'Kuala Lumpur', dist_far: 'Beyond KL',
       tier_walk: 'Walkable', tier_short: 'Short ride', tier_mid: 'Mid ride', tier_kl: 'Kuala Lumpur', tier_far: 'Beyond KL',
       feedFoodAll: 'What people are eating', feedTravelAll: 'Where people went', feedFoodMine: 'Places I’ve eaten', feedTravelMine: 'Places I’ve been', feedBothMine: 'My footprints',
-      mine_food: 'Food', mine_travel: 'Things to do', mine_both: 'Both', savedAll: 'All', savedWant: 'Not been yet', mineShow: 'Show', subBeen: 'Been', subSaved: 'Wishlist', savedShow: 'Wishlist', filterCat: 'Category',
+      mine_food: 'Food', mine_travel: 'Things to do', mine_both: 'All', savedAll: 'All', savedWant: 'Not been yet', mineShow: 'Show', subBeen: 'Been', subSaved: 'Wishlist', savedShow: 'Wishlist', filterCat: 'Category',
       modeToTravel: 'Switch to things to do', modeToFood: 'Switch to the food map', litCountries: 'Countries', litN: '{n} visited', worldFail: 'Couldn’t load country borders. Try again later.',
       feedSavedFood: 'Food spots I saved', feedSavedTravel: 'Places I saved', placesFoodAll: 'Explore food', placesTravelAll: 'Explore things to do', exploreHint: 'Tap a pin to see what people said. Recent posts are on Home.',
-      emptySaved: 'Your wishlist is empty. Tap “Save” to keep places here.', emptyWant: 'You’ve been to every place you saved.', goExplore: 'Explore',
+      emptySaved: 'No saved places yet. Tap “Save” to keep places here.', emptyWant: 'You’ve been to every place you saved.', goExplore: 'Explore',
       wish: 'Save', wished: 'Saved', wishAdded: 'Saved. Find it under Footprints · Wishlist', wishRemoved: 'Removed from saved',
       emptyFoodAll: 'Nobody has written about this area yet.',
       emptyTravelAll: 'No places shared yet.',
@@ -306,7 +307,7 @@
       bulkBtn: 'Add many from photos', bulkTitle: 'Add from photos', bulkReading: 'Reading photos {n}/{m}…',
       bulkSum: '{n} photos in {g} groups. Only scored ones are saved.', bulkNoGps: '{n} have no location, so they’re grouped by time. Search for each place.',
       bulkTip: 'Phones often strip the location when handing photos to a web page. Picking them from your file manager (DCIM → Camera) may keep it.', bulkFiles: 'Pick from files',
-      bulkFindPh: 'Search Google: name or place', bulkFromPhoto: '{d} from photo', bulkPrice: '{c} / pax', footTaken: 'Photo time', footTakenAt: 'taken {t}', bulkMerge: 'Same place as the one above', gifTooBig: 'GIF exceeds 5MB. Compress the animation and retry; it will not be flattened.', clipLong: 'Videos must be {n} s or shorter', clipBig: 'Video too big, trim it and try again', clipRead: "Couldn't read this video", clipBusy: 'Processing video…', bulkModeLabel: 'Food or travel', bulkNoLoc: 'no location', bulkNeed: 'Find the place to save this one', bulkNoMatch: 'Nothing found, try another spelling', bulkFinding: 'Searching…',
+      bulkFindPh: 'Search Google: name or place', bulkFromPhoto: '{d} from photo', bulkPrice: '{c} / pax', footTaken: 'Photo time', footTakenAt: 'taken {t}', bulkMerge: 'Same place as the one above', gifTooBig: 'GIF exceeds 5MB. Compress the animation and retry; it will not be flattened.', clipLong: 'Videos must be {n} s or shorter', clipBig: 'Video must be 30MB or smaller. Trim or compress it and retry', clipRead: "Couldn't read this video", clipBusy: 'Processing video…', bulkModeLabel: 'Food or travel', bulkNoLoc: 'no location', bulkNeed: 'Find the place to save this one', bulkNoMatch: 'Nothing found, try another spelling', bulkFinding: 'Searching…',
       bulkNone: 'None of these photos has a location. Turn on location tags in your camera settings for new photos.',
       bulkSave: 'Save {n}', bulkSaving: 'Saving {n}/{m}', bulkDone: '{n} saved to Footprints', bulkFailSome: '{n} couldn’t be saved, try again later',
       bulkPhotos: '{n} photos', bulkLooking: 'Looking for nearby places…', bulkOwn: 'Type a name', bulkBeen: 'recorded',
@@ -335,8 +336,8 @@
       del: 'Delete', delReviewQ: 'Delete this review?', delOk: 'Delete', deleted: 'Deleted',
       edit: 'Edit', saveEdit: 'Save changes', updated: 'Updated',
       login: 'Log in', loginTitle: 'Log in to XueTuan', loginWhy: 'Add places, write reviews and save spots without logging in. Link your guest account in Profile to recover your records on another device.',
-      loginGoogle: 'Continue with Google', loginOr: 'or use your email', loginEmailPh: 'Your email', loginSend: 'Email me a login link',
-      loginSent: 'Login link sent to {e}. Open it to log in.', loginFail: 'That didn’t work: {m}', loginFirst: 'Log in first', anonName: 'XueTuan user {n}', anonReady: 'You got a guest account, go ahead', anonTapAgain: 'Guest account ready, tap again',
+      loginGoogle: 'Continue with Google', loginOr: 'or use any email (Outlook, Yahoo…)', loginEmailGuest: 'or log in with email (guest records are not merged)', loginEmailPh: 'Your email', loginSend: 'Email me a code',
+      loginSent: 'Code sent to {e} (check spam). Enter it below, or tap the link in the email.', loginCodePh: 'Code from the email', loginVerify: 'Log in', loginCodeBad: 'Wrong or expired code. Try again or resend.', loginResend: 'Resend', loginFail: 'That didn’t work: {m}', loginFirst: 'Log in first', anonName: 'XueTuan user {n}', anonReady: 'You got a guest account, go ahead', anonTapAgain: 'Guest account ready, tap again',
       anonWhy: 'You can add places, review and save with this guest account. Its identity stays in this browser. Link Google before clearing browser data or switching devices to recover your records.', anonFail: 'Could not create your guest account. Check your connection and try again; no login is required.', linkGoogle: 'Link Google account',
       loggedIn: 'Logged in', loggedOut: 'Logged out', logout: 'Log out', account: 'Account', signedInAs: 'Logged in as {e}',
       privacyLink: 'Privacy policy',
@@ -365,10 +366,10 @@
       mapFail: 'The map didn’t load. Check your connection and refresh.',
       justNow: 'just now', minAgo: '{n} min ago', hourAgo: '{n} h ago', dayAgo: '{n} d ago',
       locate: 'My location', toCampus: 'Back to XMUM',
-      tabsAria: 'Main menu', tabHome: 'Home', tabExplore: 'Explore', tabFoot: 'Footprints', tabMe: 'Me',
+      tabsAria: 'Main menu', tabAdd: 'Add', tabHome: 'Home', tabExplore: 'Explore', tabFoot: 'Footprints', tabMe: 'Me',
       latest: 'Latest posts', latestEmpty: 'Nothing shared yet. Record a place you’ve been and switch on “Share on the big map” to see it here.', goRecord: 'Record one',
       openMap: 'Explore the map', postPlace: 'See on map', placeEmpty: 'Nobody has recorded this place yet.',
-      meBeen: 'Been', meWant: 'Wishlist', meShared: 'Shared', meNoName: 'No nickname yet', meNoHome: 'No hometown yet', meGuest: 'Not logged in',
+      meBeen: 'Been', meWant: 'Saved', meShared: 'Shared', meNoName: 'No nickname yet', meNoHome: 'No hometown yet', meGuest: 'Not logged in',
       filterBtn: 'Filters', filtersTitle: 'Filters', filterScore: 'Score', filterDist: 'Distance from campus', filterPrice: 'Price per person', anyOpt: 'Any',
       scoreOpt: '{n}+', priceAbout: 'About RM{n}', filterReset: 'Reset', filterShow: 'Show {n} places',
       areasTitle: 'Go to', locWorld: 'The world', locHere: 'Around here', saveHere: 'Save this area'
@@ -397,10 +398,10 @@
   var HOME_DAYS = 30;
   var state = {
     footTime: 'added',
-    lang: 'zh', mode: 'food', tab: 'home', scope: 'all', cat: 'all', priceAbout: 0, minScore: 0, dist: 'any',
+    lang: 'zh', mode: 'food', tab: 'home', scope: 'all', cat: 'all', priceAbout: 0, minScore: 0, dist: 'any', halal: '',
     view: 'feed', placeId: null, postId: null, placeBack: null, form: null, nearby: null, query: '',
     homeMode: 'all', homeDays: HOME_DAYS, homeMin: 0, homeSort: 'newest', homeFiltersOpen: false, bootLoading: true, posting: false, snap: 'peek', feedSnap: 'peek', picking: null, preview: null, bsheet: null, me: null, styleKey: 'light',
-    person: null, personBack: null, mineBoth: false, countries: false, savedWant: false, mineSub: 'mine', homesOn: false, mineHomeOn: false, homes: null, homeBack: null, clusterPlaces: null, bulk: null
+    person: null, personBack: null, mineBoth: false, countries: false, savedWant: false, savedStatus: 'all', favoritesBack: null, mineSub: 'mine', homesOn: false, mineHomeOn: false, mineDots: false, homes: null, homeBack: null, clusterPlaces: null, bulk: null
   };
   var map = null;
   var lastRenderedView = null;
@@ -573,7 +574,7 @@
         var me = data.profile;
         var r = {
           id: uid('r'), placeId: f.placeId, authorId: me.id, authorName: me.name || '',
-          rating: f.rating, price: f.price, priceCurrency: validPriceCurrency(f.priceCurrency), title: f.title || null, text: f.text, photos: newPhotos.map(function (ph) { return ph.id; }),
+          rating: f.rating, price: f.price, priceCurrency: validPriceCurrency(f.priceCurrency), halal: validHalal(f.halal), title: f.title || null, text: f.text, photos: newPhotos.map(function (ph) { return ph.id; }),
           visibility: f.visibility, createdAt: f.createdAt || Date.now(), updatedAt: Date.now(), sample: false
         };
         return putPhotos(newPhotos).then(function (photosOk) {
@@ -588,7 +589,7 @@
         if (!r || r.authorId !== data.profile.id) return Promise.reject(new Error('not yours'));
         return putPhotos(newPhotos).then(function (photosOk) {
           (r.photos || []).forEach(function (pid) { if (keepPhotos.indexOf(pid) === -1) forgetPhoto(pid); });
-          ['rating', 'price', 'priceCurrency', 'title', 'text', 'visibility'].forEach(function (k) { if (patch[k] !== undefined) r[k] = patch[k]; });
+          ['rating', 'price', 'priceCurrency', 'halal', 'title', 'text', 'visibility', 'createdAt'].forEach(function (k) { if (patch[k] !== undefined) r[k] = patch[k]; });
           r.photos = orderPhotos(keepPhotos, newPhotos.map(function (ph) { return ph.id; }), patch.photoOrder);
           r.authorName = data.profile.name || '';
           r.updatedAt = Date.now();
@@ -743,10 +744,48 @@
   function remoteStore(client) {
     var ANON = { id: null, name: '', country: '', region: '', city: '', district: '' };
     var cache = { places: [], reviews: [], wishlist: [], homes: [], profile: ANON, admin: false };
-    var session = null, email = '';
+    var session = null, email = '', reader = null;
+    var offline = window.XueOffline && window.XueOffline.enabled ? window.XueOffline : null;
+    function saveOffline() { if (offline) offline.snapshot(cache); }
+    function restoreOffline(guard) {
+      var actor = uidNow();
+      return (offline ? offline.snapshot() : Promise.resolve(null)).then(function (saved) {
+        if (!saved || actor !== uidNow() || (guard && !guard())) throw new Error('No offline content');
+        ['places','reviews','wishlist','homes','profile'].forEach(function (k) { cache[k] = saved[k]; }); cache.mapGroups = saved.mapGroups || []; cache.admin = false;
+      });
+    }
+    function readAll(guard) {
+      if (offline && navigator.onLine === false) return restoreOffline(guard);
+      return loadAll(guard).catch(function (e) {
+        // Permission/auth failures must never be hidden by a stale snapshot.
+        if (e && (e.code || e.status || !/fetch|network|offline|connection/i.test(String(e.message || e)))) throw e;
+        return restoreOffline(guard);
+      });
+    }
     var photoURLs = new Map();
     var photoExpiries = new Map(), photoRequests = new Map();
+    if (offline) window.addEventListener('xuetuan-offline-clear', function () { photoURLs.clear(); photoExpiries.clear(); photoRequests.clear(); });
+    if (offline) window.addEventListener('xuetuan-photo-evicted', function (e) { photoURLs.forEach(function (u, k) { if (u === e.detail) { photoURLs.delete(k); photoExpiries.delete(k); } }); });
     var listeners = [];
+    var signQueue=[],signBusy=0,signTimer=0;
+    function signPhotoPath(path) {
+      return new Promise(function(resolve){signQueue.push({path:path,actor:uidNow(),resolve:resolve});if(!signTimer)signTimer=setTimeout(pumpSigns,0);});
+    }
+    function pumpSigns() {
+      signTimer=0;
+      while(signBusy<2&&signQueue.length){
+        var jobs=signQueue.splice(0,40).filter(function(j){if(j.actor===uidNow())return true;j.resolve({error:{message:'Account changed'}});return false;});if(!jobs.length)continue;
+        signBusy++;(function(batch){
+          var bucket=client.storage.from('photos'),bulk=batch.length>1&&typeof bucket.createSignedUrls==='function';
+          var work=Promise.resolve().then(function(){return bulk?bucket.createSignedUrls(batch.map(function(j){return j.path;}),300):Promise.all(batch.map(function(j){return bucket.createSignedUrl(j.path,300);}));});
+          Promise.resolve(work).then(function(r){batch.forEach(function(j,i){
+            if(!bulk){j.resolve(r[i]);return;}
+            var row=!r.error&&Array.isArray(r.data)&&(r.data.find(function(x){return x.path===j.path;})||(r.data[i]&&!r.data[i].path&&r.data[i]));
+            j.resolve(row&&row.signedUrl&&!row.error?{data:{signedUrl:row.signedUrl}}:{error:r.error||row&&row.error||{message:'No authorized photo'}});
+          });},function(e){batch.forEach(function(j){j.resolve({error:e});});}).then(function(){signBusy--;pumpSigns();});
+        })(jobs);
+      }
+    }
 
     function uidNow() { return session ? session.user.id : null; }
     function ok(res) { if (res.error) throw res.error; return res.data; }
@@ -760,6 +799,32 @@
         createdAt: Date.parse(r.created_at), sample: false
       };
     }
+    /* 网卡住时保存别一直转（用户 2026-11-05：朋友在微信里点保存等了 10 秒，记录却没到服务器）：
+       超时就报错让人重试；新记录用前端生成的编号，重试时请求其实已经到了也不会存两条 */
+    var WRITE_TIMEOUT = window.__writeTimeout || 15000;
+    function withTimeout(p) {
+      return Promise.race([p, new Promise(function (_, reject) { setTimeout(function () { reject(new Error('XUETUAN_SAVE_TIMEOUT')); }, WRITE_TIMEOUT); })]);
+    }
+    /* 先只写（POST 不带 ?select、不要求回传整行），再按编号读回来：
+       iPhone 微信里“POST 带 ?select=* 要回传”的保存会被吞掉却显示成功（用户 2026-11-05 朋友实测；同一台手机上存照片、调 rpc 的 POST 都正常）。
+       读不到就当没存上；同一个编号已经存进去了（上次超时其实成功了）也当成功 */
+    function insertOnce(table, row) {
+      return withTimeout(client.from(table).insert(row)).then(function (res) {
+        if (res.error && !(res.error.code === '23505' || /duplicate key/i.test(res.error.message || ''))) throw res.error;
+        return withTimeout(client.from(table).select('*').eq('id', row.id).maybeSingle());
+      }).then(function (res) {
+        if (res.error) throw res.error;
+        if (!res.data) throw new Error('XUETUAN_WRITE_LOST');
+        return res.data;
+      });
+    }
+    /* 改也一样：先 PATCH（不带 ?select），再读回 */
+    function updateThenRead(table, row, id) {
+      return withTimeout(client.from(table).update(row).eq('id', id)).then(function (res) {
+        if (res.error) throw res.error;
+        return withTimeout(client.from(table).select('*').eq('id', id).single());
+      }).then(ok);
+    }
     function placeToRow(p) {
       var row = {};
       [['mode', 'mode'], ['cat', 'cat'], ['precision', 'precision'], ['lat', 'lat'], ['lng', 'lng'], ['name', 'name'],
@@ -772,7 +837,7 @@
       author = author || r.author || {};
       return {
         id: r.id, placeId: r.place_id, authorId: r.user_id, authorName: author.name || '', authorPage: !!author.page_public, authorAvatar: author.avatar || '',
-        rating: r.rating == null ? null : +r.rating, price: r.price == null ? null : +r.price, priceCurrency: validPriceCurrency(r.price_currency), title: r.title || null, text: r.text, photos: r.photos || [],
+        rating: r.rating == null ? null : +r.rating, price: r.price == null ? null : +r.price, priceCurrency: validPriceCurrency(r.price_currency), halal: validHalal(r.halal), title: r.title || null, text: r.text, photos: r.photos || [],
         visibility: r.visibility, createdAt: Date.parse(r.created_at), updatedAt: r.updated_at ? Date.parse(r.updated_at) : null, sample: false
       };
     }
@@ -838,6 +903,10 @@
       return page(0);
     }
     function loadAll(guard) {
+      if (reader) return reader.refresh(guard).then(function (supported) { return supported ? undefined : loadLegacy(guard); });
+      return loadLegacy(guard);
+    }
+    function loadLegacy(guard) {
       var uid = uidNow();
       return Promise.all([
         fetchAll(function () { return client.from('places').select('*').order('id'); }),
@@ -857,27 +926,36 @@
         cache.admin = res[5] === true;
         cache.places = places.map(placeFromRow);
         cache.ccCol = !!(places[0] && 'cc' in places[0]);
+        /* 清真这一列是 2026-11-03 加的：库里还没有就先不写，免得整条记录存不上 */
+        cache.halalCol = !!(visits[0] && 'halal' in visits[0]);
         cache.reviews = visits.map(function (v) { return reviewFromRow(v); });
         cache.profile = uid ? Object.assign({}, ANON, profile || {}, { id: uid }) : ANON;
         cache.wishlist = (wish || []).map(function (w) { return { placeId: w.place_id, createdAt: Date.parse(w.created_at) }; });
+        saveOffline();
       });
     }
     function setSession(s) {
-      var before = uidNow();
+      var before = uidNow(), wasAnon = !!(session && session.user && session.user.is_anonymous), oldEmail = email;
       session = s;
       email = s && s.user ? s.user.email || '' : '';
-      if (before !== uidNow()) { cache.admin = false; photoURLs.forEach(function (u) { if (/^blob:/.test(u)) URL.revokeObjectURL(u); }); photoURLs.clear(); photoExpiries.clear(); photoRequests.clear(); }
-      return before !== uidNow();
+      if (offline) offline.setOwner(uidNow());
+      if (before !== uidNow()) { if (reader) reader.reset(); cache.mapGroups = []; cache.places = []; cache.reviews = []; cache.wishlist = []; cache.homes = []; cache.profile = uidNow() ? Object.assign({}, ANON, {id:uidNow()}) : ANON; cache.admin = false; photoURLs.forEach(function (u) { if (/^blob:/.test(u)) URL.revokeObjectURL(u); }); photoURLs.clear(); photoExpiries.clear(); photoRequests.clear(); }
+      return before !== uidNow() || wasAnon !== !!(s && s.user && s.user.is_anonymous) || oldEmail !== email;
     }
 
-    var profileTimer = null, profilePatch = {};
+    var profileTimer = null, profilePatch = {}, profileOwner = null, profileFlight = Promise.resolve();
     function flushProfile() {
-      var patch = profilePatch, uid = uidNow();
+      var patch = profilePatch, uid = profileOwner;
       profilePatch = {};
-      if (!uid || !Object.keys(patch).length) return Promise.resolve();
-      return client.from('profiles').update(patch).eq('id', uid).then(function (res) {
-        if (res.error) toast(t('saveFail'));
+      if (!uid || !Object.keys(patch).length) return profileFlight;
+      if (uid !== uidNow()) return Promise.resolve();
+      profileFlight = client.from('profiles').update(patch).eq('id', uid).then(function (res) {
+        if (res.error) {
+          if (uid === uidNow()) { profileOwner = uid; profilePatch = Object.assign({}, patch, profilePatch); }
+          throw res.error;
+        }
       });
+      return profileFlight;
     }
 
     var areas = {
@@ -886,7 +964,7 @@
     };
     var areaCache = areas.list();
 
-    return {
+    var api = {
       mode: 'remote',
       isAdmin: function () { return cache.admin; },
       moderateVisit: function (id, decision) {
@@ -901,18 +979,25 @@
           return client.storage.from('photos').remove(paths).then(ok).then(function () { return paths.length; });
         });
       },
-      refresh: function (guard) { return loadAll(guard); },
+      refresh: function (guard) { return readAll(guard); },
       init: function () {
         client.auth.onAuthStateChange(function (event, s) {
+          if (event === 'SIGNED_OUT' && offline) { offline.setOwner(null); cache = { places: [], reviews: [], wishlist: [], homes: [], profile: ANON, admin: false }; }
           // 回调里不能直接再调 supabase，放到下一轮
           setTimeout(function () {
             if (!setSession(s)) return;
-            loadAll().then(function () { listeners.forEach(function (fn) { fn(); }); });
+            readAll().catch(function () {}).then(function () { listeners.forEach(function (fn) { fn(); }); });
           }, 0);
         });
-        return client.auth.getSession().then(function (res) {
+        var sessionRead = client.auth.getSession();
+        var pendingSession = sessionRead;
+        if (offline && navigator.onLine === false) sessionRead = new Promise(function (resolve, reject) {
+          var timer = setTimeout(function () { reject(new Error('Offline session unavailable; reconnect to sign in')); }, 2500);
+          Promise.resolve(pendingSession).then(function (r) { clearTimeout(timer); resolve(r); }, function (e) { clearTimeout(timer); reject(e); });
+        });
+        return sessionRead.then(function (res) {
           setSession(res.data && res.data.session);
-          return loadAll();
+          return readAll();
         });
       },
 
@@ -922,6 +1007,10 @@
       onAuthChange: function (fn) { listeners.push(fn); },
       signInWithEmail: function (addr) {
         return client.auth.signInWithOtp({ email: addr, options: { emailRedirectTo: location.origin + location.pathname } }).then(ok);
+      },
+      /* 邮件里的验证码：在同一个页面输入就登录，不用跳去别的浏览器开链接（微信、华为浏览器里点链接会换浏览器，登录就丢了） */
+      verifyEmailCode: function (addr, code) {
+        return client.auth.verifyOtp({ email: addr, token: code, type: 'email' }).then(ok);
       },
       signInWithGoogle: function () {
         return client.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: authReturnURL() } }).then(ok);
@@ -948,19 +1037,23 @@
       homes: function () { return cache.homes; },
       hasSamples: function () { return false; },
       /* small：小图地址。以前传的照片没有小图，图片加载失败时由显示的地方退回原图 */
+      cachedPhotoURL: function (id,small) { var key=small?id+THUMB_KEY:id;return photoURLs.has(key)&&(!photoExpiries.has(key)||photoExpiries.get(key)>Date.now())?photoURLs.get(key):null; },
       photoURL: function (id, small) {
         var key = small ? id + THUMB_KEY : id;
+        if (offline && (navigator.onLine === false || offline.status().cached)) return offline.photo(id, small);
         if (photoURLs.has(key) && (!photoExpiries.has(key) || photoExpiries.get(key) > Date.now())) return Promise.resolve(photoURLs.get(key));
         if (id.indexOf('/') === -1) return photoStore.get(id).then(function (b) { return b ? URL.createObjectURL(b) : null; });
         if (photoRequests.has(key)) return photoRequests.get(key);
         var actor = uidNow();
-        var request = client.storage.from('photos').createSignedUrl(small ? thumbPath(id) : id, 300).then(function (res) {
+        var request = signPhotoPath(small ? thumbPath(id) : id).then(function (res) {
           // Older uploads may have no thumbnail. Try the same authorized original, never a public URL.
-          return small && res.error ? client.storage.from('photos').createSignedUrl(id, 300) : res;
+          return small && res.error ? signPhotoPath(id) : res;
         }).then(function (res) {
           if (actor !== uidNow() || res.error || !res.data || !res.data.signedUrl) return null;
-          photoURLs.set(key, res.data.signedUrl); photoExpiries.set(key, Date.now() + 240000);
-          return res.data.signedUrl;
+          return (offline ? offline.photo(id, small, res.data.signedUrl) : Promise.resolve(res.data.signedUrl)).then(function (u) {
+            if (actor !== uidNow()) { if (u && /^blob:/.test(u)) URL.revokeObjectURL(u); return null; }
+            photoURLs.set(key, u); photoExpiries.set(key, Date.now() + 240000); return u;
+          });
         }, function () { return null; }).then(function (u) { if (photoRequests.get(key) === request) photoRequests.delete(key); return u; });
         photoRequests.set(key, request); return request;
       },
@@ -970,7 +1063,7 @@
 
       /* ---- 写 ---- */
       addPlace: function (f) {
-        return needLogin() || ccAt(f.lat, f.lng).then(function (cc) { return client.from('places').insert(placeToRow(Object.assign({}, f, { cc: cc }))).select().single(); }).then(ok).then(function (row) {
+        return needLogin() || ccAt(f.lat, f.lng).then(function (cc) { return insertOnce('places', Object.assign(placeToRow(Object.assign({}, f, { cc: cc })), { id: f.id || newClientId() })); }).then(function (row) {
           var p = placeFromRow(row);
           cache.places.push(p);
           return p;
@@ -979,7 +1072,9 @@
       updatePlace: function (id, patch) {
         var row = placeToRow(patch);
         delete row.mode;
-        return needLogin() || (patch.lat != null ? ccAt(patch.lat, patch.lng) : Promise.resolve('')).then(function (cc) { if (cc && cache.ccCol) row.cc = cc; return client.from('places').update(row).eq('id', id).select().single().then(ok).then(function (r) {
+        /* 国家代码只在新建时写；数据库只允许改几列，带上 cc 会整条被拒（编辑记录保存失败，用户 2026-11-02） */
+        delete row.cc;
+        return needLogin() || Promise.resolve().then(function () { return updateThenRead('places', row, id).then(function (r) {
           var p = find(cache.places, id);
           Object.assign(p, placeFromRow(r));
           return p;
@@ -991,7 +1086,9 @@
           if (progress) progress('write');
           var row = { place_id: f.placeId, rating: f.rating, price: f.price, price_currency: validPriceCurrency(f.priceCurrency), text: f.text, title: f.title || null, visibility: f.visibility, photos: up.paths, updated_at: new Date().toISOString() };
           if (f.createdAt) row.created_at = new Date(f.createdAt).toISOString();
-          return client.from('visits').insert(row).select().single().then(ok).then(function (v) {
+          if (cache.halalCol) row.halal = validHalal(f.halal);
+          row.id = f.id || newClientId();
+          return insertOnce('visits', row).then(function (v) {
             var r = reviewFromRow(v, cache.profile);
             cache.reviews.unshift(r);
             return { review: r, photosOk: up.ok };
@@ -1006,7 +1103,9 @@
           if (progress) progress('write');
           var dropped = (r.photos || []).filter(function (p) { return keepPhotos.indexOf(p) === -1; });
           var row = { rating: patch.rating, price: patch.price, price_currency: validPriceCurrency(patch.priceCurrency), text: patch.text, title: patch.title || null, visibility: patch.visibility, photos: orderPhotos(keepPhotos, up.paths, patch.photoOrder) };
-          return client.from('visits').update(row).eq('id', id).select().single().then(ok).then(function (v) {
+          if (cache.halalCol && patch.halal !== undefined) row.halal = validHalal(patch.halal);
+          if (patch.createdAt) row.created_at = new Date(patch.createdAt).toISOString();
+          return updateThenRead('visits', row, id).then(function (v) {
             removePhotos(dropped);
             Object.assign(r, reviewFromRow(v, cache.profile));
             return { review: r, photosOk: up.ok };
@@ -1022,10 +1121,12 @@
           if (!up.ok) throw up.error || new Error('photo-upload');
           if (progress) progress('write');
           var dropped = (r.photos || []).filter(function (p) { return keepPhotos.indexOf(p) === -1; });
-          var made = r._movedTo && r._movedTo.placeId === placeId ? Promise.resolve(r._movedTo) : client.from('visits').insert({
-            place_id: placeId, rating: patch.rating, price: patch.price, price_currency: validPriceCurrency(patch.priceCurrency), text: patch.text, title: patch.title || null, visibility: patch.visibility,
-            photos: orderPhotos(keepPhotos, up.paths, patch.photoOrder), created_at: new Date(r.createdAt).toISOString(), updated_at: new Date().toISOString()
-          }).select().single().then(ok).then(function (v) { r._movedTo = reviewFromRow(v, cache.profile); return r._movedTo; });
+          r._moveId = r._moveId || newClientId();
+          var made = r._movedTo && r._movedTo.placeId === placeId ? Promise.resolve(r._movedTo) : insertOnce('visits', {
+            id: r._moveId, place_id: placeId, rating: patch.rating, price: patch.price, price_currency: validPriceCurrency(patch.priceCurrency), text: patch.text, title: patch.title || null, visibility: patch.visibility,
+            photos: orderPhotos(keepPhotos, up.paths, patch.photoOrder), created_at: new Date(patch.createdAt || r.createdAt).toISOString(), updated_at: new Date().toISOString(),
+            halal: cache.halalCol ? validHalal(patch.halal) : undefined
+          }).then(function (v) { r._movedTo = reviewFromRow(v, cache.profile); return r._movedTo; });
           return made.then(function (nr) {
             return client.from('visits').delete().eq('id', id).then(ok).then(function () {
               removePhotos(dropped);
@@ -1062,7 +1163,7 @@
       setVisibility: function (ids, visibility) {
         var owner = uidNow(), rows = ids.map(function (id) { return find(cache.reviews,id); });
         if (!owner || !rows.length || rows.some(function (r) { return !r || r.authorId !== owner; }) || ['private','public'].indexOf(visibility) === -1) return Promise.reject(new Error('not yours'));
-        return client.from('visits').update({visibility:visibility}).in('id',ids).eq('user_id',owner).select().then(ok).then(function (changed) {
+        return withTimeout(client.from('visits').update({visibility:visibility}).in('id',ids).eq('user_id',owner)).then(ok).then(function () { return withTimeout(client.from('visits').select('*').in('id',ids).eq('user_id',owner).eq('visibility',visibility)); }).then(ok).then(function (changed) {
           if (uidNow() !== owner) return [];
           changed.forEach(function (row) { var old = find(cache.reviews,row.id); if (old) Object.assign(old,reviewFromRow(row,cache.profile)); });
           if (changed.length !== ids.length) throw new Error('incomplete visibility update');
@@ -1093,7 +1194,7 @@
         var id = uidNow();
         if (!id) return Promise.reject(new Error('login required'));
         var q = h
-          ? client.from('homes').upsert({ user_id: id, city: h.city, lat: h.lat, lng: h.lng, is_public: !!h.public }).select('user_id, city, lat, lng, is_public').single()
+          ? withTimeout(client.from('homes').upsert({ user_id: id, city: h.city, lat: h.lat, lng: h.lng, is_public: !!h.public })).then(ok).then(function () { return withTimeout(client.from('homes').select('user_id, city, lat, lng, is_public').eq('user_id', id).single()); })
           : client.from('homes').delete().eq('user_id', id);
         return q.then(ok).then(function (row) {
           cache.homes = cache.homes.filter(function (x) { return x.userId !== id; });
@@ -1131,14 +1232,17 @@
       },
       updateProfile: function (patch) {
         if (!uidNow()) return Promise.reject(new Error('login required'));
+        if (profileOwner !== uidNow()) profilePatch = {};
+        profileOwner = uidNow();
         Object.keys(patch).forEach(function (k) { cache.profile[k] = patch[k]; profilePatch[k] = patch[k]; });
         cache.reviews.forEach(function (r) {
           if (r.authorId === uidNow()) { r.authorName = cache.profile.name || ''; r.authorPage = !!cache.profile.page_public; }
         });
         clearTimeout(profileTimer);
-        profileTimer = setTimeout(flushProfile, 400);
+        profileTimer = setTimeout(function () { flushProfile().catch(function () { toast(t('saveFail')); }); }, 400);
         return Promise.resolve(cache.profile);
       },
+      flushProfileChanges: function () { clearTimeout(profileTimer); return profileFlight.catch(function () {}).then(function () { return flushProfile(); }); },
       addArea: function (a) {
         var area = { id: uid('a'), name: a.name, lng: a.lng, lat: a.lat, zoom: a.zoom };
         areaCache.push(area);
@@ -1198,6 +1302,20 @@
         }).then(function () { return added; });
       }
     };
+    ['addPlace','updatePlace','addReview','updateReview','moveReview','deleteReview','setSaved','updateProfile','setHome','deleteHome','moderateVisit'].forEach(function (name) {
+      if (!api[name]) return;
+      var original = api[name];
+      api[name] = function () {
+        if (offline && navigator.onLine === false) return Promise.reject(new Error('当前离线，请联网后保存。Offline: reconnect to save.'));
+        var actor = uidNow();
+        return original.apply(api, arguments).then(function (value) { if (actor === uidNow()) { saveOffline(); if (reader) reader.afterWrite(); } return value; });
+      };
+    });
+    if (window.XueReads) reader = window.XueReads.create(client, { uid: uidNow, cache: function () { return cache; }, place: placeFromRow, review: reviewFromRow, home: homeFromRow, anon: ANON, save: saveOffline });
+    api.pagedReads = function () { return !!(reader && reader.enabled()); };
+    api.reader = function () { return reader; };
+    api.mapGroups = function () { return reader && reader.enabled() ? reader.groups() : (cache.mapGroups || []).filter(function(g){return g.mode===state.mode;}); };
+    return api;
   }
 
   /* 有 Supabase 配置就用线上版；地址里加 ?local 或者 supabase 库没加载出来时用本地版 */
@@ -1212,8 +1330,21 @@
   }
   /* 在安卓 app 里（壳的 UA 带 XueTuanApp）谷歌登录在手机浏览器里做，做完跳回 xuetuan://auth，app 再把结果交给网页。
      要在 Supabase 的 Redirect URLs 里加上 xuetuan://auth，否则会跳回网站。 */
-  function authReturnURL() { return /XueTuanApp\//.test(navigator.userAgent) ? 'xuetuan://auth' : location.origin + location.pathname; }
-  var sbClient = window.supabase && window.supabase.createClient && SUPABASE_URL ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { global: { headers: { 'x-xuetuan-device': browserDeviceId() } } }) : null;
+  function authReturnURL() {
+    if (/XueTuanApp\//.test(navigator.userAgent)) return 'xuetuan://auth';
+    var u = new URL(location.href), token = u.searchParams.get('_vercel_share');u.search = '';u.hash = '';
+    if (token && /^[A-Za-z0-9_-]{10,200}$/.test(token)) u.searchParams.set('_vercel_share', token);
+    return u.href;
+  }
+  /* 安卓 app 登录完把 #access_token=... 接到当前地址后面；地址只差 # 时 WebView 不会重新打开页面，Supabase 就读不到，所以这里重新载入一次 */
+  window.addEventListener('hashchange', function () { if (/(^#|&)(access_token|error_description|error_code)=/.test(location.hash)) location.reload(); });
+  /* Capture only OAuth errors before the SDK consumes the fragment; never copy tokens into application state. */
+  var authCallbackProblem = (function () {
+    var hash = new URLSearchParams(location.hash.slice(1)), query = new URLSearchParams(location.search);
+    var code = hash.get('error_code') || query.get('error_code') || hash.get('error') || query.get('error');
+    return code ? { code: code, description: hash.get('error_description') || query.get('error_description') || '' } : null;
+  })();
+  var sbClient = window.supabase && window.supabase.createClient && SUPABASE_URL ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { global: { headers: { 'x-xuetuan-device': browserDeviceId() }, fetch: function (url, options) { if (navigator.onLine === false && options && options.method && !/^(GET|HEAD)$/i.test(options.method)) return Promise.reject(new Error('Offline: reconnect to send')); return fetch(url, options); } } }) : null;
   var store = (function () {
     var forceLocal = /[?&]local(=|&|$)/.test(location.search) || window.XUETUAN_LOCAL;
     if (!forceLocal && sbClient) return remoteStore(sbClient);
@@ -1233,10 +1364,19 @@
       }
       v.mode = state.mode; v.lang = state.lang; v.styleKey = state.styleKey;
       v.mineBoth = state.mineBoth; v.countries = state.countries; v.homesOn = state.homesOn;
-      v.mineHomeOn = state.mineHomeOn;
+      v.mineHomeOn = state.mineHomeOn; v.mineDots = state.mineDots;
       localStorage.setItem(LS_VIEW, JSON.stringify(v));
     } catch (e) { /* storage blocked: keep going */ }
   }
+
+  /* 打开雪团时先进哪一栏（用户 2026-11-06 选“两个都做”）：默认回到上次停留的那一栏（首页/探索/足迹，“我的”不算），
+     也可以在“我的”里固定一栏。第一次打开还是首页 */
+  var LS_START = 'xuetuan:start-tab:v1', START_TABS = ['home', 'explore', 'foot'];
+  function startPrefs() { try { var v = JSON.parse(localStorage.getItem(LS_START) || '{}'); return v && typeof v === 'object' ? v : {}; } catch (e) { return {}; } }
+  function saveStartPrefs(v) { try { localStorage.setItem(LS_START, JSON.stringify(v)); } catch (e) { /* storage blocked */ } }
+  function rememberTab(tab) { if (START_TABS.indexOf(tab) < 0) return; var v = startPrefs(); if (v.last === tab) return; v.last = tab; saveStartPrefs(v); }
+  function startPin() { var p = startPrefs().pin; return START_TABS.indexOf(p) >= 0 ? p : ''; }
+  function startTab() { var t = startPin() || startPrefs().last; return START_TABS.indexOf(t) >= 0 ? t : 'home'; }
 
   var photoStore = {
     db: null, mem: new Map(), ready: null,
@@ -1293,9 +1433,21 @@
   /* ================= helpers ================= */
   function $(sel, root) { return (root || document).querySelector(sel); }
   function $$(sel, root) { return Array.prototype.slice.call((root || document).querySelectorAll(sel)); }
+  /* 哈萨克语 / 印尼语界面（用户 2026-11-03）：state.lang 仍是 'en'，英文文案经 L() 查 data/i18n-ui.js 换成译文 */
+  function uiLang() {
+    if (state.lang !== 'en') return state.lang;
+    var v = lsGet('xuetuan:trlang');
+    return v === 'kk' || v === 'id' ? v : 'en';
+  }
+  function L(s) {
+    if (state.lang !== 'en') return s;
+    var u = uiLang(), d = u !== 'en' && window.XUETUAN_UI && window.XUETUAN_UI[u];
+    return d && d[s] != null ? d[s] : s;
+  }
   function t(key, vars) {
     var table = I18N[state.lang] || I18N.zh;
     var s = table[key] != null ? table[key] : (I18N.zh[key] != null ? I18N.zh[key] : key);
+    if (state.lang === 'en') s = L(s);
     if (vars) s = s.replace(/\{(\w+)\}/g, function (m, k) { return vars[k] != null ? vars[k] : m; });
     return s;
   }
@@ -1303,6 +1455,14 @@
     return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
       return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
     });
+  }
+  function newClientId() {
+    if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+    var b = new Uint8Array(16), i;
+    if (window.crypto && crypto.getRandomValues) crypto.getRandomValues(b); else for (i = 0; i < 16; i++) b[i] = Math.random() * 256 | 0;
+    b[6] = b[6] & 15 | 64; b[8] = b[8] & 63 | 128;
+    var h = Array.prototype.map.call(b, function (x) { return (x + 256).toString(16).slice(1); }).join('');
+    return h.slice(0, 8) + '-' + h.slice(8, 12) + '-' + h.slice(12, 16) + '-' + h.slice(16, 20) + '-' + h.slice(20);
   }
   function uid(prefix) { return prefix + '-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
   function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
@@ -1393,7 +1553,7 @@
     var stored = String(p.cc || '').toUpperCase(), cached = ccNow(p.lat, p.lng);
     return (!stored || stored === 'CN' ? cached || stored : stored) || '';
   }
-  function curSymAt(cc) { return CUR_SYM[curKey(cc)] || 'MYR'; }
+  function curSymAt(cc) { return CUR_SYM[curKey(cc)] || 'RM'; }
   function curSym(p) { return curSymAt(placeCC(p)); }
   function money(p, n) { return curSym(p) + ' ' + fmtPrice(n); }
   function priceRM(p, n) { return n ? n * (CUR_RM[curKey(placeCC(p))] || 1) : n; }
@@ -1401,7 +1561,7 @@
   /* Original amounts are stored with their currency. Conversion is display-only and approximate.
      JP/KR/TH/ID/TW keep the previous MYR default; their local currency is opt-in. */
   var LOCAL_PRICE_CUR = { CN:'CNY', HK:'HKD', MO:'MOP', SG:'SGD', AU:'AUD', US:'USD', CA:'CAD', GB:'GBP', EUR:'EUR', JP:'JPY', KR:'KRW', TH:'THB', ID:'IDR', TW:'TWD' };
-  var PRICE_SYM = { MYR:'MYR', CNY:'RMB', HKD:'HKD', MOP:'MOP', SGD:'SGD', AUD:'AUD', USD:'USD', CAD:'CAD', GBP:'GBP', EUR:'EUR', JPY:'JPY', KRW:'KRW', THB:'THB', IDR:'IDR', TWD:'TWD' };
+  var PRICE_SYM = { MYR:'RM', CNY:'RMB', HKD:'HKD', MOP:'MOP', SGD:'SGD', AUD:'AUD', USD:'USD', CAD:'CAD', GBP:'GBP', EUR:'EUR', JPY:'JPY', KRW:'KRW', THB:'THB', IDR:'IDR', TWD:'TWD' };
   /* Budget estimates, not a live or transaction exchange rate. */
   var PRICE_RATE = { MYR:1, CNY:CUR_RM.CN, HKD:CUR_RM.HK, MOP:CUR_RM.MO, SGD:CUR_RM.SG, AUD:CUR_RM.AU, USD:CUR_RM.US, CAD:CUR_RM.CA, GBP:CUR_RM.GB, EUR:CUR_RM.EUR, JPY:.026, KRW:.0031, THB:.12, IDR:.00025, TWD:.13 };
   var priceViews = new Map();
@@ -1409,6 +1569,49 @@
   function localPriceCurrency(p) { var cc = placeCC(p); return LOCAL_PRICE_CUR[EURO_CC.indexOf(cc) !== -1 ? 'EUR' : cc] || 'MYR'; }
   function defaultPriceCurrency(p) { return LOCAL_PRICE_CUR[curKey(placeCC(p))] || 'MYR'; }
   function priceRate(c) { return PRICE_RATE[validPriceCurrency(c) || 'MYR']; }
+  /* Halal（用户 2026-11-03：不用分那么细，只标 Halal，地图上一个小按钮只看 Halal；自动判断，仅供参考）。
+     先看 data/halal.js 里用户确认过的名单（学校按 楼·铺位，校外按店名 + 200 米；名单说不是的就不是），
+     再按店名认清真连锁和穆斯林菜系，最后按分类（嘛嘛、马来餐；娘惹除外）。店名带猪肉的一律不算。
+     记录里的 halal 字段等 visits.halal 列建好后再用（同学自己标） */
+  var HALAL = ['halal', 'porkfree', 'nonhalal'];
+  function validHalal(v) { return HALAL.indexOf(v) !== -1 ? v : null; }
+  var HALAL_NO = /pork|猪|bak ?kut ?teh|肉骨茶|char ?siu|叉烧|siew ?yoke|烧肉|non[- ]?halal|beer|啤酒|wine bar/;
+  var HALAL_NAME = new RegExp([
+    'halal', 'mcdonald', "mcd\\b", '麦当劳', 'kfc', '肯德基', 'burger king', 'marrybrown', 'texas chicken', "a&w", 'domino', 'pizza hut', 'subway', 'nando',
+    'sukiya', 'yoshinoya', 'sushi king', 'the tokyo', 'pak punjab', 'punjab', 'pakistan', 'arab', 'mandi', 'kebab', 'shawarma', 'biryani', 'briyani',
+    'nasi kandar', 'mamak', 'ayam penyet', 'nasi lemak', 'zus coffee', 'tealive', 'chatime', 'starbucks', 'coffee bean', 'secret recipe', 'oldtown',
+    'papparich', 'llao llao', 'baskin', 'mixue', '蜜雪', '新疆', 'xinjiang', 'uyghur', 'uighur', '维吾尔', '兰州', 'lanzhou', 'muslim', '穆斯林', '清真'
+  ].join('|'));
+  function halalName() { return 'Halal'; }
+  /* 名单：返回 true / false（名单里说不是）/ null（名单里没有） */
+  function halalListed(p) {
+    var H = window.XUETUAN_HALAL;
+    if (!H) return null;
+    var s = typeof campusShop === 'function' && campusShop(p);
+    if (s && H.campus[s.block + ' · ' + s.lot]) return H.campus[s.block + ' · ' + s.lot].v !== 'nonhalal';
+    var name = String(p.name || '').toLowerCase();
+    for (var i = 0; i < H.places.length; i++) {
+      var x = H.places[i];
+      if (name && haversine(x, p) <= 200 && x.keys.some(function (k) { return name.indexOf(k) !== -1; })) return x.v !== 'nonhalal';
+    }
+    return null;
+  }
+  function isHalal(p) {
+    if (!p || p.mode !== 'food') return false;
+    var listed = halalListed(p);
+    if (listed !== null) return listed;
+    var name = (String(p.name || '') + ' ' + String(p.altName || '')).toLowerCase();
+    if (HALAL_NO.test(name)) return false;
+    if (HALAL_NAME.test(name)) return true;
+    return p.cat === 'mamak' || (p.cat === 'malay' && !/nyonya|娘惹|peranakan/.test(name));
+  }
+  function placeHalal(p) { return isHalal(p) ? { v: 'halal' } : null; }
+  function halalFits(p) { return !state.halal || isHalal(p); }
+  function halalTagHTML(p) {
+    if (!isHalal(p)) return '';
+    var tip = state.lang === 'en' ? L('Guessed from the name and category, please check yourself') : '按店名和分类自动判断，仅供参考，请自行确认';
+    return '<span class="tag halal-tag" title="' + esc(tip) + '">Halal</span>';
+  }
   function reviewPriceCurrency(p, r) { return validPriceCurrency(r && r.priceCurrency) || defaultPriceCurrency(p); }
   function reviewPriceRM(p, r) { return r.price * priceRate(reviewPriceCurrency(p, r)); }
   function priceChoices(p, keep) { var local = localPriceCurrency(p), a = ['MYR']; if (local !== 'MYR') a.push(local); if (validPriceCurrency(keep) && a.indexOf(keep) < 0) a.push(keep); return a; }
@@ -1417,7 +1620,7 @@
   function priceSelectOptions(p, current) { return priceChoices(p,current).map(function (c) { return '<option value="' + c + '"' + (c === current ? ' selected' : '') + '>' + esc(PRICE_SYM[c]) + '</option>'; }).join(''); }
   function formPriceFieldHTML() {
     var c = formPriceCurrency();
-    return fieldHTML('f-price', esc(t('priceFood',{c:PRICE_SYM[c]})), '<div class="price-input-row"><select id="f-price-currency" class="input price-unit" aria-label="' + esc(state.lang === 'en' ? 'Price currency' : '金额币种') + '">' + priceSelectOptions(formPricePlace(), c) + '</select><input id="f-price" class="input" type="number" inputmode="decimal" min="0" max="99999999.99" step="0.01"></div>');
+    return fieldHTML('f-price', esc(t('priceFood',{c:PRICE_SYM[c]})), '<div class="price-input-row"><select id="f-price-currency" class="input price-unit" aria-label="' + esc(state.lang === 'en' ? L('Price currency') : '金额币种') + '">' + priceSelectOptions(formPricePlace(), c) + '</select><input id="f-price" class="input" type="number" inputmode="decimal" min="0" max="99999999.99" step="0.01"></div>');
   }
   function updateFormCurrency() {
     var lab = $('label[for="f-price"]'), sel = $('#f-price-currency'), c = formPriceCurrency();
@@ -1432,7 +1635,7 @@
     var text = (approx ? (state.lang === 'en' ? '≈ ' : '约 ') : '') + PRICE_SYM[target] + ' ' + fmtPrice(n);
     if (local === 'MYR') return '<span>' + esc(text) + '</span>';
     var next = target === 'MYR' ? local : 'MYR';
-    var label = text + (state.lang === 'en' ? '; switch to ' : '，点击切换为 ') + PRICE_SYM[next] + (approx ? (state.lang === 'en' ? '; estimated rate' : '，估算汇率') : '');
+    var label = text + (state.lang === 'en' ? L('; switch to ') : '，点击切换为 ') + PRICE_SYM[next] + (approx ? (state.lang === 'en' ? L('; estimated rate') : '，估算汇率') : '');
     return '<button type="button" class="price-toggle" data-action="price-toggle" data-price-key="' + esc(key) + '" data-price-place="' + esc(p.id || '') + '" data-price-cc="' + esc(placeCC(p)) + '" data-price-amount="' + amount + '" data-price-source="' + source + '" data-price-target="' + target + '" aria-label="' + esc(label) + '" title="' + esc(label) + '"><span>' + esc(text) + '</span><i aria-hidden="true">↔</i></button>';
   }
   function togglePrice(el) {
@@ -1451,6 +1654,44 @@
     var dt = new Date(ts);
     return dt.getFullYear() + '-' + String(dt.getMonth() + 1).padStart(2, '0') + '-' + String(dt.getDate()).padStart(2, '0');
   }
+  /* 内容编辑不刷新展示时间；只看原记录日期与照片ID中已有的添加时间。updated_at保留作内部修改时间。 */
+  function photoUploadedAt(id) {
+    var m = /(?:^|\/)ph-([0-9a-z]{8})/.exec(String(id || '')), n = m ? parseInt(m[1], 36) : 0;
+    return n > 1.6e12 && n <= Date.now() + 864e5 ? n : 0;
+  }
+  function reviewActivityAt(r) {
+    return Math.max(Number(r.createdAt) || 0,
+      (r.photos || []).reduce(function (latest, id) { return Math.max(latest, photoUploadedAt(id)); }, 0));
+  }
+  function visitDay(ts) {
+    if (!ts) return '';
+    var d = new Date(ts);
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  }
+  function reviewTimeLabel(r) {
+    var at = reviewActivityAt(r), changed = at > (r.createdAt || 0) + 60000;
+    return (state.lang === 'en' ? L('Visited ') : '到访 ') + visitDay(r.createdAt) +
+      (changed ? ' · ' + (state.lang === 'en' ? L('Updated ') : '更新于 ') + timeAgo(at) : ' · ' + timeAgo(at));
+  }
+  /* 照片自己的拍摄时间：新传的照片把手机里读到的拍摄时间写进文件名（ph-xxx-t<36进制毫秒>），不用改数据库。
+     以前传的照片压缩时拍摄信息已经去掉，读不到 */
+  var PHOTO_T_MIN = Date.UTC(2000, 0, 1);
+  function takenSuffix(ts) { ts = Math.round(Number(ts) || 0); return ts >= PHOTO_T_MIN && ts <= Date.now() ? '-t' + ts.toString(36) : ''; }
+  function photoTakenAt(id) {
+    var m = /-t([0-9a-z]{7,9})(?:_t)?(?:\.\w+)?$/.exec(String(id || '')), n = m ? parseInt(m[1], 36) : 0;
+    return n >= PHOTO_T_MIN && n <= Date.now() + 864e5 ? n : 0;
+  }
+  /* 照片下面的日期（用户 2026-11-04：上传那天不对，要真实时间）：
+     照片自己的拍摄时间 > 这条记录的到访日期（可以在编辑里改）> 上传时间 */
+  function photoDateInfo(id,r) {
+    var taken=photoTakenAt(id), visit=Number(r&&r.createdAt)||0, at=taken||visit||photoUploadedAt(id), en=state.lang==='en';
+    return {at:at,label:taken?(en?L('Taken '):'拍摄 '):visit?(en?L('Visited '):'到访 '):(en?L('Added '):'添加 ')};
+  }
+  function photoDateLabel(id,r) { var d=photoDateInfo(id,r);return d.at?d.label+visitDay(d.at):''; }
+  function photoDateHTML(id,r) {
+    var d=photoDateInfo(id,r);if(!d.at)return '';
+    return '<time class="photo-date" datetime="'+esc(new Date(d.at).toISOString())+'" title="'+esc(photoDateLabel(id,r))+'" aria-label="'+esc(photoDateLabel(id,r))+'">'+esc(visitDay(d.at))+'</time>';
+  }
   function safeURL(u) {
     u = (u || '').trim();
     if (!u) return '';
@@ -1461,7 +1702,8 @@
   }
 
   function me() { return store.me(); }
-  function placeById(id) { return store.place(id); }
+  var placeLookup={list:null,n:-1,by:new Map()};
+  function placeById(id) { var list=store.places();if(list!==placeLookup.list||list.length!==placeLookup.n){placeLookup={list:list,n:list.length,by:new Map(list.map(function(p){return [p.id,p];}))};}return placeLookup.by.get(id)||null; }
   function reviewsOf(placeId) { return store.reviewsOf(placeId); }
   /* 按地点分好的记录：画图钉时每个地点都要找自己的记录，原来每次都扫一遍全部记录，
      地点和记录一多就是“地点数 × 记录数”，手机上会卡好几秒。记录数组换了或长度变了才重新分（2026-10-27 提速） */
@@ -1478,19 +1720,21 @@
   function isMine(r) { return r.authorId === me().id; }
   function isModerator() { return !!(store.isAdmin && store.isAdmin()); }
   function moderationControl(r) {
-    return isModerator() && r.visibility === 'public' ? '<button type="button" class="link-btn danger" data-action="moderation" data-id="' + esc(r.id) + '">' + esc(state.lang === 'en' ? 'Moderate' : '管理内容') + '</button>' : '';
+    return isModerator() && r.visibility === 'public' ? '<button type="button" class="link-btn danger" data-action="moderation" data-id="' + esc(r.id) + '">' + esc(state.lang === 'en' ? L('Moderate') : '管理内容') + '</button>' : '';
   }
   function securitySaveError(e) {
     var msg = String(e && e.message || e || '');
-    if (/XUETUAN_.*BLOCKED/.test(msg)) return state.lang === 'en' ? 'Publishing is restricted for this account or browser.' : '该账号或浏览器已被限制发布。';
-    if (/XUETUAN_RATE_LIMIT/.test(msg)) return state.lang === 'en' ? 'Too many requests. Please try later.' : '操作太频繁，请稍后再试；草稿仍保留。';
-    if (/XUETUAN_RELOAD_REQUIRED/.test(msg)) return state.lang === 'en' ? 'Refresh to use the updated security settings.' : '防护已更新，请刷新页面后再操作。';
-    return state.lang === 'en' ? 'Save failed. Your draft is kept; please try again.' : '保存失败，草稿仍保留，请稍后重试。';
+    if (/XUETUAN_.*BLOCKED/.test(msg)) return state.lang === 'en' ? L('Publishing is restricted for this account or browser.') : '该账号或浏览器已被限制发布。';
+    if (/XUETUAN_RATE_LIMIT/.test(msg)) return state.lang === 'en' ? L('Too many requests. Please try later.') : '操作太频繁，请稍后再试；草稿仍保留。';
+    if (/XUETUAN_WRITE_LOST/.test(msg)) return /MicroMessenger/i.test(navigator.userAgent) ? (state.lang === 'en' ? L('WeChat did not deliver this save. Tap ··· at the top right, open in your browser, and save again.') : '微信没把这次保存发出去。点右上角“···”→在浏览器打开，再保存一次。') : (state.lang === 'en' ? L('The network is too slow, so this was not saved. Your draft is kept; tap save again.') : '网络太慢，这次没存上。草稿还在，再点一次保存。');
+    if (/XUETUAN_SAVE_TIMEOUT|Failed to fetch|NetworkError|Load failed|Offline/i.test(msg)) return state.lang === 'en' ? L('The network is too slow, so this was not saved. Your draft is kept; tap save again.') : '网络太慢，这次没存上。草稿还在，再点一次保存。';
+    if (/XUETUAN_RELOAD_REQUIRED/.test(msg)) return state.lang === 'en' ? L('Refresh to use the updated security settings.') : '防护已更新，请刷新页面后再操作。';
+    return state.lang === 'en' ? L('Save failed. Your draft is kept; please try again.') : '保存失败，草稿仍保留，请稍后重试。';
   }
   function openModeration(id) {
     var r = store.review(id);
     if (!isModerator() || !r || r.visibility !== 'public') return;
-    openModal('<div class="modal-card" role="dialog" aria-modal="true"><h3>' + esc(state.lang === 'en' ? 'Moderate public content' : '管理公开内容') + '</h3><p>' + esc(state.lang === 'en' ? 'Remove this post and its media. A browser ban can be bypassed by clearing data or changing browsers.' : '删除会移除这条内容及其图片。封禁限制账号及已记录的浏览器标识；清除数据或更换浏览器可能绕过浏览器限制。') + '</p><button type="button" class="btn danger" data-action="moderation-confirm" data-id="' + esc(id) + '" data-decision="delete">' + esc(state.lang === 'en' ? 'Delete content and media' : '删除内容和图片') + '</button><button type="button" class="btn danger" data-action="moderation-confirm" data-id="' + esc(id) + '" data-decision="delete_and_ban">' + esc(state.lang === 'en' ? 'Delete and ban author' : '删除并封禁作者') + '</button><button type="button" class="btn ghost" data-modal="no">' + esc(t('cancel')) + '</button></div>');
+    openModal('<div class="modal-card" role="dialog" aria-modal="true"><h3>' + esc(state.lang === 'en' ? L('Moderate public content') : '管理公开内容') + '</h3><p>' + esc(state.lang === 'en' ? L('Remove this post and its media. A browser ban can be bypassed by clearing data or changing browsers.') : '删除会移除这条内容及其图片。封禁限制账号及已记录的浏览器标识；清除数据或更换浏览器可能绕过浏览器限制。') + '</p><button type="button" class="btn danger" data-action="moderation-confirm" data-id="' + esc(id) + '" data-decision="delete">' + esc(state.lang === 'en' ? L('Delete content and media') : '删除内容和图片') + '</button><button type="button" class="btn danger" data-action="moderation-confirm" data-id="' + esc(id) + '" data-decision="delete_and_ban">' + esc(state.lang === 'en' ? L('Delete and ban author') : '删除并封禁作者') + '</button><button type="button" class="btn ghost" data-modal="no">' + esc(t('cancel')) + '</button></div>');
   }
   var moderationBusy = false;
   function moderateVisit(id, decision) {
@@ -1499,7 +1743,7 @@
     $$('#modal button').forEach(function (b) { b.disabled = true; });
     store.moderateVisit(id,decision).then(function (r) {
       closeModal(); refreshMap(); goFeed();
-      toast(r.mediaOk ? (state.lang === 'en' ? 'Content removed' : r.banned ? '内容已删除，作者及已记录浏览器已封禁' : '内容和图片已删除') : (state.lang === 'en' ? 'Post removed; retry media cleanup in My account.' : '内容已删除，图片清理失败，可在“我的”重试清理'));
+      toast(r.mediaOk ? (state.lang === 'en' ? L('Content removed') : r.banned ? '内容已删除，作者及已记录浏览器已封禁' : '内容和图片已删除') : (state.lang === 'en' ? L('Post removed; retry media cleanup in My account.') : '内容已删除，图片清理失败，可在“我的”重试清理'));
     }, function (e) { toast(securitySaveError(e)); $$('#modal button').forEach(function (b) { b.disabled = false; }); }).then(function () { moderationBusy = false; });
   }
   /* 三种地图：all = 探索（公开记录），mine = 我的足迹，saved = 收藏（公开记录 + 我自己的） */
@@ -1514,29 +1758,38 @@
   }
   /* 看得到的地点：有公开记录或我自己的记录，或者我想去（收藏了还没人记录的地方也算） */
   function visibleToMe(p) {
-    return store.isSaved(p.id) || reviewsOf(p.id).some(function (r) { return r.visibility === 'public' || isMine(r); });
+    return store.isSaved(p.id) || !!(p._overview && p._overview.all && (p._overview.all.count || p._overview.all.own)) || reviewsOf(p.id).some(function (r) { return r.visibility === 'public' || isMine(r); });
   }
   /* 再加上我自己建的空地点（线上版收藏又取消后，地点还留着），找同一个地方时复用它，不重复建 */
   function knownToMe(p) { var id = me().id; return visibleToMe(p) || (!!id && p.createdBy === id); }
-  function beenThere(p) { return reviewsOf(p.id).some(isMine); }
+  function beenThere(p) { return !!(p._overview && p._overview.all && p._overview.all.own) || reviewsOf(p.id).some(isMine); }
   /* 地点的封面：这张地图里看得到的记录中，最新一条带照片的第一张 */
   function coverPhoto(p, scope) {
+    var summary = placeOverview(p, scope); if (summary) return summary.cover;
     var best = null;
     scopedReviews(p.id, scope).forEach(function (r) {
-      if (r.photos && r.photos.length && (!best || r.createdAt > best.createdAt)) best = r;
+      if (r.photos && r.photos.length && (!best || reviewActivityAt(r) > reviewActivityAt(best))) best = r;
     });
     return best ? best.photos[0] : null;
   }
   function placePhotos(p) {
     var seen = {}, photos = [];
-    scopedReviews(p.id).slice().sort(function (a, b) { return b.createdAt - a.createdAt; }).forEach(function (r) {
+    scopedReviews(p.id).slice().sort(function (a, b) { return reviewActivityAt(b) - reviewActivityAt(a); }).forEach(function (r) {
       (r.photos || []).forEach(function (id) { if (!seen[id]) { seen[id] = true; photos.push(id); } });
     });
+    if (!photos.length) { var summary=placeOverview(p); if (summary && summary.cover) photos.push(summary.cover); }
     return photos;
   }
+  function placeOverview(p, scope) { scope = scope || state.scope; return (scope === 'all' || scope === 'saved') && p._overview && p._overview[scope] || null; }
+  function placePhotoCount(p) { var summary=placeOverview(p); return summary ? summary.photoCount : placePhotos(p).length; }
+  function savedStatusMatches(p) {
+    var status = state.savedWant ? 'want' : state.savedStatus;
+    return status === 'want' ? !beenThere(p) : status === 'been' ? beenThere(p) : true;
+  }
   function inScope(p) {
-    if (state.scope === 'saved') return store.isSaved(p.id) && visibleToMe(p) && !(state.savedWant && beenThere(p));
-    return scopedReviews(p.id).length > 0;
+    if (state.scope === 'saved') return store.isSaved(p.id) && visibleToMe(p) && savedStatusMatches(p);
+    var summary=placeOverview(p);
+    return summary ? summary.count > 0 : scopedReviews(p.id).length > 0;
   }
   function avgOf(list, key) {
     return list.length ? list.reduce(function (s, r) { return s + r[key]; }, 0) / list.length : null;
@@ -1544,7 +1797,13 @@
   /* score：我的地图用我自己的分，探索和收藏用公开记录的平均分；没人打分是 null。
      平均分不算 0 分（防恶意差评，用户 2026-10-27）；只有 0 分时才显示 0 */
   function stats(p) {
+    var overview = placeOverview(p);
+    if (overview) {
+      var total=0,n=0; (overview.prices || []).forEach(function(x){total+=x.total*priceRate(x.currency || defaultPriceCurrency(p));n+=x.count;});
+      return {rs:scopedReviews(p.id),count:overview.count,score:overview.score,raters:overview.raters,zeros:overview.zeros,avgPrice:n?total/n/priceRate(defaultPriceCurrency(p)):0};
+    }
     var rs = scopedReviews(p.id);
+    if (state.scope === 'mine') rs = rs.filter(function (r) { return ownVisitMatches(p,r); });
     var scored = (state.scope === 'mine' ? rs : rs.filter(function (r) { return r.visibility === 'public'; }))
       .filter(function (r) { return r.rating != null; });
     var priced = rs.filter(function (r) { return r.price > 0; });
@@ -1688,8 +1947,11 @@
   function inCampus(p) { return !!p && p.lat >= XMUM_BOX.s && p.lat <= XMUM_BOX.n && p.lng >= XMUM_BOX.w && p.lng <= XMUM_BOX.e; }
   function distLabel(p) { return inCampus(p) ? 'XMUM' : t('distFrom', { d: fmtDist(haversine(XMUM, p)) }); }
   window.__distLabel = distLabel; /* 测试用 */
+  /* 龙溪(Dengkil)镇上离 XMUM 只有 3–5 公里，按直线会落进短途；用户说龙溪算中距离（2026-11-02）：镇中心 2.2 公里内都算中距离 */
+  var DENGKIL = { lat: 2.8605, lng: 101.6790 };
   function distTier(p) {
     var d = haversine(XMUM, p);
+    if (d > 1300 && d <= 20000 && haversine(DENGKIL, p) <= 2200) return 'mid';
     for (var i = 0; i < DIST_TIERS.length; i++) if (d <= DIST_TIERS[i].max) return DIST_TIERS[i].id;
     return 'far';
   }
@@ -1697,15 +1959,29 @@
   function modeOk(p) { return p.mode === state.mode || (state.scope === 'mine' && state.mineBoth) || state.scope === 'person'; }
   function passesFilters(p, s) {
     if (!modeOk(p)) return false;
-    if (state.scope === 'mine' || state.scope === 'person') return true; /* 我的地图只分美食 / 玩乐，不用分类和筛选 */
+    if (state.scope === 'person') return true;
+    if (state.scope === 'mine' && !scopedReviews(p.id).some(function (r) { return ownVisitMatches(p,r); })) return false;
     if (state.cat !== 'all' && !catMatch(p, state.cat)) return false;
     s = s || stats(p);
     if (state.priceAbout && !priceFits(priceRM(p, s.avgPrice), state.priceAbout)) return false;
     if (state.minScore && !(s.score != null && s.score >= state.minScore)) return false;
-    if (state.mode === 'food' && state.dist !== 'any' && distTier(p) !== state.dist) return false;
+    if (state.dist !== 'any' && distTier(p) !== state.dist) return false;
+    if (state.halal && !halalFits(p)) return false;
     return true;
   }
-  function filtersActive() { return state.scope !== 'mine' && state.scope !== 'person' && ((state.scope === 'saved' && state.savedWant) || state.cat !== 'all' || !!state.priceAbout || !!state.minScore || state.dist !== 'any'); }
+  function ownVisitMatches(p,r) {
+    return (!state.minScore || (r.rating != null && r.rating >= state.minScore)) && (!state.priceAbout || priceFits(reviewPriceRM(p,r),state.priceAbout));
+  }
+  function filtersActive() { return state.scope !== 'person' && (state.cat !== 'all' || !!state.priceAbout || !!state.minScore || state.dist !== 'any' || !!state.halal); }
+  var scopeFilterMemory = {};
+  function changeMapScope(next) {
+    if (state.scope === next) return;
+    var keys = ['cat','minScore','dist','priceAbout','halal'], old = {};
+    keys.forEach(function(k){ old[k]=state[k]; }); scopeFilterMemory[state.scope] = old;
+    state.scope = next;
+    var saved = scopeFilterMemory[next] || {cat:'all',minScore:0,dist:'any',priceAbout:0,halal:''};
+    keys.forEach(function(k){ state[k]=saved[k]; });
+  }
   function catOf(p) {
     var list = CATS[p.mode] || CATS.food;
     for (var i = 0; i < list.length; i++) if (list[i].id === p.cat) return list[i];
@@ -1723,7 +1999,7 @@
     /* 旧的“日韩”在筛日料或韩餐时都算上 */
     return p.cat === cat || (p.cat === 'jpkr' && (cat === 'jp' || cat === 'kr'));
   }
-  function catName(c) { return state.lang === 'en' ? c.en : c.zh; }
+  function catName(c) { return state.lang === 'en' ? L(c.en) : c.zh; }
   function precLabel(k) { return t({ exact: 'precExact', area: 'precArea', city: 'precCity' }[k] || 'precExact'); }
   function placeTitle(p) { var name = state.lang === 'en' ? (p.altName || p.name) : (p.name || p.altName); return /^(没起名的地方|没起名的店|Unnamed spot|Unnamed place)$/i.test(name || '') ? t('unnamedTravel') : name; }
   function placeSub(p) {
@@ -1746,12 +2022,23 @@
   function guestBlocked() {
     if (!isGuest()) return false;
     var en = state.lang === 'en';
-    openModal('<div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="guest-title"><h3 id="guest-title">' + esc(en ? 'Link Google to share' : '绑定谷歌后才能分享') + '</h3><p class="f-hint">' + esc(en ? 'Guest accounts can only keep private records. Link Google to share to the big map; everything you saved stays.' : '游客号只能存给自己看的记录。绑定谷歌后就能分享到大地图，已经存的记录都还在。') + '</p><div class="btn-row"><button type="button" class="btn primary" data-action="link-google">' + esc(en ? 'Link Google' : '绑定谷歌') + '</button><button type="button" class="btn ghost" data-modal="no">' + esc(en ? 'Not now' : '先不用') + '</button></div></div>');
+    openModal('<div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="guest-title"><h3 id="guest-title">' + esc(en ? L('Link Google to share') : '绑定谷歌后才能分享') + '</h3><p class="f-hint">' + esc(en ? L('Guest accounts can only keep private records. Link Google to share to the big map; everything you saved stays.') : '游客号只能存给自己看的记录。绑定谷歌后就能分享到大地图，已经存的记录都还在。') + '</p><div class="btn-row"><button type="button" class="btn primary" data-action="link-google">' + esc(en ? L('Link Google') : '绑定谷歌') + '</button><button type="button" class="btn ghost" data-modal="no">' + esc(en ? L('Not now') : '先不用') + '</button></div></div>');
     return true;
   }
   /* 个人主页：作者自己打开了才能点进（自己的总能点，看看别人眼里的样子） */
   function canOpenPerson(id) { return !!id && id !== 'sample' && (id === me().id || store.pagePublic(id)); }
-  function personAttr(id) { return canOpenPerson(id) ? ' data-action="person" data-uid="' + esc(id) + '"' : ''; }
+  /* 没公开主页的人（线上版）：点名字弹一张小卡片，能发私信（用户 2026-11-03：点头像没反应、找不到私信） */
+  function personAttr(id) {
+    if (canOpenPerson(id)) return ' data-action="person" data-uid="' + esc(id) + '"';
+    return store.mode === 'remote' && id && id !== 'sample' ? ' data-action="person-card" data-uid="' + esc(id) + '"' : '';
+  }
+  function openPersonCard(id) {
+    var r = store.reviews().filter(function (x) { return x.authorId === id; })[0], en = state.lang === 'en';
+    var name = (r && r.authorName) || t('anon');
+    openModal('<div class="modal-card person-card" role="dialog" aria-modal="true" aria-labelledby="pcard-name">' + avatarHTML(name, id) + '<h3 id="pcard-name">' + esc(name) + '</h3>' +
+      '<p class="f-hint">' + esc(en ? L('This classmate keeps their page private.') : 'TA 还没公开主页') + '</p>' +
+      '<div class="btn-row"><button type="button" class="btn primary" data-action="dm-open" data-peer="' + esc(id) + '" data-name="' + esc(name) + '">' + esc(en ? L('Message') : '发私信') + '</button><button type="button" class="btn ghost" data-modal="no">' + esc(en ? L('Close') : '关闭') + '</button></div></div>');
+  }
   function authorFrom(r) { var h = r.authorId && homeOf(r.authorId); return h && h.public ? h.city : ''; }
   function homeName(h) { return h.userId === me().id ? (me().name || t('you')) : (h.name || t('anon')); }
   function reviewText(r) { return state.lang === 'en' && r.textEn ? r.textEn : (r.text || ''); }

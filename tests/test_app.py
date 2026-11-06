@@ -79,19 +79,22 @@ def rate(pg, v, sel='.stars-input'):
     el.scroll_into_view_if_needed()
     stars = pg.locator(sel + ' .stars-track .st')
     if v == 0:
+        stars.nth(0).click(trial=True)
         b = stars.nth(0).bounding_box(); y = b['y'] + b['height'] / 2
         pg.mouse.move(b['x'] + b['width'] * 0.75, y); pg.mouse.down()
         pg.mouse.move(b['x'] - 12, y, steps=4); pg.mouse.up()
     else:
         i = math.ceil(v) - 1
         b = stars.nth(i).bounding_box()
-        pg.mouse.click(b['x'] + b['width'] * (0.25 if v % 1 else 0.75), b['y'] + b['height'] / 2)
+        # Locator clicks wait for the returning sheet animation; raw screen coordinates can hit its moving grip.
+        stars.nth(i).click(position={'x': b['width'] * (0.25 if v % 1 else 0.75), 'y': b['height'] / 2})
     pg.wait_for_timeout(150)
 def stars_val(pg, sel='#f-rating'):
     return pg.get_attribute(sel, 'aria-valuenow')
 def tab(pg, name):
     # 底部四栏：home 首页 / explore 探索 / foot 足迹 / me 我的
     pg.click('#tabbar [data-tab="%s"]' % name); pg.wait_for_timeout(250)
+    if name == 'me': pg.locator('details.me-fold').evaluate_all('els=>els.forEach(e=>e.open=true)')
 def add(pg):
     # 加一笔只在足迹上（地图右下角蓝色 +）：不在足迹就先切过去
     if 'scope-my' not in (pg.get_attribute('html', 'class') or ''):
@@ -107,27 +110,36 @@ def via_home(pg, text, to_place=True):
     tab(pg, 'home')
     card = pg.locator('.post-card', has_text=text).first
     if not card.count():
+        card = pg.locator('.post-card:has(.pc-who[aria-label="' + text + '"])').first
+    if not card.count():
         rid = pg.evaluate('(text) => { const d=JSON.parse(localStorage.getItem("xmum-chiwan-map:data:v1")); return d && d.reviews.find(r => r.text === text)?.id; }', text)
         card = pg.locator('.post-card').filter(has=pg.locator('[data-id="' + str(rid) + '"]'))
     card.locator('.pc-open').click(); pg.wait_for_timeout(250)
     if to_place:
         pg.click('[data-action="post-place"]'); pg.wait_for_timeout(300)
 def set_mode(pg, mode):
-    # 地图右上角的切换按钮：吃的地图上显示飞机（切去玩乐），玩乐地图上显示餐具
-    if pg.evaluate('document.documentElement.classList.contains("mode-travel")') != (mode == 'travel'):
-        pg.click('[data-action="toggle-mode"]')
-        pg.wait_for_timeout(200)
+    direct = pg.locator('#view .foot-mode-group [data-action="mine-mode"][data-v="'+mode+'"]')
+    if direct.count() and direct.is_visible():
+        direct.click(); pg.wait_for_timeout(200)
+    elif pg.evaluate('document.documentElement.classList.contains("mode-travel")') != (mode == 'travel'):
+        pg.click('[data-action="toggle-mode"]'); pg.wait_for_timeout(200)
+
+def open_filters(pg):
+    direct=pg.locator('#view [data-action="foot-filters"]')
+    if direct.count() and direct.is_visible(): direct.click()
+    else: pg.click('#map-ctrls [data-action="filters"]')
+    pg.wait_for_selector('#bsheet-card .bsheet-foot .btn.primary', state='visible')
+
+
 def foot_sub(pg, value=None):
-    # The visited/wishlist switch now lives in the footprint filter sheet.
-    if pg.locator('#bsheet').is_hidden():
-        pg.click('#view [data-action="foot-filters"]')
-    if value:
-        pg.click('#bsheet [data-action="mine-sub"][data-v="%s"]' % value)
-        pg.wait_for_timeout(100)
-    selected = pg.get_attribute('#bsheet [data-action="mine-sub"][aria-pressed="true"]', 'data-v')
-    pg.click('#bsheet [data-action="sheet-close"]')
+    # Saved places have their own star entry; the Footprints tab always returns to visits.
+    if value == 'saved' and pg.evaluate('state.scope') != 'saved':
+        pg.click('#view [data-action="open-favorites"]')
+    elif value == 'mine' and pg.evaluate('state.scope') != 'mine':
+        pg.click('#tabbar [data-tab="foot"]')
     pg.wait_for_timeout(100)
-    return selected
+    return pg.evaluate('state.scope')
+
 
 def touch_drag(pg, x, y0, y1, steps=8):
     # 真的手指拖动（CDP 触摸事件），会走浏览器自己的滚动
@@ -142,6 +154,7 @@ def touch_drag(pg, x, y0, y1, steps=8):
 
 def tier(x):
     d = dist_m(x['lat'], x['lng'])
+    if 1300 < d <= 20000 and dist_m(x['lat'], x['lng'], 2.8605, 101.6790) <= 2200: return 'mid'
     return 'walk' if d <= 1300 else 'short' if d <= 6000 else 'mid' if d <= 20000 else 'kl' if d <= 50000 else 'far'
 
 def map_expr(e, z, props):
@@ -219,6 +232,8 @@ def route_all(ctx, supabase=False):
             return route.fulfill(status=200, body=PHOTON_REV, headers={'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'})
         if 'photon.komoot.io/api/' in url:
             photon_calls.append(url)
+            if 'q=nowhere' in url:
+                return route.fulfill(status=503, body='busy', headers={'Access-Control-Allow-Origin': '*'})
             return route.fulfill(status=200, body=PHOTON_SG if 'q=Singapura' in url else PHOTON, headers={'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'})
         if 'wikipedia.org/w/api.php' in url:
             wiki_calls.append(url)
@@ -237,7 +252,7 @@ def route_all(ctx, supabase=False):
     ctx.route('**/*', handler)
 
 with sync_playwright() as p:
-    browser = p.chromium.launch(**({'channel': os.environ['XUETUAN_TEST_BROWSER_CHANNEL']} if os.environ.get('XUETUAN_TEST_BROWSER_CHANNEL') else {}))
+    browser = p.chromium.launch(slow_mo=int(os.environ.get('XUETUAN_TEST_SLOW_MO', '0')), **({'channel': os.environ['XUETUAN_TEST_BROWSER_CHANNEL']} if os.environ.get('XUETUAN_TEST_BROWSER_CHANNEL') else {}))
     slowctx = browser.new_context(viewport={'width':390,'height':844})
     route_all(slowctx, supabase=True)
     slowctx.add_init_script('window.__holdDbReads=true')
@@ -327,7 +342,7 @@ with sync_playwright() as p:
     check('glyph warm-up: Chinese characters from nearby zoom 6–12 tiles drawn ahead, regular font first, once', len(tile_calls) == 28 and all('/planet/20261022_001001_pt/' in u for u in tile_calls) and wc and wc[0][0] == 'Noto Sans Regular' and sorted(c for s_, c in wc if s_ == 'Noto Sans Regular') == want and len(wc) == len(want) * len({s_ for s_, c in wc}), (len(tile_calls), wc[:12]))
     check('first visit opens straight on campus, no long flight from the globe', len(st['intro']) >= 1 and st['intro'][0].get('center') == [101.7029, 2.8329] and st['intro'][0].get('zoom') == 14.6 and not any((c.get('duration') or 0) > 2000 for c in st['intro']), st['intro'])
     tabs0 = page.locator('#tabbar .tab').all_inner_texts()
-    check('tab bar: home / explore / footprints / me, no + in it', tabs0 == ['首页', '探索', '足迹', '我的'] and page.locator('#tabbar #fab').count() == 0, tabs0)
+    check('tab bar: home / explore / footprints / me (+ the middle add button), the old map fab is not in it', tabs0 == ['首页', '探索', '足迹', '我的'] and page.locator('#tabbar #fab').count() == 0, tabs0)
     # 首页：整页（盖住地图）；上面品牌 + 搜索，地图预览就是那张地图，下面最新分享；只有示例时诚实地说还没有
     home0 = page.evaluate('''(() => { const p = document.querySelector("#panel").getBoundingClientRect(), m = document.getElementById("map").getBoundingClientRect();
       return [document.querySelector("#panel").dataset.snap, Math.round(p.top), document.getElementById("map").parentNode.id, Math.round(m.height), !!document.querySelector(".home-top .home-search")]; })()''')
@@ -340,7 +355,9 @@ with sync_playwright() as p:
     check('tapping the preview opens explore: just the map, sheet tucked away', exp0 == ['hidden', True, 'stage'] and page.get_attribute('#tabbar [data-tab="explore"]', 'aria-current') == 'page', exp0)
     check('no add button on explore', not page.locator('#fab').is_visible())
     tab(page, 'foot')
-    check('footprints: the + add button shows', page.locator('#fab').is_visible() and page.get_attribute('#fab', 'aria-label') == '加一家店' and page.get_attribute('#tabbar [data-tab="foot"]', 'aria-current') == 'page')
+    tb_ = page.evaluate('(() => { const b = document.querySelector("#tab-add").getBoundingClientRect(), t = document.querySelector("#tabbar").getBoundingClientRect(), tabs = [...document.querySelectorAll("#tabbar > *")].map(e => e.id === "tab-add" ? "+" : e.dataset.tab); return { tabs, mid: Math.abs((b.left + b.right) / 2 - (t.left + t.right) / 2) < 2, inBar: b.top >= t.top - 1 && b.bottom <= t.bottom + 1 }; })()')
+    check('the add button sits in the middle of the tab bar (like 小红书/抖音); the old floating + on footprints is gone', tb_['tabs'] == ['home', 'explore', '+', 'foot', 'me'] and tb_['mid'] and tb_['inBar'] and page.locator('#tab-add').is_visible() and not page.locator('#fab').is_visible() and page.get_attribute('#tab-add', 'aria-label') == '记一笔' and page.get_attribute('#tabbar [data-tab="foot"]', 'aria-current') == 'page', tb_)
+    page.click('#tab-add'); page.wait_for_selector('#modal .compose-choice'); page.click('[data-modal="no"]'); page.wait_for_timeout(100)
     check('footprints: been/wishlist lives in filters, no inline switch, nothing recorded', page.locator('#view [data-action="mine-sub"]').count() == 0 and foot_sub(page) == 'mine' and page.inner_text('.view-head .count') == '0')
     tab(page, 'explore')
     check('back to explore: map only again', page.get_attribute('#panel', 'data-snap') == 'hidden')
@@ -369,10 +386,10 @@ with sync_playwright() as p:
 
     # travel mode（探索地图上切换）
     tab(page, 'explore')
-    page.evaluate('window.__map.jumpTo({zoom: 14.5})')
+    page.evaluate('window.__map.jumpTo({zoom: 14.5});window.__switchCamera={center:window.__map.getCenter(),moves:window.__map.calls.filter(c=>c[0]==="move").length}')
     set_mode(page, 'travel')
     mv = page.evaluate('window.__map.calls.filter(c => c[0] === "move").slice(-1)[0][1]')
-    check('switching to travel only steps back to zoom 11, no jump to the globe', mv.get('zoom') == 11 and 'center' not in mv, mv)
+    check('switching to travel keeps center and zoom without moving', page.evaluate('window.__map.getZoom()===14.5&&JSON.stringify(window.__map.getCenter())===JSON.stringify(window.__switchCamera.center)&&window.__map.calls.filter(c=>c[0]==="move").length===window.__switchCamera.moves'))
     # 回 XMUM：定位按钮左边的学士帽，玩的地图回到 11 级，吃的地图回到 14.6 级
     page.evaluate('window.__map.jumpTo({center: [100.3, 5.4], zoom: 9})')
     page.click('.campus-btn')
@@ -507,11 +524,24 @@ with sync_playwright() as p:
       setTimeout(() => { const a = f.takenAt; f.takenAt = null; window.__formTakenAt(f, new File([new Uint8Array(8)], 'noexif2.jpg', {lastModified: fresh}));
         setTimeout(() => { const b = f.takenAt; f.takenAt = keep; res([a === old, b === null]); }, 150); }, 150); })''')
     check('single add: a photo without EXIF time falls back to the file time (if older than an hour)', lm == [True, True], lm)
-    check('price label uses MYR for a place in Malaysia', 'MYR' in page.inner_text('label[for="f-price"]'))
+    check('price label uses RM for a place in Malaysia', 'RM' in page.inner_text('label[for="f-price"]'))
     cur = page.evaluate('''() => [["CN","SG","FR","DE","GB","US","CA","AU","TW","HK","MO","JP","KR","TH","ID","MY",""].map(c => window.__curSym(c)).join(" "),
       money({cc: "CN"}, 35), money({lat: 3.15, lng: 101.7}, 12), priceRM({cc: "SG"}, 10), priceRM({cc: "TW"}, 10), ccNow(2.83, 101.70), ccNow(1.30, 103.85)]''')
     check('currency by place country: CN/HK/MO/SG/euro/GB/US/CA/AU use local units; TW/JP stay RM; filter compares in RM',
-          cur == ['RMB SGD EUR EUR GBP USD CAD AUD MYR HKD MOP MYR MYR MYR MYR MYR MYR', 'RMB 35', 'MYR 12', 33, 10, 'MY', ''], cur)
+          cur == ['RMB SGD EUR EUR GBP USD CAD AUD RM HKD MOP RM RM RM RM RM RM', 'RMB 35', 'RM 12', 33, 10, 'MY', ''], cur)
+    dk = page.evaluate('[distTier({lat: 2.8605, lng: 101.6790}), distTier({lat: 2.8545, lng: 101.6830}), distTier({lat: 2.8330, lng: 101.6850})]')
+    check('Dengkil (龙溪) town counts as mid ride even though it is only ~4 km away; the McD on road 29 stays short', dk == ['mid', 'mid', 'short'], dk)
+    hl = page.evaluate('''() => { const F = (name, extra) => Object.assign({mode: 'food', cat: 'other', name: name, lat: 3.1, lng: 101.6}, extra || {});
+      const H = window.XUETUAN_HALAL; H.places.push({keys: ['zz-hh-test'], lat: 2.8288, lng: 101.7053, v: 'halal'}, {keys: ['mcd no test'], lat: 2.8288, lng: 101.7053, v: 'nonhalal'});
+      const keep = state.halal; state.halal = 'halal';
+      const yes = [F('Sapid', {osm: 'ovt/xmum-b1-g04'}), F('Poke Bowl Rice', {osm: 'ovt/xmum-b1-g07'}), F('ZZ-HH-Test Bell', {lat: 2.8290, lng: 101.7054}), F("McDonald's Kota Warisan"), F('The Tokyo Restaurant'),
+        F('Pak Punjab'), F('Sukiya Putrajaya'), F('新疆大盘鸡', {cat: 'cn'}), F('Restoran X', {cat: 'mamak'}), F('Warung Y', {cat: 'malay'})].map(halalFits);
+      const no = [F('Da Cheng Xiao Shi', {osm: 'ovt/xmum-d6-102'}), F('Katsu Lab', {lat: 2.8287, lng: 101.7055}), F('zz-hh-test'), F('Uniq Nyonya Kitchen', {cat: 'malay'}), F('Bak Kut Teh Halal-ish'),
+        F('MCD no test', {lat: 2.8288, lng: 101.7053}), F('海底捞', {cat: 'hotpot'}), F('Sapid', {mode: 'travel'})].map(halalFits);
+      const out = [yes, no, halalTagHTML(F('Pak Punjab')).includes('>Halal<'), halalTagHTML(F('海底捞')), filtersActive(), activeFilterCount()];
+      state.halal = keep; H.places.pop(); H.places.pop(); return out; }''')
+    check('halal: confirmed list wins (incl. not-halal entries), then chain / Muslim-cuisine names, then mamak and Malay (not Nyonya); pork names never',
+          hl == [[True] * 10, [False] * 8, True, '', True, 1], hl)
     page.click('#f-submit')
     page.wait_for_timeout(600)
     check('after publish: place view', page.locator('.place-head h2').count() == 1 and page.inner_text('.place-head h2') == '测试椰浆饭', errors[-4:])
@@ -519,7 +549,7 @@ with sync_playwright() as p:
     taken_rec = page.evaluate('JSON.parse(localStorage.getItem("xmum-chiwan-map:data:v1")).reviews.find(r => r.text && r.text.startsWith("参巴辣"))')
     check('post uses the photo\'s real taken time, not the moment it was added', taken_rec and taken_rec['createdAt'] == taken_ms, taken_rec and taken_rec['createdAt'])
     page.evaluate('delete window.__exif["test-photo.jpg"]')
-    check('stats show score and price', page.inner_text('.score-big') == '4' and 'MYR 9.5' in page.inner_text('.stats'), page.inner_text('.stats'))
+    check('stats show score and price', page.inner_text('.score-big') == '4' and 'RM 9.5' in page.inner_text('.stats'), page.inner_text('.stats'))
     mine_pin = page.evaluate('window.__map.getSource("places").data.features.find(f => f.properties.name === "测试椰浆饭").properties')
     check('pin colour follows score (4 -> orange-red)', mine_pin['color'] == '#e14f12', mine_pin)
     PIN = 'window.__map.getSource("places").data.features.find(f => f.properties.name === "测试椰浆饭").properties'
@@ -543,6 +573,11 @@ with sync_playwright() as p:
     check('food and scenery photos share visibility thresholds', all(map_expr(ph_op,z,dict(travel_props,mode='travel',precision=pr))==map_expr(ph_op,z,dict(travel_props,mode='food',precision=pr)) for pr in ['city','area','exact'] for z in [3.8,6.8,7,9,10,11.99,12,14]))
     check('photo size is identical for all precisions and both map modes at each zoom', all(len({round(map_expr(ph_size,z,dict(ph_props,mode=m,precision=pr)),4) for m in ['food','travel'] for pr in ['city','area','exact']})==1 for z in [4,7,8.8,10,12,16]))
     check('clustering continues through street zoom with room for photo frames', page.evaluate('window.__map.getSource("places").spec.clusterMaxZoom===16 && window.__map.getSource("places").spec.clusterRadius>=68*window.__map.getLayer("pt-photo").layout["icon-size"]'))
+    cr = page.evaluate('''(() => { const m = window.__map, c = m.getCenter(), z = m.getZoom(), out = [];
+      m.jumpTo({center: [101.7040, 2.8300], zoom: 15}); onMoveEnd(); out.push(m.getSource("places").spec.clusterRadius);
+      m.jumpTo({center: [101.6869, 3.1390], zoom: 15}); onMoveEnd(); out.push(m.getSource("places").spec.clusterRadius);
+      m.jumpTo({center: [c.lng, c.lat], zoom: z}); onMoveEnd(); return out; })()''')
+    check('campus exception: around XMUM places merge later (smaller cluster radius, LY3 and D6 stay apart at zoom 15); elsewhere unchanged', cr == [68, 80], cr)
     cl_op = page.evaluate('window.__map.getLayer("cl-circle").paint["circle-opacity"]')
     check('single and grouped covers appear together at the same zoom', all(map_expr(cl_op,z,{'photoRef':'cover'}) == 1-map_expr(ph_op,z,ph_props) for z in [10,11.99,12,12.5,13,14,18]) and map_expr(cl_op,18,{'photoRef':''})==1)
     check('group covers share the same fixed size and viewport alignment',page.evaluate('''(()=>{const a=window.__map.getLayer('pt-photo').layout,b=window.__map.getLayer('cl-photo').layout;return a['icon-size']===b['icon-size']&&a['icon-pitch-alignment']==='viewport'&&b['icon-pitch-alignment']==='viewport';})()'''))
@@ -637,7 +672,9 @@ with sync_playwright() as p:
     page.click('#f-submit')
     page.wait_for_timeout(500)
     check('edit saved toast', '改好了' in page.inner_text('#toast'), page.inner_text('#toast'))
-    page.locator('[data-action="edit-review"]').first.click()
+    # 补图/编辑后列表会按最近活动重排；按目标记录的文字选，不能假定私密记录仍在第一行。
+    private_edit_id = page.evaluate('store.reviews().find(r => r.text === "今天的饭有点冷。").id')
+    page.locator('[data-action="edit-review"][data-id="' + private_edit_id + '"]').click()
     page.wait_for_timeout(200)
     check('edit keeps private visibility', page.get_attribute('[data-action="f-share"]', 'aria-checked') == 'false')
     rate(page, 0)
@@ -670,9 +707,15 @@ with sync_playwright() as p:
     stored_b = page.evaluate('JSON.parse(localStorage.getItem("xmum-chiwan-map:data:v1"))')
     back_rv = [r for r in stored_b['reviews'] if r['id'] == moved_before['id']][0]
     check('changing place by search moves it back to the old place (its name and position untouched); the empty spot is removed', back_rv['placeId'] == moved_before['placeId'] and not any(p_['id'] == newpl['id'] for p_ in stored_b['places']) and [ (p_['name'], round(p_['lat'], 4)) for p_ in stored_b['places'] if p_['id'] == moved_before['placeId']] == [('测试椰浆饭', 2.8331)], back_rv)
+    # 编辑时改日期（以前传的照片读不到拍摄时间）
+    page.locator('[data-action="edit-review"][data-id="' + moved_before['id'] + '"]').first.click(); page.wait_for_timeout(200)
+    check('edit form has a date box with the record date', page.locator('#f-visit[type=date]').count() == 1 and page.input_value('#f-visit') == page.evaluate('visitDay(%d)' % back_rv['createdAt']), page.locator('#f-visit').count())
+    page.fill('#f-visit', '2025-03-23'); page.click('#f-submit'); page.wait_for_timeout(500)
+    dated = [r for r in page.evaluate('JSON.parse(localStorage.getItem("xmum-chiwan-map:data:v1"))')['reviews'] if r['id'] == moved_before['id']][0]
+    check('changing the date while editing saves the new visit date', page.evaluate('visitDay(%d)' % dated['createdAt']) == '2025-03-23', dated.get('createdAt'))
     open_place(page, '测试椰浆')
     open_place(page, '测试椰浆')
-    check('everyone scope shows 1 review', page.locator('.review').count() == 1, page.locator('.review').count())
+    check('place shows public reviews plus my private review for its privacy shortcut', page.locator('.review').count() == 2, page.locator('.review').count())
     check('explore map uses public score only', page.inner_text('.score-big') == '5', page.inner_text('.stats'))
 
     # nearby duplicate check
@@ -720,6 +763,9 @@ with sync_playwright() as p:
     page.click('[data-action="toggle-save"]')
     page.wait_for_timeout(200)
     check('save button toggles on', page.get_attribute('[data-action="toggle-save"]', 'aria-pressed') == 'true' and '已收藏' in page.inner_text('[data-action="toggle-save"]'))
+    page.wait_for_timeout(150)
+    sv = page.evaluate('(() => { const b = document.querySelector("[data-action=toggle-save]"), cs = getComputedStyle(b); return [b.disabled, cs.opacity, cs.backgroundColor === getComputedStyle(document.querySelector(".place-actions [data-action=write-review]")).backgroundColor, getComputedStyle(b.querySelector("svg")).color]; })()')
+    check('saved: the button keeps its normal look, only the star turns gold (it looked greyed out)', sv == [False, '1', True, 'rgb(245, 180, 0)'], sv)
     row = page.eval_on_selector_all('.place-actions > *', 'els => els.map(e => e.dataset.action || (e.classList.contains("primary") ? "nav" : "link"))')
     check('place card: save sits right after directions, record next (Google Maps style row)', row[:3] == ['nav', 'toggle-save', 'write-review'], row)
     sv_pin = page.evaluate('window.__map.getSource("places").data.features.find(f => f.properties.name === "亚罗街").properties')
@@ -732,7 +778,7 @@ with sync_playwright() as p:
     check('wishlist stays under the footprints tab', page.get_attribute('#tabbar [data-tab="foot"]', 'aria-current') == 'page' and foot_sub(page) == 'saved')
     saved_feats = page.evaluate('window.__map.getSource("places").data.features.map(f => [f.properties.name, f.properties.saved])')
     check('saved map shows only saved place (no extra star there)', saved_feats == [['亚罗街', False]], saved_feats)
-    check('saved list shows the place', page.locator('.near-item', has_text='亚罗街').count() == 1 and page.inner_text('.view-title') == '想去吃的', page.inner_text('.view-title'))
+    check('saved list shows the place', page.locator('.near-item', has_text='亚罗街').count() == 1 and page.inner_text('.view-title') == '我的收藏', page.inner_text('.view-title'))
     stored = page.evaluate('JSON.parse(localStorage.getItem("xmum-chiwan-map:data:v1"))')
     check('saving is not a visit (no new review)', len(stored['wishlist']) == 1 and len([r for r in stored['reviews'] if r['placeId'] == 's-jalan-alor']) == 1, stored['wishlist'])
     page.locator('.near-item', has_text='亚罗街').click()
@@ -740,18 +786,22 @@ with sync_playwright() as p:
     page.click('[data-action="toggle-save"]')
     page.click('[data-action="back"]')
     page.wait_for_timeout(200)
-    check('unsaving empties the wishlist', page.locator('.empty', has_text='还没有想去的地方').count() == 1)
+    check('unsaving empties the wishlist', page.locator('.empty', has_text='还没有收藏的地方').count() == 1)
     tab(page, 'explore')
     tab(page, 'foot')
-    check('footprints tab remembers the wishlist side', foot_sub(page) == 'saved')
+    check('footprints tab returns to visits rather than a saved side', foot_sub(page) == 'mine')
     foot_sub(page, 'mine')
     tab(page, 'explore')
-
     # score + distance filters live in one filter sheet
     page.click('[data-action="filters"]')
     page.wait_for_timeout(100)
     cats_food = len(set(x['cat'] for x in FOOD_S))
     check('filter sheet: category, score (with legend), distance, price', page.locator('#bsheet').is_visible() and page.locator('#bsheet [data-action="cat"]').count() >= cats_food + 1 and page.locator('#bsheet .legend').count() == 1 and page.locator('[data-action="set-score"]').count() == 3 and page.locator('[data-action="set-dist"]').count() == 6 and page.locator('#bsheet input#flt-price[type="range"]').count() == 1 and page.inner_text('#flt-price-val') == '不限')
+    check('halal: the switch lives in the filter sheet', page.locator('#bsheet [data-action="halal-toggle"]').count() == 1 and page.locator('.map-ctrls .halal-btn').count() == 0)
+    page.click('#bsheet [data-action="halal-toggle"]'); page.wait_for_timeout(100)
+    check('halal: switch on counts as one active filter and Reset clears it', page.evaluate('state.halal') == 'halal' and page.evaluate('activeFilterCount()') == 1)
+    page.click('#bsheet [data-action="clear-filters"]'); page.wait_for_timeout(100)
+    check('halal: Reset turns it off', not page.evaluate('state.halal'))
     page.click('#bsheet [data-action="cat"][data-cat="cn"]')
     page.wait_for_timeout(150)
     fc = page.evaluate('window.__map.getSource("places").data.features.map(f => f.properties.name)')
@@ -956,7 +1006,7 @@ with sync_playwright() as p:
     check('home: Me header says where I am from', page.inner_text('.me-head small') == '来自 Sepang', page.inner_text('.me-head'))
     tab(page, 'foot')
     check('home: no house chip on the map any more', page.locator('#map-chips [data-action="mine-home-toggle"]').count() == 0)
-    page.click('#map-ctrls [data-action="filters"]'); page.wait_for_timeout(120)
+    open_filters(page); page.wait_for_timeout(120)
     sw = '#bsheet [data-action="mine-home-toggle"]'
     check('home: “显示我的家” switch lives in the filter sheet, off by default', page.locator(sw).count() == 1 and page.get_attribute(sw, 'aria-checked') == 'false' and '显示我的家' in page.inner_text(sw) and page.evaluate('window.__map.getSource("homes").data.features.length')==0)
     page.click(sw); page.wait_for_timeout(100)
@@ -972,6 +1022,22 @@ with sync_playwright() as p:
     house_places_before = page.evaluate('window.__map.getSource("places").data.features.length')
     page.click(sw); page.wait_for_timeout(100)
     check('home: my house switch hides only the house and keeps places', page.evaluate('window.__map.getSource("homes").data.features.length===0') and page.evaluate('window.__map.getSource("places").data.features.length')==house_places_before)
+    dsw = '#bsheet [data-action="mine-dots-toggle"]'
+    check('foot: filter sheet has the “缩小时合并成数字” switch, on by default, places clustered', page.locator(dsw).count() == 1 and page.get_attribute(dsw, 'aria-checked') == 'true' and page.evaluate('window.__map.getSource("places").spec.cluster') is True)
+    grp = page.evaluate("""(() => { const g = document.querySelector('#bsheet .switch-group'); if (!g) return null; const f = g.closest('.field'), prev = f.previousElementSibling;
+        const gr = g.getBoundingClientRect(), fr = f.getBoundingClientRect(), pr = prev.getBoundingClientRect(), foot = document.querySelector('#bsheet .bsheet-foot').getBoundingClientRect();
+        return { n: g.querySelectorAll('.switch-row').length, label: f.querySelector('.f-label').textContent, gapAbove: Math.round(fr.top - pr.bottom), gapBelow: Math.round(foot.top - gr.bottom) }; })()""")
+    page.screenshot(path=os.path.join(SHOTS, '20-foot-filter-switches.png'))
+    check('foot filter: both map switches sit in one grouped card under “地图显示”, spaced from the chips above and the buttons below (用户 2026-11-05：下面有点拥挤)', grp is not None and grp['n'] == 2 and grp['label'] == '地图显示' and grp['gapAbove'] >= 10 and grp['gapBelow'] >= 12, grp)
+    page.click(dsw); page.wait_for_timeout(100)
+    check('foot: turning it off shows every place as its own dot (no clustering), choice remembered', page.get_attribute(dsw, 'aria-checked') == 'false' and page.evaluate('window.__map.getSource("places").spec.cluster') is False and page.evaluate('JSON.parse(localStorage.getItem(LS_VIEW)).mineDots') is True)
+    page.keyboard.press('Escape'); page.wait_for_timeout(100)
+    tab(page, 'explore')
+    check('foot dots setting does not touch the big map (still clustered)', page.evaluate('window.__map.getSource("places").spec.cluster') is True)
+    tab(page, 'foot')
+    check('back on 足迹 the dots setting applies again', page.evaluate('window.__map.getSource("places").spec.cluster') is False)
+    open_filters(page); page.wait_for_timeout(120); page.click(dsw); page.wait_for_timeout(100)
+    check('turning it back on clusters again', page.evaluate('window.__map.getSource("places").spec.cluster') is True)
     page.keyboard.press('Escape'); page.wait_for_timeout(100)
     tab(page, 'explore')
     hf = page.evaluate('window.__map.getSource("homes").data.features.length')
@@ -980,7 +1046,7 @@ with sync_playwright() as p:
     page.click('[data-action="home-public"]')
     page.wait_for_timeout(150)
     check('home: public setting does not automatically overlay travel', page.evaluate('window.__map.getSource("homes").data.features.length') == 0)
-    check('home: switch on explains who sees it', page.get_attribute('[data-action="home-public"]', 'aria-checked') == 'true' and '来自 Sepang' in page.inner_text('#home-field'))
+    check('home: switch on explains city-only sharing', page.get_attribute('[data-action="home-public"]', 'aria-checked') == 'true' and 'Sepang' in page.inner_text('#home-field') and '只显示城市' in page.get_attribute('[data-action="home-public"]', 'aria-label'))
     tab(page, 'explore')
     toggle_homes(page)
     check('home: independent mode hides travel places', page.evaluate('window.__map.getSource("places").data.features.length') == 0)
@@ -1023,9 +1089,7 @@ with sync_playwright() as p:
     check('我的 page has a “看看大家来自哪” entry with the classmate count', '看看大家来自哪' in page.inner_text('.me-homes') and '位同学的家乡' in page.inner_text('.me-homes'), page.inner_text('.me-homes') if page.locator('.me-homes').count() else 'missing')
     page.wait_for_timeout(300)
     page.screenshot(path=os.path.join(SHOTS, '07-mobile-profile.png'))
-    page.click('[data-action="set-style"][data-style="dark"]')
-    page.wait_for_timeout(300)
-    check('missing dark style handled with toast', '加载不了' in page.inner_text('#toast'), page.inner_text('#toast'))
+    check('Me no longer offers the unreadable dark base map',page.locator('[data-action="set-style"][data-style="dark"]').count()==0)
     page.click('[data-action="set-style"][data-style="color"]')
     page.wait_for_timeout(300)
     st2 = page.evaluate('({setStyle: window.__map.calls.filter(c=>c[0]==="setStyle").length, layers: window.__map.layers.map(l=>l.id).length, images: Object.keys(window.__map.images).length, proj: window.__map.projection})')
@@ -1037,8 +1101,10 @@ with sync_playwright() as p:
 
     # language (in the Me tab)
     tab(page, 'me')
-    page.click('[data-action="set-lang"][data-lang="en"]')
-    check('Me in English, tab bar too', page.locator('#tabbar .tab').all_inner_texts() == ['Home', 'Explore', 'Footprints', 'Me'] and 'Wishlist' in page.inner_text('.me-stats'), page.locator('#tabbar .tab').all_inner_texts())
+    tab(page, 'home')
+    page.click('.home-lang'); page.click('#bsheet [data-action="pick-lang"][data-lang="en"]')
+    tab(page, 'me')
+    check('Me in English, tab bar too', page.locator('#tabbar .tab').all_inner_texts() == ['Home', 'Explore', 'Footprints', 'Me'] and 'Saved' in page.inner_text('.me-stats'), page.locator('#tabbar .tab').all_inner_texts())
     tab(page, 'explore')
     page.wait_for_timeout(200)
     check('UI in English', page.inner_text('.view-title') == 'Explore food', page.inner_text('.view-title'))
@@ -1048,7 +1114,9 @@ with sync_playwright() as p:
     check('pin names use English alt names', 'Nasi Lemak Test 2' in names and 'Jalan Alor' in names, names)
     page.screenshot(path=os.path.join(SHOTS, '08-mobile-english.png'))
     tab(page, 'me')
-    page.click('[data-action="set-lang"][data-lang="zh"]')
+    tab(page, 'home')
+    page.click('.home-lang'); page.click('#bsheet [data-action="pick-lang"][data-lang="zh"]')
+    tab(page, 'me')
     tab(page, 'explore')
 
     # export
@@ -1070,6 +1138,16 @@ with sync_playwright() as p:
     check('samples removed, own data kept', all(not p_.get('sample') for p_ in stored['places']) and len(stored['places']) == 2, len(stored['places']))
     tab(page, 'explore')
 
+    # 打开时进入（2026-11-06）：默认回到上次停留的那一栏；“我的”里可以固定一栏
+    tab(page, 'foot'); tab(page, 'me')
+    page.reload(); page.wait_for_function('window.__map && window.__map.getSource("places")', timeout=8000); page.wait_for_timeout(400)
+    check('open on: reload returns to the last tab used (footprints; 我的 is not remembered)', page.get_attribute('#tabbar [data-tab="foot"]', 'aria-current') == 'page' and page.evaluate('document.documentElement.classList.contains("scope-my")'))
+    tab(page, 'me')
+    st_ = page.evaluate('(() => { const f = document.querySelector(".me-start"); if (!f) return null; const bs = [...f.querySelectorAll("button")], r = bs.map(b => b.getBoundingClientRect()); return { labels: bs.map(b => b.textContent), pressed: bs.map(b => b.getAttribute("aria-pressed")), oneRow: r.every(x => Math.abs(x.top - r[0].top) < 2), fits: r[r.length-1].right <= innerWidth - 8 }; })()')
+    check('open on: 我的 has 打开时进入 with 上次/首页/探索/足迹, 上次 chosen by default, on one row', st_ and st_['labels'] == ['上次', '首页', '探索', '足迹'] and st_['pressed'] == ['true', 'false', 'false', 'false'] and st_['oneRow'] and st_['fits'], st_)
+    page.click('.me-start [data-start="home"]'); page.wait_for_timeout(150)
+    check('open on: picking 首页 pins it', page.get_attribute('.me-start [data-start="home"]', 'aria-pressed') == 'true' and page.evaluate('JSON.parse(localStorage.getItem("xuetuan:start-tab:v1")).pin') == 'home')
+    tab(page, 'foot')
     # reload persistence + photo from IndexedDB
     page.reload()
     page.wait_for_function('window.__map && window.__map.getSource("places")', timeout=8000)
@@ -1078,18 +1156,21 @@ with sync_playwright() as p:
     check('no sample re-seed after clearing', page.locator('.sample-note').count() == 0)
     # 首页：大家最新分享的记录（不是示例），两列卡片，有照片的放照片
     check('after reload: the app opens on home', page.get_attribute('#tabbar [data-tab="home"]', 'aria-current') == 'page' and page.get_attribute('#panel', 'data-snap') == 'page')
-    cards = page.locator('.post-card .pc-place').all_inner_texts()
+    cards = page.locator('.post-card .pc-place > span').all_inner_texts()
     check('home: my public records show as cards, newest first, private ones not', 'Kafe Ujian' not in cards and '测试椰浆饭' in cards and page.locator('.post-card', has_text='其实还行').count() == 0, cards)
     page.wait_for_function('[...document.querySelectorAll(".post-card .pc-cover img")].some(i => i.naturalWidth > 0)', timeout=5000)
     cg = page.evaluate('''(() => { const cs = [...document.querySelectorAll(".post-card")].map(c => c.getBoundingClientRect()); const cv = document.querySelector(".post-card .pc-cover").getBoundingClientRect();
       return [cs.length >= 1 && cv.width < innerWidth / 2, Math.abs(cv.width - cv.height) < 2, document.documentElement.scrollWidth <= innerWidth]; })()''')
     check('home: two columns of square covers, no sideways scroll', cg == [True, True, True], cg)
     check('home: records without photos are omitted', page.locator('.post-card', has_text='Kafe Ujian').count() == 0 and page.locator('.post-card .pc-words').count() == 0)
+    lay = page.evaluate('''(() => { const c = document.querySelector(".post-card"); const t = c.querySelector(".pc-text"), pl = c.querySelector(".pc-place"), w = c.querySelector(".pc-who");
+      return [!!t && t.getBoundingClientRect().top < pl.getBoundingClientRect().top, pl.classList.contains("small") && parseFloat(getComputedStyle(pl).fontSize) < parseFloat(getComputedStyle(t).fontSize), w.innerText.indexOf(w.getAttribute("aria-label")) < 0]; })()''')
+    check('home card: review text first, shop name small below, author shows only the avatar', lay == [True, True, True], lay)
     page.screenshot(path=os.path.join(SHOTS, '06c-mobile-home-cards.png'))
     star = page.locator('.post-card', has_text='测试椰浆饭').first.locator('.pc-save')
     star.click(); page.wait_for_timeout(200)
     stw = page.evaluate('JSON.parse(localStorage.getItem("xmum-chiwan-map:data:v1")).wishlist.length')
-    check('home: the star on a card saves the place, right there', page.locator('.post-card', has_text='测试椰浆饭').first.locator('.pc-save').get_attribute('aria-pressed') == 'true' and stw == 1 and '足迹 · 想去' in page.inner_text('#toast'), stw)
+    check('home: the star on a card saves the place, right there', page.locator('.post-card', has_text='测试椰浆饭').first.locator('.pc-save').get_attribute('aria-pressed') == 'true' and stw == 1 and '点击星星' in page.inner_text('#toast'), stw)
     page.locator('.post-card', has_text='测试椰浆饭').first.locator('.pc-save').click(); page.wait_for_timeout(200)
     # 卡片 → 帖子（不是去地图）；帖子里的地点 → 探索地图；返回回到帖子，再返回回到首页
     via_home(page, '测试椰浆饭', to_place=False)
@@ -1174,7 +1255,7 @@ with sync_playwright() as p:
     page.evaluate('history.back()')
     page.wait_for_timeout(300)
     check('phone back closes the map card instead of leaving the site', page.locator('.feed').count() == 1 and page.locator('#map .sel-pin').count() == 0 and page.url.startswith(APP))
-    page.click('#map-ctrls [data-action="filters"]')
+    open_filters(page)
     page.wait_for_timeout(200)
     page.evaluate('history.back()')
     page.wait_for_timeout(300)
@@ -1215,7 +1296,7 @@ with sync_playwright() as p:
     stored = page.evaluate('JSON.parse(localStorage.getItem("xmum-chiwan-map:data:v1"))')
     mz = [p_ for p_ in stored['places'] if p_['name'] == 'Muzium Uji']
     check('saving an unrecorded place: place + wishlist, no record', len(mz) == 1 and mz[0]['mode'] == 'travel' and mz[0]['cat'] == 'culture' and [w['placeId'] for w in stored['wishlist']] == [mz[0]['id']]
-          and not any(r['placeId'] == mz[0]['id'] for r in stored['reviews']) and '足迹 · 想去' in page.inner_text('#toast'), (mz, stored['wishlist']))
+          and not any(r['placeId'] == mz[0]['id'] for r in stored['reviews']) and '点击星星' in page.inner_text('#toast'), (mz, stored['wishlist']))
     check('saved unrecorded place: its page says nobody recorded it, red pin stays, saved', page.inner_text('.place-head h2') == 'Muzium Uji' and page.locator('.place-empty').count() == 1 and page.locator('#map .sel-pin').count() == 1
           and page.get_attribute('[data-action="toggle-save"]', 'aria-pressed') == 'true' and page.locator('[data-commit="place-score"]').count() == 1, page.inner_text('#view')[:200])
     page.click('[data-action="back"]'); page.wait_for_timeout(200)
@@ -1223,6 +1304,10 @@ with sync_playwright() as p:
     check('tapping that label again opens the saved place, not a new card', page.locator('[data-action="save-preview"]').count() == 0 and page.inner_text('.place-head h2') == 'Muzium Uji')
     page.click('[data-action="back"]'); page.wait_for_timeout(200)
     foot_sub(page, 'saved'); page.wait_for_timeout(200)
+    # This checks presence in the collection, independently of earlier saved-filter tests.
+    set_mode(page, 'travel'); open_filters(page)
+    page.click('#bsheet [data-action="clear-filters"]'); page.click('#bsheet [data-action="sheet-close"]')
+    page.click('#view [data-action="saved-want"][data-v="all"]')
     check('it is in footprints · wishlist (list + map)', page.locator('#view .near-item', has_text='Muzium Uji').count() == 1 and 'Muzium Uji' in page.evaluate('window.__map.getSource("places").data.features.map(f => f.properties.name)'))
     # 去了、记一笔、再删掉：想去的地点还在（本地版）
     page.locator('#view .near-item', has_text='Muzium Uji').click(); page.wait_for_timeout(250)
@@ -1252,7 +1337,10 @@ with sync_playwright() as p:
     check('desktop: home lists posts in the side column, no map card there', page2.get_attribute('#tabbar [data-tab="home"]', 'aria-current') == 'page' and page2.locator('.home-map').count() == 0 and page2.evaluate('document.getElementById("map").parentNode.id') == 'stage')
     tab(page2, 'me')
     page2.set_input_files('#import-file', export_path)
-    page2.wait_for_timeout(800)
+    try:
+        page2.wait_for_function('(JSON.parse(localStorage.getItem("xmum-chiwan-map:data:v1") || "{}").profile || {}).name === "小测"', timeout=5000)
+    except Exception:
+        pass
     st3 = page2.evaluate('JSON.parse(localStorage.getItem("xmum-chiwan-map:data:v1"))')
     check('import merges places and adopts profile', any(p_['name'] == '测试椰浆饭' for p_ in st3['places']) and st3['profile']['name'] == '小测', (len(st3['places']), st3['profile']))
     via_home(page2, '测试椰浆饭')
@@ -1276,6 +1364,59 @@ with sync_playwright() as p:
     st5 = page5.evaluate('JSON.parse(localStorage.getItem("xmum-chiwan-map:data:v1"))')
     check('v1 data migrated (0 -> not rated)', st5['version'] == 2 and [r['rating'] for r in st5['reviews']] == [None, 3] and st5['wishlist'] == [], st5)
     tab(page5, 'home')
+    lb = page5.evaluate('(() => { const b = document.querySelector(".home-top .home-lang"); return [!!b, b && b.textContent, document.querySelectorAll(".home-favorites").length]; })()')
+    check('home top-right: a compact ENG language menu button replaced the favorites star', lb == [True, 'ENG', 0], lb)
+    page5.click('.home-lang'); page5.wait_for_timeout(250)
+    opts = page5.locator('#bsheet [data-action="pick-lang"]').all_inner_texts()
+    check('language menu offers 中文, English, Kazakh, Indonesian (Arabic dropped)', opts == ['中文', 'English', 'Қазақша', 'Bahasa Indonesia'], opts)
+    page5.click('#bsheet [data-lang="kk"]'); page5.wait_for_timeout(250)
+    lb2 = page5.evaluate('[state.lang, document.querySelector(".home-lang").textContent, document.querySelector("#bsheet").hidden, document.documentElement.lang]')
+    check('picking Kazakh: the button stays ENG, menu closes, page lang kk', lb2 == ['en', 'ENG', True, 'kk'], lb2)
+    tabs_kk = page5.inner_text('#tabbar')
+    check('Kazakh: buttons and tabs are in Kazakh (Басты бет), categories too', 'Басты бет' in tabs_kk and page5.evaluate('catName(CATS.food[0])') == 'Қытай асханасы', tabs_kk)
+    cov = page5.evaluate('''(() => { const U = window.XUETUAN_UI, miss = [];
+      for (const k in I18N.en) { const v = I18N.en[k]; if (/[A-Za-z]{3}/.test(v) && !(v in U.kk)) miss.push(k); }
+      const a = Object.keys(U.kk).sort().join('|'), b = Object.keys(U.id).sort().join('|');
+      return [miss, a === b]; })()''')
+    check('every English text in I18N has a Kazakh line, and Kazakh/Indonesian cover the same texts', cov == [[], True], cov)
+    # 翻译：点评下面「Translate」，翻成选的语言（测试里用假的翻译），再点看原文；结果存在本机
+    rid = page5.evaluate('(() => { const r = store.reviews().find(r => r.placeId === "p-old"); r.text = "这家的面很好吃"; setTab("explore"); openPlace("p-old"); setSnap("full"); return r.id; })()'); page5.wait_for_timeout(300)
+    page5.evaluate("window.__trCalls = []; window.__translate = (q, t) => { window.__trCalls.push(t); return Promise.resolve({translations: [{text: 'KK:' + q[0], src: 'zh-CN'}]}); }; 0")
+    btn = page5.locator('.review .tr-btn').first
+    orig = page5.locator('.review .rv-text').first.inner_text()
+    btn.click(); page5.wait_for_timeout(200)
+    tr1 = [page5.locator('.review .rv-text').first.inner_text(), btn.inner_text()]
+    btn.click(); page5.wait_for_timeout(100)
+    tr2 = [page5.locator('.review .rv-text').first.inner_text(), btn.inner_text()]
+    btn.click(); page5.wait_for_timeout(200)
+    check('translate: shows the Kazakh translation, Show original goes back, the second time comes from the device cache',
+          tr1 == ['KK:' + orig, 'Түпнұсқасын көру'] and tr2 == [orig, 'Аудару'] and page5.evaluate('window.__trCalls') == ['kk'], [tr1, tr2, page5.evaluate('window.__trCalls')])
+    page5.evaluate("delete window.__translate; closeBSheet(); setTab('home')"); page5.wait_for_timeout(200)
+    page5.click('.home-lang'); page5.wait_for_timeout(200); page5.click('#bsheet [data-lang="id"]'); page5.wait_for_timeout(250)
+    idl = [page5.inner_text('.home-lang'), page5.evaluate('document.documentElement.lang'), 'Beranda' in page5.inner_text('body'), page5.evaluate('t("filterReset")')]
+    check('picking Indonesian: ENG menu, page lang id, Beranda tab, filter Reset reads Atur ulang', idl == ['ENG', 'id', True, 'Atur ulang'], idl)
+    page5.click('.home-lang'); page5.wait_for_timeout(200); page5.click('#bsheet [data-lang="en"]'); page5.wait_for_timeout(250)
+    check('picking English goes back to English text', page5.evaluate('[state.lang, t("filterReset"), document.documentElement.lang]') == ['en', 'Reset', 'en'])
+    page5.evaluate("setTab('me')"); page5.wait_for_timeout(250)
+    ml = [page5.inner_text('.me-lang'), page5.locator('.seg.me-lang').count()]
+    page5.click('.me-lang'); page5.wait_for_timeout(250)
+    ml.append(page5.locator('#bsheet [data-action="pick-lang"]').count())
+    check('Me page top right: a language button (ENG) opens the same 4-language menu, no 中|EN pill', ml == ['ENG', 0, 4], ml)
+    page5.click('#bsheet [data-lang="zh"]'); page5.wait_for_timeout(250)
+    page5.evaluate("setTab('home')"); page5.wait_for_timeout(250)
+    check('picking 中文 switches everything back', page5.evaluate('state.lang') == 'zh' and page5.inner_text('.home-lang') == 'ENG')
+    pd = page5.evaluate("(() => { const v = Date.parse('2026-10-29T12:00:00'); return [photoDateInfo('ph-' + Date.now().toString(36) + 'ab', {createdAt: v}).at === v, visitDay(photoDateInfo('ph-' + Date.now().toString(36) + 'ab', {createdAt: v}).at)]; })()")
+    check('photo date under a photo is the visit date, not the (re)upload day', pd == [True, '2026-10-29'], pd)
+    pt = page5.evaluate("""(() => {
+      const shot = Date.parse('2025-07-13T18:30:00'), visit = Date.parse('2026-10-29T12:00:00');
+      const id = 'uid/ph-' + Date.now().toString(36) + 'ab' + takenSuffix(shot) + '.jpg';
+      return [photoTakenAt(id) === shot, photoTakenAt(id.replace('.jpg', '_t.jpg')) === shot, visitDay(photoDateInfo(id, {createdAt: visit}).at),
+        photoDateLabel(id, {createdAt: visit}), takenSuffix(Date.now() + 864e5), photoTakenAt('uid/ph-mvtolj1mdj2cz.jpg')];
+    })()""")
+    check('a photo shows its own taken time (stored in the file name), even when the record date differs', pt == [True, True, '2025-07-13', '拍摄 2025-07-13', '', 0], pt)
+    mp = page5.evaluate("(() => { const id = mediaPhoto({ blob: new Blob(['x']), ext: 'jpg' }, Date.parse('2024-02-23T10:00:00')).id; return [visitDay(photoTakenAt(id)), /^ph-[0-9a-z]+-t[0-9a-z]+$/.test(id)]; })()")
+    check('new photos get the taken time in their name; name stays storage-safe', mp == ['2024-02-23', True], mp)
+    check('review photos show no repeated "Uploaded / 上传" date text', page5.evaluate('document.querySelectorAll(".photo-date").length') == 0)
     check('home: only old shares -> says nothing new this month and offers older ones', '最近一个月' in page5.inner_text('.home-empty') and page5.locator('[data-action="home-all-time"]').count() == 1)
     page5.click('[data-action="home-all-time"]')
     page5.locator('.post-card .pc-open').first.click(); page5.wait_for_timeout(200)
@@ -1606,28 +1747,24 @@ with sync_playwright() as p:
     page5.wait_for_timeout(200)
     sv_all = sorted(page5.locator('#view .near-item b').all_inner_texts())
     check('saved shows everything I saved', sv_all == ['东京', '曼谷'], sv_all)
-    check('no all / not-been switch cluttering the saved list', page5.locator('#view [data-action="saved-want"]').count() == 0)
-    page5.click('#map-ctrls [data-action="filters"]')
-    page5.click('#bsheet [data-action="saved-want"][data-v="want"]')
+    check('saved status is directly available outside advanced filters', page5.locator('#view [data-action="saved-want"]').count() == 3)
+    page5.click('#view [data-action="saved-want"][data-v="want"]')
     page5.wait_for_timeout(200)
     sv_want = page5.locator('#view .near-item b').all_inner_texts()
     pins_want = page5.evaluate('window.__map.getSource("places").data.features.map(f => f.properties.name)')
     check('“not been yet” (in the filter sheet) drops places on my map (list + pins)', sv_want == ['东京'] and pins_want == ['东京'], (sv_want, pins_want))
-    check('filter badge counts it', page5.inner_text('#map-ctrls [data-action="filters"] b') == '1')
-    page5.click('#bsheet [data-action="sheet-close"]')
+    check('visit status is independent of advanced filter count', page5.locator('#view [data-action="saved-want"][data-v="want"][aria-pressed=true]').count() == 1)
     page5.screenshot(path=os.path.join(SHOTS, '15-saved-want.png'))
-    page5.click('#map-ctrls [data-action="filters"]')
-    page5.click('#bsheet [data-action="saved-want"][data-v="all"]')
-    page5.click('#bsheet [data-action="sheet-close"]')
+    page5.click('#view [data-action="saved-want"][data-v="all"]')
     foot_sub(page5, 'mine')
     tab(page5, 'explore')
     tab(page5, 'foot')
-    page5.click('#map-ctrls [data-action="filters"]')
+    open_filters(page5)
     page5.wait_for_timeout(100)
-    chips = page5.eval_on_selector_all('#bsheet [data-action="mine-mode"]', 'els => els.map(e => e.textContent.trim())')
-    check('my map filter: just food / travel / both', chips == ['美食', '玩乐', '合并'] and page5.locator('#bsheet [data-action="cat"], #bsheet [data-action="set-score"]').count() == 0, chips)
-    fw = page5.evaluate("[document.querySelector('.bsheet-foot').getBoundingClientRect().width, document.querySelector('.bsheet-foot .btn').getBoundingClientRect().width]")
-    check('my map filter: the only button spans the sheet', abs(fw[0] - fw[1]) < 2, fw)
+    chips = page5.eval_on_selector_all('#view .foot-mode-group [data-action="mine-mode"]', 'els => els.map(e => e.textContent.trim())')
+    check('my footprint modes are inline and the sheet has real filtering', chips == ['全部','美食','玩乐'] and page5.locator('#bsheet [data-action="cat"], #bsheet [data-action="set-score"]').count() > 0, chips)
+    check('my footprint filters provide reset and apply', page5.locator('#bsheet .bsheet-foot .btn').count() == 2)
+    page5.click('#bsheet [data-action="sheet-close"]')
     check('no sample note on my map', page5.locator('#view .sample-note').count() == 0)
     page5.click('[data-action="mine-mode"][data-v="food"]')
     page5.wait_for_timeout(200)
@@ -1638,9 +1775,9 @@ with sync_playwright() as p:
     check('merged map shows my food and travel', names5() == ['曼谷', '校门口饭'] and page5.inner_text('.view-title') == '我的足迹', (names5(), page5.inner_text('.view-title')))
     check('merged feed lists both', page5.locator('.feed-item').count() == 2)
     geo5 = page5.evaluate('(() => { const p = document.querySelector("#panel").getBoundingClientRect(), t = document.querySelector("#tabbar").getBoundingClientRect(); return Math.round(p.bottom) >= Math.round(t.top); })()')
-    check('sheet stays open and shows the choice', page5.get_attribute('#bsheet [data-action="mine-mode"][data-v="both"]', 'aria-pressed') == 'true')
-    page5.click('#bsheet [data-action="sheet-close"]')
+    check('inline all choice stays selected', page5.get_attribute('#view [data-action="mine-mode"][data-v="both"]', 'aria-pressed') == 'true')
     page5.wait_for_timeout(100)
+    page5.evaluate('window.__map.jumpTo({zoom:12})'); page5.wait_for_timeout(100)
     check('no country switch when zoomed in', page5.locator('[data-action="countries"]').count() == 0)
     check('country data not downloaded yet', world_calls == [])
     page5.evaluate('window.__map.jumpTo({zoom: 3})')
@@ -1655,13 +1792,11 @@ with sync_playwright() as p:
     check('country layers visible', vis == ['visible'] * 3, vis)
     check('switch shows visited count', page5.inner_text('[data-action="countries"]') == '2' and page5.get_attribute('[data-action="countries"]', 'aria-pressed') == 'true', page5.inner_text('[data-action="countries"]'))
     page5.screenshot(path=os.path.join(SHOTS, '14-my-map-countries.png'))
-    page5.click('#map-ctrls [data-action="filters"]')
-    page5.click('[data-action="mine-mode"][data-v="food"]')
+    page5.click('#view [data-action="mine-mode"][data-v="food"]')
     page5.wait_for_timeout(300)
     vis = page5.evaluate('["ct-dim", "ct-lit", "ct-line"].map(id => window.__map.getLayer(id).layout.visibility)')
     check('food map hides countries', vis == ['none'] * 3, vis)
-    page5.click('[data-action="mine-mode"][data-v="travel"]')
-    page5.click('#bsheet [data-action="sheet-close"]')
+    page5.click('#view [data-action="mine-mode"][data-v="travel"]')
     page5.wait_for_timeout(300)
     vis = page5.evaluate('["ct-dim", "ct-lit", "ct-line"].map(id => window.__map.getLayer(id).layout.visibility)')
     check('travel map shows countries again', vis == ['visible'] * 3 and names5() == ['曼谷'], (vis, names5()))
@@ -1700,7 +1835,7 @@ with sync_playwright() as p:
     tab(page7, 'me')
     chips7 = page7.locator('#test-accounts .chip').all_inner_texts()
     check('test accounts: Me lists three accounts to switch between (+ add one)', chips7 == ['没起名的号', '测试号 B', '测试号 C', '＋ 再加一个'] and page7.get_attribute('#test-accounts .chip >> nth=0', 'aria-pressed') == 'true', chips7)
-    page7.fill('#pf-name', '甲'); page7.wait_for_timeout(500)
+    page7.click('.me-edit'); page7.fill('#pf-dialog-name','甲'); page7.locator('#profile-form button[type=submit]').click(); page7.wait_for_timeout(500)
     check('me: the header follows the nickname as it is typed', page7.inner_text('#me-name') == '甲')
     add7('甲的公开店', True, 4)
     add7('甲的私密店', False, None)
@@ -1716,7 +1851,7 @@ with sync_playwright() as p:
     foot_sub(page7, 'mine')
     acct7('测试号 B')
     check('test accounts: switching says who you are now', '现在是：测试号 B' in page7.inner_text('#toast') and page7.get_attribute('#test-accounts [data-action="acct"] >> nth=1', 'aria-pressed') == 'true', page7.inner_text('#toast'))
-    check('test accounts: B has no home and its own nickname', page7.locator('#home-field .home-set-btn').count() == 1 and page7.input_value('#pf-name') == '测试号 B')
+    check('test accounts: B has no home and its own nickname', page7.locator('#home-field .home-set-btn').count() == 1 and page7.inner_text('#me-name') == '测试号 B')
     tab(page7, 'foot')
     check('test accounts: B’s own map is empty', page7.inner_text('.view-head .count') == '0', page7.inner_text('.view-head'))
     tab(page7, 'explore')
@@ -1777,13 +1912,13 @@ with sync_playwright() as p:
     check('stars: dragging off the first star gives 0', zero7 == '0', zero7)
     page7.click('[data-action="back"]'); page7.wait_for_timeout(200)
     tab(page7, 'home')
-    fi7 = page7.locator('.post-card', has_text='测试号 B').first
+    fi7 = page7.locator('.post-card:has(.pc-who[aria-label="测试号 B"])').first
     check('home card: each record shows its own stars (3.5 = three and a half)', fi7.locator('.stars-mini').get_attribute('aria-label') == '3.5 分' and fi7.evaluate('e => [...e.querySelectorAll(".stars-mini .st-fill")].map(f => f.style.width).join()') == '100%,100%,100%,50%,0%')
-    who7 = [x.split(' · ')[0] for x in page7.locator('.post-card .pc-who > span:not(.avatar)').all_inner_texts()]
+    who7 = page7.locator('.post-card .pc-who').evaluate_all('es => es.map(e => e.getAttribute("aria-label"))')
     check('home: newest first (C’s 0, then B, then A), A’s private record not there', who7 == ['测试号 C', '测试号 B', '甲'], who7)
     fi7.locator('.pc-open').click(); page7.wait_for_timeout(250)
     page7.click('[data-action="post-place"]'); page7.wait_for_timeout(250)
-    check('place page: average says the 0 was left out', '3.8' in page7.inner_text('#view') and '2 人打分的平均（不算 1 个 0 分）' in page7.inner_text('#view'), page7.inner_text('#view')[:300])
+    check('place page: average says the 0 was left out', '3.8' in page7.inner_text('#view') and '2 次评分的平均（不算 1 个 0 分）' in page7.inner_text('#view'), page7.inner_text('#view')[:300])
     # 个人主页（用户 2026-11-01）：作者自己打开了才能点进，默认关；主页地图只放他公开的记录
     who_links = page7.locator('#view .review [data-action="person"]').evaluate_all('es => [...new Set(es.map(e => e.dataset.uid))]')
     check('person page: off by default, only my own name is tappable on a place', len(who_links) == 1 and page7.evaluate('(id) => id === me().id', who_links[0]), who_links)
@@ -1794,8 +1929,8 @@ with sync_playwright() as p:
     check('person page: turning it on is saved on the profile', page7.get_attribute('[data-action="page-public"]', 'aria-checked') == 'true' and d7p['profile'].get('page_public') is True)
     acct7('甲')
     tab(page7, 'home')
-    card_b = page7.locator('.post-card', has_text='测试号 B').first
-    check('person page: B’s name on the home card is tappable, C’s is not', card_b.locator('.pc-who[data-action="person"]').count() == 1 and page7.locator('.post-card', has_text='测试号 C').first.locator('.pc-who[data-action="person"]').count() == 0)
+    card_b = page7.locator('.post-card:has(.pc-who[aria-label="测试号 B"])').first
+    check('person page: B’s name on the home card is tappable, C’s is not', card_b.locator('.pc-who[data-action="person"]').count() == 1 and page7.locator('.post-card:has(.pc-who[aria-label="测试号 C"])').first.locator('.pc-who[data-action="person"]').count() == 0)
     card_b.locator('.pc-who').click(); page7.wait_for_timeout(400)
     names_p = page7.evaluate('window.__map.getSource("places").data.features.map(f => f.properties.name)')
     check('person page: tapping the name opens B’s page (not the post)', page7.evaluate('state.view') == 'person' and page7.inner_text('.person-head h1') == '测试号 B' and page7.locator('.person-stats b').all_inner_texts() == ['1', '0', '1'], page7.inner_text('#view')[:200])
@@ -1950,6 +2085,7 @@ with sync_playwright() as p:
     ft0 = pb.locator('.feed-list .fi-time').first.inner_text() if pb.locator('.feed-list .fi-time').count() else pb.locator('.fi-time').first.inner_text()
     check('footprints: listed by when they were added, not when the photos were taken', '刚刚' in ft0 or '分钟前' in ft0, ft0)
     pb.click('[data-action="foot-time"]')
+    pb.wait_for_function('document.querySelector("[data-action=foot-time]").getAttribute("aria-pressed")==="true" && Array.from(document.querySelectorAll(".fi-time")).some(el=>el.textContent.startsWith("拍于"))')
     ft1 = pb.locator('.fi-time').all_inner_texts()
     check('footprints: the photo-time button switches to when photos were taken', pb.get_attribute('[data-action="foot-time"]', 'aria-pressed') == 'true' and ft1 and ft1[0].startswith('拍于'), ft1[:3])
     pb.click('[data-action="foot-time"]')
@@ -2007,6 +2143,29 @@ with sync_playwright() as p:
     # 隐私政策页（谷歌登录发布成正式应用要求有，2026-11-02）：有页面、写了怎么删账号，我的页面能点到
     priv_src = open(os.path.join(ROOT, 'privacy.html'), encoding='utf-8').read()
     check('privacy policy page exists with contact for account deletion and is linked from the app', 'mailto:' in priv_src and '删除整个账号' in priv_src and 'privacy-link" href=' in APP_SRC.replace('\\"', '"'), len(priv_src))
+    # iPhone 微信会吞掉“POST/PATCH 带 ?select 要回传”的保存（用户 2026-11-05）：写入一律先写后读，不能再链 .select()
+    WRITE_SELECT = r"\.(?:insert|update|upsert)\((?:[^()]|\([^()]*\))*\)\s*(?:\.(?:eq|in)\([^)]*\)\s*)*\.select\("
+    check('no write asks for the row back in the same request (insert/update never chained with .select())', not re.findall(WRITE_SELECT, APP_SRC), re.findall(WRITE_SELECT, APP_SRC)[:3])
+    # 邮箱登录（用户 2026-11-05：朋友用 Outlook 等别的邮箱）：发验证码 → 同一页输入 → 登录；错码提示；游客卡片也有邮箱入口
+    ctxl = browser.new_context(viewport={'width': 390, 'height': 844}, device_scale_factor=2)
+    route_all(ctxl, supabase=True)
+    ctxl.add_init_script('window.__sbSeed = ' + json.dumps({'profiles': [], 'places': [], 'visits': []}) + ';')
+    pgl = ctxl.new_page(); pgl.goto(APP)
+    pgl.wait_for_function('window.__map && window.__map.getSource("places")', timeout=8000)
+    pgl.evaluate('openLogin()'); pgl.wait_for_selector('#login-email')
+    lbl = pgl.inner_text('#view .or-line')
+    pgl.fill('#login-email', 'friend@outlook.com'); pgl.click('#login-send')
+    pgl.wait_for_selector('#login-code', timeout=3000)
+    sent = pgl.evaluate('window.__sb.calls.filter(c => c[0] === "otp").map(c => c[1])')
+    check('email login: works for any mailbox, sends a code and shows a code box on the same page', 'Outlook' in lbl and sent == ['friend@outlook.com'] and pgl.locator('#login-form').is_hidden() and '验证码发到 friend@outlook.com' in pgl.inner_text('#login-msg'), (lbl, sent))
+    pgl.fill('#login-code', '000000'); pgl.click('#login-verify'); pgl.wait_for_timeout(200)
+    check('email login: a wrong code says so and keeps you on the page', '验证码不对' in pgl.inner_text('#login-msg') and pgl.locator('#login-code').get_attribute('aria-invalid') == 'true')
+    pgl.screenshot(path=os.path.join(SHOTS, '21-email-code.png'))
+    pgl.fill('#login-code', '123456'); pgl.click('#login-verify'); pgl.wait_for_timeout(400)
+    ver = pgl.evaluate('window.__sb.calls.filter(c => c[0] === "verify").pop()')
+    check('email login: the right code logs in (verifyOtp type email) and leaves the login page', ver == ['verify', 'friend@outlook.com', '123456', 'email'] and pgl.evaluate('store.signedIn()') and pgl.locator('#login-code').count() == 0, ver)
+    check('guest card offers email login next to Google', 'data-action="login-email"' in APP_SRC.replace('\\"', '"'))
+    ctxl.close()
     # Supabase 一次最多回 1000 行：读地点/记录/家要一页一页接着读，不能只拿到第一页（发布前检查 2026-11-02）
     pg_seed = {'profiles': [{'id': B, 'name': '小B'}], 'homes': [{'user_id': B, 'city': 'Klang', 'lat': 3.0, 'lng': 101.4, 'is_public': True}],
                'places': [{'id': 'pp-%d' % i, 'mode': 'food', 'cat': 'cn', 'precision': 'exact', 'lat': 2.83 + i * 0.001, 'lng': 101.70, 'name': '分页店%d' % i, 'alt_name': '', 'link': '', 'osm': '', 'created_by': B, 'created_at': '2026-10-01T00:00:00Z'} for i in range(5)],
@@ -2022,7 +2181,7 @@ with sync_playwright() as p:
     ctxp.close()
     ctx6 = browser.new_context(viewport={'width': 390, 'height': 844}, device_scale_factor=2, has_touch=True, accept_downloads=True)
     route_all(ctx6, supabase=True)
-    ctx6.add_init_script('window.__sbSeed = ' + json.dumps(sb_seed) + ';')
+    ctx6.add_init_script('window.__writeTimeout = 1500; window.__sbSeed = ' + json.dumps(sb_seed) + ';')
     poi = [{'id': 'aaa', 'name': 'Kafe Ujian Dekat', 'alt_name': '', 'mode': 'food', 'cat': 'cafe', 'lat': 2.8341, 'lng': 101.704, 'locality': 'Sepang', 'dist_m': 150},
            {'id': 'bbb', 'name': 'Kafe Ujian', 'alt_name': '', 'mode': 'food', 'cat': 'cafe', 'lat': 2.8502, 'lng': 101.7201, 'locality': 'Sepang', 'dist_m': 2500}]
     ctx6.add_init_script('window.__poi = ' + json.dumps(poi) + ';')
@@ -2071,9 +2230,12 @@ with sync_playwright() as p:
     page6.evaluate('window.__map.jumpTo({ center: [101.703, 2.8329], zoom: 14.6 })'); page6.wait_for_timeout(300)
     page6.evaluate('window.__map.getBounds = undefined; window.__sb.db.poi = window.__sb.db.poi.filter(r => r.id !== "ddd" && r.id !== "eee")')
     tab(page6, 'home'); page6.wait_for_timeout(300)
-    check('remote: home shows other people’s public posts with their name', page6.locator('.post-card', has_text='小B').count() == 1 and page6.locator('.post-card', has_text='秘密').count() == 0)
+    check('remote: home shows other people’s public posts with their name', page6.locator('.post-card:has(.pc-who[aria-label="小B"])').count() == 1 and page6.locator('.post-card', has_text='秘密').count() == 0)
     via_home(page6, '小B', to_place=False)
     check('remote: the post no longer shows where they are from', '小B' in page6.inner_text('.post-who') and '来自' not in page6.inner_text('.post-who') and page6.inner_text('.post-text') == '好吃', page6.inner_text('#view')[:200])
+    page6.click('.post-who[data-action="person-card"]'); page6.wait_for_timeout(150)
+    check('remote: a name without a public page opens a small card with 发私信', '小B' in page6.inner_text('#modal .person-card') and page6.locator('#modal [data-action="dm-open"]').count() == 1)
+    page6.click('#modal [data-modal="no"]'); page6.wait_for_timeout(100)
     page6.click('[data-action="back"]'); page6.wait_for_timeout(200)
     page6.evaluate('window.__sbNoAnon = true')
     add(page6)
@@ -2184,10 +2346,10 @@ with sync_playwright() as p:
     page6.set_input_files('#f-file', photo)
     page6.wait_for_function('document.querySelectorAll("#f-photos .ph-edit").length === 1', timeout=8000)
     page6.wait_for_function('!document.querySelector("#cat-guess").hidden && document.querySelector("#cat-guess").textContent.indexOf("火锅") !== -1', timeout=5000)
-    # 动图照样动，视频 5 秒以内（重录成小的；长的不收）
+    # 动图照样动，视频 10 秒以内（重录成小的；长的不收）
     gif_p, clip_p, long_p = os.path.join(SHOTS, 'm.gif'), os.path.join(SHOTS, 'm.webm'), os.path.join(SHOTS, 'long.webm')
     Image.new('RGB', (200, 150), (255, 0, 0)).save(gif_p, save_all=True, append_images=[Image.new('RGB', (200, 150), (0, 0, 255))], duration=200, loop=0)
-    for p_, secs in ((clip_p, 2), (long_p, 7)):
+    for p_, secs in ((clip_p, 2), (long_p, 11)):
         subprocess.run(['ffmpeg', '-y', '-loglevel', 'error', '-f', 'lavfi', '-i', 'testsrc=size=320x240:rate=15', '-t', str(secs), '-c:v', 'libvpx', '-b:v', '200k', p_], check=True)
     page6.set_input_files('#f-file', [gif_p, clip_p])
     page6.wait_for_function('document.querySelectorAll("#f-photos .ph-edit:not(.ph-busy)").length === 3', timeout=15000)
@@ -2195,12 +2357,12 @@ with sync_playwright() as p:
           and page6.evaluate('document.querySelector("#f-photos .is-clip img").naturalWidth') > 0)
     page6.locator('#f-photos').scroll_into_view_if_needed(); page6.screenshot(path=os.path.join(SHOTS, '15-media.png'))
     page6.click('#f-photos .is-gif [data-action="f-photo-preview"]')
-    page6.wait_for_function('document.querySelector("#lb-img").src.startsWith("blob:")')
+    page6.wait_for_function('document.querySelector("#lb-img").src.startsWith("blob:") && document.querySelector("#lb-img").complete && document.querySelector("#lb-img").naturalWidth > 0')
     check('unsaved animated GIF can be enlarged', page6.is_visible('#lb-img'))
     page6.click('[data-action="lb-close"]')
     page6.set_input_files('#f-file', long_p)
-    page6.wait_for_function('document.querySelector("#toast") && document.querySelector("#toast").textContent.indexOf("5 秒以内") !== -1', timeout=15000)
-    check('a video over 5 seconds is turned away', page6.locator('#f-photos .ph-edit:not(.ph-busy)').count() == 3)
+    page6.wait_for_function('document.querySelector("#toast") && document.querySelector("#toast").textContent.indexOf("10 秒以内") !== -1', timeout=15000)
+    check('a video over 10 seconds is turned away', page6.locator('#f-photos .ph-edit:not(.ph-busy)').count() == 3)
     large_gif = os.path.join(SHOTS, 'large.gif')
     Path(large_gif).write_bytes(Path(gif_p).read_bytes() + bytes(5 * 1024 * 1024))
     page6.set_input_files('#f-file', large_gif)
@@ -2225,9 +2387,22 @@ with sync_playwright() as p:
     page6.wait_for_function('!document.querySelector("#f-submit").disabled')
     check('publish failure retains the draft and media; saving never re-uploads finished photos', page6.input_value('#f-name') == '线上测试店' and page6.locator('#f-photos .ph-edit').count() == 3
           and page6.evaluate('window.__sb.calls.filter(c => c[0]==="upload").length === window.__uploadCallsBefore && window.__sb.db.visits.length === window.__visitsBefore'))
-    page6.evaluate('window.__sbFailVisit=false; window.__uploadCallsBefore=window.__sb.calls.filter(c => c[0]==="upload").length')
+    # 微信（iPhone）里“回了成功、其实没写进去”：写完按编号读回，读不到就说没存上，不跳走
+    page6.evaluate('window.__sbFailVisit=false; window.__sbPhantomVisit = true')
+    page6.click('#f-submit')
+    page6.wait_for_function('!document.querySelector("#f-submit").disabled', timeout=6000)
+    ghost_toast = page6.inner_text('#toast')
+    check('phantom save (WeChat): a save the server never got is reported as not saved, form stays', '没存上' in ghost_toast and page6.input_value('#f-name') == '线上测试店', ghost_toast)
+    # 网卡住（用户 2026-11-05：朋友点保存等 10 秒，记录没存上）：超时明确说没存上、草稿留着；其实已经到了服务器的话，重试也不会多存一条
+    page6.evaluate('window.__sbFailVisit=false; window.__sbSlowVisit=3000; window.__uploadCallsBefore=window.__sb.calls.filter(c => c[0]==="upload").length')
+    page6.click('#f-submit')
+    page6.wait_for_function('!document.querySelector("#f-submit").disabled', timeout=6000)
+    slow_toast = page6.inner_text('#toast')
+    check('slow network: save stops waiting after a while, says it was not saved and keeps the draft', '网络太慢' in slow_toast and page6.input_value('#f-name') == '线上测试店', slow_toast)
+    page6.wait_for_timeout(1800)
     page6.click('#f-submit')
     page6.wait_for_timeout(800)
+    check('slow network: retry after a write that did land saves exactly one record (same id reused)', page6.evaluate('window.__sb.db.visits.length === window.__visitsBefore + 1'), page6.evaluate('window.__sb.db.visits.length - window.__visitsBefore'))
     check('retry reuses uploaded files and creates only one place', page6.evaluate('window.__sb.calls.filter(c => c[0]==="upload").length === window.__uploadCallsBefore && window.__sb.db.places.filter(p => p.name==="线上测试店").length===1'))
     db6 = page6.evaluate('window.__sb.db')
     mine6 = [p_ for p_ in db6['places'] if p_['name'] == '线上测试店']
@@ -2362,7 +2537,7 @@ with sync_playwright() as p:
     page6.evaluate('window.__mediaBefore=window.__sb.db.visits.map(v=>v.id)')
     page6.set_input_files('#bulk-file', [gif_p, clip_p, long_p])
     page6.wait_for_function('document.querySelectorAll(".bk-card").length===2',timeout=15000)
-    check('bulk accepts GIF and short video, gives a visible reason for long video', '5 秒以内' in page6.inner_text('#view'))
+    check('bulk accepts GIF and short video, gives a visible reason for long video', '10 秒以内' in page6.inner_text('#view'))
     page6.click('#bk-0 [data-action="bulk-preview"]')
     page6.wait_for_function('document.querySelector("#lb-vid").readyState>=2')
     check('bulk short video preview plays before import', page6.is_visible('#lb-vid'))
@@ -2380,10 +2555,20 @@ with sync_playwright() as p:
     check('bulk public share preserves GIF and video originals', media_row['visibility']=='public' and len(media_row['photos'])==2 and any(x.endswith('.gif') for x in media_row['photos']) and any(x.endswith(('.mp4','.webm')) for x in media_row['photos']))
     tab(page6, 'me')
     page6.wait_for_timeout(200)
-    check('remote: profile shows account', 'a@example.com' in page6.inner_text('.account-row'))
+    check('remote: account sits under the avatar with a masked email and log out', 'a***@example.com' in page6.inner_text('.me-account.account-row') and page6.locator('.me-account [data-action="logout"]').count() == 1)
     # 我的家：搜城市（只要城市），写进 homes 表，默认不公开
     page6.click('#home-field [data-action="home-set"]')
+    page6.fill('#home-q', '槟城')
+    page6.wait_for_selector('[data-action="home-result"]', timeout=5000)
+    zh_h = page6.locator('[data-action="home-result"]').first.inner_text()
+    check('remote home: a Chinese search shows the city in Chinese, English name underneath (厦门 showed Xiamen)', zh_h.startswith('槟城') and 'George Town' in zh_h, zh_h)
+    page6.evaluate('window.__googleCities = q => [{osm: "g/x", name: "阿拉木图", where: "哈萨克斯坦", lat: 43.24, lng: 76.89, mode: "travel", cat: "city", precision: "city"}]')
+    page6.fill('#home-q', 'nowhere almaty')
+    page6.wait_for_selector('[data-action="home-result"]', timeout=6000)
+    check('remote home: when Photon / Wikipedia give nothing, Google finds the city (Almaty failed)', page6.locator('[data-action="home-result"] b').all_inner_texts() == ['阿拉木图'])
+    page6.evaluate('delete window.__googleCities')
     page6.fill('#home-q', 'george')
+    page6.wait_for_timeout(300)
     page6.wait_for_selector('[data-action="home-result"]', timeout=5000)
     rows_h = page6.locator('[data-action="home-result"] b').all_inner_texts()
     check('remote home: city search lists only cities', rows_h == ['George Town'], rows_h)
@@ -2409,8 +2594,10 @@ with sync_playwright() as p:
     check('same-city hometown badge opens all public classmates, excluding private homes',page6.locator('.homes-list li').count()==2)
     page6.evaluate('window.__qrf=[];Object.assign(window.__sb.db.homes.find(h=>h.user_id===window.__oldBHome.user_id),window.__oldBHome)')
     tab(page6, 'me')
+    page6.click('#home-field [data-action="home-set"]'); page6.wait_for_selector('[data-action="home-del"]')
     page6.click('[data-action="home-del"]')
     page6.wait_for_timeout(200)
+    tab(page6, 'me')
     check('remote home: remove deletes my row', not any(h['user_id'] == A for h in page6.evaluate('window.__sb.db.homes')) and page6.locator('#home-field .home-set-btn').count() == 1)
     page6.click('[data-action="upload-local"]')
     page6.click('[data-modal="yes"]')
@@ -2457,8 +2644,15 @@ with sync_playwright() as p:
 
     # Home composer: a single visit powers both the public post and private footprint ownership.
     tab(page6, 'home')
-    page6.click('[data-action="new-post"]')
-    check('home composer starts with photos, followed by title, with place selection later', page6.locator('#q').count()==0 and page6.evaluate('document.querySelector("#f-photos").compareDocumentPosition(document.querySelector("#f-title")) & Node.DOCUMENT_POSITION_FOLLOWING') and page6.locator('#post-location').count()==1)
+    page6.click('[data-action="new-post"]'); page6.wait_for_selector('#modal .compose-choice')
+    opts_ = page6.evaluate('[...document.querySelectorAll("#modal .compose-opt b")].map(b => b.textContent)')
+    page6.wait_for_timeout(400); page6.screenshot(path=os.path.join(SHOTS, '22-compose-choice.png'))
+    check('home 发帖 first asks: record a place (footprints) or write a post (用户 2026-11-05)', opts_ == ['记一个去过的地方', '发帖'], opts_)
+    page6.click('[data-action="compose-record"]'); page6.wait_for_timeout(300)
+    check('choosing “记一个去过的地方” opens the normal add-a-place flow, modal closed', page6.locator('#modal').is_hidden() and page6.evaluate('state.view') == 'add' and not page6.evaluate('state.posting'), page6.evaluate('state.view'))
+    page6.evaluate('goFeed()'); tab(page6, 'home'); page6.wait_for_timeout(150)
+    page6.click('[data-action="new-post"]'); page6.wait_for_selector('#modal .compose-choice'); page6.click('[data-action="compose-post"]'); page6.wait_for_timeout(200)
+    check('home composer starts with photos, followed by place selection and one combined caption', page6.locator('#q').count()==0 and page6.evaluate('document.querySelector("#f-photos").compareDocumentPosition(document.querySelector("#f-title")) & Node.DOCUMENT_POSITION_FOLLOWING') and page6.locator('#post-location').count()==1 and page6.locator('#f-text').count()==0 and page6.evaluate('document.querySelector("#post-location").compareDocumentPosition(document.querySelector("#f-title")) & Node.DOCUMENT_POSITION_FOLLOWING'))
     page6.click('[data-action="post-mode"][data-v="travel"]'); page6.wait_for_timeout(100)
     pr_travel = page6.locator('#f-price').count()
     page6.click('[data-action="post-mode"][data-v="food"]'); page6.wait_for_timeout(100)
@@ -2473,18 +2667,18 @@ with sync_playwright() as p:
     page6.evaluate('()=>{window.__sbUploadGate=()=>Promise.reject(new Error("offline"));}'); page6.set_input_files('#f-file', photo)
     page6.wait_for_function('document.querySelectorAll("#f-photos .ph-edit").length===1 && !document.querySelector("#f-submit").disabled')
     rate(page6,4.5)
-    page6.fill('#f-text', '这家的招牌菜值得试试。')
+    page6.fill('#f-title', '周末发现的一家小店\n这家的招牌菜值得试试。')
     page6.click('#f-submit')
     check('photo-first post requests a location only before publishing', len(page6.evaluate('window.__sb.db.visits'))==before_posts and '再选一个地点' in page6.inner_text('#toast'))
     page6.click('[data-action="post-location"]');page6.fill('#q','地点');page6.click('[data-action="back"]')
-    check('canceling location search preserves the post draft and rating',page6.input_value('#f-title')=='周末发现的一家小店' and page6.input_value('#f-text')=='这家的招牌菜值得试试。' and stars_val(page6)=='4.5' and page6.locator('#f-photos .ph-edit').count()==1)
+    check('canceling location search preserves the post draft and rating',page6.input_value('#f-title')=='周末发现的一家小店\n这家的招牌菜值得试试。' and stars_val(page6)=='4.5' and page6.locator('#f-photos .ph-edit').count()==1)
     page6.click('[data-action="post-map"]')
     page6.click('[data-action="pick-campus"]')
     check('pick-campus returns to school without confirming the location', page6.is_visible('#pick') and page6.evaluate('Math.abs(window.__map.center.lng-101.7029)<0.00001 && Math.abs(window.__map.center.lat-2.8329)<0.00001'))
     page6.evaluate('window.__map.center={lng:102.05,lat:3.6};window.__map.zoom=17')
     page6.click('[data-action="pick-confirm"]')
     page6.fill('#f-name', '分享测试地点')
-    check('adding a map location keeps the selected photos and text',page6.locator('#f-photos .ph-edit').count()==1 and page6.input_value('#f-text')=='这家的招牌菜值得试试。')
+    check('adding a map location keeps the selected photos and text',page6.locator('#f-photos .ph-edit').count()==1 and page6.input_value('#f-title')=='周末发现的一家小店\n这家的招牌菜值得试试。')
     page6.click('#f-submit');page6.wait_for_function('!document.querySelector("#f-submit").disabled')
     check('failed photo upload does not publish a photo-less post or discard the draft',len(page6.evaluate('window.__sb.db.visits'))==before_posts and page6.locator('#f-photos .ph-edit').count()==1)
     page6.evaluate('window.__sbUploadGate=null')
@@ -2492,7 +2686,7 @@ with sync_playwright() as p:
     page6.evaluate('window.__sbFailVisit=true')
     page6.click('#f-submit')
     page6.wait_for_function('!document.querySelector("#f-submit").disabled')
-    check('failed post preserves title, photo and body for retry', page6.input_value('#f-title')=='周末发现的一家小店' and page6.input_value('#f-text')=='这家的招牌菜值得试试。' and page6.locator('#f-photos .ph-edit').count()==1)
+    check('failed post preserves title, photo and body for retry', page6.input_value('#f-title')=='周末发现的一家小店\n这家的招牌菜值得试试。' and page6.locator('#f-photos .ph-edit').count()==1)
     page6.evaluate('window.__sbFailVisit=false')
     page6.evaluate('()=>{window.__autoBacks=0;window.__realBack=history.back.bind(history);history.back=()=>{window.__autoBacks++;window.__realBack();};}')
     page6.click('#f-submit')
@@ -2509,12 +2703,12 @@ with sync_playwright() as p:
     page6.screenshot(path=os.path.join(SHOTS, '41-own-post.png'))
     check('own post: edit and delete sit in the action row next to 收藏', page6.locator('.post-actions [data-action="edit-review"]').count()==1 and page6.locator('.post-actions [data-action="del-review"]').count()==1 and page6.locator('.view-top [data-action="edit-review"]').count()==0)
     page6.click('.post-actions [data-action="edit-review"]'); page6.wait_for_timeout(150)
-    check('own post: 编辑 opens the form with its title', page6.input_value('#f-title')=='周末发现的一家小店')
-    page6.fill('#f-text', '这家的招牌菜值得试试。'); page6.click('#f-submit'); page6.wait_for_selector('.post-title')
+    check('own post: 编辑 opens the form with its title', page6.input_value('#f-title')=='周末发现的一家小店\n这家的招牌菜值得试试。')
+    page6.fill('#f-title', '周末发现的一家小店\n这家的招牌菜值得试试。'); page6.click('#f-submit'); page6.wait_for_selector('.post-title')
     check('own post: saving an edit returns to the post', page6.inner_text('.post-title')=='周末发现的一家小店' and page6.locator('.post-actions [data-action="edit-review"]').count()==1)
     page6.click('[data-action="post-place"]')
     page6.locator('[data-action="edit-review"][data-id="'+pv['id']+'"]').click()
-    page6.fill('#f-title','修改后的分享标题')
+    page6.fill('#f-title','修改后的分享标题\n这家的招牌菜值得试试。')
     page6.click('#f-submit');page6.wait_for_timeout(600)
     check('editing preserves the post title on the server', page6.evaluate('(id)=>window.__sb.db.visits.find(v=>v.id===id).title',pv['id'])=='修改后的分享标题')
     tab(page6,'foot');foot_sub(page6,'mine');page6.wait_for_timeout(300)
@@ -2556,11 +2750,13 @@ with sync_playwright() as p:
       [{id:'hf-food',place_id:pid,title:'首页新美食',rating:5,visibility:'public',updated_at:new Date(now).toISOString()},
        {id:'hf-scenery',place_id:'hf-travel',title:'首页新玩乐',rating:3,visibility:'public',updated_at:new Date(now-1000).toISOString()},
        {id:'hf-private',place_id:pid,title:'绝不公开的测试',rating:5,visibility:'private'},
-       {id:'hf-old',place_id:pid,title:'旧动态测试',rating:4.5,visibility:'public',created_at:'2020-01-01T00:00:00Z',updated_at:new Date(now).toISOString()}].forEach(r=>d.visits.push({user_id:d.visits.find(v=>v.place_id===pid).user_id,created_at:new Date(now).toISOString(),photos:['fixture.jpg'],text:'测试正文',...r}));
+       {id:'hf-old',place_id:pid,title:'旧动态测试',rating:4.5,visibility:'public',created_at:'2020-01-01T00:00:00Z',updated_at:'2020-01-01T00:00:00Z'},
+       {id:'hf-updated',photos:['ph-'+now.toString(36)+'abcde.jpg'],place_id:pid,title:'补图后的旧足迹',rating:4,visibility:'public',created_at:'2020-01-01T00:00:00Z',updated_at:new Date(now).toISOString()}].forEach(r=>d.visits.push({user_id:d.visits.find(v=>v.place_id===pid).user_id,created_at:new Date(now).toISOString(),photos:['fixture.jpg'],text:'测试正文',...r}));
     }''',pv['place_id'])
     page6.evaluate('document.dispatchEvent(new Event("visibilitychange"))')
     page6.wait_for_selector('.post-card:has-text("首页新美食")')
-    check('home shows the last month by default: a years-old footprint imported today is not pushed', page6.input_value('#home-days') == '30' and page6.locator('.post-card',has_text='旧动态测试').count()==0 and page6.locator('.home-filter-count').count()==0)
+    check('home shows the last month by default and excludes old unchanged records', page6.input_value('#home-days') == '30' and page6.locator('.post-card',has_text='旧动态测试').count()==0 and page6.locator('.home-filter-count').count()==0)
+    check('a newly updated old public visit returns to the feed without changing its visit date', page6.locator('.post-card',has_text='补图后的旧足迹').count()==1 and page6.evaluate('store.review("hf-updated").createdAt===Date.parse("2020-01-01T00:00:00Z")'))
     check('home time choices are 3 days / 1 week / 1 month / all', page6.eval_on_selector_all('#home-days option','els=>els.map(e=>e.value)') == ['3','7','30','0'])
     check('home detects new public posts and keeps private records out', page6.locator('.post-card',has_text='首页新玩乐').count()==1 and page6.locator('.post-card',has_text='绝不公开的测试').count()==0)
     page6.click('[data-action="home-mode"][data-v="travel"]')
@@ -2573,7 +2769,7 @@ with sync_playwright() as p:
     check('clicking outside home filters closes the popover', not page6.locator('#home-filter-panel').is_visible())
     page6.click('[data-action="home-filters"]')
     page6.select_option('#home-days','7')
-    check('home time follows when the place was visited, not when it was uploaded', page6.locator('.post-card',has_text='首页新美食').count()==1 and page6.locator('.post-card',has_text='旧动态测试').count()==0)
+    check('home time includes recent uploads/updates while excluding unchanged old visits', page6.locator('.post-card',has_text='首页新美食').count()==1 and page6.locator('.post-card',has_text='补图后的旧足迹').count()==1 and page6.locator('.post-card',has_text='旧动态测试').count()==0)
     page6.select_option('#home-sort','rating')
     check('home rating sort puts high scores first', page6.locator('.post-card').first.locator('.pc-score [aria-label="5 分"]').count()==1)
     page6.select_option('#home-sort','newest');page6.select_option('#home-days','0')
@@ -2728,6 +2924,10 @@ with sync_playwright() as p:
     pd.click('[data-action="pick-cancel"]'); pd.wait_for_timeout(150)
     add(pd); pd.wait_for_timeout(150); pd.click('[data-action="add-pin"]'); pd.wait_for_timeout(100)
     check('pick search: box is empty again next time', pd.input_value('#pick-q') == '')
+    n_ph = len(photon_calls)
+    pd.fill('#pick-q', '巴厘岛'); pd.wait_for_selector('#pick-results [data-action="pick-go"]', timeout=5000)
+    names = pd.locator('#pick-results [data-action="pick-go"] b').all_inner_texts()
+    check('pick search: Chinese city names also ask Wikipedia and “…市” on Photon (广州 found nothing)', '巴厘岛' in names and any('%E5%B7%B4%E5%8E%98%E5%B2%9B%E5%B8%82' in u for u in photon_calls[n_ph:]), [names, photon_calls[n_ph:]])
     pd.click('[data-action="pick-cancel"]'); pd.wait_for_timeout(150)
     # 美食 / 玩乐的简单判断，不用模型
     sky = pd.evaluate("""(() => {
@@ -2767,16 +2967,44 @@ with sync_playwright() as p:
     check('draft: no page errors', not errorsd, errorsd)
     ctxdr.close()
 
-    # 2026-11-01 界面精修 + 开屏动画（雪团扔过来，椰林和 XMUM 楼被雪盖白，再进首页）
+    # 2026-11-01 界面精修；开屏 2026-11-02 改成短版（全屏雪团蓝 + 雪团子 + “雪团” + 小雪 + 底部一句话）
     ctxui = browser.new_context(viewport={'width': 375, 'height': 780}, has_touch=True)
     route_all(ctxui)
     errorsui = []
     pu = ctxui.new_page(); pu.on('pageerror', lambda e: errorsui.append(str(e)))
     pu.goto(APP)
     pu.wait_for_function('window.__map && window.__map.getSource("places")', timeout=8000)
-    check('no splash: the app opens straight to the map (user removed it 2026-11-02)', pu.evaluate('!document.getElementById("launch-film")'))
-    pu.goto(APP + '?splash'); pu.wait_for_timeout(200)
-    check('no splash: ?splash shows nothing either', pu.evaluate('!document.getElementById("launch-film") && !document.querySelector("script[src*=launch]")'))
+    check('splash: automated browsers skip it unless ?splash', pu.evaluate('!document.getElementById("splash") && !document.documentElement.classList.contains("splash-on")'))
+    t0 = time.time(); pu.goto(APP + '?splash')
+    sp0 = pu.evaluate('(() => { const s = document.getElementById("splash"); if (!s) return null; const m = s.querySelector(".sp-mark").getBoundingClientRect(), t = s.querySelector(".sp-tag"); return [getComputedStyle(s).display !== "none", document.querySelectorAll("#sp-flakes i").length >= 20, document.querySelectorAll("#sp-flakes i.sf").length > 0, !!s.querySelector(".sp-mark .sp-ball"), s.querySelector(".sp-mark b").textContent, t.textContent, Math.abs((m.left + m.right) / 2 - innerWidth / 2) < 2, t.getBoundingClientRect().bottom < innerHeight, !s.querySelector(".sp-scene, .sp-splat")]; })()')
+    check('splash: the logo is there from the first frame (no pop-in that looked like a stall)', pu.evaluate('(() => { const m = document.querySelector(".sp-mark"); return !!m && getComputedStyle(m).animationName === "none" && +getComputedStyle(m).opacity === 1; })()'))
+    check('splash: full screen, snowball + 雪团 centred, light snow, tagline at the bottom, no old scene', sp0 == [True, True, True, True, '雪团', 'XMUMer 的图鉴', True, True, True], sp0)
+    pu.wait_for_function('!document.getElementById("splash")', timeout=4000)
+    sp1 = [round(time.time() - t0, 1), pu.evaluate('document.documentElement.className.includes("splash")')]
+    check('splash: short, ends by itself in under ~2 s and hands over to the app', sp1[0] < 2.6 and not sp1[1], sp1)
+    pu.goto(APP + '?splash'); pu.wait_for_timeout(250)
+    t1 = time.time(); pu.click('#splash')
+    pu.wait_for_function('!document.getElementById("splash")', timeout=3000)
+    check('splash: a tap skips it', time.time() - t1 < 1.5, round(time.time() - t1, 2))
+    # 同一个标签页只播一次（模拟真手机：不是自动化浏览器）
+    ctxsp = browser.new_context(viewport={'width': 375, 'height': 780})
+    route_all(ctxsp)
+    ctxsp.add_init_script('Object.defineProperty(navigator, "webdriver", { get: () => false })')
+    psp = ctxsp.new_page(); psp.goto(APP)
+    first = psp.evaluate('!!document.getElementById("splash")')
+    psp.wait_for_function('!document.getElementById("splash")', timeout=4000)
+    psp.reload(); psp.wait_for_timeout(300)
+    again = psp.evaluate('!!document.getElementById("splash")')
+    check('splash: plays when the app opens, not again on reload in the same tab', first and not again, [first, again])
+    ctxsp.close()
+    # 系统设了“减少动态效果”：不下雪不弹出，静止的 logo，很快进入
+    ctxrm = browser.new_context(viewport={'width': 375, 'height': 780}, reduced_motion='reduce')
+    route_all(ctxrm)
+    prm = ctxrm.new_page(); prm.goto(APP + '?splash')
+    rm = prm.evaluate('(() => { const m = document.querySelector(".sp-mark"); return [!!document.getElementById("splash"), document.querySelectorAll("#sp-flakes i").length, m ? getComputedStyle(m).animationName : null, m ? +getComputedStyle(m).opacity : null]; })()')
+    check('splash: reduced motion = no snowfall or pop, a still logo', rm == [True, 0, 'none', 1], rm)
+    prm.wait_for_function('!document.getElementById("splash")', timeout=2500)
+    ctxrm.close()
     pu.goto(APP)
     pu.wait_for_function('window.__map && window.__map.getSource("places")', timeout=8000); pu.wait_for_timeout(300)
     # 地图上的美食 / 玩乐：两个字都在，当前的那个是实心蓝
@@ -2805,7 +3033,7 @@ with sync_playwright() as p:
     av = pu.evaluate('["小雪", "阿团", "Mei", "z", "林"].map(n => { const d = document.createElement("div"); d.innerHTML = avatarHTML(n); return d.firstChild.style.getPropertyValue("--av"); })')
     check('avatars pick from the blue-white friendly palette (no olive / mud colours)', all(c in ('#5B8DEF', '#45A7C4', '#7C6FE0', '#E0719E', '#EF9A5A', '#4FB08A', '#3F7DC0', '#A77AD6', '#E5868A', '#2FA3A0') for c in av), av)
     # 照片按住拖动换顺序（用户 2026-11-01）：把最后一张拖到最前面当封面
-    tab(pu, 'home'); pu.click('[data-action="new-post"]'); pu.wait_for_timeout(300)
+    tab(pu, 'home'); pu.click('[data-action="new-post"]'); pu.wait_for_selector('#modal .compose-choice'); pu.click('[data-action="compose-post"]'); pu.wait_for_timeout(300)
     sortf = []
     for i_, col_ in enumerate([(220, 60, 60), (60, 160, 70), (50, 90, 220)]):
         fp_ = os.path.join(SHOTS, 'sort-%d.jpg' % i_); Image.new('RGB', (600, 600), col_).save(fp_, 'JPEG'); sortf.append(fp_)
@@ -2835,10 +3063,20 @@ with sync_playwright() as p:
 
     browser.close()
 
+# 安卓 app 登录回跳：网页在只改 # 时也重新载入；壳每次带新的 ?app_auth= 强制重开页面
+_core = open(os.path.join(ROOT, 'js/01-core.js'), encoding='utf-8').read()
+_main = open(os.path.join(ROOT, 'android/app/src/main/java/app/xuetuan/MainActivity.java'), encoding='utf-8').read()
+check('app login: hash with access_token reloads page; shell forces a fresh load', "addEventListener('hashchange'" in _core and 'access_token' in _core and '"app_auth=" + System.currentTimeMillis()' in _main)
 # 拆开的文件：index.html 引用的 css/js 都在，且按序号顺序加载
 _idx = open(os.path.join(ROOT, 'index.html'), encoding='utf-8').read()
 _js = re.findall(r'<script src="(js/[^"]+)"></script>', _idx)
-check('split: index.html links css/app.css and every js file in order', 'href="css/app.css"' in _idx and _js == sorted(_js) and len(_js) >= 9 and all(os.path.exists(os.path.join(ROOT, f)) for f in _js + ['css/app.css']) and sorted(_js) == sorted('js/' + f for f in os.listdir(os.path.join(ROOT, 'js'))), _js)
+check('split: index.html links css/app.css and every js file in order', 'href="css/app.css"' in _idx and _js == sorted(_js) and len(_js) >= 9 and all(os.path.exists(os.path.join(ROOT, f)) for f in _js + ['css/app.css']) and sorted(_js) == sorted('js/' + f for f in os.listdir(os.path.join(ROOT, 'js')) if re.match(r'^\d{2}-.*\.js$', f)), _js)
+
+# Every cached-source edit must produce a new coherent service-worker release.
+import runpy
+_offline_expected = runpy.run_path(os.path.join(ROOT, 'tools', 'update_offline_version.py'))['expected_version']()
+_sw = Path(ROOT, 'sw.js').read_text(encoding='utf8')
+check('offline: app shell version matches cached sources', "const VERSION = '" + _offline_expected + "';" in _sw)
 
 print()
 from collections import Counter

@@ -93,14 +93,14 @@
   }
   /* 收到最低时只露出标题这一截（像谷歌地图收起来的样子），不露半截列表：量到标题（和示例提示）的底边为止 */
   function peekH() {
-    var heads = view.querySelectorAll('.view-head, .sample-note, .place-head'), last = heads[heads.length - 1];
+    var heads = view.querySelectorAll('.view-head, .foot-tools, .sample-note, .place-head'), last = heads[heads.length - 1];
     if (!last) return 96;
     return clamp(Math.round(last.offsetTop + last.offsetHeight + 10), 64, 150);
   }
   function tabbarH() { var tb = $('#tabbar'); return tb && isMobile() ? tb.offsetHeight : 0; }
   /* 足迹的列表面板记住拉到多高，切回来时还是那样；首页、我的是整页，探索只有地图，都不记 */
   function rememberFeedSnap() {
-    if (state.view === 'feed' && state.tab === 'foot' && /^(peek|half|full)$/.test(state.snap)) state.feedSnap = state.snap;
+    if (state.view === 'feed' && state.tab === 'foot' && state.scope === 'mine' && /^(peek|half|full)$/.test(state.snap)) state.feedSnap = state.snap;
   }
   function setSnap(snap) {
     /* 收到最低时回到最上面，露出标题，不露半截列表 */
@@ -123,6 +123,7 @@
     panel.style.setProperty('--visible', (state.snap === 'hidden' && isMobile() ? -(parseFloat(getComputedStyle(panel).bottom) || 0) : v) + 'px');
     panel.style.setProperty('--hidden', (isMobile() ? Math.max(0, panel.offsetHeight - v) : 0) + 'px');
     stage.style.setProperty('--sheet-visible', (isMobile() ? Math.min(v, Math.round((appH || window.innerHeight) * 0.5)) : 0) + 'px');
+    if(typeof syncPersonMapLayout==='function')syncPersonMapLayout(false);
   }
 
   /* 拖面板：拖上面的小横条，或者像谷歌地图那样直接拖内容——
@@ -196,7 +197,7 @@
     $$('[data-i18n]').forEach(function (el) { el.textContent = t(el.dataset.i18n); });
     $$('[data-i18n-aria]').forEach(function (el) { el.setAttribute('aria-label', t(el.dataset.i18nAria)); });
     $$('[data-i18n-title]').forEach(function (el) { el.setAttribute('title', t(el.dataset.i18nTitle)); });
-    document.documentElement.lang = state.lang === 'zh' ? 'zh-CN' : 'en';
+    document.documentElement.lang = state.lang === 'zh' ? 'zh-CN' : uiLang();
   }
   function renderChrome() {
     document.documentElement.classList.toggle('mode-travel', state.mode === 'travel');
@@ -210,7 +211,7 @@
   /* 底部四栏（V2.0）：首页 = 地图预览 + 大家最新分享；探索 = 公开的大地图；
      足迹 = 我去过 / 想去（筛选里切换）；我的 = 资料和设置。加一笔只在足迹上 */
   function renderTabs() {
-    if (state.tab === 'foot' && state.scope !== 'all') state.mineSub = state.scope;
+    state.mineSub = 'mine';
     /* “我的”主页用分组卡片的灰底（css: html[data-page="me"]），只在资料页本身，不影响从这里打开的别的页面 */
     document.documentElement.dataset.page = state.view === 'feed' ? state.tab : state.view;
     $$('#tabbar [data-tab]').forEach(function (b) {
@@ -221,8 +222,8 @@
   var SCORE_STEPS = [0, 3, 4];
   var DIST_STEPS = ['any'].concat(DIST_TIERS.map(function (x) { return x.id; }));
   function activeFilterCount() {
-    if (state.scope === 'mine' || state.scope === 'person') return 0;
-    return (state.scope === 'saved' && state.savedWant ? 1 : 0) + (state.cat !== 'all' ? 1 : 0) + (state.minScore ? 1 : 0) + (state.dist !== 'any' ? 1 : 0) + (state.priceAbout ? 1 : 0);
+    if (state.scope === 'person') return 0;
+    return (state.cat !== 'all' ? 1 : 0) + (state.minScore ? 1 : 0) + (state.dist !== 'any' ? 1 : 0) + (state.priceAbout ? 1 : 0) + (state.halal ? 1 : 0);
   }
   var CTRL_ICON = {
     search: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg>',
@@ -238,6 +239,7 @@
   /* 地图右上角的按钮：吃/玩切换、筛选；我的地图缩小到国家级别再多一个“点亮国家”。左上角是家乡红针的说明小签 */
   function renderFilters() {
     var food = state.mode === 'food', n = activeFilterCount();
+    lastGlobeChip = globeChipShown();
     var toKey = food ? 'modeToTravel' : 'modeToFood';
     /* 搜索条右边原来是个斜箭头（像外链），换成放大镜；美食 / 玩乐两段都写出来，亮的那段是现在这张图（2026-11-01 精修） */
     var h = '<button type="button" class="map-search" data-action="search" aria-label="' + esc(t('searchBtn')) + '"><img src="assets/search-pin.png" alt=""><span>' + esc(t('mapSearchPh')) + '</span>' + CTRL_ICON.search + '</button>';
@@ -253,7 +255,7 @@
     $('#map-ctrls').innerHTML = h;
     /* 玩乐大地图左上角：红针是什么、有几位，点一下收起 / 显示；没人公开家乡就不出 */
     var publicHomes = hometownMode(), ownHome = false; /* 我的家开关挪进筛选了 */
-    var homeLabel = publicHomes ? (state.lang === 'en' ? 'Back to explore' : '返回探索') : (state.lang === 'en' ? 'Show my hometown' : '显示我的家乡');
+    var homeLabel = publicHomes ? (state.lang === 'en' ? L('Back to explore') : '返回探索') : (state.lang === 'en' ? L('Show my hometown') : '显示我的家乡');
     $('#map-chips').innerHTML = publicHomes || ownHome ? '<button type="button" class="map-chip' + (publicHomes ? '' : ' homes-switch') + '" data-action="' + (publicHomes ? 'homes-toggle' : 'mine-home-toggle') + '" aria-label="' + esc(homeLabel) + '" title="' + esc(homeLabel) + '" aria-pressed="' + (publicHomes ? state.homesOn : state.mineHomeOn) + '">' + (publicHomes ? ICON.back + esc(homeLabel) : ICON.home) + '</button>' : '';
   }
 
@@ -420,48 +422,31 @@
     return '<button type="button" class="chip" data-action="' + action + '" data-v="' + v + '" aria-pressed="' + on + '">' + esc(label) + '</button>';
   }
   function renderBSheet() {
-    var card = $('#bsheet-card'), h = '';
-    if (state.bsheet === 'filters') {
-      var food = state.mode === 'food', mine = state.scope === 'mine';
-      var shown = store.places().filter(function (p) { return inScope(p) && passesFilters(p); }).length;
-      h += '<div class="bsheet-head"><h3>' + esc(t('filtersTitle')) + '</h3></div>';
-      /* “看看大家来自哪”挪到“我的”页（用户 2026-11-01）：筛选只管挑吃的玩的 */
-      if (state.tab === 'foot') {
-        h += '<div class="field"><span class="f-label">' + esc(t('footprintShow')) + '</span><div class="chips-wrap">' +
-          ['mine', 'saved'].map(function (v) { return optHTML('mine-sub', v, state.scope === v, t(v === 'saved' ? 'subSaved' : 'subBeen')); }).join('') + '</div></div>';
+    var card=$('#bsheet-card'),h='';
+    if(state.bsheet==='lang') h=langSheetHTML();
+    if(state.bsheet==='filters') {
+      var mine=state.scope==='mine', both=mine&&state.mineBoth, food=both||state.mode==='food';
+      var shown=store.places().filter(function(p){return inScope(p)&&passesFilters(p);}).length;
+      h+='<div class="bsheet-head"><h3>'+esc(t('filtersTitle'))+'</h3></div>';
+      var modes=both?['food','travel']:[state.mode];
+      modes.forEach(function(mode){
+        h+='<div class="field"><span class="f-label">'+esc(both?t(mode==='food'?'food':'scenery')+' · '+t('filterCat'):t('filterCat'))+(mode==='food'?'<button type="button" class="halal-filter" role="switch" data-action="halal-toggle" aria-label="Halal" aria-checked="'+!!state.halal+'" title="'+esc(state.lang==='en'?'Halal estimate. Please check with the restaurant.':'按店名和分类估计，请自行向店家确认')+'">Halal</button>':'')+'</span><div class="chips-wrap">'+(mode===modes[0]?'<button type="button" class="chip" data-action="cat" data-cat="all" aria-pressed="'+(state.cat==='all')+'">'+esc(t('catAll'))+'</button>':'')+
+          catChoices(mode).map(function(c){return '<button type="button" class="chip" data-action="cat" data-cat="'+c.id+'" data-cat-mode="'+mode+'" aria-pressed="'+(state.cat===c.id)+'">'+catIconHTML(c)+esc(catName(c))+'</button>';}).join('')+'</div></div>';
+      });
+      h+='<div class="field"><span class="f-label">'+esc(t('filterScore'))+'<span class="legend" aria-hidden="true"><b>0</b><i></i><b>5</b></span></span><div class="chips-wrap">'+SCORE_STEPS.map(function(n){return optHTML('set-score',n,state.minScore===n,n?t('scoreOpt',{n:n}):t('anyOpt'));}).join('')+'</div></div>';
+      h+='<div class="field"><span class="f-label">'+esc(t('filterDist'))+'</span><div class="chips-wrap">'+DIST_STEPS.map(function(d){return optHTML('set-dist',d,state.dist===d,d==='any'?t('anyOpt'):t('dist_'+d));}).join('')+'</div></div>';
+      if(food) {
+        var pi=Math.max(0,PRICE_STOPS.indexOf(state.priceAbout));
+        h+='<div class="field price-field"><span class="f-label">'+esc(t('filterPrice'))+'<b id="flt-price-val"'+(pi?'':' class="muted"')+'>'+esc(priceLabel(state.priceAbout))+'</b></span><input type="range" id="flt-price" min="0" max="'+(PRICE_STOPS.length-1)+'" step="1" value="'+pi+'" style="--fill:'+(pi/(PRICE_STOPS.length-1)*100)+'%" aria-label="'+esc(t('filterPrice'))+'"><div class="price-ticks" aria-hidden="true"><span>'+esc(t('anyOpt'))+'</span><span>RM500</span></div></div>';
       }
-
-      if (mine) {
-        h += '<div class="field"><span class="f-label">' + esc(t('mineShow')) + '</span><div class="chips-wrap">' +
-          ['food', 'travel', 'both'].map(function (v) { return '<button type="button" class="chip" data-action="mine-mode" data-v="' + v + '" aria-pressed="' + (mineView() === v) + '">' + esc(t('mine_' + v)) + '</button>'; }).join('') + '</div></div>';
-        /* 我的家（小房子）开关放在筛选里（用户 2026-11-01），地图上不再单独一个按钮 */
-        if (store.myHome()) h += '<button type="button" class="switch-row" role="switch" data-action="mine-home-toggle" aria-checked="' + state.mineHomeOn + '">' +
-          '<span class="sw-text"><b>' + esc(state.lang === 'en' ? 'Show my home' : '显示我的家') + '</b><small>' + esc(state.lang === 'en' ? 'A little house on your hometown' : '在家乡的位置放一个小房子') + '</small></span><span class="switch" aria-hidden="true"></span></button>';
-      } else {
-        if (state.scope === 'saved') {
-          h += '<div class="field"><span class="f-label">' + esc(t('savedShow')) + '</span><div class="chips-wrap">' +
-            ['all', 'want'].map(function (v) { return optHTML('saved-want', v, (v === 'want') === state.savedWant, t(v === 'want' ? 'savedWant' : 'savedAll')); }).join('') + '</div></div>';
-        }
-        h += '<div class="field"><span class="f-label">' + esc(t('filterCat')) + '</span><div class="chips-wrap">' +
-          '<button type="button" class="chip" data-action="cat" data-cat="all" aria-pressed="' + (state.cat === 'all') + '">' + esc(t('catAll')) + '</button>' +
-          catChoices(state.mode).map(function (c) {
-            return '<button type="button" class="chip" data-action="cat" data-cat="' + c.id + '" aria-pressed="' + (state.cat === c.id) + '">' + catIconHTML(c) + esc(catName(c)) + '</button>';
-          }).join('') + '</div></div>';
-        h += '<div class="field"><span class="f-label">' + esc(t('filterScore')) + '<span class="legend" aria-hidden="true"><b>0</b><i></i><b>5</b></span></span><div class="chips-wrap">' +
-          SCORE_STEPS.map(function (n) { return optHTML('set-score', n, state.minScore === n, n ? t('scoreOpt', { n: n }) : t('anyOpt')); }).join('') + '</div></div>';
-        if (food) {
-          h += '<div class="field"><span class="f-label">' + esc(t('filterDist')) + '</span><div class="chips-wrap">' +
-            DIST_STEPS.map(function (d) { return optHTML('set-dist', d, state.dist === d, d === 'any' ? t('anyOpt') : t('dist_' + d)); }).join('') + '</div></div>';
-          var pi = Math.max(0, PRICE_STOPS.indexOf(state.priceAbout));
-          h += '<div class="field price-field"><span class="f-label">' + esc(t('filterPrice')) + '<b id="flt-price-val"' + (pi ? '' : ' class="muted"') + '>' + esc(priceLabel(state.priceAbout)) + '</b></span>' +
-            '<input type="range" id="flt-price" min="0" max="' + (PRICE_STOPS.length - 1) + '" step="1" value="' + pi + '" style="--fill:' + (pi / (PRICE_STOPS.length - 1) * 100) + '%" aria-label="' + esc(t('filterPrice')) + '">' +
-            '<div class="price-ticks" aria-hidden="true"><span>' + esc(t('anyOpt')) + '</span><span>RM500</span></div></div>';
-        }
-      }
-      h += '<div class="bsheet-foot' + (mine ? ' single' : '') + '">' + (mine ? '' : '<button type="button" class="btn ghost" data-action="clear-filters">' + esc(t('filterReset')) + '</button>') +
-        '<button type="button" class="btn primary" data-action="sheet-close">' + esc(t('filterShow', { n: shown })) + '</button></div>';
+      /* 两个开关放进同一张分组卡片，和上面的选项隔开（用户 2026-11-05：下面有点拥挤） */
+      var sw='';
+      if(mine&&store.myHome()) sw+='<button type="button" class="switch-row" role="switch" data-action="mine-home-toggle" aria-checked="'+state.mineHomeOn+'"><span class="sw-text"><b>'+esc(state.lang==='en'?L('Show my home'):'显示我的家')+'</b><small>'+esc(state.lang==='en'?L('A little house on your hometown'):'在家乡的位置放一个小房子')+'</small></span><span class="switch" aria-hidden="true"></span></button>';
+      if(mine&&state.tab==='foot') sw+='<button type="button" class="switch-row" role="switch" data-action="mine-dots-toggle" aria-checked="'+!state.mineDots+'"><span class="sw-text"><b>'+esc(state.lang==='en'?L('Group nearby places'):'缩小时合并成数字')+'</b><small>'+esc(state.lang==='en'?L('Turn off to see every place as its own dot'):'关掉就每个地点一个点，不合并')+'</small></span><span class="switch" aria-hidden="true"></span></button>';
+      if(sw) h+='<div class="field"><span class="f-label">'+esc(state.lang==='en'?L('Map display'):'地图显示')+'</span><div class="switch-group">'+sw+'</div></div>';
+      h+='<div class="bsheet-foot"><button type="button" class="btn ghost" data-action="clear-filters">'+esc(t('filterReset'))+'</button><button type="button" class="btn primary" data-action="sheet-close">'+esc(t('filterShow',{n:shown}))+'</button></div>';
     }
-    card.innerHTML = h;
+    card.innerHTML=h;
   }
   /* 常去的地方：搜索框还没输字时列在搜索页里 */
   function areasHTML() {
@@ -469,7 +454,7 @@
     var li = function (inner) { return '<li>' + inner + '</li>'; };
     var h = '<li class="sec-title">' + esc(t('areasTitle')) + '</li>';
     h += li('<button type="button" class="area-opt" data-action="locate">' + ICON.nav + esc(t('locate')) + '</button>');
-    PRESET_AREAS.forEach(function (a) { h += li('<button type="button" class="area-opt" data-action="goto-area" data-id="' + esc(a.id) + '">' + pin + esc(state.lang === 'en' ? a.en : a.zh) + '</button>'); });
+    PRESET_AREAS.forEach(function (a) { h += li('<button type="button" class="area-opt" data-action="goto-area" data-id="' + esc(a.id) + '">' + pin + esc(state.lang === 'en' ? L(a.en) : a.zh) + '</button>'); });
     store.areas().forEach(function (a) { h += li('<button type="button" class="area-opt" data-action="goto-area" data-id="' + esc(a.id) + '">' + pin + esc(a.name) + '</button>'); });
     h += li('<button type="button" class="area-opt muted" data-action="save-area">＋ ' + esc(t('saveHere')) + '</button>');
     return h;
@@ -491,6 +476,7 @@
     var v = state.view, wasInCard = mapInCard();
     if (wasInCard) stage.insertBefore(mapEl, stage.firstChild);
     if (v === 'feed') renderFeed();
+    else if (v === 'messages') renderMessages();
     else if (v === 'post') renderPost();
     else if (v === 'person') renderPerson();
     else if (v === 'place') renderPlace();
@@ -548,20 +534,43 @@
     var avTimer = 0;
     new MutationObserver(function () { if (!avTimer) avTimer = setTimeout(function () { avTimer = 0; hydrateAvatars(); }, 0); }).observe(document.documentElement, { childList: true, subtree: true });
   }
+  var photoJobs=[],photoBusy=0,photoSeen=new WeakSet(),photoObserver=null,photoObserved=new Set(),photoActive=new Set();
+  function photoNearScreen(img) { var r=img.getBoundingClientRect();return r.bottom>=-240&&r.top<=innerHeight+240&&r.right>=-240&&r.left<=innerWidth+240; }
+  function queuePhoto(img) { if(photoSeen.has(img))return;photoSeen.add(img);photoJobs.push({img:img,owner:me().id});pumpPhotos(); }
+  function pumpPhotos() {
+    photoJobs=photoJobs.filter(function(j){return j.img.isConnected&&j.owner===me().id;});
+    while(photoBusy<4&&photoJobs.length){var job=photoJobs.shift();photoBusy++;photoActive.add(job);(function(j){loadViewPhoto(j).catch(function(){}).then(function(){photoActive.delete(j);photoBusy--;pumpPhotos();});})(job);}
+  }
+  function loadViewPhoto(job) {
+    var img=job.img,id=img.dataset.photo,small=img.hasAttribute('data-small')||isClip(id),preview=img.dataset.preview||'';
+    function current(){return !job.cancelled&&img.isConnected&&job.owner===me().id;}
+    function missing(){if(current()&&!preview&&img.parentElement)img.parentElement.classList.add('missing');}
+    function show(url){return new Promise(function(resolve){
+      if(!url||!current()){resolve(false);return;}
+      var probe=new Image(),finished=false,timer=setTimeout(function(){done(false);},15000);
+      function done(ok){if(finished)return;finished=true;clearTimeout(timer);probe.onload=probe.onerror=null;if(ok&&current()){img.src=url;img.parentElement.classList.remove('missing');}resolve(ok);}
+      job.cancelProbe=function(){done(false);probe.src='';};
+      probe.decoding='async';probe.onload=function(){done(true);};probe.onerror=function(){done(false);};probe.src=url;
+    });}
+    var cancelled=new Promise(function(resolve){job.cancel=function(){job.cancelled=true;if(job.cancelProbe)job.cancelProbe();resolve();};});
+    var work=store.photoURL(id,small).then(function(url){return show(url).then(function(ok){
+      if(ok||!small||!current())return ok;
+      return store.photoURL(id).then(function(full){return full&&full!==url?show(full):false;});
+    });}).then(function(ok){if(!ok)missing();},missing);
+    return Promise.race([work,cancelled]);
+  }
   function hydratePhotos(root) {
     hydrateGoogleTitles(root);
-    $$('img[data-photo]', root).forEach(function (img) {
-      var id = img.dataset.photo, small = img.hasAttribute('data-small') || isClip(id);
-      if ((isClip(id) || isGif(id)) && img.parentElement) img.parentElement.classList.add(isClip(id) ? 'is-clip' : 'is-gif');
-      function missing() { if (img.parentElement) img.parentElement.classList.add('missing'); }
-      store.photoURL(id, small).then(function (u) {
-        if (!u) { missing(); return; }
-        img.onerror = !small ? missing : function () {
-          img.onerror = missing;
-          store.photoURL(id).then(function (full) { if (full && full !== u) img.src = full; else missing(); });
-        };
-        img.src = u;
-      });
+    photoActive.forEach(function(j){if(!j.img.isConnected||j.owner!==me().id)j.cancel();});
+    if(photoObserver)photoObserved.forEach(function(img){if(!img.isConnected){photoObserver.unobserve(img);photoObserved.delete(img);}});
+    if(window.IntersectionObserver&&!photoObserver)photoObserver=new IntersectionObserver(function(entries){entries.forEach(function(e){if(e.isIntersecting){photoObserver.unobserve(e.target);photoObserved.delete(e.target);queuePhoto(e.target);}});},{rootMargin:'240px'});
+    $$('img[data-photo]',root).forEach(function(img){
+      var id=img.dataset.photo,small=img.hasAttribute('data-small')||isClip(id);
+      if((isClip(id)||isGif(id))&&img.parentElement)img.parentElement.classList.add(isClip(id)?'is-clip':'is-gif');
+      var cached=store.cachedPhotoURL&&(store.cachedPhotoURL(id,small)||(!small&&img.hasAttribute('data-progressive')&&store.cachedPhotoURL(id,true)));
+      if(cached){img.src=cached;img.dataset.preview=cached;}
+      if(photoSeen.has(img))return;
+      if(!photoObserver||photoNearScreen(img))queuePhoto(img);else{photoObserved.add(img);photoObserver.observe(img);}
     });
   }
 
@@ -569,9 +578,9 @@
     return store.reviews().filter(function (r) {
       var p = placeById(r.placeId);
       if (!p || !modeOk(p)) return false;
-      if (state.scope === 'mine' ? !isMine(r) : r.visibility !== 'public') return false;
+      if (state.scope === 'mine' ? (!isMine(r) || !ownVisitMatches(p,r)) : r.visibility !== 'public') return false;
       return passesFilters(p);
-    }).sort(function (a, b) { return listTime(b) - listTime(a); }).slice(0, 80);
+    }).sort(function (a, b) { return listTime(b) - listTime(a); }).slice(0, store.pagedReads && store.pagedReads() ? Number.MAX_SAFE_INTEGER : 80);
   }
   /* 足迹里默认按加进来的时间排（用户 2026-10-31），点「拍摄时间」按照片拍的时间。
      从照片批量加的记录 createdAt 存的是拍摄时间；加进来的时间不另存，照片文件名 ph-<时间>… 里有上传那一刻，
@@ -589,9 +598,40 @@
   function savedPlaces() {
     return store.wishlist().slice().sort(function (a, b) { return b.createdAt - a.createdAt; })
       .map(function (w) { return placeById(w.placeId); })
-      .filter(function (p) { return p && p.mode === state.mode && visibleToMe(p) && !(state.savedWant && beenThere(p)) && passesFilters(p); });
+      .filter(function (p) { return p && p.mode === state.mode && visibleToMe(p) && savedStatusMatches(p) && passesFilters(p); });
   }
 
+  function favoritesButtonHTML(extra) {
+    var on=state.scope==='saved', label=state.lang==='en'?L('Saved places'):'收藏';
+    return '<button type="button" class="icon-btn flat favorites-entry '+(extra||'')+'" data-action="open-favorites" aria-label="'+esc(label)+'" title="'+esc(label)+'">'+(on?ICON.starOn:ICON.star)+'</button>';
+  }
+  /* 首页右上角：中英切换（用户 2026-11-02 换掉了收藏星星；收藏在足迹页里进） */
+  /* 语言（用户 2026-11-03）：中文 / English / 哈萨克语 / 印尼语（阿拉伯语用户说先删掉）。
+     哈萨克语、印尼语的按钮文字查 data/i18n-ui.js；点评和帖子点「翻译」才翻成这里选的语言 */
+  var TR_LANGS = [['zh', '中文', 'zh-CN'], ['en', 'English', 'en'], ['kk', 'Қазақша', 'kk'], ['id', 'Bahasa Indonesia', 'id']];
+  var LS_TRLANG = 'xuetuan:trlang';
+  function trLang() {
+    var v = lsGet(LS_TRLANG);
+    return TR_LANGS.some(function (l) { return l[0] === v; }) && (v === 'kk' || v === 'id' ? state.lang === 'en' : v === state.lang) ? v : state.lang;
+  }
+  function trLangShort() { return { zh: '中文', en: 'ENG', kk: 'KAZ', id: 'IND' }[trLang()]; }
+  function langButtonHTML() {
+    return '<button type="button" class="home-lang" data-action="lang-menu" aria-label="Language / 语言">ENG</button>';
+  }
+  function langSheetHTML() {
+    var cur = trLang();
+    return '<div class="bsheet-head"><h3>' + esc(state.lang === 'en' ? L('Language') : '语言') + '</h3></div>' +
+      '<div class="lang-list">' + TR_LANGS.map(function (l) {
+        return '<button type="button" class="lang-opt" data-action="pick-lang" data-lang="' + l[0] + '" aria-pressed="' + (cur === l[0]) + '">' + esc(l[1]) + '</button>';
+      }).join('') + '</div>';
+  }
+  function footprintToolsHTML(saved) {
+    var en=state.lang==='en', n=activeFilterCount();
+    var modes=saved?['food','travel']:['both','food','travel'];
+    var h='<div class="foot-tools"><div class="foot-mode-group" role="group" aria-label="'+esc(en?L('Place type'):'地点类型')+'">'+modes.map(function(m){return '<button type="button" class="chip" data-action="mine-mode" data-v="'+m+'" aria-pressed="'+((saved?state.mode:mineView())===m)+'">'+esc(m==='both'?(en?L('All'):'全部'):t(m==='food'?'food':'scenery'))+'</button>';}).join('')+'</div>'+favoritesButtonHTML()+'<button type="button" class="icon-btn flat foot-filter" data-action="foot-filters" aria-label="'+esc(t('filterBtn'))+'" title="'+esc(t('filterBtn'))+'">'+CTRL_ICON.filter+(n?'<b>'+n+'</b>':'')+'</button></div>';
+    if(saved) h+='<div class="saved-status" role="group" aria-label="'+esc(en?L('Visit status'):'到访状态')+'">'+['all','want','been'].map(function(v){var selected=state.savedWant?'want':state.savedStatus;return '<button type="button" class="chip" data-action="saved-want" data-v="'+v+'" aria-pressed="'+(selected===v)+'">'+esc(en?({all:'All',want:'Want to go',been:'Been'})[v]:({all:'全部',want:'想去',been:'去过'})[v])+'</button>';}).join('')+'</div>';
+    return h;
+  }
   /* 每一栏的首页都是 feed 这个视图：首页、我的各画各的；探索（地点）和足迹（我的记录 / 想去）用同一个列表 */
   function renderFeed() {
     if (state.tab === 'home') { renderHome(); return; }
@@ -608,8 +648,8 @@
     }[state.mode][state.scope];
     if (places) key = state.mode === 'food' ? 'placesFoodAll' : 'placesTravelAll';
     if (state.scope === 'mine' && state.mineBoth) key = 'feedBothMine';
-    var h = '<div class="view-head"><div class="title-row"><h2 class="view-title" data-action="expand">' + esc(t(key)) + '</h2><span class="count">' + items.length + '</span>' +
-      (state.tab === 'foot' ? '<button type="button" class="icon-btn flat foot-filter" data-action="foot-filters" aria-label="' + esc(t('filterBtn')) + '">' + CTRL_ICON.filter + '</button>' : '') + '</div></div>';
+    var h = '<div class="view-head"><div class="title-row">' + (saved ? '<button type="button" class="icon-btn flat" data-action="favorites-back" aria-label="'+esc(t('back'))+'">'+ICON.back+'</button>' : '') + '<h2 class="view-title" data-action="expand">' + esc(saved ? (state.lang==='en'?L('Saved places'):'我的收藏') : t(key)) + '</h2><span class="count">' + items.length + '</span></div></div>';
+    if (state.tab === 'foot') h += footprintToolsHTML(saved);
     if (state.tab === 'foot' && state.scope === 'mine') h += visitBulkHTML(items);
     if (store.hasSamples() && state.scope === 'all') {
       h += '<div class="sample-note"><span>' + esc(t('samplesShown')) + '</span><button type="button" class="link-btn" data-action="clear-samples">' + esc(t('clearSamples')) + '</button></div>';
@@ -617,7 +657,7 @@
     if (!items.length) h += emptyHTML();
     else if (saved) h += '<ul class="near-list">' + items.map(savedItemHTML).join('') + '</ul>';
     else if (places) h += '<p class="explore-hint">' + esc(t('exploreHint')) + '</p>';
-    else h += '<ul class="feed">' + items.map(feedItemHTML).join('') + '</ul>';
+    else h += '<ul class="feed">' + items.slice(0,state.footLimit || 80).map(feedItemHTML).join('') + '</ul>' + (items.length>(state.footLimit || 80)?'<div class="read-more"><button type="button" class="btn ghost" data-action="read-own-more">'+esc(state.lang==='en'?'Load more':'加载更多')+'</button></div>':'');
     view.innerHTML = h;
   }
 
@@ -630,18 +670,18 @@
   }
 
   var selectingVisits = false, selectedVisits = new Set(), visibilityBusy = false;
-  function visitPrivacyHTML(r) {
+  function visitPrivacyHTML(r, withoutEdit) {
     var en = state.lang === 'en';
-    return '<div class="visit-controls" role="group" aria-label="' + esc(en?'Visibility':'可见范围') + '">' + [['private',en?'Only me':'仅个人'],['public',en?'Public':'公开']].map(function (o) {
+    return '<div class="visit-controls" role="group" aria-label="' + esc(en?L('Visibility'):'可见范围') + '">' + [['private',en?L('Only me'):'仅个人'],['public',en?L('Public'):'公开']].map(function (o) {
       return '<button type="button" data-action="visit-privacy" data-id="' + esc(r.id) + '" data-v="' + o[0] + '" aria-pressed="' + (r.visibility === o[0]) + '"' + (visibilityBusy?' disabled':'') + '>' + esc(o[1]) + '</button>';
-    }).join('') + '<button type="button" class="visit-edit" data-action="edit-review" data-id="' + esc(r.id) + '">' + esc(en?'Edit':'编辑') + '</button></div>';
+    }).join('') + (withoutEdit ? '' : '<button type="button" class="visit-edit" data-action="edit-review" data-id="' + esc(r.id) + '">' + esc(en?L('Edit'):'编辑') + '</button>') + '</div>';
   }
   function visitBulkHTML(items) {
     var en = state.lang === 'en', disabled = visibilityBusy?' disabled':'', n = selectedVisits.size;
-    return '<div class="visit-bulk"><button type="button" class="btn ghost" data-action="visit-multi"' + disabled + '>' + esc(selectingVisits?(en?'Done':'完成'):(en?'Select':'多选')) + '</button>' +
+    return '<div class="visit-bulk"><button type="button" class="btn ghost" data-action="visit-multi"' + disabled + '>' + esc(selectingVisits?(en?L('Done'):'完成'):(en?L('Select'):'多选')) + '</button>' +
       (selectingVisits ? '' : '<button type="button" class="btn ghost foot-time" data-action="foot-time" aria-pressed="' + (state.footTime === 'taken') + '">' + ICON.camera + esc(t('footTaken')) + '</button>') + (selectingVisits ?
-      '<button type="button" class="btn ghost" data-action="visit-all"' + disabled + '>' + esc(en?'Select all':'全选') + '</button><small>' + esc(en?n+' selected':'已选 '+n) + '</small>' +
-      [['public',en?'Make public':'设为公开'],['private',en?'Only me':'仅个人']].map(function (o) { return '<button type="button" class="btn ghost" data-action="visit-bulk" data-v="' + o[0] + '"' + (visibilityBusy || !n?' disabled':'') + '>' + esc(o[1]) + '</button>'; }).join('') : '') + (visibilityBusy?'<small>'+esc(en?'Saving…':'保存中…')+'</small>':'') + '</div>';
+      '<button type="button" class="btn ghost" data-action="visit-all"' + disabled + '>' + esc(en?L('Select all'):'全选') + '</button><small>' + esc(en?n+' selected':'已选 '+n) + '</small>' +
+      [['public',en?L('Make public'):'设为公开'],['private',en?L('Only me'):'仅个人']].map(function (o) { return '<button type="button" class="btn ghost" data-action="visit-bulk" data-v="' + o[0] + '"' + (visibilityBusy || !n?' disabled':'') + '>' + esc(o[1]) + '</button>'; }).join('') : '') + (visibilityBusy?'<small>'+esc(en?L('Saving…'):'保存中…')+'</small>':'') + '</div>';
   }
   function changeVisitVisibility(ids, visibility) {
     if (visibilityBusy || ['private','public'].indexOf(visibility) === -1) return;
@@ -650,8 +690,8 @@
     visibilityBusy = true;
     var top = view.scrollTop, actor = me().id;
     render(); view.scrollTop = top;
-    store.setVisibility(ids,visibility).then(function () { if (actor !== me().id) return; toast(state.lang === 'en'?'Visibility updated':visibility==='public'?'已设为公开':'已设为仅个人'); },function () { toast(t('saveFail')); }).then(function () {
-      visibilityBusy=false; refreshMap(); if(state.view==='feed') { var y=view.scrollTop; render(); view.scrollTop=y; }
+    store.setVisibility(ids,visibility).then(function () { if (actor !== me().id) return; toast(state.lang === 'en'?L('Visibility updated'):visibility==='public'?'已设为公开':'已设为仅个人'); },function () { toast(t('saveFail')); }).then(function () {
+      visibilityBusy=false; refreshMap(); if(state.view==='feed'||state.view==='place') { var y=view.scrollTop; render(); view.scrollTop=y; }
     });
   }
 
@@ -663,7 +703,7 @@
     var n = r.photos ? r.photos.length : 0;
     var lead = n ? '<span class="fi-pic"><img data-photo="' + esc(r.photos[0]) + '" data-small alt="">' +
       (n > 1 ? '<span class="fi-count">' + ICON.camera + n + '</span>' : '') + '</span>' : avatarHTML(name, r.authorId);
-    return '<li' + (ownControls ? ' class="visit-row"' : '') + '>' + (ownControls && selectingVisits ? '<button type="button" class="visit-select" data-action="visit-select" data-id="' + esc(r.id) + '" aria-label="' + esc(state.lang === 'en' ? 'Select record' : '选择这条记录') + '" aria-pressed="' + selectedVisits.has(r.id) + '">' + (selectedVisits.has(r.id) ? '✓' : '○') + '</button>' : '') + '<button type="button" class="feed-item' + (n ? ' with-pic' : '') + '" data-action="' + (ownControls && selectingVisits ? 'visit-select' : 'open-place') + '" data-id="' + esc(ownControls && selectingVisits ? r.id : p.id) + '">' +
+    return '<li' + (ownControls ? ' class="visit-row"' : '') + '>' + (ownControls && selectingVisits ? '<button type="button" class="visit-select" data-action="visit-select" data-id="' + esc(r.id) + '" aria-label="' + esc(state.lang === 'en' ? L('Select record') : '选择这条记录') + '" aria-pressed="' + selectedVisits.has(r.id) + '">' + (selectedVisits.has(r.id) ? '✓' : '○') + '</button>' : '') + '<button type="button" class="feed-item' + (n ? ' with-pic' : '') + '" data-action="' + (ownControls && selectingVisits ? 'visit-select' : 'open-place') + '" data-id="' + esc(ownControls && selectingVisits ? r.id : p.id) + '">' +
       lead +
       '<span class="fi-main">' +
       '<span class="fi-who"><b>' + esc(name) + '</b>' + (from ? '<span class="muted">' + esc(t('fromPrefix') + from) + '</span>' : '') + '<span class="fi-time">' + esc(ownControls && state.footTime === 'taken' ? t('footTakenAt', { t: timeAgo(r.createdAt) }) : timeAgo(listTime(r))) + '</span></span>' +

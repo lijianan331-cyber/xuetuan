@@ -91,7 +91,7 @@
     if (c && !map.hasImage(e.id)) {
       try {
         var ref = JSON.parse(c[2]), thumb = pinThumbs.get(ref[0]);
-        if (thumb && thumb !== 'loading') map.addImage(e.id, drawPhotoPin(thumb, ref[1] == null ? DOT_NONE : scoreColor(ref[1]), ref[2], Number(c[1])), { pixelRatio: DPR });
+        if (thumb && thumb !== 'loading') {map.addImage(e.id, drawPhotoPin(thumb, ref[1] == null ? DOT_NONE : scoreColor(ref[1]), ref[2], Number(c[1])), { pixelRatio: DPR });managedPinImages.set(e.id,ref[0]);trimPinImages();}
       } catch (err) { /* An unavailable cover falls back to the count circle. */ }
     }
   }
@@ -140,14 +140,31 @@
   /* 放大到街道（17 级起）就不再合并：隔壁两家店各自一个照片针，针尖在店的真实位置（用户 2026-11-01：nomu 和隔壁南洋 cafe 被合成一个“2”）。
      再往外才合并，免得照片框互相盖住 */
   function placeClusterMaxZoom() { return 16; }
+  /* 学校是例外（用户 2026-11-02：LY3 那排店和 D6 太早合成一个数）：看着学校一带时合并的范围小一点，
+     LY3 和 D6（相距约 350 米，15 级约 74 像素）在 15 级还分开，再缩小才合并；离开学校一带恢复原来的范围 */
+  var CAMPUS_CLUSTER_RADIUS = 68;
+  function placeClusterRadius() {
+    if (!map || !map.getCenter) return PLACE_CLUSTER_RADIUS;
+    var c = map.getCenter();
+    return haversine(XMUM, { lat: c.lat, lng: c.lng }) < 2500 ? CAMPUS_CLUSTER_RADIUS : PLACE_CLUSTER_RADIUS;
+  }
+  /* 足迹可以切成“只显示点”（用户 2026-11-05：好奇不合并成数字是什么样）：筛选里的开关，只管足迹，默认照旧合并 */
+  function placeClusterOn() { return !(state.tab === 'foot' && state.scope === 'mine' && state.mineDots); }
+  function placeClusterProfile() { return placeClusterOn() ? placeClusterMaxZoom() + ':' + placeClusterRadius() : 'off'; }
+  function syncPlaceCluster() {
+    var src = map && map.getSource && map.getSource('places'), want = placeClusterProfile();
+    if (!src || typeof src.setClusterOptions !== 'function' || placeClusterProfiles.get(src) === want) return;
+    placeClusterProfiles.set(src, want);
+    Promise.resolve(src.setClusterOptions({ cluster: placeClusterOn(), clusterMaxZoom: placeClusterMaxZoom(), clusterRadius: placeClusterRadius() })).catch(function () { placeClusterProfiles.delete(src); });
+  }
   function addAppLayers() {
     var fonts = pickFonts();
     /* 数字圈用雪团的浅冰蓝，不跟着玩乐地图变深（用户 2026-10-28） */
     var accent = CLUSTER_BLUE;
     homePlacement = null;
-    map.addSource('places', { type: 'geojson', data: placesGeoJSON(), cluster: true, clusterMaxZoom: placeClusterMaxZoom(), clusterRadius: PLACE_CLUSTER_RADIUS,
+    map.addSource('places', { type: 'geojson', data: placesGeoJSON(), cluster: placeClusterOn(), clusterMaxZoom: placeClusterMaxZoom(), clusterRadius: placeClusterRadius(),
       clusterProperties: { photoRef: [['case', ['!=', ['accumulated'], ''], ['accumulated'], ['get', 'photoRef']], ['get', 'photoRef']], photoTotal: ['+', ['get', 'photoCount']], locationCount: ['+', ['get', 'locationCount']] } });
-    placeClusterProfiles.set(map.getSource('places'), placeClusterMaxZoom());
+    placeClusterProfiles.set(map.getSource('places'), placeClusterProfile());
     map.addSource('me', { type: 'geojson', data: meFC() });
     map.addSource('homes', { type: 'geojson', data: homesFC(), cluster: true, clusterMaxZoom: 11, clusterRadius: 36, clusterProperties: { students: ['+', ['get', 'students']] } });
     /* 地点库里的店：放大后才出，小圆点 + 店名，垫在所有图钉下面 */
@@ -164,7 +181,7 @@
     /* 城市、片区的地点不再画范围圈，和具体地点一样只有图钉（用户 2026-10-27） */
     map.addLayer({
       id: 'cl-halo', type: 'circle', source: 'places', filter: ['has', 'point_count'],
-      paint: { 'circle-radius': ['step', ['get', 'point_count'], 22, 10, 26, 50, 31, 200, 37], 'circle-color': accent, 'circle-opacity': whenClusterPhoto(0, 0.2) }
+      paint: { 'circle-radius': ['step', ['get', 'locationCount'], 22, 10, 26, 50, 31, 200, 37], 'circle-color': accent, 'circle-opacity': whenClusterPhoto(0, 0.2) }
     });
     /* 大地图上的家乡红针垫在地点数字圈下面：缩小看全国时两者常叠在一起，针头露在圈上面，不挡住圈里的数字。
        合在一起的只会是红针（我的地图只有自己一个家） */
@@ -177,7 +194,7 @@
     });
     map.addLayer({
       id: 'cl-circle', type: 'circle', source: 'places', filter: ['has', 'point_count'],
-      paint: { 'circle-radius': ['step', ['get', 'point_count'], 15, 10, 19, 50, 23, 200, 27], 'circle-color': accent, 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 2, 'circle-opacity': whenClusterPhoto(0, 1), 'circle-stroke-opacity': whenClusterPhoto(0, 1) }
+      paint: { 'circle-radius': ['step', ['get', 'locationCount'], 15, 10, 19, 50, 23, 200, 27], 'circle-color': accent, 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 2, 'circle-opacity': whenClusterPhoto(0, 1), 'circle-stroke-opacity': whenClusterPhoto(0, 1) }
     });
     map.addLayer({
       id: 'cl-count', type: 'symbol', source: 'places', filter: ['has', 'point_count'],
@@ -223,15 +240,12 @@
 
   function refreshMap() {
     var src = map && map.getSource && map.getSource('places');
-    if (src && typeof src.setClusterOptions === 'function' && placeClusterProfiles.get(src) !== placeClusterMaxZoom()) {
-      placeClusterProfiles.set(src, placeClusterMaxZoom());
-      Promise.resolve(src.setClusterOptions({ cluster: true, clusterMaxZoom: placeClusterMaxZoom(), clusterRadius: PLACE_CLUSTER_RADIUS })).catch(function () { placeClusterProfiles.delete(src); });
-    }
-    if (src) src.setData(placesGeoJSON());
+    syncPlaceCluster();
+    if (src) setMapSourceData(src,placesGeoJSON());
     refreshLib();
     queueLib();
     var hs = map && map.getSource && map.getSource('homes');
-    if (hs) hs.setData(homesFC());
+    if (hs) setMapSourceData(hs,homesFC());
     updateHomePlacement();
     syncCountries();
   }
@@ -331,6 +345,9 @@
     var hits = layers.length ? map.queryRenderedFeatures(box, { layers: layers }) : [];
     if (hits.length) {
       var f = hits.find(function (x) { return map.getZoom() >= PHOTO_ZOOM && x.layer && (x.layer.id === 'pt-photo' || x.layer.id === 'cl-photo'); }) || hits[0];
+      if (f.properties && f.properties.serverGroup) {
+        map.easeTo({center:f.geometry.coordinates,zoom:Math.max(map.getZoom()+1,+f.properties.zoom),padding:mapPadding(),duration:reduceMotion?0:500});return;
+      }
       if (f.properties && f.properties.cluster) {
         var src = map.getSource('places');
         if (map.getZoom() >= CLUSTER_PHOTO_ZOOM) { openPlaceCluster(src, f.properties.cluster_id, f.layer && f.layer.id === 'cl-photo'); return; }

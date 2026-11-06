@@ -9,3 +9,7 @@
 - 应用 = `index.html`（页面骨架）+ `css/app.css`（全部样式）+ `js/01-core.js`…`js/09-actions-boot.js`（按序号加载，共用一个全局作用域，启动代码在最后一个）。没有构建步骤。MapLibre 固定在 5.24.0，不要随意升级。
 - 改完跑 `python tests/test_app.py`（默认只打印失败项和总数，`-v` 才列出全部），保持全部通过；新功能要加对应检查。
 - 完成 PLAN.md 里的一项就把它勾上。
+
+- 离线缓存：改到 index.html / css / js / data / assets / manifest / sw.js 后，提交前运行 `python tools/update_offline_version.py`。全站测试校验版本指纹，保证旧用户能升级到完整的新版本；新运行时文件也要加入 sw.js 的 SHELL。旧标签页关闭后启用新版，不要强制刷新写到一半的表单。专项 `python tests/test_offline.py` 用本机HTTP和合成账号测试，不连真实后台。
+
+- 分页/区域读取已启用（2026-11-04）：先看 `js/00-reads.js`、`js/09-reads-ui.js` 和 `docs/READ-PERFORMANCE.md`。新路径不要恢复为首次下载所有人的 visits；总评分/条数/照片数用完整权限内摘要，不对当前页重新算总计；本人分享先完整读取本人的数据。迁移 `20261104072920_bounded_reads.sql` 已线上启用，勿再次应用或覆盖活动时间规则。新路径专项 `python tests/test_bounded_reads.py`（隔离SQL/HTTP）及 `node tests/test_bounded_reads.mjs <PGlite路径>`；不要在真实库造压测帖子/照片。

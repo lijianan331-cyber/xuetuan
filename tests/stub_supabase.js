@@ -13,6 +13,45 @@
   var files = {}, types = {};
   var session = null, listeners = [], calls = [];
   window.__sb = { db: db, files: files, types: types, calls: calls };
+  db.social_comments=(seed.social_comments || []).slice();
+  db.social_likes=(seed.social_likes || []).slice();
+  db.social_reports=(seed.social_reports || []).slice();
+  function socialRun(name,a) {
+    if (window.__socialFail && (window.__socialFail===name || window.__socialFail===a.action)) return err('network offline');
+    if (name==='xuetuan_comment_reports') {
+      if(uid()!==window.__sbAdmin)return err('Admin required');
+      return {data:db.social_reports.filter(function(r){return !r.resolved;}).map(function(r){var c=db.social_comments.find(function(c){return c.id===r.comment_id;});return Object.assign({},c,{name:'Synthetic',reports:1,reasons:[r.reason]});}),error:null};
+    }
+    if (name==='xuetuan_moderate_comment') {
+      if(uid()!==window.__sbAdmin)return err('Admin required');
+      var mc=db.social_comments.find(function(c){return c.id===a.comment_id;});
+      if(mc && a.decision!=='dismiss'){mc.deleted=true;mc.body='';}
+      if(mc && a.decision==='delete_and_ban')window.__sbBanned=mc.user_id;
+      db.social_reports.forEach(function(r){if(r.comment_id===a.comment_id)r.resolved=true;});return {data:{ok:true},error:null};
+    }
+    var v=db.visits.find(function(v){return v.id===a.visit_id && v.visibility==='public';});
+    if(!v)return err('XUETUAN_POST_UNAVAILABLE');
+    if(name==='xuetuan_post_social'){
+      var rows=db.social_comments.filter(function(c){return c.visit_id===v.id;}).map(function(c){var pf=db.profiles.find(function(p){return p.id===c.user_id;})||{};var parent=db.social_comments.find(function(x){return x.id===c.parent_id;});var pp=parent&&db.profiles.find(function(p){return p.id===parent.user_id;});return Object.assign({},c,{user_id:c.deleted?null:c.user_id,name:c.deleted?'':pf.name,page_public:!c.deleted&&pf.page_public,reply_name:parent&&!parent.deleted&&pp?pp.name:''});});
+      rows.sort(function(a,b){return b.created_at.localeCompare(a.created_at)||b.id.localeCompare(a.id);});
+      if(a.after_at)rows=rows.filter(function(c){return c.created_at<a.after_at || (c.created_at===a.after_at && c.id<a.after_id);});
+      return {data:{comments:rows.slice(0,30),has_more:rows.length>30,liked:db.social_likes.some(function(l){return l.visit_id===v.id && l.user_id===uid();}),like_count:v.user_id===uid()?db.social_likes.filter(function(l){return l.visit_id===v.id;}).length:null},error:null};
+    }
+    if(!uid())return err('XUETUAN_BIND_REQUIRED');
+    var target=db.social_comments.find(function(c){return c.id===a.target_id && c.visit_id===v.id;});
+    if(a.action==='like'){
+      db.social_likes=db.social_likes.filter(function(l){return l.visit_id!==v.id || l.user_id!==uid();});
+      if(a.liked)db.social_likes.push({visit_id:v.id,user_id:uid()});
+    } else if(a.action==='comment'){
+      if(a.target_id && (!target || target.deleted || target.parent_id))return err('Reply target unavailable');
+      if(!db.social_comments.some(function(c){return c.id===a.request_id;}))db.social_comments.unshift({id:a.request_id,visit_id:v.id,user_id:uid(),parent_id:a.target_id||null,body:a.body,deleted:false,created_at:new Date().toISOString()});
+    } else if(a.action==='delete'){
+      if(!target || (target.user_id!==uid() && v.user_id!==uid() && window.__sbAdmin!==uid()))return err('Permission denied');target.deleted=true;target.body='';
+    } else if(a.action==='report'){
+      if(!db.social_reports.some(function(r){return r.user_id===uid() && r.comment_id===a.target_id;}))db.social_reports.push({comment_id:a.target_id,user_id:uid(),reason:a.body});
+    }
+    return {data:{ok:true},error:null};
+  }
 
   function uid() { return session ? session.user.id : null; }
   function newId() { return 'xxxxxxxx-xxxx-4xxx-8xxx-xxxxxxxxxxxx'.replace(/x/g, function () { return (Math.random() * 16 | 0).toString(16); }); }
@@ -85,6 +124,7 @@
       row.created_at = row.created_at || now;
       if (this.table === 'visits') { row.photos = row.photos || []; if (row.rating != null && (row.rating < 0 || row.rating > 5 || row.rating * 2 % 1)) return err('rating out of range'); }
       if (!canWrite(this.table, row)) return err('new row violates row-level security policy');
+      if (t.some(function (x) { return x.id && x.id === row.id; })) { var dup = err('duplicate key value violates unique constraint'); dup.error.code = '23505'; return dup; }
       t.push(row);
       rows = [row];
     } else {
@@ -119,12 +159,16 @@
   Query.prototype.then = function (a, b) {
     var self = this;
     if (window.__holdDbReads && self.op === 'select') return new Promise(function (resolve) { (window.__resumeDbReads || (window.__resumeDbReads = [])).push(function () { resolve(self.run()); }); }).then(a,b);
+    /* 测试：请求到了服务器、写进去了，但回应很久才回来（网卡住） */
+    /* 测试：微信里那种“回了成功、其实没写进去” */
+    if (window.__sbPhantomVisit && self.table === 'visits' && self.op === 'insert') { window.__sbPhantomVisit = false; var ghost = Object.assign({ id: 'ghost', created_at: new Date().toISOString(), photos: [] }, self.payload); return Promise.resolve({ data: ghost, error: null }).then(a, b); }
+    if (window.__sbSlowVisit && self.table === 'visits' && self.op === 'insert') { var res0 = self.run(), wait = window.__sbSlowVisit; window.__sbSlowVisit = 0; return new Promise(function (resolve) { setTimeout(function () { resolve(res0); }, wait); }).then(a, b); }
     return new Promise(function (resolve) { setTimeout(function () { resolve(self.run()); }, 5); }).then(a, b);
   };
 
   function emit(event) { listeners.forEach(function (fn) { fn(event, session); }); }
-  window.__sbLogin = function (id, email) {
-    session = { user: { id: id, email: email } };
+  window.__sbLogin = function (id, email, extra) {
+    session = { access_token:'fixture-access-'+id, refresh_token:'fixture-refresh-'+id, user: Object.assign({ id: id, email: email },extra||{}) };
     if (!db.profiles.some(function (p) { return p.id === id; })) db.profiles.push({ id: id, name: '', country: '', region: '', city: '', district: '' });
     emit('SIGNED_IN');
   };
@@ -132,13 +176,27 @@
 
   window.supabase = {
     createClient: function (url, key, opts) {
+      if(opts && opts.auth && opts.auth.persistSession===false){
+        var probeSession=null;
+        return {auth:{
+          setSession:function(tokens){probeSession=(window.__identitySessions||{})[tokens.refresh_token];return Promise.resolve(probeSession?{data:{session:probeSession},error:null}:err('expired session'));},
+          getUser:function(){return Promise.resolve(probeSession?{data:{user:probeSession.user},error:null}:err('no session'));},
+          signOut:function(){probeSession=null;return Promise.resolve({error:null});}
+        }};
+      }
       if (opts) window.__sb.options = opts;
       window.__sb.url = url; window.__sb.key = key;
       return {
         from: function (table) { return new Query(table); },
+        functions:{invoke:function(name){calls.push(['function',name]);return window.__identityEdge ? window.__identityEdge(name) : Promise.resolve(err('function unavailable'));}},
         /* 地点库搜索：名字里包含关键词就算搜到 */
         rpc: function (name, args) {
           calls.push(['rpc', name, args]);
+          if(name==='xuetuan_read_page'&&window.__boundedRpc)return window.__boundedRpc(args);
+          if (['xuetuan_post_social','xuetuan_social_write','xuetuan_comment_reports','xuetuan_moderate_comment'].indexOf(name)!==-1) {
+            if(window.__socialHold && (window.__socialHold===name || window.__socialHold===(args||{}).action))return new Promise(function(resolve){window.__releaseSocial=function(){resolve(socialRun(name,args||{}));};});
+            return Promise.resolve(socialRun(name,args||{}));
+          }
           if (name === 'xuetuan_is_admin') return Promise.resolve({data:uid() === window.__sbAdmin,error:null});
           if (name === 'xuetuan_moderate_visit') {
             if (!uid() || uid() !== window.__sbAdmin) return Promise.resolve(err('Admin required'));
@@ -157,8 +215,20 @@
         },
         auth: {
           getSession: function () { return Promise.resolve({ data: { session: session }, error: null }); },
+          setSession:function(tokens){
+            var s=(window.__identitySessions||{})[tokens.refresh_token];
+            if(!s)return Promise.resolve(err('expired session'));
+            window.__sbLogin(s.user.id,s.user.email,s.user);session=s;
+            return Promise.resolve({data:{session:s,user:s.user},error:null});
+          },
           onAuthStateChange: function (fn) { listeners.push(fn); setTimeout(function () { fn('INITIAL_SESSION', session); }, 0); return { data: { subscription: { unsubscribe: function () {} } } }; },
           signInWithOtp: function (o) { calls.push(['otp', o.email, o.options && o.options.emailRedirectTo]); return Promise.resolve({ data: {}, error: null }); },
+          verifyOtp: function (o) {
+            calls.push(['verify', o.email, o.token, o.type]);
+            if (o.token !== '123456') return Promise.resolve(err('Token has expired or is invalid'));
+            window.__sbLogin('dddddddd-0000-4000-8000-00000000000d', o.email);
+            return Promise.resolve({ data: { session: session }, error: null });
+          },
           signInWithOAuth: function (o) { calls.push(['oauth', o.provider]); return Promise.resolve({ data: {}, error: null }); },
           signOut: function () { window.__sbLogout(); return Promise.resolve({ error: null }); },
           signInAnonymously: function () {
