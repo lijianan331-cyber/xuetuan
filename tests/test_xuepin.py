@@ -122,6 +122,7 @@ try:
         page.wait_for_selector('.ride')
         check(page.title().startswith('雪拼'), 'title is 雪拼')
         check(page.locator('.brand .logo').is_visible(), 'logo in header')
+        check(page.locator('.brand a.to-xt').get_attribute('href') == '../' and page.locator('.brand a.to-xt').is_visible(), 'back arrow to 雪团 in header')
         check(page.evaluate("getComputedStyle(document.body).backgroundColor") == 'rgb(255, 248, 240)', 'warm light background')
         check(page.locator('link[rel=manifest]').get_attribute('href') == 'manifest.webmanifest', 'manifest linked')
         page.screenshot(path=str(SHOTS / 'xuepin-hall.png'))

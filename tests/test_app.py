@@ -2628,6 +2628,8 @@ with sync_playwright() as p:
 
     # Website sharing is available without login and excludes private card/auth URL data.
     tab(page6,'home')
+    xp=page6.evaluate('''()=>{const a=document.querySelector('.home-top .home-xuepin'); if(!a) return null; const r=a.getBoundingClientRect(), s=document.querySelector('.home-search').getBoundingClientRect(), l=document.querySelector('.home-lang').getBoundingClientRect(); return {href:a.getAttribute('href'), w:r.width, h:r.height, afterSearch:r.left>=s.right, beforeLang:r.right<=l.left, img:a.querySelector('img').getAttribute('src')}}''')
+    check('home: 雪拼 icon in the top bar opens xuepin/ without overlapping search or language', bool(xp) and xp['href']=='xuepin/' and xp['img']=='xuepin/icons/xuepin-icon-180.png' and xp['w']==30 and xp['afterSearch'] and xp['beforeLang'], xp)
     page6.click('[data-action="app-share"]')
     app_url=page6.input_value('#app-share-link')
     check('home share button opens a copyable website link without personal card data',app_url.split('?')[0]==APP and 'card=' not in app_url and page6.locator('a[href^="https://wa.me/?text="]').count()==1)

@@ -51,6 +51,9 @@ body.lock{overflow:hidden}
 .top-inner{max-width:560px;margin:0 auto;padding-block:12px 10px;display:grid;gap:12px}
 .brand-row{display:flex;align-items:center;justify-content:space-between;gap:12px}
 .brand{display:flex;align-items:center;gap:8px;font-weight:800;font-size:21px;letter-spacing:.02em}
+.to-xt{display:inline-grid;place-items:center;width:32px;height:32px;margin-left:-8px;margin-right:-4px;border-radius:50%;color:var(--ink);flex:none}
+.to-xt svg{width:22px;height:22px}
+.to-xt:active{background:var(--sunk)}
 .brand .logo{width:32px;height:32px;border-radius:9px;flex:none;box-shadow:0 1px 3px rgba(150,70,0,.25)}
 .brand .sub{font-size:13px;font-weight:700;color:var(--muted);letter-spacing:0}
 .mode.login{all:unset;cursor:pointer;font-size:13px;font-weight:800;color:var(--plate-ink);background:var(--plate);border-radius:16px;padding:6px 12px 5px;white-space:nowrap}
@@ -305,7 +308,7 @@ body.t-hall .toast{bottom:calc(150px + env(safe-area-inset-bottom,0px))}
 <header class="top">
   <div class="top-inner gutter">
     <div class="brand-row">
-      <div class="brand"><img class="logo" src="icons/xuepin-icon-180.png" alt=""><span>雪拼</span><span class="sub">XMUM 拼车</span></div>
+      <div class="brand"><a class="to-xt" href="../" aria-label="回雪团" title="回雪团"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></a><img class="logo" src="icons/xuepin-icon-180.png" alt=""><span>雪拼</span><span class="sub">XMUM 拼车</span></div>
       <span id="modeTag" class="mode"><span class="dot"></span><span id="modeText">连接中…</span></span>
     </div>
     <div class="seg" id="segDir" role="tablist" aria-label="方向">
