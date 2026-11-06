@@ -25,3 +25,26 @@ assert.equal(urls.length,180);assert.equal(batches.flat().length,90);assert.ok(b
 assert.equal((await Promise.all([batchStore.photoURL('owner/denied.jpg'),batchStore.photoURL('owner/allowed.jpg')]))[0],null);
 assert.equal(batchStore.cachedPhotoURL(paths[0]),urls[0]);
 console.log('PASS batch signing: duplicate requests coalesced; max40 paths and 2 batches in flight; per-object permission errors remain closed; authorized cached previews reusable');
+
+const start = html.indexOf('      discardPreupload: function (ph)');
+const end = html.indexOf('\n      },', start) + '\n      },'.length;
+const removed = [];
+let owner = 'owner';
+const discard = new Function('uidNow', 'removePhotos', 'return ({' + html.slice(start,end) + '}).discardPreupload')(
+  () => owner, async paths => removed.push(...paths)
+);
+let finishUpload;
+const preview = {_up: new Promise(resolve => { finishUpload = resolve; })};
+const disposing = discard(preview);
+assert.equal(preview.discarded, true);
+finishUpload('owner/unused.jpg');
+await disposing;
+await discard({_up: Promise.resolve('owner/maybe-saved.jpg'), writeAttempted: true});
+await discard({_up: Promise.resolve('another/account.jpg')});
+let finishPrevious;
+const previous = discard({_up:new Promise(resolve => { finishPrevious = resolve; })});
+owner = 'new-account';
+finishPrevious('owner/previous.jpg');
+await previous;
+assert.deepEqual(removed, ['owner/unused.jpg']);
+console.log('PASS discarded previews wait for upload; media from uncertain writes and other accounts is retained');

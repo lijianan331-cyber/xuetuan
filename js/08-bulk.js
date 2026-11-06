@@ -57,6 +57,7 @@
       (b.groups || []).some(function (g) { return g.photos.some(function (x) { if (x.on && !x.media && !x.warmFail) { ph = x; return true; } return false; }); });
       if (!ph) { b.warming = false; return; }
       ph.warmP = (ph.prepared ? Promise.resolve(ph.prepared) : prepareMedia(ph.file)).then(function (out) {
+        if (state.bulk !== b) return;
         if (out && out.blob) { ph.media = mediaPhoto(out, ph.time); if (store.preupload) store.preupload([ph.media]); } else ph.warmFail = true;
       }, function () { ph.warmFail = true; });
       ph.warmP.then(function () { setTimeout(next, 0); });
@@ -609,6 +610,9 @@
     if (!b) return;
     b.urls.forEach(function (u) { URL.revokeObjectURL(u); });
     bulkMapOff();
+    if (store.discardPreupload) (b.items || []).forEach(function (ph) {
+      store.discardPreupload(ph.media);
+    });
     state.bulk = null;
   }
   /* 一个一个存：地点（已有的就用已有的，这一批里选了同一家的也只建一次）→ 压缩照片 → 记录 */

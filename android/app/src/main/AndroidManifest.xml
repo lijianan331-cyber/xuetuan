@@ -27,7 +27,7 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-            <!-- 谷歌登录在外部浏览器完成后跳回 app：xuetuan://auth#... -->
+            <!-- 谷歌登录在外部浏览器完成后，向原会话传回一次性 PKCE code。 -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />

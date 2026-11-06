@@ -110,3 +110,12 @@ Supabase 自带的发信服务**只能发给项目团队成员的邮箱**（就�
 验证：安装测试依赖 @electric-sql/pglite@0.3.14 至临时目录，用 node tests/test_security.mjs <pglite/dist/index.js绝对路径> 跑真实 PostgreSQL 权限/封禁/限流检查；python tests/test_app.py 检查界面与签名链接。安全头由 vercel.json 配置，保留 Google 组件、定位与文件选择兼容性；本轮未宣称完整CSP脚本白名单或独立渗透测试。
 
 本轮已在 pshxrwfjcbvqlixdxlzs 启用并完成线上匿名上传/发布及权限拒绝验证，临时验证账号/图片已清理。旧页面请刷新后使用。补充检查：node tests/test_media_urls.mjs、python tests/test_security_headers.py。匿名访问相关 advisor 提示对应产品已授权的匿名使用模式；密码泄露检查未开启仍是后台待配置项，当前主要使用匿名与 Google 登录。
+### 2026-11-06 安全更新的发布顺序
+
+先在隔离 Supabase 项目验证两份新迁移和 `xuetuan-delete-account` Edge Function。函数从经 Auth 验证的会话识别账号，环境变量沿用现有 Edge Function 的服务端凭据。服务端先记录待删除状态，再分批使用 Storage API 清理原图和小图；数据库确认文件清空后才删除账号。待处理时原按钮可重试。
+
+正式发布需单独确认。先发布调用新函数的网页，并用重新打开的页面确认离线外壳已更新。新端点未启用时，新网页会安全失败。迁移会挡住旧缓存客户端直接删除本人文件，直到客户端更新；新版普通删图和服务端清理使用各自正常权限。再部署 Edge Function 并应用 `20261106101026_safe_account_deletion.sql`，随后用隔离测试账号验证完整流程。不要通过旧版网页试删真实账号。
+
+`20261106101740_diagnostics_and_rpc_grants.sql` 可独立上线。它保留现有错误表，将新写入的原始错误文本和完整浏览器信息归为有限的诊断值，并收紧匿名管理接口权限。原数据不作回填，60 天清理由接受新上报时触发。
+
+安卓更新先确认网页已开启 App 专用 PKCE。正式发布使用现有签名密钥；没有密钥时工作流失败。使用测试手机验证从旧版覆盖安装、谷歌登录回跳以及定位和选图。

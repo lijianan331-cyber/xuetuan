@@ -853,6 +853,7 @@
        几张照片同时传（以前一张一张传，保存要等很久，用户 2026-11-01）；
        选好照片就先在后台传（preupload），点保存时多半已经传完。每张照片的上传只做一次，失败了保存时再试 */
     function uploadOne(ph) {
+      if (ph.discarded) return Promise.resolve(null);
       var path = photoPath(ph.id);
       if (ph.uploadedPath === path) return Promise.resolve(path);
       if (ph._up && ph._upPath === path) return ph._up;
@@ -876,6 +877,8 @@
       var done = 0;
       if (progress && photos.length) progress('upload', 0, photos.length);
       return Promise.all(photos.map(function (ph) {
+        // A timed-out write may have committed. Never delete its media as a discarded preview.
+        ph.writeAttempted = true;
         return uploadOne(ph).then(function (path) { done++; if (progress) progress('upload', done, photos.length); return path; });
       })).then(function (paths) {
         var good = paths.filter(Boolean);
@@ -1022,22 +1025,17 @@
         return client.auth.linkIdentity({ provider: 'google', options: { redirectTo: authReturnURL() } }).then(ok);
       },
       signOut: function () { return client.auth.signOut().then(ok); },
-      /* 自助删除账号（用户 2026-11-06）：先用存储接口删掉本人文件夹里的照片，再让数据库删账号和全部数据，最后本机退出 */
+      /* Storage cleanup and account deletion are coordinated on the server. */
       deleteAccount: function () {
         var id = uidNow();
         if (!id) return Promise.reject(new Error('login required'));
-        var bucket = client.storage.from('photos');
-        function wipe(round) {
-          if (round > 20 || typeof bucket.list !== 'function') return Promise.resolve();
-          return bucket.list(id, { limit: 1000 }).then(function (res) {
-            var names = (res && res.data || []).filter(function (f) { return f && f.name; }).map(function (f) { return id + '/' + f.name; });
-            if (!names.length) return null;
-            return bucket.remove(names).then(function (r) { if (!(r && r.error) && names.length >= 1000) return wipe(round + 1); return null; });
-          });
-        }
-        return wipe(0).catch(function () {}).then(function () { return client.rpc('xuetuan_delete_my_account'); }).then(function (res) {
+        return client.functions.invoke('xuetuan-delete-account', { body: { confirmed: true } }).then(function (res) {
           if (res.error) throw res.error;
-          return client.auth.signOut({ scope: 'local' }).then(function () {}, function () {});
+          if (!res.data || res.data.status !== 'deleted') {
+            throw new Error(res.data && res.data.status === 'pending' ? 'XUETUAN_DELETE_PENDING' : 'XUETUAN_DELETE_UNAVAILABLE');
+          }
+          if (uidNow() !== id) throw new Error('Account changed');
+          return client.auth.signOut({ scope: 'local' });
         });
       },
 
@@ -1077,6 +1075,17 @@
       },
       invalidatePhotoURL: function (id) { [id,id+THUMB_KEY].forEach(function (k) { if (!/^blob:/.test(photoURLs.get(k) || '')) { photoURLs.delete(k); photoExpiries.delete(k); photoRequests.delete(k); } }); },
       preupload: function (photos) { if (uidNow()) photos.forEach(function (ph) { if (ph.blob) uploadOne(ph); }); },
+      discardPreupload: function (ph) {
+        if (!ph || ph.existing || ph.writeAttempted || ph.discarded) return Promise.resolve();
+        ph.discarded = true;
+        var owner = uidNow();
+        if (!owner || !ph._up) return Promise.resolve();
+        return ph._up.then(function (path) {
+          if (path && uidNow() === owner && path.indexOf(owner + '/') === 0 && !ph.writeAttempted) {
+            return removePhotos([path]);
+          }
+        }, function () {});
+      },
       hasPhotoURL: function (id) { return photoURLs.has(id); },
 
       /* ---- 写 ---- */
@@ -1346,7 +1355,7 @@
     saved = h.slice(0,8)+'-'+h.slice(8,12)+'-'+h.slice(12,16)+'-'+h.slice(16,20)+'-'+h.slice(20);
     lsSet('xuetuan:browser-device:v1',saved); return saved;
   }
-  /* 在安卓 app 里（壳的 UA 带 XueTuanApp）谷歌登录在手机浏览器里做，做完跳回 xuetuan://auth，app 再把结果交给网页。
+  /* 在安卓 app 里（壳的 UA 带 XueTuanApp）谷歌登录在手机浏览器里做，做完回到 xuetuan://auth，App 把一次性 PKCE 授权码交给原网页会话。
      要在 Supabase 的 Redirect URLs 里加上 xuetuan://auth，否则会跳回网站。 */
   function authReturnURL() {
     if (/XueTuanApp\//.test(navigator.userAgent)) return 'xuetuan://auth';
@@ -1362,26 +1371,37 @@
     var code = hash.get('error_code') || query.get('error_code') || hash.get('error') || query.get('error');
     return code ? { code: code, description: hash.get('error_description') || query.get('error_description') || '' } : null;
   })();
-  var sbClient = window.supabase && window.supabase.createClient && SUPABASE_URL ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { global: { headers: { 'x-xuetuan-device': browserDeviceId() }, fetch: function (url, options) { if (navigator.onLine === false && options && options.method && !/^(GET|HEAD)$/i.test(options.method)) return Promise.reject(new Error('Offline: reconnect to send')); return fetch(url, options); } } }) : null;
+  var sbClient = window.supabase && window.supabase.createClient && SUPABASE_URL ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { flowType: /XueTuanApp\//.test(navigator.userAgent) ? 'pkce' : 'implicit' }, global: { headers: { 'x-xuetuan-device': browserDeviceId(), 'x-client-info': 'xuetuan-delete-safe/1' }, fetch: function (url, options) { if (navigator.onLine === false && options && options.method && !/^(GET|HEAD)$/i.test(options.method)) return Promise.reject(new Error('Offline: reconnect to send')); return fetch(url, options); } } }) : null;
   var store = (function () {
     var forceLocal = /[?&]local(=|&|$)/.test(location.search) || window.XUETUAN_LOCAL;
     if (!forceLocal && sbClient) return remoteStore(sbClient);
     return localStore();
   })();
 
-  /* 错误上报（用户 2026-11-06 同意）：线上出错时往 client_errors 记一条，只有错误类型、页面、浏览器型号，
-     不记内容；用户自己读不到。表还没建就悄悄失败。每次打开最多 8 条，同样的只记一次；测试里关掉（window.__reportErrors 打开） */
-  var errSent = 0, errSeen = {};
+  /* Send known codes only. Error strings can contain content or request URLs. */
+  var errSent = 0, errSeen = new Set();
   function reportError(kind, msg) {
     try {
       if (!sbClient || store.mode !== 'remote' || errSent >= 8) return;
       if (navigator.webdriver && !window.__reportErrors) return;
-      msg = String(msg || '').slice(0, 300);
-      var key = kind + '|' + msg;
-      if (errSeen[key]) return;
-      errSeen[key] = 1; errSent++;
-      sbClient.from('client_errors').insert({ kind: String(kind).slice(0, 40), message: msg, page: ((state.view || '') + '/' + (state.tab || '')).slice(0, 80), ua: String(navigator.userAgent || '').slice(0, 200), app: String(location.hostname || '').slice(0, 40) }).then(function () {}, function () {});
-    } catch (e) { /* 上报本身出错就算了 */ }
+      if (['js', 'promise', 'save', 'delete-account'].indexOf(kind) < 0) return;
+      var match = /\b(XUETUAN_(?:SAVE_TIMEOUT|WRITE_LOST|DELETE_PENDING|DELETE_UNAVAILABLE))\b/.exec(String(msg || ''));
+      var code = match ? match[1] : 'UNKNOWN';
+      var page = String(state.view || '') + '/' + String(state.tab || '');
+      if (!/^[a-z-]{0,30}\/[a-z-]{0,30}$/i.test(page)) page = 'unknown';
+      var ua = navigator.userAgent || '';
+      var browser = ['MicroMessenger', 'Edg', 'Firefox', 'Chrome', 'Safari'].find(function (name) {
+        return ua.indexOf(name) !== -1;
+      });
+      var key = [kind, code, page].join('|');
+      if (errSeen.has(key)) return;
+      errSeen.add(key);
+      errSent++;
+      sbClient.from('client_errors').insert({
+        kind: kind, message: code, page: page, ua: browser || 'Other',
+        app: location.hostname === 'xuetuan.vercel.app' ? 'production' : 'preview'
+      }).then(function () {}, function () {});
+    } catch (e) { /* Error reporting is best effort. */ }
   }
   window.addEventListener('error', function (e) {
     var m = e && e.message;

@@ -576,7 +576,7 @@
     confirmBox(state.lang === 'en' ? L('Clear this draft and start over?') : '清空这份草稿，重新开始？', state.lang === 'en' ? L('Clear') : '清空').then(function (ok) {
       if (!ok || state.form !== f) return;
       clearFormDraft();
-      if (f) f.photos.forEach(releaseFormPreview);
+      if (f) f.photos.forEach(discardFormPhoto);
       state.form = null;
       if (f && f.post) { state.posting = true; state.form = newForm(); state.view = 'form'; render(); setSnap('full'); }
       else openAdd();

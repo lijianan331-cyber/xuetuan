@@ -4,10 +4,7 @@
 name: Android app
 
 on:
-  push:
-    paths:
-      - 'android/**'
-      - '.github/workflows/android.yml'
+  # Publish only after the matching website and login have been verified.
   workflow_dispatch:
 
 permissions:
@@ -27,21 +24,18 @@ jobs:
         with:
           gradle-version: '8.9'
       # 签名钥匙：仓库 Settings → Secrets 里有 XT_KEYSTORE_B64 和 XT_STORE_PASS 就用它（以后更新能直接覆盖安装）；
-      # 没有就临时生成一个，这样的包更新时要先卸载旧的再装。
+      # 缺少正式签名时中止发布，避免发布无法覆盖安装的包。
       - name: Signing key
         env:
           KEYSTORE_B64: ${{ secrets.XT_KEYSTORE_B64 }}
           STORE_PASS: ${{ secrets.XT_STORE_PASS }}
         run: |
-          if [ -n "$KEYSTORE_B64" ] && [ -n "$STORE_PASS" ]; then
-            echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/xt.jks"
-            echo "XT_STORE_PASS=$STORE_PASS" >> "$GITHUB_ENV"
-          else
-            PASS=$(openssl rand -hex 16)
-            echo "::add-mask::$PASS"
-            keytool -genkeypair -keystore "$RUNNER_TEMP/xt.jks" -storepass "$PASS" -keypass "$PASS" -alias xuetuan -keyalg RSA -keysize 2048 -validity 36500 -dname "CN=XueTuan, O=XueTuan, C=MY"
-            echo "XT_STORE_PASS=$PASS" >> "$GITHUB_ENV"
+          if [ -z "$KEYSTORE_B64" ] || [ -z "$STORE_PASS" ]; then
+            echo "::error::Configure the existing release signing key before publishing an APK."
+            exit 1
           fi
+          printf '%s' "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/xt.jks"
+          echo "XT_STORE_PASS=$STORE_PASS" >> "$GITHUB_ENV"
           echo "XT_KEYSTORE=$RUNNER_TEMP/xt.jks" >> "$GITHUB_ENV"
       - name: Build APK
         run: gradle -p android assembleRelease -PversionCode=${{ github.run_number }} --no-daemon

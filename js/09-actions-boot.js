@@ -74,7 +74,12 @@
   }
   function runDeleteAccount(btn) {
     var en = state.lang === 'en';
-    if (btn) { btn.disabled = true; btn.textContent = en ? L('Deleting…') : '正在删除…'; }
+    if (!store.deleteAccount || (btn && btn.dataset.deleting === '1')) return;
+    if (btn) {
+      btn.dataset.deleting = '1';
+      btn.disabled = true;
+      btn.textContent = en ? L('Deleting…') : '正在删除…';
+    }
     store.deleteAccount().then(function () {
       try { if (window.XueOffline && XueOffline.clear) XueOffline.clear(); } catch (e) { /* 缓存清不掉不影响 */ }
       closeModal(false);
@@ -82,9 +87,11 @@
       setTimeout(function () { toast(en ? L('Your account and data were deleted.') : '账号和数据已经删除'); }, 900);
       state.tab = 'home'; state.scope = 'all'; goFeed();
     }, function (e) {
-      if (btn) { btn.disabled = false; btn.textContent = en ? L('Delete permanently') : '永久删除'; }
+      if (btn) { delete btn.dataset.deleting; btn.disabled = false; btn.textContent = en ? L('Delete permanently') : '永久删除'; }
       reportError('delete-account', e && e.message || e);
-      toast(en ? L('Could not delete right now. Please try again later.') : '暂时没删成，请稍后再试');
+      var pending = e && e.message === 'XUETUAN_DELETE_PENDING';
+      toast(pending ? (en ? L('Deletion started. Retry to finish removing your data.') : '删除尚未完成，请重试以继续清理。')
+        : (en ? L('Could not confirm deletion. Please try again later.') : '暂时无法确认删除结果，请稍后重试。'));
     });
   }
   function openAreaDialog() {
@@ -628,10 +635,10 @@
       case 'f-photo-del':
         if (!state.form || state.form.saving) break;
         state.form.photos = state.form.photos.filter(function (ph) {
-          if (ph.id === d.id) releaseFormPreview(ph);
+          if (ph.id === d.id) discardFormPhoto(ph);
           return ph.id !== d.id;
         });
-        renderFormPhotos(); break;
+        renderFormPhotos(); saveFormDraft(); break;
       case 'nearby-back': if (formKeepsDraft(state.form)) returnPostComposer(); else { state.form = null; goFeed(); } break;
       case 'near-pick': state.form.placeId = d.id; state.view = 'form'; render(); break;
       case 'near-new': state.view = 'form'; render(); break;
