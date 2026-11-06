@@ -89,7 +89,7 @@
     if (snap === 'hidden') return 0;
     if (snap === 'peek') return peekH();
     if (snap === 'half') return Math.round((H - tabbarH()) * 0.5);
-    return panel.offsetHeight || H;   /* full；page（整页）时面板本身就是整屏高 */
+    return panelH() || H;   /* full；page（整页）时面板本身就是整屏高 */
   }
   /* 收到最低时只露出标题这一截（像谷歌地图收起来的样子），不露半截列表：量到标题（和示例提示）的底边为止 */
   function peekH() {
@@ -97,7 +97,9 @@
     if (!last) return 96;
     return clamp(Math.round(last.offsetTop + last.offsetHeight + 10), 64, 150);
   }
-  function tabbarH() { var tb = $('#tabbar'); return tb && isMobile() ? tb.offsetHeight : 0; }
+  /* 底栏可以是小数高（55.5px），面板高度用不取整的量法，不然会差半个像素 */
+  function panelH() { return panel.getBoundingClientRect().height; }
+  function tabbarH() { var tb = $("#tabbar"); return tb && isMobile() ? tb.getBoundingClientRect().height : 0; }
   /* 足迹的列表面板记住拉到多高，切回来时还是那样；首页、我的是整页，探索只有地图，都不记 */
   function rememberFeedSnap() {
     if (state.view === 'feed' && state.tab === 'foot' && state.scope === 'mine' && /^(peek|half|full)$/.test(state.snap)) state.feedSnap = state.snap;
@@ -118,10 +120,10 @@
     /* 先标上 page，面板变成整屏高，再量 */
     document.body.dataset.snap = isMobile() ? state.snap : '';
     /* 露出来的高度不能超过面板本身，不然面板会悬在半空 */
-    var v = Math.min(snapVisible(state.snap), panel.offsetHeight || Infinity);
+    var v = Math.min(snapVisible(state.snap), panelH() || Infinity);
     /* 收起时连标签栏的高度也一起移出屏幕 */
     panel.style.setProperty('--visible', (state.snap === 'hidden' && isMobile() ? -(parseFloat(getComputedStyle(panel).bottom) || 0) : v) + 'px');
-    panel.style.setProperty('--hidden', (isMobile() ? Math.max(0, panel.offsetHeight - v) : 0) + 'px');
+    panel.style.setProperty('--hidden', (isMobile() ? Math.max(0, panelH() - v) : 0) + 'px');
     stage.style.setProperty('--sheet-visible', (isMobile() ? Math.min(v, Math.round((appH || window.innerHeight) * 0.5)) : 0) + 'px');
     if(typeof syncPersonMapLayout==='function')syncPersonMapLayout(false);
   }
