@@ -51,7 +51,7 @@
   }
   setInterval(function () { if (homeVisible()) refreshHome(false); }, 45000);
   document.addEventListener('visibilitychange', function () { if (homeVisible()) refreshHome(false); });
-  /* 姐妹站雪拼（拼车）：首页顶上一个小图标，点了打开 xuepin/，同一个账号（用户 2026-11-06） */
+  /* 姐妹站雪拼（拼车）：首页“最新分享”右边、刷新上面一个小图标，点了打开 xuepin/，同一个账号（用户 2026-11-06） */
   function xuepinButton() {
     var label = state.lang === 'en' ? L('XuePin · carpool') : '雪拼 · 拼车';
     return '<a class="home-xuepin" href="xuepin/" aria-label="' + esc(label) + '" title="' + esc(label) + '"><img src="xuepin/icons/xuepin-icon-180.png" width="30" height="30" alt=""></a>';
@@ -60,13 +60,13 @@
     var items = homeReviews(), h = '';
     if (isMobile()) {
       h += '<div class="home-top"><div class="home-brand"><span class="app-logo" role="img" aria-label="雪团"><img src="assets/app-icon-sheet.png" alt=""></span><b>雪团</b></div>' +
-        '<button type="button" class="home-search" data-action="search">' + '<img src="assets/search-pin.png" width="24" height="24" alt=""><span>' + esc(t('searchPh')) + '</span></button>' + xuepinButton() + langButtonHTML() + appShareButton() + '</div>' +
+        '<button type="button" class="home-search" data-action="search">' + '<img src="assets/search-pin.png" width="24" height="24" alt=""><span>' + esc(t('searchPh')) + '</span></button>' + langButtonHTML() + appShareButton() + '</div>' +
         '<div class="home-map" id="home-map"><button type="button" class="home-map-btn" data-action="tab" data-tab="explore" aria-label="' + esc(t('openMap')) + '">' +
         '<span class="hm-pill">' + CTRL_ICON.compass + esc(t('openMap')) + '</span></button>' +
         '<div class="home-attrib">' + $('.attrib').innerHTML + '</div></div>';
     }
     if (!isMobile()) h += '<div style="display:flex;justify-content:flex-end">' + langButtonHTML() + appShareButton() + '</div>';
-    h += '<div class="home-sec"><h2>' + esc(t('latest')) + '</h2></div>';
+    h += '<div class="home-sec"><h2>' + esc(t('latest')) + '</h2>' + xuepinButton() + '</div>';
     h += homeFiltersHTML();
     /* 首次加载：先放四张灰卡片占位（不再是一行字 + 空白），加载完换成真卡片 */
     if (!items.length && state.bootLoading) h += '<ul class="post-grid skeleton" aria-hidden="true">' + '<li class="post-card"><span class="sk-cover"></span><span class="sk-line"></span><span class="sk-line short"></span></li>'.repeat(4) + '</ul>' +

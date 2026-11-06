@@ -742,7 +742,7 @@ textarea.bk-comment { min-height: 40px; height: 40px; padding: 8px 12px; }
 .home-search img { flex: none; border-radius: 8px; }
 .home-search svg { flex: none; width: 17px; height: 17px; color: var(--accent); }
 .home-share { flex: none; width: 36px; height: 36px; color: var(--food); }
-.home-xuepin { flex: none; display: block; width: 30px; height: 30px; border-radius: 9px; overflow: hidden; box-shadow: 0 1px 3px rgba(150, 70, 0, .22); -webkit-tap-highlight-color: transparent; }
+.home-xuepin { flex: none; margin-left: auto; display: block; width: 30px; height: 30px; border-radius: 9px; overflow: hidden; box-shadow: 0 1px 3px rgba(150, 70, 0, .22); -webkit-tap-highlight-color: transparent; }
 .home-xuepin img { display: block; width: 100%; height: 100%; }
 .home-xuepin:active { transform: scale(.94); }
 .home-search span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -1282,9 +1282,3 @@ html[data-page="me"] #view .field.me-basemap { display: flex; flex-direction: ro
 #offline-status[hidden]{display:none}
 
 .read-more{display:flex;justify-content:center;padding:18px 0 24px}.read-more .btn{min-height:40px}
-/* 首页顶栏放了雪拼图标后，窄屏（≤380px）收紧间距，给搜索框多留几个字 */
-@media (max-width: 380px) {
-  .home-top { gap: 7px; }
-  .home-lang { min-width: 40px; padding: 0 8px; }
-  .home-share { width: 30px; }
-}
