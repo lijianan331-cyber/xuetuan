@@ -989,6 +989,8 @@ html[data-page="messages"] #view { display:flex; flex-direction:column; height:1
 .co-tx b { font-size: 15px; }
 .co-tx small { color: var(--muted); font-size: 12.5px; line-height: 1.45; }
 /* 第一次打开的说明卡（2026-11-06）：三行，每行一个小图标 */
+.intro-lang { display: flex; }
+.intro-lang button { flex: 1; min-width: 0; padding-left: 4px; padding-right: 4px; white-space: nowrap; }
 .intro-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
 .intro-list li { display: flex; align-items: flex-start; gap: 12px; font-size: 14.5px; line-height: 1.5; color: var(--ink); }
 .intro-ic { flex: none; display: grid; place-items: center; width: 32px; height: 32px; border-radius: 10px; background: var(--accent-soft); color: var(--accent); }

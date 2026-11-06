@@ -32,14 +32,14 @@
       return '<button type="button" class="compose-opt" data-action="' + action + '"><span class="co-ic" aria-hidden="true">' + icon + '</span><span class="co-tx"><b>' + esc(title) + '</b><small>' + esc(sub) + '</small></span></button>';
     }
     openModal('<div class="modal-card compose-choice" role="dialog" aria-modal="true" aria-label="' + esc(en ? L('What do you want to add?') : '想记点什么？') + '"><h3>' + esc(en ? L('What do you want to add?') : '想记点什么？') + '</h3>' +
-      opt('compose-record', ICON.pin, en ? L('A place I went') : '记一个去过的地方', en ? L('Saved to your footprints. Share to the big map if you like; photos and words optional.') : '存进足迹，可以选分享到大地图；照片和文字都可以不填') +
+      opt('compose-record', ICON.pin, en ? L('A place I went') : '记一个去过的地方', en ? L('Saved to your footprints. Share to the big map if you like.') : '存进足迹，可以选分享到大地图') +
       opt('compose-post', ICON.camera, en ? L('A post') : '发帖', en ? L('Photos and a few words, shown on the home feed.') : '有图有文字，会出现在首页') +
       '<button type="button" class="btn ghost" data-modal="no">' + esc(t('cancel')) + '</button></div>');
   }
   /* 第一次打开的简短说明（用户 2026-11-06 同意）：只出现一次，一张卡片，点“开始用”就关。
      已经有自己记录的老用户不出；自动化测试里不出，网址加 ?intro 强制出 */
-  function maybeIntro() {
-    var force = /[?&]intro(=|&|$)/.test(location.search);
+  function maybeIntro(again) {
+    var force = again === true || /[?&]intro(=|&|$)/.test(location.search);
     try {
       if (!force && (navigator.webdriver || localStorage.getItem('xuetuan:intro:v1'))) return;
       localStorage.setItem('xuetuan:intro:v1', '1');
@@ -48,8 +48,8 @@
     if (!$('#modal').hidden || state.view !== 'feed') return;
     var en = state.lang === 'en';
     function row(icon, text) { return '<li><span class="intro-ic" aria-hidden="true">' + icon + '</span><span>' + esc(text) + '</span></li>'; }
-    openModal('<div class="modal-card intro-card" role="dialog" aria-modal="true" aria-labelledby="intro-title"><h3 id="intro-title">' + esc(en ? L('Welcome to XueTuan') : '欢迎来到雪团') + '</h3><ul class="intro-list">' +
-      row('<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>', en ? L('Tap + at the bottom to save a place you went. Photos and words are optional.') : '点底部中间的 ＋，记下去过的地方，照片和文字都可以不填') +
+    openModal('<div class="modal-card intro-card" role="dialog" aria-modal="true" aria-labelledby="intro-title"><h3 id="intro-title">' + esc(en ? L('Welcome to XueTuan') : '欢迎来到雪团') + '</h3><div class="seg intro-lang" role="group" aria-label="Language / 语言">' + TR_LANGS.map(function (l) { return '<button type="button" data-action="intro-lang" data-lang="' + l[0] + '" aria-pressed="' + (trLang() === l[0]) + '">' + esc(l[0] === 'id' ? 'Indonesia' : l[1]) + '</button>'; }).join('') + '</div><ul class="intro-list">' +
+      row('<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>', en ? L('Tap + at the bottom to save a place you went.') : '点底部中间的 ＋，记下去过的地方') +
       row(ICON.pin, en ? L('Records are private by default. Turn on Share to the big map to let others see them.') : '记录默认只有自己能看；打开「分享到大地图」，大家才看得到') +
       row('<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><path d="m3.5 6.5 5.5-2.5 6 2.5 5.5-2.5v13.5l-5.5 2.5-6-2.5-5.5 2.5z"/><path d="M9 4v13.5M15 6.5V20"/></svg>', en ? L('Footprints is your own map. Explore shows what classmates recommend.') : '「足迹」是你自己的地图，「探索」看大家推荐的地方') +
       '</ul><button type="button" class="btn primary" data-modal="no">' + esc(en ? L('Get started') : '开始用') + '</button></div>');
@@ -539,6 +539,8 @@
       case 'search-retry': osm.q = ''; osm.ck = ''; queueOsmSearch(); renderSearchResults(); break;
       case 'set-lang': lsSet(LS_TRLANG, d.lang); if (d.lang === state.lang) { applyStaticI18n(); renderChrome(); render(); refreshMap(); patchLabels(); } else setLang(d.lang); break;
       case 'lang-menu': openBSheet('lang'); break;
+      /* 第一次打开的说明卡上直接选语言，选完卡片换成新语言 */
+      case 'intro-lang': lsSet(LS_TRLANG, d.lang); if (state.lang !== (d.lang === 'zh' ? 'zh' : 'en')) setLang(d.lang === 'zh' ? 'zh' : 'en'); else { applyStaticI18n(); renderChrome(); render(); refreshMap(); patchLabels(); } closeModal(false); maybeIntro(true); break;
       case 'pick-lang': lsSet(LS_TRLANG, d.lang); closeBSheet(); if (state.lang !== (d.lang === 'zh' ? 'zh' : 'en')) setLang(d.lang === 'zh' ? 'zh' : 'en'); else { applyStaticI18n(); renderChrome(); render(); refreshMap(); patchLabels(); } break;
       case 'translate': toggleTranslate(el, d.id); break;
       case 'set-style': setBasemap(d.style); break;

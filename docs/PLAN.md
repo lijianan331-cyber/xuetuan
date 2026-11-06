@@ -540,4 +540,4 @@ V2.0 是现在的方向（不是不可推翻），先只做 P0。对照分析：
 - [x] 分享卡片 og 标签；MapLibre / supabase-js 放到 vendor/（长期缓存）
 - [x] 第一次打开说明卡（一次）；游客记满 3 条提醒绑定谷歌（一次）
 - [x] 我的 → 意见反馈与隐私 → 删除账号和全部数据（xuetuan_delete_my_account）
-- [ ] 迁移 20261106100000_errors_and_self_delete.sql（含清真列）等用户在 SQL Editor 运行
+- [x] 迁移 20261106100000_errors_and_self_delete.sql（含清真列）用户 2026-11-06 10:00 已运行，线上核对通过
