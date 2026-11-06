@@ -342,7 +342,7 @@ with sync_playwright() as p:
     check('glyph warm-up: Chinese characters from nearby zoom 6–12 tiles drawn ahead, regular font first, once', len(tile_calls) == 28 and all('/planet/20261022_001001_pt/' in u for u in tile_calls) and wc and wc[0][0] == 'Noto Sans Regular' and sorted(c for s_, c in wc if s_ == 'Noto Sans Regular') == want and len(wc) == len(want) * len({s_ for s_, c in wc}), (len(tile_calls), wc[:12]))
     check('first visit opens straight on campus, no long flight from the globe', len(st['intro']) >= 1 and st['intro'][0].get('center') == [101.7029, 2.8329] and st['intro'][0].get('zoom') == 14.6 and not any((c.get('duration') or 0) > 2000 for c in st['intro']), st['intro'])
     tabs0 = page.locator('#tabbar .tab').all_inner_texts()
-    check('tab bar: home / explore / footprints / me, no + in it', tabs0 == ['首页', '探索', '足迹', '我的'] and page.locator('#tabbar #fab').count() == 0, tabs0)
+    check('tab bar: home / explore / footprints / me (+ the middle add button), the old map fab is not in it', tabs0 == ['首页', '探索', '足迹', '我的'] and page.locator('#tabbar #fab').count() == 0, tabs0)
     # 首页：整页（盖住地图）；上面品牌 + 搜索，地图预览就是那张地图，下面最新分享；只有示例时诚实地说还没有
     home0 = page.evaluate('''(() => { const p = document.querySelector("#panel").getBoundingClientRect(), m = document.getElementById("map").getBoundingClientRect();
       return [document.querySelector("#panel").dataset.snap, Math.round(p.top), document.getElementById("map").parentNode.id, Math.round(m.height), !!document.querySelector(".home-top .home-search")]; })()''')
@@ -355,7 +355,9 @@ with sync_playwright() as p:
     check('tapping the preview opens explore: just the map, sheet tucked away', exp0 == ['hidden', True, 'stage'] and page.get_attribute('#tabbar [data-tab="explore"]', 'aria-current') == 'page', exp0)
     check('no add button on explore', not page.locator('#fab').is_visible())
     tab(page, 'foot')
-    check('footprints: the + add button shows', page.locator('#fab').is_visible() and page.get_attribute('#fab', 'aria-label') == '加一家店' and page.get_attribute('#tabbar [data-tab="foot"]', 'aria-current') == 'page')
+    tb_ = page.evaluate('(() => { const b = document.querySelector("#tab-add").getBoundingClientRect(), t = document.querySelector("#tabbar").getBoundingClientRect(), tabs = [...document.querySelectorAll("#tabbar > *")].map(e => e.id === "tab-add" ? "+" : e.dataset.tab); return { tabs, mid: Math.abs((b.left + b.right) / 2 - (t.left + t.right) / 2) < 2, inBar: b.top >= t.top - 1 && b.bottom <= t.bottom + 1 }; })()')
+    check('the add button sits in the middle of the tab bar (like 小红书/抖音); the old floating + on footprints is gone', tb_['tabs'] == ['home', 'explore', '+', 'foot', 'me'] and tb_['mid'] and tb_['inBar'] and page.locator('#tab-add').is_visible() and not page.locator('#fab').is_visible() and page.get_attribute('#tab-add', 'aria-label') == '记一笔' and page.get_attribute('#tabbar [data-tab="foot"]', 'aria-current') == 'page', tb_)
+    page.click('#tab-add'); page.wait_for_selector('#modal .compose-choice'); page.click('[data-modal="no"]'); page.wait_for_timeout(100)
     check('footprints: been/wishlist lives in filters, no inline switch, nothing recorded', page.locator('#view [data-action="mine-sub"]').count() == 0 and foot_sub(page) == 'mine' and page.inner_text('.view-head .count') == '0')
     tab(page, 'explore')
     check('back to explore: map only again', page.get_attribute('#panel', 'data-snap') == 'hidden')

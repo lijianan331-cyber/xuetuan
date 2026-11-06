@@ -203,7 +203,7 @@ body[data-snap="full"] .campus-btn { opacity: 0; pointer-events: none; }
 .tabbar {
   position: absolute; z-index: 30; left: 0; right: 0; bottom: 0;
   height: var(--tabbar); padding: 0 max(4px, env(safe-area-inset-right, 0px)) env(safe-area-inset-bottom, 0px) max(4px, env(safe-area-inset-left, 0px));
-  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); align-items: stretch;
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)) 64px repeat(2, minmax(0, 1fr)); align-items: stretch;
   background: rgba(255, 255, 255, .94); -webkit-backdrop-filter: blur(18px) saturate(1.6); backdrop-filter: blur(18px) saturate(1.6);
   box-shadow: 0 -.5px 0 var(--hairline), 0 -6px 20px rgba(24, 56, 92, .05);
 }
@@ -216,6 +216,16 @@ body[data-snap="full"] .campus-btn { opacity: 0; pointer-events: none; }
 .tab svg { width: 22px; height: 22px; padding: 2px 13px; box-sizing: content-box; border-radius: 999px; color: var(--tab-color); opacity: .78; transition: background-color .2s, opacity .2s; }
 .tab span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tab { --tab-color: #438bbd; }
+/* 中间的加号（用户 2026-11-06：像小红书、抖音那样放底栏中间），点开先选「记一个去过的地方 / 发帖」 */
+.tab-add { min-width: 0; border: 0; background: none; padding: 0; display: grid; place-items: center; cursor: pointer; }
+.tab-add-pill {
+  display: grid; place-items: center; width: 46px; height: 32px; border-radius: 12px;
+  background: var(--accent); color: var(--accent-ink);
+  background-image: radial-gradient(circle at 35% 28%, rgba(255, 255, 255, .28), rgba(255, 255, 255, 0) 55%);
+  box-shadow: 0 3px 10px color-mix(in srgb, var(--accent) 32%, transparent); transition: transform .15s;
+}
+.tab-add:active .tab-add-pill { transform: scale(.92); }
+.tab-add-pill svg { width: 20px; height: 20px; }
 .tab[data-tab="explore"] { --tab-color: #47978d; }
 .tab[data-tab="foot"] { --tab-color: #5b87b4; }
 .tab[data-tab="me"] { --tab-color: #9279ac; }
@@ -238,7 +248,7 @@ body[data-snap="full"] .campus-btn { opacity: 0; pointer-events: none; }
 }
 .add-fab:active { transform: scale(.94); }
 .add-fab svg { width: 22px; height: 22px; }
-html.scope-my .add-fab { display: grid; }
+/* 足迹地图上的蓝色加号让给了底栏中间的加号（2026-11-06），元素留着不显示 */
 body[data-snap="full"] .add-fab { opacity: 0; pointer-events: none; }
 .attrib {
   position: absolute; z-index: 8;

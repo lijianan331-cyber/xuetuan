@@ -61,7 +61,7 @@
         '<div class="home-attrib">' + $('.attrib').innerHTML + '</div></div>';
     }
     if (!isMobile()) h += '<div style="display:flex;justify-content:flex-end">' + langButtonHTML() + appShareButton() + '</div>';
-    h += '<div class="home-sec"><h2>' + esc(t('latest')) + '</h2><button type="button" class="btn primary small home-publish" data-action="new-post">' + ICON.pen + esc(state.lang === 'en' ? L('Post') : '发帖') + '</button></div>';
+    h += '<div class="home-sec"><h2>' + esc(t('latest')) + '</h2></div>';
     h += homeFiltersHTML();
     /* 首次加载：先放四张灰卡片占位（不再是一行字 + 空白），加载完换成真卡片 */
     if (!items.length && state.bootLoading) h += '<ul class="post-grid skeleton" aria-hidden="true">' + '<li class="post-card"><span class="sk-cover"></span><span class="sk-line"></span><span class="sk-line short"></span></li>'.repeat(4) + '</ul>' +
