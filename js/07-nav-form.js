@@ -844,6 +844,7 @@
       if (f.post) { state.tab = 'home'; state.scope = 'all'; renderFilters(); renderTabs(); goFeed(); }
       else if (f.fromPost && store.review(x.res.review.id)) openPost(x.res.review.id); /* 从帖子里点的编辑，改完回到帖子 */
       else openPlace(x.place.id, { drop: !f.editId });
+      if (!f.editId) maybeGuestBindNudge();
     }).catch(function (e) {
       if (window.console) console.warn('save:', e);
       f.saving = false;

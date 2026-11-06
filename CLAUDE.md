@@ -6,7 +6,7 @@
 - 大改动先给方案，确认后再写代码（PRD 第 16 节的要求）。
 - 区分“PRD 里的需求”和“你的建议”。
 - 改界面（大小、颜色、文案、动效）先看 `docs/UI-STYLE.md`（2026-11-01 定的风格，以后小改照它来）。
-- 应用 = `index.html`（页面骨架）+ `css/app.css`（全部样式）+ `js/01-core.js`…`js/09-actions-boot.js`（按序号加载，共用一个全局作用域，启动代码在最后一个）。没有构建步骤。MapLibre 固定在 5.24.0，不要随意升级。
+- 应用 = `index.html`（页面骨架）+ `css/app.css`（全部样式）+ `js/01-core.js`…`js/09-actions-boot.js`（按序号加载，共用一个全局作用域，启动代码在最后一个）。没有构建步骤。MapLibre 固定在 5.24.0，不要随意升级；它和 supabase-js 放在 `vendor/`（2026-11-06 起不走 jsDelivr，大陆更稳），升级要换文件夹名并改 index.html 和 sw.js。
 - 改完跑 `python tests/test_app.py`（默认只打印失败项和总数，`-v` 才列出全部），保持全部通过；新功能要加对应检查。
 - 完成 PLAN.md 里的一项就把它勾上。
 

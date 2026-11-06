@@ -5,6 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>雪团 XueTuan</title>
 <meta name="description" content="雪团：厦马同学自己的吃喝玩乐地图。记录去过的地方、打分、拍照，收藏想去的地方。">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="雪团 XueTuan">
+<meta property="og:title" content="雪团 · 厦马同学的吃喝玩乐地图">
+<meta property="og:description" content="记下去过的地方、打分、拍照，看看同学们都推荐哪里。">
+<meta property="og:url" content="https://xuetuan.vercel.app/">
+<meta property="og:image" content="https://xuetuan.vercel.app/assets/icon-512.png">
+<meta name="twitter:card" content="summary">
 <meta name="theme-color" content="#FFFFFF">
 <meta name="color-scheme" content="light dark">
 <!-- 加到手机桌面（iPhone：Safari 分享 → 添加到主屏幕）：用雪团图标、全屏打开 -->
@@ -25,8 +32,8 @@
 <link rel="preconnect" href="https://maps.gstatic.com">
 <!-- 网页字体不挡页面：先用手机自带字体画出来，字体到了再换（2026-10-27 提速） -->
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=ZCOOL+QingKe+HuangYou&display=swap" media="print" onload="this.media='all'">
-<link rel="preload" as="script" href="https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.js">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.css">
+<link rel="preload" as="script" href="vendor/maplibre-gl-5.24.0/maplibre-gl.js">
+<link rel="stylesheet" href="vendor/maplibre-gl-5.24.0/maplibre-gl.css">
 <link rel="stylesheet" href="css/app.css">
 <script>
 /* 开屏（用户 2026-11-02）：打开 app 先放一秒多，点一下就跳过；同一个标签页只放一次。
@@ -39,6 +46,14 @@
     document.documentElement.classList.add('splash-on');
   } catch (e) {}
 })();
+</script>
+<script>
+/* 访问统计（用户 2026-11-06）：只在正式网址加载 Vercel Web Analytics（不用 Cookie，只数打开次数和来源）。
+   要在 Vercel 项目的 Analytics 里点 Enable 才生效；没开时这个文件 404，不影响使用 */
+if (location.hostname === 'xuetuan.vercel.app') {
+  window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
+  var vaS = document.createElement('script'); vaS.defer = true; vaS.src = '/_vercel/insights/script.js'; document.head.appendChild(vaS);
+}
 </script>
 </head>
 <body>
@@ -148,8 +163,8 @@
 <input type="file" id="import-file" accept="application/json,.json" hidden>
 <noscript><p style="padding:24px">这个页面需要开启 JavaScript。</p></noscript>
 
-<script src="https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.3/dist/umd/supabase.js"></script>
+<script src="vendor/maplibre-gl-5.24.0/maplibre-gl.js"></script>
+<script src="vendor/supabase-js-2.117.3.js"></script>
 <script src="data/xmum-cafeterias.js"></script>
 <script src="data/halal.js"></script>
 <script src="data/i18n-ui.js"></script>

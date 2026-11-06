@@ -532,3 +532,12 @@ V2.0 是现在的方向（不是不可推翻），先只做 P0。对照分析：
 
 - [x] 聚合运行检查已记录：数据库约196MB、照片对象约46MB，当前数据库死锁为0；这些是本次观测值，不是额度或容量承诺。监控不读取消息正文或导出用户照片。
 - [x] 足迹筛选加“缩小时合并成数字”开关（默认开）；关掉每个地点一个点，只管足迹，选择记在本机（用户 2026-11-05）。
+
+### 2026-11-06 体检后的改进（体检清单 https://claude.ai/artifact/3L9xnyrvieitnkbRNGeqsX）
+- [x] 底栏中间加号（记一个去过的地方 / 发帖）；打开时进入上次停留的栏，我的 → 打开时进入 可固定
+- [x] 错误上报 client_errors（只记类型/页面/浏览器，60 天自动删，每号每小时 30 条）
+- [x] 访问统计：只在 xuetuan.vercel.app 加载 Vercel Web Analytics（要在 Vercel 点 Enable）
+- [x] 分享卡片 og 标签；MapLibre / supabase-js 放到 vendor/（长期缓存）
+- [x] 第一次打开说明卡（一次）；游客记满 3 条提醒绑定谷歌（一次）
+- [x] 我的 → 意见反馈与隐私 → 删除账号和全部数据（xuetuan_delete_my_account）
+- [ ] 迁移 20261106100000_errors_and_self_delete.sql（含清真列）等用户在 SQL Editor 运行

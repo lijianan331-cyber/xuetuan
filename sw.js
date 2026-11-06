@@ -1,6 +1,6 @@
 /* Atomic app-shell releases. This worker never caches API/auth/signed-photo requests. */
 'use strict';
-const VERSION = 'xuetuan-shell-7b077a5a912981eb';
+const VERSION = 'xuetuan-shell-d4e779882f612f9c';
 const MAP_CACHE = 'xuetuan-map-v1';
 const ROOT = new URL('./', self.location.href);
 const SHELL = [
@@ -8,9 +8,7 @@ const SHELL = [
   'assets/app-icon-sheet.png', 'assets/icon-180.png', 'assets/icon-192.png', 'assets/icon-512.png', 'assets/search-pin.png', 'assets/xmum-campus.png',
   'data/xmum-cafeterias.js', 'data/halal.js', 'data/i18n-ui.js',
   'js/00-offline.js', 'js/00-reads.js', 'js/01-core.js', 'js/02-map.js', 'js/03-home-layer.js', 'js/04-ui.js', 'js/05-auth.js', 'js/05-feed.js', 'js/05-identity.js', 'js/05-messages.js', 'js/05-social.js', 'js/06-search.js', 'js/07-nav-form.js', 'js/08-bulk.js', 'js/09-actions-boot.js', 'js/09-reads-ui.js',
-  'https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.js',
-  'https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.css',
-  'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.3/dist/umd/supabase.js'
+  'vendor/maplibre-gl-5.24.0/maplibre-gl.js', 'vendor/maplibre-gl-5.24.0/maplibre-gl.css', 'vendor/supabase-js-2.117.3.js'
 ].map(p => new URL(p, ROOT).href);
 async function checkedFetch(url) {
   const r = await fetch(new Request(url, { cache: 'reload', credentials: new URL(url).origin === ROOT.origin ? 'same-origin' : 'omit' }));

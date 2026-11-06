@@ -36,6 +36,57 @@
       opt('compose-post', ICON.camera, en ? L('A post') : '发帖', en ? L('Photos and a few words, shown on the home feed.') : '有图有文字，会出现在首页') +
       '<button type="button" class="btn ghost" data-modal="no">' + esc(t('cancel')) + '</button></div>');
   }
+  /* 第一次打开的简短说明（用户 2026-11-06 同意）：只出现一次，一张卡片，点“开始用”就关。
+     已经有自己记录的老用户不出；自动化测试里不出，网址加 ?intro 强制出 */
+  function maybeIntro() {
+    var force = /[?&]intro(=|&|$)/.test(location.search);
+    try {
+      if (!force && (navigator.webdriver || localStorage.getItem('xuetuan:intro:v1'))) return;
+      localStorage.setItem('xuetuan:intro:v1', '1');
+    } catch (e) { if (!force) return; }
+    if (!force && store.reviews().some(function (r) { return isMine(r) && !r.sample; })) return;
+    if (!$('#modal').hidden || state.view !== 'feed') return;
+    var en = state.lang === 'en';
+    function row(icon, text) { return '<li><span class="intro-ic" aria-hidden="true">' + icon + '</span><span>' + esc(text) + '</span></li>'; }
+    openModal('<div class="modal-card intro-card" role="dialog" aria-modal="true" aria-labelledby="intro-title"><h3 id="intro-title">' + esc(en ? L('Welcome to XueTuan') : '欢迎来到雪团') + '</h3><ul class="intro-list">' +
+      row('<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>', en ? L('Tap + at the bottom to save a place you went. Photos and words are optional.') : '点底部中间的 ＋，记下去过的地方，照片和文字都可以不填') +
+      row(ICON.pin, en ? L('Records are private by default. Turn on Share to the big map to let others see them.') : '记录默认只有自己能看；打开「分享到大地图」，大家才看得到') +
+      row('<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><path d="m3.5 6.5 5.5-2.5 6 2.5 5.5-2.5v13.5l-5.5 2.5-6-2.5-5.5 2.5z"/><path d="M9 4v13.5M15 6.5V20"/></svg>', en ? L('Footprints is your own map. Explore shows what classmates recommend.') : '「足迹」是你自己的地图，「探索」看大家推荐的地方') +
+      '</ul><button type="button" class="btn primary" data-modal="no">' + esc(en ? L('Get started') : '开始用') + '</button></div>');
+  }
+  /* 游客记满 3 条，提醒一次绑定谷歌（用户 2026-11-06 同意）：游客记录跟着浏览器走，清了数据就找不回 */
+  function maybeGuestBindNudge() {
+    try {
+      if (!isGuest() || localStorage.getItem('xuetuan:bind-nudge')) return;
+      if (store.reviews().filter(function (r) { return isMine(r) && !r.sample; }).length < 3) return;
+      localStorage.setItem('xuetuan:bind-nudge', '1');
+    } catch (e) { return; }
+    setTimeout(function () {
+      if (!$('#modal').hidden || state.view === 'form') return;
+      var en = state.lang === 'en';
+      openModal('<div class="modal-card bind-nudge" role="dialog" aria-modal="true" aria-labelledby="bind-title"><h3 id="bind-title">' + esc(en ? L('3 records saved') : '已经记了 3 条啦') + '</h3><p class="f-hint">' + esc(en ? L('Guest records live in this browser. If its data is cleared they cannot be recovered. Link a Google account to keep them on any phone.') : '游客的记录跟着这个浏览器走，清了浏览器数据就找不回来。绑定谷歌账号，换手机也还在。') + '</p><button type="button" class="btn primary" data-action="bind-nudge-go">' + esc(en ? L('Link Google') : '去绑定') + '</button><button type="button" class="btn ghost" data-modal="no">' + esc(en ? L('Later') : '以后再说') + '</button></div>');
+    }, 1200);
+  }
+  /* 自助删除账号（用户 2026-11-06 同意）：我的 → 意见反馈与隐私 → 删除账号和全部数据，再确认一次 */
+  function openDeleteAccount() {
+    var en = state.lang === 'en';
+    openModal('<div class="modal-card delete-account" role="dialog" aria-modal="true" aria-labelledby="del-title"><h3 id="del-title">' + esc(en ? L('Delete your account?') : '删除账号？') + '</h3><p class="f-hint">' + esc(en ? L('This permanently deletes all your records, photos, saved places, home, likes, comments and messages. It cannot be undone.') : '会永久删除你的全部记录、照片、收藏、家、点赞、留言和私信，删了就找不回来。') + '</p><button type="button" class="btn danger" data-action="delete-account-go">' + esc(en ? L('Delete permanently') : '永久删除') + '</button><button type="button" class="btn ghost" data-modal="no">' + esc(t('cancel')) + '</button></div>');
+  }
+  function runDeleteAccount(btn) {
+    var en = state.lang === 'en';
+    if (btn) { btn.disabled = true; btn.textContent = en ? L('Deleting…') : '正在删除…'; }
+    store.deleteAccount().then(function () {
+      try { if (window.XueOffline && XueOffline.clear) XueOffline.clear(); } catch (e) { /* 缓存清不掉不影响 */ }
+      closeModal(false);
+      /* 退出登录本身也会弹“已退出”，晚一点再说删好了，免得被盖掉 */
+      setTimeout(function () { toast(en ? L('Your account and data were deleted.') : '账号和数据已经删除'); }, 900);
+      state.tab = 'home'; state.scope = 'all'; goFeed();
+    }, function (e) {
+      if (btn) { btn.disabled = false; btn.textContent = en ? L('Delete permanently') : '永久删除'; }
+      reportError('delete-account', e && e.message || e);
+      toast(en ? L('Could not delete right now. Please try again later.') : '暂时没删成，请稍后再试');
+    });
+  }
   function openAreaDialog() {
     if (!map) { toast(t('mapFail')); return; }
     openModal('<form class="modal-card" id="area-form"><h3>' + esc(t('saveArea')) + '</h3>' +
@@ -590,6 +641,9 @@
       case 'login-google': store.signInWithGoogle().catch(function (err) { toast(t('loginFail', { m: (err && err.message) || '' })); }); break;
       case 'auth-return-guest': authReturnGuest(); break;
       case 'logout': store.signOut().catch(function () {}); break;
+      case 'delete-account': openDeleteAccount(); break;
+      case 'delete-account-go': runDeleteAccount(el); break;
+      case 'bind-nudge-go': closeModal(false); setTab('me'); break;
       case 'link-google': store.linkGoogle().catch(function (err) { toast(t('loginFail', { m: (err && err.message) || '' })); }); break;
       case 'upload-local': uploadLegacy(); break;
       case 'export': exportData(); break;
@@ -744,6 +798,7 @@
     if (state.view === 'form') captureFormDraft();
     renderChrome(); refreshMap(); render();
     authFinishReturn();
+    if (!incomingShare) setTimeout(maybeIntro, 600);
   });
 
 

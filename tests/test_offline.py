@@ -11,9 +11,9 @@ STUB = (ROOT / 'tests/stub_supabase.js').read_text(encoding='utf8')
 MAP = (ROOT / 'tests/stub_maplibre.js').read_text(encoding='utf8')
 out = io.BytesIO(); Image.new('RGB', (80, 60), '#74add6').save(out, 'PNG'); PHOTO = out.getvalue()
 CDNS = {
-    'https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.js': '/vendor/map.js',
-    'https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.css': '/vendor/map.css',
-    'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.3/dist/umd/supabase.js': '/vendor/sb.js',
+    'vendor/maplibre-gl-5.24.0/maplibre-gl.js': '/vendor/map.js',
+    'vendor/maplibre-gl-5.24.0/maplibre-gl.css': '/vendor/map.css',
+    'vendor/supabase-js-2.117.3.js': '/vendor/sb.js',
 }
 seed = {
     'profiles': [{'id': 'alpha', 'name': 'Synthetic A'}, {'id': 'beta', 'name': 'Synthetic B'}],

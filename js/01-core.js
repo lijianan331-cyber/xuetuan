@@ -1022,6 +1022,24 @@
         return client.auth.linkIdentity({ provider: 'google', options: { redirectTo: authReturnURL() } }).then(ok);
       },
       signOut: function () { return client.auth.signOut().then(ok); },
+      /* 自助删除账号（用户 2026-11-06）：先用存储接口删掉本人文件夹里的照片，再让数据库删账号和全部数据，最后本机退出 */
+      deleteAccount: function () {
+        var id = uidNow();
+        if (!id) return Promise.reject(new Error('login required'));
+        var bucket = client.storage.from('photos');
+        function wipe(round) {
+          if (round > 20 || typeof bucket.list !== 'function') return Promise.resolve();
+          return bucket.list(id, { limit: 1000 }).then(function (res) {
+            var names = (res && res.data || []).filter(function (f) { return f && f.name; }).map(function (f) { return id + '/' + f.name; });
+            if (!names.length) return null;
+            return bucket.remove(names).then(function (r) { if (!(r && r.error) && names.length >= 1000) return wipe(round + 1); return null; });
+          });
+        }
+        return wipe(0).catch(function () {}).then(function () { return client.rpc('xuetuan_delete_my_account'); }).then(function (res) {
+          if (res.error) throw res.error;
+          return client.auth.signOut({ scope: 'local' }).then(function () {}, function () {});
+        });
+      },
 
       /* ---- 读 ---- */
       me: function () { return cache.profile; },
@@ -1350,6 +1368,31 @@
     if (!forceLocal && sbClient) return remoteStore(sbClient);
     return localStore();
   })();
+
+  /* 错误上报（用户 2026-11-06 同意）：线上出错时往 client_errors 记一条，只有错误类型、页面、浏览器型号，
+     不记内容；用户自己读不到。表还没建就悄悄失败。每次打开最多 8 条，同样的只记一次；测试里关掉（window.__reportErrors 打开） */
+  var errSent = 0, errSeen = {};
+  function reportError(kind, msg) {
+    try {
+      if (!sbClient || store.mode !== 'remote' || errSent >= 8) return;
+      if (navigator.webdriver && !window.__reportErrors) return;
+      msg = String(msg || '').slice(0, 300);
+      var key = kind + '|' + msg;
+      if (errSeen[key]) return;
+      errSeen[key] = 1; errSent++;
+      sbClient.from('client_errors').insert({ kind: String(kind).slice(0, 40), message: msg, page: ((state.view || '') + '/' + (state.tab || '')).slice(0, 80), ua: String(navigator.userAgent || '').slice(0, 200), app: String(location.hostname || '').slice(0, 40) }).then(function () {}, function () {});
+    } catch (e) { /* 上报本身出错就算了 */ }
+  }
+  window.addEventListener('error', function (e) {
+    var m = e && e.message;
+    if (!m || /^Script error\.?$/i.test(m) || /ResizeObserver/.test(m)) return;
+    reportError('js', m + (e.filename ? ' @' + String(e.filename).split('/').pop() + ':' + e.lineno : ''));
+  });
+  window.addEventListener('unhandledrejection', function (e) {
+    var r = e && e.reason, m = r && (r.message || r.code) || String(r);
+    if (/AbortError|Failed to fetch|NetworkError|Load failed/i.test(m)) return;
+    reportError('promise', m);
+  });
 
   function loadView() {
     try { var raw = localStorage.getItem(LS_VIEW); return raw ? JSON.parse(raw) : null; } catch (e) { return null; }
@@ -1724,6 +1767,7 @@
   }
   function securitySaveError(e) {
     var msg = String(e && e.message || e || '');
+    reportError('save', msg + (/MicroMessenger/i.test(navigator.userAgent) ? ' [wechat]' : ''));
     if (/XUETUAN_.*BLOCKED/.test(msg)) return state.lang === 'en' ? L('Publishing is restricted for this account or browser.') : '该账号或浏览器已被限制发布。';
     if (/XUETUAN_RATE_LIMIT/.test(msg)) return state.lang === 'en' ? L('Too many requests. Please try later.') : '操作太频繁，请稍后再试；草稿仍保留。';
     if (/XUETUAN_WRITE_LOST/.test(msg)) return /MicroMessenger/i.test(navigator.userAgent) ? (state.lang === 'en' ? L('WeChat did not deliver this save. Tap ··· at the top right, open in your browser, and save again.') : '微信没把这次保存发出去。点右上角“···”→在浏览器打开，再保存一次。') : (state.lang === 'en' ? L('The network is too slow, so this was not saved. Your draft is kept; tap save again.') : '网络太慢，这次没存上。草稿还在，再点一次保存。');

@@ -209,8 +209,10 @@ def check(name, cond, extra=''):
 def route_all(ctx, supabase=False):
     def handler(route):
         url = route.request.url
-        if supabase and '@supabase/supabase-js' in url:
-            return route.fulfill(status=200, body=STUB_SB, headers={'Content-Type': 'application/javascript', 'Access-Control-Allow-Origin': '*'})
+        if 'supabase-js' in url:
+            # 自带的 vendor/supabase-js-*.js：测试里换成桩；不要后台的页面就当它加载失败（本地模式）
+            if supabase: return route.fulfill(status=200, body=STUB_SB, headers={'Content-Type': 'application/javascript', 'Access-Control-Allow-Origin': '*'})
+            return route.abort()
         if 'exifr@' in url:
             return route.fulfill(status=200, body=STUB_EXIFR, headers={'Content-Type': 'application/javascript', 'Access-Control-Allow-Origin': '*'})
         if 'maplibre-gl.js' in url:
@@ -2165,7 +2167,46 @@ with sync_playwright() as p:
     ver = pgl.evaluate('window.__sb.calls.filter(c => c[0] === "verify").pop()')
     check('email login: the right code logs in (verifyOtp type email) and leaves the login page', ver == ['verify', 'friend@outlook.com', '123456', 'email'] and pgl.evaluate('store.signedIn()') and pgl.locator('#login-code').count() == 0, ver)
     check('guest card offers email login next to Google', 'data-action="login-email"' in APP_SRC.replace('\\"', '"'))
+    # 体检后的改进（用户 2026-11-06 “你认为要做的那些可以做”）
+    # 错误上报：保存失败等会往 client_errors 记一条（只有类型、页面、浏览器），同样的只记一次
+    pgl.evaluate('window.__reportErrors = true; securitySaveError(new Error("XUETUAN_SAVE_TIMEOUT")); securitySaveError(new Error("XUETUAN_SAVE_TIMEOUT"))'); pgl.wait_for_timeout(200)
+    errs_ = pgl.evaluate('window.__sb.db.client_errors.map(r => [r.kind, r.message, Object.keys(r).sort().join(",")])')
+    check('error report: a failed save is logged once to client_errors with only kind/page/browser (no record content)', len(errs_) == 1 and errs_[0][0] == 'save' and 'XUETUAN_SAVE_TIMEOUT' in errs_[0][1] and set(errs_[0][2].split(',')) <= {'kind', 'message', 'page', 'ua', 'app', 'user_id', 'id', 'created_at'}, errs_)
+    # 自助删除账号：我的 → 意见反馈与隐私 → 删除账号和全部数据 → 确认 → 照片文件夹清空、数据库删号、本机退出
+    me_ = pgl.evaluate('me().id')
+    pgl.evaluate('window.__sb.files[me().id + "/a.jpg"] = 10; window.__sb.files[me().id + "/a_t.jpg"] = 5; window.__sb.files["someone-else/b.jpg"] = 7')
+    tab(pgl, 'me')
+    check('me: 删除账号和全部数据 sits in the privacy fold for signed-in users', pgl.locator('.data-details .me-delete').count() == 1 and pgl.inner_text('.data-details .me-delete') == '删除账号和全部数据')
+    pgl.click('.data-details .me-delete'); pgl.wait_for_selector('#modal .delete-account')
+    check('delete account: asks once more and says it is permanent', '永久删除' in pgl.inner_text('#modal') and '找不回来' in pgl.inner_text('#modal'))
+    pgl.screenshot(path=os.path.join(SHOTS, '22-delete-account.png'))
+    pgl.click('[data-action="delete-account-go"]'); pgl.wait_for_timeout(1300)
+    files_ = pgl.evaluate('Object.keys(window.__sb.files)')
+    check('delete account: own photos removed (others kept), server deletes the account, signed out with a toast', pgl.evaluate('window.__sbDeleted') == me_ and files_ == ['someone-else/b.jpg'] and not pgl.evaluate('store.signedIn()') and '已经删除' in pgl.inner_text('#toast') and pgl.locator('#modal').is_hidden(), files_)
+    # 游客记满 3 条提醒一次绑定谷歌
+    pgl.evaluate('store.signInAnonymously()'); pgl.wait_for_timeout(300)
+    pgl.evaluate('window.__realReviews = store.reviews; store.reviews = function () { return [{ userId: me().id }, { userId: me().id }, { userId: me().id }]; }; window.isMine = function () { return true; }; localStorage.removeItem("xuetuan:bind-nudge"); maybeGuestBindNudge()')
+    pgl.wait_for_timeout(1500)
+    check('guest with 3 records gets one reminder to link Google (and only once)', pgl.locator('#modal .bind-nudge').count() == 1 and '换手机也还在' in pgl.inner_text('#modal') and pgl.evaluate('localStorage.getItem("xuetuan:bind-nudge")') == '1')
+    pgl.click('#modal [data-modal="no"]'); pgl.wait_for_timeout(250)
+    pgl.evaluate('maybeGuestBindNudge()'); pgl.wait_for_timeout(1400)
+    check('the link reminder does not come back', pgl.locator('#modal').is_hidden())
     ctxl.close()
+    # 第一次打开的说明卡：只出一次；测试里默认不出，?intro 强制
+    ctxi = browser.new_context(viewport={'width': 360, 'height': 640}, device_scale_factor=2)
+    route_all(ctxi)
+    pgi = ctxi.new_page(); pgi.goto(APP + '?local&intro')
+    pgi.wait_for_selector('#modal .intro-card', timeout=6000); pgi.wait_for_timeout(400)
+    ig_ = pgi.evaluate('(() => { const c = document.querySelector("#modal .intro-card").getBoundingClientRect(); return { n: document.querySelectorAll(".intro-list li").length, fits: c.left >= 8 && c.right <= innerWidth - 8 && c.top >= 0 && c.bottom <= innerHeight, text: document.querySelector(".intro-card").innerText }; })()')
+    check('first open: one welcome card with 3 short lines (+ to record, private by default, footprints vs explore), fits a 360 phone', ig_['n'] == 3 and ig_['fits'] and '＋' in ig_['text'] and '分享到大地图' in ig_['text'], ig_)
+    pgi.screenshot(path=os.path.join(SHOTS, '23-intro.png'))
+    pgi.click('#modal .intro-card .btn.primary'); pgi.wait_for_timeout(250)
+    check('first open: 开始用 closes it and it is remembered', pgi.locator('#modal').is_hidden() and pgi.evaluate('localStorage.getItem("xuetuan:intro:v1")') == '1')
+    ctxi.close()
+    idx_ = open(os.path.join(ROOT, 'index.html'), encoding='utf-8').read()
+    check('share card tags (og:title / og:image) are in the page head', 'property="og:title"' in idx_ and 'property="og:image" content="https://xuetuan.vercel.app/' in idx_)
+    check('map and login libraries are served from the site itself (vendor/), not jsDelivr', 'src="vendor/maplibre-gl-5.24.0/maplibre-gl.js"' in idx_ and 'src="vendor/supabase-js-2.117.3.js"' in idx_ and 'cdn.jsdelivr.net/npm/maplibre-gl' not in idx_ and os.path.getsize(os.path.join(ROOT, 'vendor/maplibre-gl-5.24.0/maplibre-gl.js')) > 900000)
+    check('visit statistics load only on the live address', "location.hostname === 'xuetuan.vercel.app'" in idx_ and '/_vercel/insights/script.js' in idx_)
     # Supabase 一次最多回 1000 行：读地点/记录/家要一页一页接着读，不能只拿到第一页（发布前检查 2026-11-02）
     pg_seed = {'profiles': [{'id': B, 'name': '小B'}], 'homes': [{'user_id': B, 'city': 'Klang', 'lat': 3.0, 'lng': 101.4, 'is_public': True}],
                'places': [{'id': 'pp-%d' % i, 'mode': 'food', 'cat': 'cn', 'precision': 'exact', 'lat': 2.83 + i * 0.001, 'lng': 101.70, 'name': '分页店%d' % i, 'alt_name': '', 'link': '', 'osm': '', 'created_by': B, 'created_at': '2026-10-01T00:00:00Z'} for i in range(5)],

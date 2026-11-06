@@ -8,6 +8,7 @@
     visits: (seed.visits || []).slice(),
     wishlist: (seed.wishlist || []).slice(),
     homes: (seed.homes || []).slice(),
+    client_errors: [],
     poi: (seed.poi || window.__poi || []).slice()
   };
   var files = {}, types = {};
@@ -71,6 +72,7 @@
     if (table === 'wishlist') return row.user_id === uid() && db.places.some(function (p) { return p.id === row.place_id && visible('places', p); });
     if (table === 'places') return row.created_by === uid();
     if (table === 'profiles') return row.id === uid();
+    if (table === 'client_errors') return row.user_id === uid();
     return false;
   }
   function err(msg) { return { data: null, error: { message: msg } }; }
@@ -207,6 +209,15 @@
             db.visits=db.visits.filter(function(r){return r.id!==rv.id;});window.__sb.db.visits=db.visits;
             return Promise.resolve({data:{files:paths,banned:args.decision==='delete_and_ban'},error:null});
           }
+          if (name === 'xuetuan_delete_my_account') {
+            var me0 = uid();
+            if (!me0) return Promise.resolve(err('Sign in first'));
+            if (me0 === window.__sbAdmin) return Promise.resolve(err('XUETUAN_ADMIN_SELF_DELETE'));
+            var n0 = db.visits.filter(function (r) { return r.user_id === me0; }).length;
+            db.visits = db.visits.filter(function (r) { return r.user_id !== me0; }); window.__sb.db.visits = db.visits;
+            window.__sbDeleted = me0;
+            return Promise.resolve({ data: { visits: n0 }, error: null });
+          }
           if (name === 'xuetuan_moderation_pending') return uid()===window.__sbAdmin ? Promise.resolve({data:[],error:null}) : Promise.resolve(err('Admin required'));
           if (name !== 'search_poi') return Promise.resolve(err('no such function'));
           var q = String(args.q || '').toLowerCase();
@@ -252,6 +263,7 @@
                 });
               },
               remove: function (paths) { paths.forEach(function (p) { delete files[p]; }); return Promise.resolve({ data: [], error: null }); },
+              list: function (prefix) { calls.push(['list', prefix]); return Promise.resolve({ data: Object.keys(files).filter(function (p) { return p.indexOf(prefix + '/') === 0; }).map(function (p) { return { name: p.slice(prefix.length + 1) }; }), error: null }); },
               getPublicUrl: function (path) { return { data: { publicUrl: 'https://example.invalid/storage/v1/object/public/' + bucket + '/' + path } }; }
               ,createSignedUrl: function (path, expiry) {
                 calls.push(['sign',path,expiry]);

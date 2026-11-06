@@ -26,7 +26,7 @@ with sync_playwright() as p:
  def context():
   c=b.new_context(viewport={'width':390,'height':780},has_touch=True,is_mobile=True,user_agent='Mozilla/5.0 Mobile MicroMessenger/8.0')
   s['route_all'](c,True);c.add_init_script('window.__sbSeed='+json.dumps(seed,ensure_ascii=False))
-  c.route('https://cdn.jsdelivr.net/npm/@supabase/**',lambda r:r.fulfill(body=s['STUB_SB']+'\n'+extra,content_type='application/javascript'))
+  c.route('**/vendor/supabase-js-*.js',lambda r:r.fulfill(body=s['STUB_SB']+'\n'+extra,content_type='application/javascript'))
   return c
  c=context();pg=c.new_page();errors=[];pg.on('pageerror',lambda e:errors.append(str(e)));pg.set_default_timeout(6000)
  url=s['APP']+'?_vercel_share=public_test_token_123456789&unrelated=discard#error=server_error&error_code=identity_already_exists&error_description=Identity+is+already+linked+to+another+user'
