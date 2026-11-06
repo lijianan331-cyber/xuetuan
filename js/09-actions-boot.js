@@ -533,7 +533,7 @@
       case 'sheet-close': closeBSheet(); break;
       case 'set-score': state.minScore = +d.v; refilter(); break;
       case 'set-dist': state.dist = d.v; refilter(); break;
-      case 'halal-toggle': state.halal = state.halal ? '' : 'halal'; refilter(); break;
+      case 'halal-toggle': if (HALAL_ON) { state.halal = state.halal ? '' : 'halal'; refilter(); } break;
       case 'clear-filters': state.halal = ''; state.cat = 'all'; state.priceAbout = 0; state.minScore = 0; state.dist = 'any'; renderFilters(); refreshMap(); render(); if (state.bsheet) renderBSheet(); break;
       case 'search': rememberFeedSnap(); state.view = 'search'; render(); setSnap('full'); break;
       case 'search-retry': osm.q = ''; osm.ck = ''; queueOsmSearch(); renderSearchResults(); break;

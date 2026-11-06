@@ -1616,6 +1616,9 @@
      先看 data/halal.js 里用户确认过的名单（学校按 楼·铺位，校外按店名 + 200 米；名单说不是的就不是），
      再按店名认清真连锁和穆斯林菜系，最后按分类（嘛嘛、马来餐；娘惹除外）。店名带猪肉的一律不算。
      记录里的 halal 字段等 visits.halal 列建好后再用（同学自己标） */
+  /* 2026-11-06 用户：自动判断还不准，清真相关的界面先全部藏起来（地图筛选的 Halal 开关、卡片上的 Halal 标签）。
+     代码、名单 data/halal.js 和数据库 visits.halal 列都保留；以后要恢复，把 HALAL_ON 改成 true 就行 */
+  var HALAL_ON = false;
   var HALAL = ['halal', 'porkfree', 'nonhalal'];
   function validHalal(v) { return HALAL.indexOf(v) !== -1 ? v : null; }
   var HALAL_NO = /pork|猪|bak ?kut ?teh|肉骨茶|char ?siu|叉烧|siew ?yoke|烧肉|non[- ]?halal|beer|啤酒|wine bar/;
@@ -1649,9 +1652,9 @@
     return p.cat === 'mamak' || (p.cat === 'malay' && !/nyonya|娘惹|peranakan/.test(name));
   }
   function placeHalal(p) { return isHalal(p) ? { v: 'halal' } : null; }
-  function halalFits(p) { return !state.halal || isHalal(p); }
+  function halalFits(p) { return !HALAL_ON || !state.halal || isHalal(p); }
   function halalTagHTML(p) {
-    if (!isHalal(p)) return '';
+    if (!HALAL_ON || !isHalal(p)) return '';
     var tip = state.lang === 'en' ? L('Guessed from the name and category, please check yourself') : '按店名和分类自动判断，仅供参考，请自行确认';
     return '<span class="tag halal-tag" title="' + esc(tip) + '">Halal</span>';
   }

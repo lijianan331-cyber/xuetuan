@@ -535,13 +535,13 @@ with sync_playwright() as p:
     check('Dengkil (龙溪) town counts as mid ride even though it is only ~4 km away; the McD on road 29 stays short', dk == ['mid', 'mid', 'short'], dk)
     hl = page.evaluate('''() => { const F = (name, extra) => Object.assign({mode: 'food', cat: 'other', name: name, lat: 3.1, lng: 101.6}, extra || {});
       const H = window.XUETUAN_HALAL; H.places.push({keys: ['zz-hh-test'], lat: 2.8288, lng: 101.7053, v: 'halal'}, {keys: ['mcd no test'], lat: 2.8288, lng: 101.7053, v: 'nonhalal'});
-      const keep = state.halal; state.halal = 'halal';
+      const keep = state.halal, keepOn = HALAL_ON; state.halal = 'halal'; HALAL_ON = true;
       const yes = [F('Sapid', {osm: 'ovt/xmum-b1-g04'}), F('Poke Bowl Rice', {osm: 'ovt/xmum-b1-g07'}), F('ZZ-HH-Test Bell', {lat: 2.8290, lng: 101.7054}), F("McDonald's Kota Warisan"), F('The Tokyo Restaurant'),
         F('Pak Punjab'), F('Sukiya Putrajaya'), F('新疆大盘鸡', {cat: 'cn'}), F('Restoran X', {cat: 'mamak'}), F('Warung Y', {cat: 'malay'})].map(halalFits);
       const no = [F('Da Cheng Xiao Shi', {osm: 'ovt/xmum-d6-102'}), F('Katsu Lab', {lat: 2.8287, lng: 101.7055}), F('zz-hh-test'), F('Uniq Nyonya Kitchen', {cat: 'malay'}), F('Bak Kut Teh Halal-ish'),
         F('MCD no test', {lat: 2.8288, lng: 101.7053}), F('海底捞', {cat: 'hotpot'}), F('Sapid', {mode: 'travel'})].map(halalFits);
       const out = [yes, no, halalTagHTML(F('Pak Punjab')).includes('>Halal<'), halalTagHTML(F('海底捞')), filtersActive(), activeFilterCount()];
-      state.halal = keep; H.places.pop(); H.places.pop(); return out; }''')
+      state.halal = keep; HALAL_ON = keepOn; H.places.pop(); H.places.pop(); return out; }''')
     check('halal: confirmed list wins (incl. not-halal entries), then chain / Muslim-cuisine names, then mamak and Malay (not Nyonya); pork names never',
           hl == [[True] * 10, [False] * 8, True, '', True, 1], hl)
     page.click('#f-submit')
@@ -799,11 +799,8 @@ with sync_playwright() as p:
     page.wait_for_timeout(100)
     cats_food = len(set(x['cat'] for x in FOOD_S))
     check('filter sheet: category, score (with legend), distance, price', page.locator('#bsheet').is_visible() and page.locator('#bsheet [data-action="cat"]').count() >= cats_food + 1 and page.locator('#bsheet .legend').count() == 1 and page.locator('[data-action="set-score"]').count() == 3 and page.locator('[data-action="set-dist"]').count() == 6 and page.locator('#bsheet input#flt-price[type="range"]').count() == 1 and page.inner_text('#flt-price-val') == '不限')
-    check('halal: the switch lives in the filter sheet', page.locator('#bsheet [data-action="halal-toggle"]').count() == 1 and page.locator('.map-ctrls .halal-btn').count() == 0)
-    page.click('#bsheet [data-action="halal-toggle"]'); page.wait_for_timeout(100)
-    check('halal: switch on counts as one active filter and Reset clears it', page.evaluate('state.halal') == 'halal' and page.evaluate('activeFilterCount()') == 1)
-    page.click('#bsheet [data-action="clear-filters"]'); page.wait_for_timeout(100)
-    check('halal: Reset turns it off', not page.evaluate('state.halal'))
+    # 2026-11-06 用户：清真自动判断还不准，界面先藏起来（HALAL_ON=false），逻辑和名单保留
+    check('halal hidden for now: no Halal switch in the filter sheet or on the map, no Halal tags on cards', page.locator('#bsheet [data-action="halal-toggle"]').count() == 0 and page.locator('.map-ctrls .halal-btn').count() == 0 and page.locator('.halal-tag').count() == 0 and page.evaluate('HALAL_ON') is False)
     page.click('#bsheet [data-action="cat"][data-cat="cn"]')
     page.wait_for_timeout(150)
     fc = page.evaluate('window.__map.getSource("places").data.features.map(f => f.properties.name)')
