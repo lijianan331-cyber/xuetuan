@@ -491,6 +491,7 @@
       case 'pick-lang': lsSet(LS_TRLANG, d.lang); closeBSheet(); if (state.lang !== (d.lang === 'zh' ? 'zh' : 'en')) setLang(d.lang === 'zh' ? 'zh' : 'en'); else { applyStaticI18n(); renderChrome(); render(); refreshMap(); patchLabels(); } break;
       case 'translate': toggleTranslate(el, d.id); break;
       case 'set-style': setBasemap(d.style); break;
+      case 'set-start': { var sp = startPrefs(); sp.pin = START_TABS.indexOf(d.start) >= 0 ? d.start : ''; saveStartPrefs(sp); var sy = view.scrollTop; render(); view.scrollTop = sy; break; }
       case 'campus': closeBSheet(); if (state.view === 'search') { toMapTab(); goFeed(); } flyTo([XMUM.lng, XMUM.lat], state.mode === 'travel' ? TRAVEL_ZOOM : 14.6); break;
       case 'locate': closeBSheet(); if (state.view === 'search') { toMapTab(); goFeed(); } locate(); break;
       /* 首页「发帖」先问想做哪件事（用户 2026-11-05：新人以为进首页就只能发帖，不知道能只记足迹） */
@@ -734,6 +735,7 @@
   var dataReady = store.init().catch(function () { toast(t('loadFail')); });
   var incomingShare = readSharedCard();
   if (incomingShare) { shareCard = { own: false, data: incomingShare }; state.view = 'share'; }
+  else { state.tab = startTab(); state.scope = scopeOfTab(state.tab); }
   applyStaticI18n(); renderChrome(); render(); setSnap(incomingShare ? 'full' : feedSnapNow('peek')); perfStart(); initMap();
   if (incomingShare) loadWorld().then(function () { if (shareCard && !shareCard.own && state.view === 'share') render(); }, function () {});
   dataReady.then(function () {

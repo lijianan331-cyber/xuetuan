@@ -44,7 +44,7 @@
       return;
     }
     if (tab !== 'foot') { selectingVisits = false; selectedVisits.clear(); }
-    state.tab = tab;
+    state.tab = tab; rememberTab(tab);
     state.homesOn = false;
     state.preview = null; state.homes = null;
     var scope = scopeOfTab(tab);

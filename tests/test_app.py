@@ -1138,6 +1138,16 @@ with sync_playwright() as p:
     check('samples removed, own data kept', all(not p_.get('sample') for p_ in stored['places']) and len(stored['places']) == 2, len(stored['places']))
     tab(page, 'explore')
 
+    # 打开时进入（2026-11-06）：默认回到上次停留的那一栏；“我的”里可以固定一栏
+    tab(page, 'foot'); tab(page, 'me')
+    page.reload(); page.wait_for_function('window.__map && window.__map.getSource("places")', timeout=8000); page.wait_for_timeout(400)
+    check('open on: reload returns to the last tab used (footprints; 我的 is not remembered)', page.get_attribute('#tabbar [data-tab="foot"]', 'aria-current') == 'page' and page.evaluate('document.documentElement.classList.contains("scope-my")'))
+    tab(page, 'me')
+    st_ = page.evaluate('(() => { const f = document.querySelector(".me-start"); if (!f) return null; const bs = [...f.querySelectorAll("button")], r = bs.map(b => b.getBoundingClientRect()); return { labels: bs.map(b => b.textContent), pressed: bs.map(b => b.getAttribute("aria-pressed")), oneRow: r.every(x => Math.abs(x.top - r[0].top) < 2), fits: r[r.length-1].right <= innerWidth - 8 }; })()')
+    check('open on: 我的 has 打开时进入 with 上次/首页/探索/足迹, 上次 chosen by default, on one row', st_ and st_['labels'] == ['上次', '首页', '探索', '足迹'] and st_['pressed'] == ['true', 'false', 'false', 'false'] and st_['oneRow'] and st_['fits'], st_)
+    page.click('.me-start [data-start="home"]'); page.wait_for_timeout(150)
+    check('open on: picking 首页 pins it', page.get_attribute('.me-start [data-start="home"]', 'aria-pressed') == 'true' and page.evaluate('JSON.parse(localStorage.getItem("xuetuan:start-tab:v1")).pin') == 'home')
+    tab(page, 'foot')
     # reload persistence + photo from IndexedDB
     page.reload()
     page.wait_for_function('window.__map && window.__map.getSource("places")', timeout=8000)

@@ -1367,6 +1367,15 @@
     } catch (e) { /* storage blocked: keep going */ }
   }
 
+  /* 打开雪团时先进哪一栏（用户 2026-11-06 选“两个都做”）：默认回到上次停留的那一栏（首页/探索/足迹，“我的”不算），
+     也可以在“我的”里固定一栏。第一次打开还是首页 */
+  var LS_START = 'xuetuan:start-tab:v1', START_TABS = ['home', 'explore', 'foot'];
+  function startPrefs() { try { var v = JSON.parse(localStorage.getItem(LS_START) || '{}'); return v && typeof v === 'object' ? v : {}; } catch (e) { return {}; } }
+  function saveStartPrefs(v) { try { localStorage.setItem(LS_START, JSON.stringify(v)); } catch (e) { /* storage blocked */ } }
+  function rememberTab(tab) { if (START_TABS.indexOf(tab) < 0) return; var v = startPrefs(); if (v.last === tab) return; v.last = tab; saveStartPrefs(v); }
+  function startPin() { var p = startPrefs().pin; return START_TABS.indexOf(p) >= 0 ? p : ''; }
+  function startTab() { var t = startPin() || startPrefs().last; return START_TABS.indexOf(t) >= 0 ? t : 'home'; }
+
   var photoStore = {
     db: null, mem: new Map(), ready: null,
     open: function () {
