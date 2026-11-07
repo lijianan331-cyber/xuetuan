@@ -83,7 +83,7 @@
       map.on('styleimagemissing', onImageMissing);
       map.on('moveend', function () { if (!gSyncing) onMoveEnd(); });
       if (PERF) { map.on('move', perfMoved); map.on('style.load', perfHook); perfHook(); if (!GMAP) map.on('idle', perfMark); }
-      map.on('idle', function () { if (!glyphsWarmed) setTimeout(warmGlyphs, 800); collectBaseNames(); updateHomePlacement(); });
+      map.on('idle', function () { if (!glyphsWarmed) setTimeout(warmGlyphs, 800); if (!areaWarmed) setTimeout(warmArea, 6000); collectBaseNames(); updateHomePlacement(); });
       map.on('zoom', function () { if (state.picking) updatePickUI(); });
       map.on('dragstart', function () { if (state.picking && state.picking.selected) { state.picking.selected = null; updatePickUI(); } });
       map.on('error', function (e) { if (window.console) console.warn('map:', e && e.error ? e.error.message : e); });
@@ -404,6 +404,44 @@
      地图停下来后，悄悄下载附近 6 到 12 级的瓦片，把里面的中文字挑出来，空闲时一点点先画好存着，
      真缩小时就不用现画。用的是 MapLibre 内部的字形缓存（版本固定 5.24.0），没有就跳过 */
   var glyphsWarmed = false;
+  /* 连 Wi-Fi（或网络不差）时，把学校附近和吉隆坡一带的地图提前存进离线缓存（用户 2026-11-07 同意）。
+     约 60 块、两三 MB；7 天最多一次；省流量模式、手机流量、慢网都不下；自动化测试里不跑（window.__mapWarm 可强制） */
+  var WARM_AREAS = [[101.67, 2.80, 101.75, 2.88, 10, 14], [101.50, 2.80, 101.85, 3.35, 10, 12]], areaWarmed = false;
+  function warmArea() {
+    if (areaWarmed || GMAP || !map) return;
+    areaWarmed = true;
+    var conn = navigator.connection || {}, force = !!window.__mapWarm;
+    if (!force && (navigator.webdriver || conn.saveData || conn.type === 'cellular' || /2g|3g/.test(conn.effectiveType || ''))) return;
+    if (navigator.onLine === false || !navigator.serviceWorker || !navigator.serviceWorker.controller) return;
+    try { if (!force && Date.now() - Number(localStorage.getItem('xuetuan:map-warm') || 0) < 7 * 86400000) return; } catch (e) { return; }
+    loadStyle(state.styleKey).then(function (style) {
+      var urls = [], seen = new Set();
+      Object.keys(style.sources || {}).forEach(function (id) {
+        var src = style.sources[id];
+        if (src.type !== 'vector' || !src.tiles || !src.tiles.length) return;
+        WARM_AREAS.forEach(function (a) {
+          for (var z = a[4]; z <= Math.min(a[5], src.maxzoom || 14); z++) {
+            var n = Math.pow(2, z), p0 = merc(a[0], a[3]), p1 = merc(a[2], a[1]);
+            for (var x = Math.floor(p0.x * n); x <= Math.floor(p1.x * n); x++) for (var y = Math.floor(p0.y * n); y <= Math.floor(p1.y * n); y++) {
+              var u = src.tiles[0].replace('{z}', z).replace('{x}', x).replace('{y}', y);
+              if (!seen.has(u) && urls.length < 160) { seen.add(u); urls.push(u); }
+            }
+          }
+        });
+      });
+      if (!urls.length) return;
+      var left = urls.length, failed = 0;
+      function next() {
+        var u = urls.shift(); if (!u) return;
+        if (navigator.onLine === false) { urls = []; return; }
+        fetch(u, { credentials: 'omit' }).then(function (r) { if (!r.ok) failed++; }, function () { failed++; }).then(function () {
+          if (--left === 0 && !failed) try { localStorage.setItem('xuetuan:map-warm', String(Date.now())); } catch (e) { /* 下次再试 */ }
+          setTimeout(next, 60);
+        });
+      }
+      next(); next();
+    }).catch(function () {});
+  }
   function warmGlyphs() {
     if (glyphsWarmed || GMAP || !map || !map.style) return;
     var gm = map.style.glyphManager;

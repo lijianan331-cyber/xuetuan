@@ -1288,3 +1288,7 @@ html[data-page="me"] #view .field.me-basemap { display: flex; flex-direction: ro
 #offline-status[hidden]{display:none}
 
 .read-more{display:flex;justify-content:center;padding:18px 0 24px}.read-more .btn{min-height:40px}
+/* 分享雪团里的二维码：白底，深色模式也保持白底好扫 */
+.app-qr { margin: 4px 0 12px; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.app-qr img { width: 132px; height: 132px; padding: 6px; background: #fff; border-radius: 12px; border: 1px solid var(--line); }
+.app-qr figcaption { font-size: 12px; color: var(--muted); }

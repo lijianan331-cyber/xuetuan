@@ -46,7 +46,7 @@ class Handler(BaseHTTPRequestHandler):
         elif path.startswith('/storage/') or path == '/photo.png': body = PHOTO; mime = 'image/png'
         elif path == '/large.png': body = PHOTO + b'0' * (4 * 1024 * 1024); mime = 'image/png'
         elif path.startswith('/map/styles/'):
-            body = json.dumps({'version': 8, 'sources': {}, 'layers': [{'id': 'background', 'type': 'background'}]}); mime = 'application/json'
+            body = json.dumps({'version': 8, 'sources': {'om': {'type': 'vector', 'tiles': [origin + '/map/{z}/{x}/{y}.pbf'], 'maxzoom': 14}}, 'layers': [{'id': 'background', 'type': 'background'}]}); mime = 'application/json'
         elif path.startswith('/map/'): body = b'synthetic tile'; mime = 'application/x-protobuf'
         elif path == '/api/private': body = '{"secret":"not cached"}'; mime = 'application/json'
         else:
@@ -81,6 +81,11 @@ try:
         pg.goto(url); pg.wait_for_function('!state.bootLoading && store.me().id === "alpha"')
         pg.wait_for_function('navigator.serviceWorker.controller !== null', timeout=45000)
         check(pg.evaluate('store.reviews().length===1'), 'online RLS-visible synthetic review loaded')
+        check(pg.evaluate('''async()=>{areaWarmed=false;warmArea();await new Promise(r=>setTimeout(r,800));return localStorage.getItem("xuetuan:map-warm")===null && !(await (await caches.open('xuetuan-map-v1')).keys()).some(r=>/map.1[0-4].(12820|800)./.test(r.url));}'''), 'campus map pre-download stays off in automated browsers')
+        pg.evaluate('window.__mapWarm=true;areaWarmed=false;warmArea()')
+        pg.wait_for_function('localStorage.getItem("xuetuan:map-warm")!==null', timeout=20000)
+        check(pg.evaluate('''async()=>{const c=await caches.open('xuetuan-map-v1'),keys=(await c.keys()).map(r=>r.url);return keys.some(u=>u.endsWith('/map/14/12820/8062.pbf')) && keys.some(u=>u.endsWith('/map/10/800/503.pbf')) && keys.length>=40 && keys.length<=170;}'''), 'campus and KL map tiles pre-downloaded into the offline cache once')
+        pg.evaluate('delete window.__mapWarm')
         pg.evaluate('store.photoURL("alpha/pic.jpg",true)'); pg.wait_for_timeout(300)
         pg.evaluate('''async()=>{await XueOffline.snapshot({places:store.places(),reviews:store.reviews(),wishlist:[],homes:[],profile:me()});await fetch('/map/14/1/2.pbf');await fetch('/api/private');}''')
         check(pg.evaluate('''async()=>{const keys=await caches.keys();const c=await caches.open(keys.find(k=>k.startsWith('xuetuan-shell-')));return (await c.keys()).length>=28;}'''), 'complete coherent shell and pinned SDKs installed')

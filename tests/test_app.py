@@ -2685,6 +2685,8 @@ with sync_playwright() as p:
     page6.evaluate('()=>{Object.defineProperty(navigator,"share",{configurable:true,value:undefined});}')
     page6.click('[data-action="app-share-system"]')
     check('unsupported system sharing falls back to copying without losing the page',page6.locator('#app-share-link').is_visible() and page6.evaluate('window.__appCopied')==app_url)
+    qr=page6.evaluate('()=>{const i=document.querySelector(".app-qr img"),c=document.querySelector(".modal-card").getBoundingClientRect();if(!i)return null;const b=i.getBoundingClientRect();return {ok:i.complete&&i.naturalWidth>0,w:b.width,h:b.height,inside:b.left>=c.left&&b.right<=c.right,src:i.getAttribute("src")}}')
+    check('share sheet shows a scannable QR code for the live site',bool(qr) and qr['ok'] and abs(qr['w']-qr['h'])<1 and qr['w']>=120 and qr['inside'] and 'qr-xuetuan.svg' in qr['src'] and "'assets/qr-xuetuan.svg'" in open(os.path.join(ROOT,'sw.js'),encoding='utf8').read())
     page6.screenshot(path=os.path.join(SHOTS,'26-app-share.png'))
     page6.click('[data-modal="no"]')
 
