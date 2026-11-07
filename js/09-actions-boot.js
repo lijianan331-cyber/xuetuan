@@ -483,6 +483,9 @@
       case 'moderation-clean': if (isModerator()) store.cleanModerationMedia().then(function (n) { toast(state.lang === 'en' ? L('Media cleanup complete: ') + n : '图片清理完成：' + n); }, function (e) { toast(securitySaveError(e)); }); break;
       case 'app-share': openAppShare(); break;
       case 'app-share-copy': copyAppShare(); break;
+      case 'app-share-wechat': wechatAppShare(); break;
+      case 'app-qr-save': appQRAct('save'); break;
+      case 'app-qr-share': appQRAct('share'); break;
       case 'app-share-system': sendAppShare(); break;
       case 'share-theme': if (shareCard && shareCard.own) { shareCard.theme = ['atlas','stats','food-kl','food-xmum','food-world'].indexOf(d.v)>=0?d.v:'atlas'; shareCard.includePrivate=false; render(); } break;
       case 'share-card': sendShareCard(); break;

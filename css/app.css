@@ -1289,6 +1289,8 @@ html[data-page="me"] #view .field.me-basemap { display: flex; flex-direction: ro
 
 .read-more{display:flex;justify-content:center;padding:18px 0 24px}.read-more .btn{min-height:40px}
 /* 分享雪团里的二维码：白底，深色模式也保持白底好扫 */
-.app-qr { margin: 4px 0 12px; display: flex; flex-direction: column; align-items: center; gap: 6px; }
-.app-qr img { width: 132px; height: 132px; padding: 6px; background: #fff; border-radius: 12px; border: 1px solid var(--line); }
-.app-qr figcaption { font-size: 12px; color: var(--muted); }
+/* 弹窗比屏幕高时（小屏手机）在卡片里滚动，不把关闭按钮挤出屏幕 */
+.modal-card { max-height: calc(var(--app-h, 100vh) - 40px); overflow-y: auto; overscroll-behavior: contain; }
+.app-qr { margin: 0; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.app-qr img { width: 128px; height: 160px; background: #fff; border-radius: 12px; border: 1px solid var(--line); -webkit-touch-callout: default; user-select: auto; }
+.app-qr-acts { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }

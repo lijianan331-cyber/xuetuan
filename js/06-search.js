@@ -613,7 +613,64 @@
   }
   function openAppShare() {
     var en = state.lang === 'en', url = appShareURL();
-    openModal('<div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="app-share-title"><h3 id="app-share-title">' + esc(en ? L('Share XueTuan') : '把雪团分享给朋友') + '</h3><p class="f-hint">' + esc(en ? L('Discover food and things to do with your classmates.') : '一起发现同学推荐的美食和玩乐。') + '</p>' + (/[?&]_vercel_share=/.test(url) ? '' : '<figure class="app-qr"><img src="assets/qr-xuetuan.svg" width="132" height="132" alt="' + esc(en ? L('QR code for xuetuan.vercel.app') : '雪团网址二维码') + '"><figcaption>' + esc(en ? L('Scan with a phone camera to open') : '手机相机扫一扫就能打开') + '</figcaption></figure>') + '<input id="app-share-link" class="input" readonly aria-label="' + esc(en ? L('Website link') : '网站链接') + '" value="' + esc(url) + '"><div class="btn-row"><button type="button" class="btn primary" data-action="app-share-system">' + esc(en ? L('More apps') : '系统分享') + '</button><button type="button" class="btn" data-action="app-share-copy">' + esc(en ? L('Copy link') : '复制链接') + '</button><a class="btn" href="https://wa.me/?text=' + encodeURIComponent('雪团 XueTuan · ' + url) + '" target="_blank" rel="noopener noreferrer">WhatsApp</a></div><p class="f-hint">' + esc(en ? L('WeChat / Instagram: copy the link and paste it in a chat. Available system share apps depend on your phone.') : '微信 / Instagram：复制链接后粘贴到聊天中；系统分享中的应用以手机实际支持为准。') + '</p><button type="button" class="btn ghost" data-modal="no">' + esc(en ? L('Close') : '关闭') + '</button></div>');
+    openModal('<div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="app-share-title"><h3 id="app-share-title">' + esc(en ? L('Share XueTuan') : '把雪团分享给朋友') + '</h3><p class="f-hint">' + esc(en ? L('Discover food and things to do with your classmates.') : '一起发现同学推荐的美食和玩乐。') + '</p>' + (/[?&]_vercel_share=/.test(url) ? '' : appQRBlock(en)) + '<input id="app-share-link" class="input" readonly aria-label="' + esc(en ? L('Website link') : '网站链接') + '" value="' + esc(url) + '"><div class="btn-row"><button type="button" class="btn primary" data-action="app-share-system">' + esc(en ? L('More apps') : '系统分享') + '</button><button type="button" class="btn" data-action="app-share-copy">' + esc(en ? L('Copy link') : '复制链接') + '</button><a class="btn" href="https://wa.me/?text=' + encodeURIComponent('雪团 XueTuan · ' + url) + '" target="_blank" rel="noopener noreferrer">WhatsApp</a><button type="button" class="btn" data-action="app-share-wechat">' + esc(en ? L('WeChat') : '微信') + '</button></div><p class="f-hint">' + esc(en ? L('WeChat cannot receive links directly from a web page: the WeChat button copies the link and opens WeChat for you to paste. Instagram: copy the link and paste it in a chat.') : '「微信」会复制链接并打开微信，粘贴就能发。') + '</p><button type="button" class="btn ghost" data-modal="no">' + esc(en ? L('Close') : '关闭') + '</button></div>');
+  }
+  /* 分享雪团的二维码图片（用户 2026-11-07）：网址固定 https://xuetuan.vercel.app/，二维码点阵写死在这里（29×29，M 级纠错），
+     本机画成一张带「雪团」字样的图片：长按能存，下面的按钮能保存 / 分享（复制按用户意思不做）（浏览器不支持的按钮不显示） */
+  var APP_QR = '01fd6e57f010492c410175d8e5d017443e5d0174f3c5d01057d14101fd5557f0000a850001464b3250011217e3017d1de7d0088c72a80007dc3410188bc763004482fd10128e82a0007e3b661000171b6701847d219003ac756001dd5cffa00013c91d01fd721510104c8b1301744bbfa01749913e0175f9d930104bf7c801fd8cda1', appQRImage = null;
+  function appQRCanvas() {
+    var W = 640, H = 800, c = document.createElement('canvas'), g = c.getContext('2d'), n = 29, cell = 15, qx = (W - n * cell) / 2, qy = 196;
+    c.width = W; c.height = H;
+    g.fillStyle = '#fff'; g.fillRect(0, 0, W, H);
+    g.fillStyle = '#2F7BD8'; g.fillRect(0, 0, W, 12);
+    g.textAlign = 'center'; g.fillStyle = '#14315c';
+    g.font = '700 60px "PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans SC",sans-serif'; g.fillText('雪团 XueTuan', W / 2, 104);
+    g.fillStyle = '#5b6b7c'; g.font = '400 28px "PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans SC",sans-serif';
+    g.fillText(state.lang === 'en' ? L('Food & fun map by XMUM students') : 'XMUMer 的美食玩乐地图', W / 2, 152);
+    g.fillStyle = '#14315c';
+    for (var y = 0; y < n; y++) { var row = parseInt(APP_QR.substr(y * 9, 9), 16); for (var x = 0; x < n; x++) if (row & Math.pow(2, n - 1 - x) ? true : false) g.fillRect(qx + x * cell, qy + y * cell, cell, cell); }
+    g.fillStyle = '#5b6b7c'; g.font = '400 28px "PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans SC",sans-serif';
+    g.fillText(state.lang === 'en' ? L('Scan with a phone camera to open') : '手机相机扫一扫就能打开', W / 2, qy + n * cell + 72);
+    g.fillStyle = '#2F7BD8'; g.font = '600 30px -apple-system,"Segoe UI",Roboto,sans-serif'; g.fillText('xuetuan.vercel.app', W / 2, qy + n * cell + 122);
+    return c;
+  }
+  function appQRBlock(en) {
+    var src = ''; try { appQRImage = appQRCanvas(); src = appQRImage.toDataURL('image/png'); } catch (e) { appQRImage = null; }
+    if (!src) return '';
+    var canShare = false; try { canShare = !!(navigator.canShare && window.File && navigator.canShare({ files: [new File([new Blob(['x'], { type: 'image/png' })], 'xuetuan.png', { type: 'image/png' })] })); } catch (e) { canShare = false; }
+    return '<figure class="app-qr"><img src="' + src + '" width="128" height="160" title="' + esc(en ? L('Scan to open · long-press to save') : '扫码打开 · 长按图片可保存') + '" alt="' + esc(en ? L('QR code for xuetuan.vercel.app') : '雪团网址二维码') + '">' +
+      '<div class="app-qr-acts"><button type="button" class="btn small ghost" data-action="app-qr-save">' + esc(en ? L('Save image') : '保存图片') + '</button>' +
+      (canShare ? '<button type="button" class="btn small ghost" data-action="app-qr-share">' + esc(en ? L('Share image') : '分享图片') + '</button>' : '') + '</div></figure>';
+  }
+  function appQRBlob() {
+    return new Promise(function (resolve, reject) { if (!appQRImage) appQRImage = appQRCanvas(); appQRImage.toBlob(function (b) { b ? resolve(b) : reject(new Error('no image')); }, 'image/png'); });
+  }
+  function appQRAct(kind) {
+    var en = state.lang === 'en';
+    function longPress() { toast(en ? L('Long-press the image to save it') : '长按上面的图片即可保存'); }
+    /* 微信、雪团安卓 App 里不能直接下载文件：提示长按 */
+    if (kind === 'save' && /MicroMessenger|XueTuanApp\//i.test(navigator.userAgent)) { longPress(); return; }
+    appQRBlob().then(function (blob) {
+      if (kind === 'share') return navigator.share({ files: [new File([blob], 'xuetuan-qr.png', { type: 'image/png' })], title: '雪团 XueTuan' }).catch(function (e) { if (!e || e.name !== 'AbortError') throw e; });
+      var a = document.createElement('a'), u = URL.createObjectURL(blob);
+      a.href = u; a.download = 'xuetuan-qr.png'; document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function () { URL.revokeObjectURL(u); }, 4000);
+      toast(en ? L('Image saved') : '图片已保存');
+    }).catch(function () { longPress(); });
+  }
+  /* 微信没有 wa.me 那样的网页分享链接：复制链接后用 weixin:// 打开微信（用户 2026-11-07）。在微信里就提示右上角菜单 */
+  function appOpenScheme(u) { location.href = u; }
+  function wechatAppShare() {
+    var en = state.lang === 'en';
+    if (/MicroMessenger/i.test(navigator.userAgent)) { toast(en ? L('Tap ··· at the top right, then Send to Chat') : '点右上角 ··· ，选「发送给朋友」'); return; }
+    var url = appShareURL(), text = '雪团 XueTuan · ' + url;
+    function done() { toast(en ? L('Link copied. Paste it in WeChat') : '链接已复制，打开微信粘贴发送'); setTimeout(function () { appOpenScheme('weixin://'); }, 600); }
+    function fallback() {
+      var input = $('#app-share-link'), ok = false;
+      if (input) { input.focus(); input.select(); input.setSelectionRange(0, input.value.length); try { ok = document.execCommand('copy'); } catch (e) { ok = false; } }
+      if (ok) done(); else toast(en ? L('Long-press the selected link to copy') : '长按选中的链接，选择复制');
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done, fallback); else fallback();
   }
   function copyAppShare() {
     function fallback() {
