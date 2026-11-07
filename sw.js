@@ -1,6 +1,6 @@
 /* Atomic app-shell releases. This worker never caches API/auth/signed-photo requests. */
 'use strict';
-const VERSION = 'xuetuan-shell-a7f68f31bfe4a189';
+const VERSION = 'xuetuan-shell-fc4747c085ce9083';
 const MAP_CACHE = 'xuetuan-map-v1';
 const ROOT = new URL('./', self.location.href);
 const SHELL = [
@@ -37,32 +37,41 @@ self.addEventListener('activate', e => {
   })());
 });
 let mapQueue = Promise.resolve(), mapIndex = null, mapBytes = 0;
-async function mapResponse(request) {
+async function mapResponse(request, event) {
   const cache = await caches.open(MAP_CACHE), hit = await cache.match(request);
   // Cache only normal, user-requested map assets. No background region downloads.
   if (hit && Date.now() - Number(hit.headers.get('x-xuetuan-cached-at') || 0) < 7 * 86400000) return hit;
-  try {
-    const r = await fetch(request);
-    if (!r.ok || r.type === 'opaque') return r;
-    const bytes = await r.clone().arrayBuffer();
-    if (bytes.byteLength > 3 * 1024 * 1024) return r;
-    const h = new Headers(r.headers); h.set('x-xuetuan-cached-at', String(Date.now())); h.set('x-xuetuan-bytes', String(bytes.byteLength));
-    // Serialize cache writes and eviction so simultaneous tiles cannot exceed the budget.
-    mapQueue = mapQueue.catch(() => {}).then(async () => {
-      if (!mapIndex) {
-        mapIndex = new Map();
-        for (const key of await cache.keys()) { const value = await cache.match(key); if (value) { const size = Number(value.headers.get('x-xuetuan-bytes') || 0); mapIndex.set(key.url, size); mapBytes += size; } }
-      }
-      await cache.put(request, new Response(bytes, { status: 200, headers: h }));
-      mapBytes -= mapIndex.get(request.url) || 0; mapIndex.delete(request.url);
-      mapIndex.set(request.url, bytes.byteLength); mapBytes += bytes.byteLength;
-      while (mapIndex.size && (mapBytes > 40 * 1024 * 1024 || mapIndex.size > 1200)) {
-        const key = mapIndex.keys().next().value; mapBytes -= mapIndex.get(key); mapIndex.delete(key); await cache.delete(key);
-      }
-    });
-    await mapQueue;
-    return r;
-  } catch (err) { throw err; }
+  const live = fetchMap(cache, request);
+  if (!hit) return live;
+  // Older than 7 days: prefer the network, but a weak signal (lift, basement) or no signal gets the old copy
+  // within 2.5 s instead of a blank map. The download keeps going and refreshes the cache when it lands.
+  event.waitUntil(live.catch(() => {}));
+  return Promise.race([
+    live.then(r => r.ok ? r : hit, () => hit),
+    new Promise(resolve => setTimeout(() => resolve(hit), 2500))
+  ]);
+}
+async function fetchMap(cache, request) {
+  const r = await fetch(request);
+  if (!r.ok || r.type === 'opaque') return r;
+  const bytes = await r.clone().arrayBuffer();
+  if (bytes.byteLength > 3 * 1024 * 1024) return r;
+  const h = new Headers(r.headers); h.set('x-xuetuan-cached-at', String(Date.now())); h.set('x-xuetuan-bytes', String(bytes.byteLength));
+  // Serialize cache writes and eviction so simultaneous tiles cannot exceed the budget.
+  mapQueue = mapQueue.catch(() => {}).then(async () => {
+    if (!mapIndex) {
+      mapIndex = new Map();
+      for (const key of await cache.keys()) { const value = await cache.match(key); if (value) { const size = Number(value.headers.get('x-xuetuan-bytes') || 0); mapIndex.set(key.url, size); mapBytes += size; } }
+    }
+    await cache.put(request, new Response(bytes, { status: 200, headers: h }));
+    mapBytes -= mapIndex.get(request.url) || 0; mapIndex.delete(request.url);
+    mapIndex.set(request.url, bytes.byteLength); mapBytes += bytes.byteLength;
+    while (mapIndex.size && (mapBytes > 40 * 1024 * 1024 || mapIndex.size > 1200)) {
+      const key = mapIndex.keys().next().value; mapBytes -= mapIndex.get(key); mapIndex.delete(key); await cache.delete(key);
+    }
+  });
+  await mapQueue;
+  return r;
 }
 self.addEventListener('fetch', e => {
   const r = e.request, u = new URL(r.url);
@@ -74,7 +83,7 @@ self.addEventListener('fetch', e => {
   const plain = u.origin === ROOT.origin ? u.origin + u.pathname : u.href;
   if (SHELL.includes(plain)) { e.respondWith(caches.open(VERSION).then(async c => (await c.match(plain)) || fetch(r))); return; }
   if (u.origin === 'https://tiles.openfreemap.org') {
-    e.respondWith(mapResponse(r)); return;
+    e.respondWith(mapResponse(r, e)); return;
   }
   // Supabase, Google, messages, avatars and other domains pass through uncached.
 });

@@ -811,6 +811,11 @@
   });
 
 
+  // 信号弱时先显示了缓存，最新数据到了就换上（写到一半的表单不动）
+  window.addEventListener('xuetuan-fresh-data', function () {
+    refreshMap(); renderChrome(); dmRefreshBadge(true);
+    if (['form','bulk','add','pick'].indexOf(state.view) === -1) render();
+  });
   // Revalidate on reconnection, without replacing an in-progress composer.
   window.addEventListener('online', function () {
     if (store.mode !== 'remote') return;

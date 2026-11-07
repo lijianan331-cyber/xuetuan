@@ -754,6 +754,38 @@
         ['places','reviews','wishlist','homes','profile'].forEach(function (k) { cache[k] = saved[k]; }); cache.mapGroups = saved.mapGroups || []; cache.admin = false;
       });
     }
+    function storedSession() {
+      try {
+        var s = JSON.parse(localStorage.getItem(client.auth.storageKey) || 'null');
+        return s && s.user && s.user.id && s.access_token && s.refresh_token ? s : null;
+      } catch (e) { return null; }
+    }
+    /* 打开时信号弱：最新数据 delay 毫秒内没到，就先显示上次缓存的内容；最新数据到了再读一遍换上，通知页面重画 */
+    function readAllQuick(delay) {
+      if (!offline || navigator.onLine === false) return readAll();
+      var settled = false, shown = false, live = readAll();
+      live.then(function () { settled = true; }, function () { settled = true; });
+      return new Promise(function (resolve, reject) {
+        live.then(resolve, function (e) { if (!shown) reject(e); });
+        setTimeout(function () {
+          if (settled) return;
+          var actor = uidNow();
+          restoreOffline(function () { return !settled; }).then(function () {
+            shown = true; resolve();
+            // 慢的那次可能有一部分在缓存之前写进来，再完整读一遍，免得混着旧数据
+            live.then(function () { return loadAll(); }).then(function () {
+              window.dispatchEvent(new Event('xuetuan-fresh-data'));
+            }, function (e) {
+              // 权限/登录类错误不能拿旧缓存挡着：清掉显示的缓存
+              if (actor !== uidNow() || !(e && (e.code || e.status || !/fetch|network|offline|connection/i.test(String(e.message || e))))) return;
+              if (reader) reader.reset();
+              cache.places = []; cache.reviews = []; cache.wishlist = []; cache.homes = []; cache.mapGroups = [];
+              window.dispatchEvent(new Event('xuetuan-fresh-data'));
+            });
+          }, function () {});
+        }, delay);
+      });
+    }
     function readAll(guard) {
       if (offline && navigator.onLine === false) return restoreOffline(guard);
       return loadAll(guard).catch(function (e) {
@@ -994,13 +1026,19 @@
         });
         var sessionRead = client.auth.getSession();
         var pendingSession = sessionRead;
-        if (offline && navigator.onLine === false) sessionRead = new Promise(function (resolve, reject) {
-          var timer = setTimeout(function () { reject(new Error('Offline session unavailable; reconnect to sign in')); }, 2500);
+        /* 没信号或信号很弱（电梯、地下室）：登录过期时 SDK 要先联网换令牌，可能卡很久。
+           等一小会儿还没好，就先用本机保存的登录身份打开离线缓存，联网换好令牌后再读最新的 */
+        if (offline) sessionRead = new Promise(function (resolve, reject) {
+          var timer = setTimeout(function () {
+            var s = storedSession();
+            if (s) resolve({ data: { session: s }, slow: true });
+            else if (navigator.onLine === false) reject(new Error('Offline session unavailable; reconnect to sign in'));
+          }, navigator.onLine === false ? 2500 : 4000);
           Promise.resolve(pendingSession).then(function (r) { clearTimeout(timer); resolve(r); }, function (e) { clearTimeout(timer); reject(e); });
         });
         return sessionRead.then(function (res) {
           setSession(res.data && res.data.session);
-          return readAll();
+          return readAllQuick(res.slow ? 0 : 3500);
         });
       },
 
